@@ -1,0 +1,13 @@
+# Generated file/configuration location
+# default value 'out' relative to current dir 
+# can take absolute path as '/tmp/out/'
+outputDir : out/
+
+# Sqllite3 database URL
+# for relative file location ./data/sqllite3.db, url is sqlite:///data/sqllite3.db
+# absolute file location /tmp/sqllite3.db, url is sqlite:////tmp/sqllite3.db
+dbUrl : sqlite:///data/sqllite3.db
+    
+    
+# Device family and port names
+#    

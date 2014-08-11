@@ -1,0 +1,13 @@
+
+OpenClos is a python automation tool to perform following
+
+1. Create scalable Layer-3 IP Fabric using BGP
+2. Troubleshoot L2 and L3 connectivity
+3. Reporting different Fabric statistics
+
+
+
+***********
+Basic usage
+***********
+

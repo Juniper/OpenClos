@@ -1,0 +1,8 @@
+replace:
+routing-options {
+    router-id <<<routerId>>>;
+    autonomous-system <<<asn>>>;
+    forwarding-table {
+        export PFE-LB;
+    }
+}

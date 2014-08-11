@@ -1,0 +1,11 @@
+    replace:
+    <<<ifd_name>>> {
+        mtu 9216
+        unit <<<unit>>> {
+            description <<<description>>>;
+            family inet {
+                mtu 9000;
+                address <<<address>>>;
+            }
+        }
+    }

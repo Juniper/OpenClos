@@ -1,0 +1,44 @@
+{   "spines" : [
+       { "name" : "spine-01", "mac_address" : "aa:bb:cc:dd:ee:f1", "mgmt_ip" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" },
+       { "name" : "spine-02", "mac_address" : "aa:bb:cc:dd:ee:f2", "mgmt_ip" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" },
+       { "name" : "spine-03", "mac_address" : "aa:bb:cc:dd:ee:f3", "mgmt_ip" : "172.32.32.203/24", "user" : "root", "password" : "Embe1mpls" },
+       { "name" : "spine-04", "mac_address" : "aa:bb:cc:dd:ee:f4", "mgmt_ip" : "172.32.32.204/24", "user" : "root", "password" : "Embe1mpls" }
+    ],
+    "leafs" : [
+       { "name" : "leaf-01", "mac_address" : "aa:bb:cc:dd:ee:e1", "mgmt_ip" : "172.32.32.101/24", "user" : "root", "password" : "Embe1mpls" },
+       { "name" : "leaf-02", "mac_address" : "aa:bb:cc:dd:ee:e2", "mgmt_ip" : "172.32.32.102/24", "user" : "root", "password" : "Embe1mpls" },
+       { "name" : "leaf-03", "mac_address" : "aa:bb:cc:dd:ee:e3", "mgmt_ip" : "172.32.32.103/24", "user" : "root", "password" : "Embe1mpls" },
+       { "name" : "leaf-04", "mac_address" : "aa:bb:cc:dd:ee:e4", "mgmt_ip" : "172.32.32.104/24", "user" : "root", "password" : "Embe1mpls" },
+       { "name" : "leaf-05", "mac_address" : "aa:bb:cc:dd:ee:e5", "mgmt_ip" : "172.32.32.105/24", "user" : "root", "password" : "Embe1mpls" },
+       { "name" : "leaf-06", "mac_address" : "aa:bb:cc:dd:ee:e6", "mgmt_ip" : "172.32.32.106/24", "user" : "root", "password" : "Embe1mpls" }
+    ],
+    "links" : [
+       { "s_name" : "spine-01", "s_port" : "et-0/0/0", "l_name" : "leaf-01", "l_port" : "et-0/0/48" },
+       { "s_name" : "spine-01", "s_port" : "et-0/0/1", "l_name" : "leaf-02", "l_port" : "et-0/0/48" },
+       { "s_name" : "spine-01", "s_port" : "et-0/0/2", "l_name" : "leaf-03", "l_port" : "et-0/0/48" },
+       { "s_name" : "spine-01", "s_port" : "et-0/0/3", "l_name" : "leaf-04", "l_port" : "et-0/0/48" },
+       { "s_name" : "spine-01", "s_port" : "et-0/0/4", "l_name" : "leaf-05", "l_port" : "et-0/0/48" },
+       { "s_name" : "spine-01", "s_port" : "et-0/0/5", "l_name" : "leaf-06", "l_port" : "et-0/0/48" },
+       
+       { "s_name" : "spine-02", "s_port" : "et-0/0/0", "l_name" : "leaf-01", "l_port" : "et-0/0/49" },
+       { "s_name" : "spine-02", "s_port" : "et-0/0/1", "l_name" : "leaf-02", "l_port" : "et-0/0/49" },
+       { "s_name" : "spine-02", "s_port" : "et-0/0/2", "l_name" : "leaf-03", "l_port" : "et-0/0/49" },
+       { "s_name" : "spine-02", "s_port" : "et-0/0/3", "l_name" : "leaf-04", "l_port" : "et-0/0/49" },
+       { "s_name" : "spine-02", "s_port" : "et-0/0/4", "l_name" : "leaf-05", "l_port" : "et-0/0/49" },
+       { "s_name" : "spine-02", "s_port" : "et-0/0/5", "l_name" : "leaf-06", "l_port" : "et-0/0/49" },
+       
+       { "s_name" : "spine-03", "s_port" : "et-0/0/0", "l_name" : "leaf-01", "l_port" : "et-0/0/50" },
+       { "s_name" : "spine-03", "s_port" : "et-0/0/1", "l_name" : "leaf-02", "l_port" : "et-0/0/50" },
+       { "s_name" : "spine-03", "s_port" : "et-0/0/2", "l_name" : "leaf-03", "l_port" : "et-0/0/50" },
+       { "s_name" : "spine-03", "s_port" : "et-0/0/3", "l_name" : "leaf-04", "l_port" : "et-0/0/50" },
+       { "s_name" : "spine-03", "s_port" : "et-0/0/4", "l_name" : "leaf-05", "l_port" : "et-0/0/50" },
+       { "s_name" : "spine-03", "s_port" : "et-0/0/5", "l_name" : "leaf-06", "l_port" : "et-0/0/50" },
+       
+       { "s_name" : "spine-04", "s_port" : "et-0/0/0", "l_name" : "leaf-01", "l_port" : "et-0/0/51" },
+       { "s_name" : "spine-04", "s_port" : "et-0/0/1", "l_name" : "leaf-02", "l_port" : "et-0/0/51" },
+       { "s_name" : "spine-04", "s_port" : "et-0/0/2", "l_name" : "leaf-03", "l_port" : "et-0/0/51" },
+       { "s_name" : "spine-04", "s_port" : "et-0/0/3", "l_name" : "leaf-04", "l_port" : "et-0/0/51" },
+       { "s_name" : "spine-04", "s_port" : "et-0/0/4", "l_name" : "leaf-05", "l_port" : "et-0/0/51" },
+       { "s_name" : "spine-04", "s_port" : "et-0/0/5", "l_name" : "leaf-06", "l_port" : "et-0/0/51" }
+    ]
+}

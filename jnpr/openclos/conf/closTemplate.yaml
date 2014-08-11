@@ -1,0 +1,33 @@
+pods:
+    # pod name or pod identifier
+    labLeafSpine:
+        num_leaf_downlinks : 48
+        num_leaf_uplinks : 6 
+        num_spine_downlinks : 24
+        spineCount : 4
+        spineDeviceType : QFX5100-24Q
+        leafCount : 6
+        leafDeviceType : QFX5100-48S
+        interConnectPrefix : 192.168.0.0
+        vlanPrefix : 172.16.0.0
+        loopbackPrefix : 10.0.0.0
+        spineAS : 100
+        leafAS : 200
+        topologyType : leaf-spine
+        topology : topologyLabKurt.json
+    barclaysL3Clos: 
+        num_leaf_downlinks : 48 
+        num_leaf_uplinks : 6 
+        num_spine_downlinks : 24
+        spineCount : 4
+        spineDeviceType : QFX5100
+        leafCount : 6
+        leafDeviceType : QFX5100
+        interConnectPrefix : 192.168.0.0
+        vlanPrefix : 172.16.0.0
+        loopbackPrefix : 10.0.0.0
+        spineAS : 100
+        leafAS : 200
+        topologyType : leaf-spine
+        topology :
+        

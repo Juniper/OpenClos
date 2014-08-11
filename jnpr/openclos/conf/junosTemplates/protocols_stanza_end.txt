@@ -1,0 +1,7 @@
+        }
+    }
+    replace:
+    lldp {
+        interface all;
+    }
+}
