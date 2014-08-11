@@ -1,8 +1,0 @@
-    replace:
-    lo0 {
-        unit 0 {
-            family inet {
-                address <<<address>>>;
-            }
-        }
-    }

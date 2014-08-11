@@ -1,8 +1,0 @@
-    replace:
-    vme {
-        unit 0 {
-            family inet {
-                address <<<mgmt_address>>>;
-            }
-        }
-    }
