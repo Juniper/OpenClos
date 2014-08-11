@@ -1,0 +1,15 @@
+*~
+*.py[cod]
+*.bak
+*.orig
+
+# Packages
+*.egg
+*.egg-info
+dist
+
+# Database files
+*.db
+
+# Generated output (config/report)
+jnpr/openclos/out/
