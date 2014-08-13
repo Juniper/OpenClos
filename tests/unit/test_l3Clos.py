@@ -19,7 +19,7 @@ class TestDao(unittest.TestCase):
         ''' Deletes 'conf' folder under test dir'''
         shutil.rmtree(configLocation, ignore_errors=True)
         ''' Copies 'conf' folder under test dir, to perform tests'''
-        shutil.copytree('../../jnpr/openclos/' + configLocation, './' + configLocation)
+        shutil.copytree(os.path.dirname(__file__) + '/../../jnpr/openclos/' + configLocation, './' + configLocation)
         
         '''Creates Dao with in-memory DB'''
         self.conf = {}
