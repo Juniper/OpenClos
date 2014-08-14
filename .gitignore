@@ -13,3 +13,7 @@ dist
 
 # Generated output (config/report)
 jnpr/openclos/out/
+
+# Eclipse files
+.project
+.pydevproject
