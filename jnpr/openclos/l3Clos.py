@@ -14,7 +14,7 @@ import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session, exc
 
 
-configLocation = 'conf/'
+configLocation = os.path.dirname(os.path.abspath(__file__)) + '/conf/'
 junosTemplateLocation = configLocation + 'junosTemplates/'
 
 def loadConfig(confFile = 'openclos.yaml'):
@@ -27,16 +27,18 @@ def loadConfig(confFile = 'openclos.yaml'):
         
     except (OSError, IOError) as e:
         print "File error:", e
+        return None
     except (yaml.scanner.ScannerError) as e:
         print "YAML error:", e
         confStream.close()
+        return None
     finally:
         pass
     return conf
 
 class Dao:
     def __init__(self, conf):
-        if conf is not None and conf['dbUrl'] is not None:
+        if conf is not None and 'dbUrl' in conf:
             #Change "echo=True" to troubleshoot ORM issue
             engine = sqlalchemy.create_engine(conf['dbUrl'], echo=False)  
             Base.metadata.create_all(engine) 
@@ -92,7 +94,7 @@ class Dao:
 
 class FileOutputHandler():
     def __init__(self, conf, pod):
-        if conf.get('outputDir') is not None:
+        if 'outputDir' in conf:
             self.outputDir = conf['outputDir'] + '/' + pod.name
         else:
             self.outputDir = 'out/' + pod.name

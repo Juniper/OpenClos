@@ -13,7 +13,7 @@ import unittest
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 
-from jnpr.openclos.model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
+from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
 
 def createPod(name, session):  
     pod = {}
@@ -43,6 +43,18 @@ def createInterface(session, name):
     session.add(IF)
     session.commit()
     
+class TestManagedElement(unittest.TestCase):
+    def test__str__(self):
+        elem = {}
+        elem['foo'] = 'bar'
+        element = ManagedElement(**elem)
+        self.assertEqual(element.__str__(), "{'foo': 'bar'}")
+    def test__repr__(self):
+        elem = {}
+        elem['foo'] = 'bar'
+        element = ManagedElement(**elem)
+        self.assertEqual(element.__repr__(), "{'foo': 'bar'}")
+              
 class TestOrm(unittest.TestCase):
     def setUp(self):
         '''
@@ -61,6 +73,8 @@ class TestPod(TestOrm):
     def testValidateEnum(self):
         with self.assertRaises(ValueError) as ve:
             Pod.validateEnum('Pod.TopologyTypeEnum', 'abcd', Pod.TopologyTypeEnum)
+        with self.assertRaises(ValueError) as ve:
+            Pod.validateEnum('Pod.TopologyTypeEnum', ['abcd'], Pod.TopologyTypeEnum)
 
     def testConstructorMisingAllRequiredFields(self):
         pod = {}
@@ -114,8 +128,7 @@ class TestPod(TestOrm):
         self.session.delete(podOne)
         self.session.commit()
         self.assertEqual(0, self.session.query(Pod).count())
-        
-              
+
 class TestDevice(TestOrm):
     def testConstructorPass(self):
         podOne = createPod('testpod', self.session)

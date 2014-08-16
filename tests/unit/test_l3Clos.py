@@ -10,16 +10,21 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #t
 import unittest
 import shutil
 import json
-from jnpr.openclos.l3Clos import Dao, configLocation, L3ClosMediation, FileOutputHandler
+from jnpr.openclos.l3Clos import loadConfig, Dao, configLocation, L3ClosMediation, FileOutputHandler
 from jnpr.openclos.model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
 
-
+class TestFunctions(unittest.TestCase):
+    def testLoadDefaultConfig(self):
+        self.assertIsNotNone(loadConfig())
+    def testLoadNonExistingConfig(self):
+        self.assertIsNone(loadConfig('non-existing.yaml'))
+    
 class TestDao(unittest.TestCase):
     def setUp(self):
         ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree(configLocation, ignore_errors=True)
+        shutil.rmtree('./conf', ignore_errors=True)
         ''' Copies 'conf' folder under test dir, to perform tests'''
-        shutil.copytree(os.path.dirname(__file__) + '/../../jnpr/openclos/' + configLocation, './' + configLocation)
+        shutil.copytree(configLocation, './conf')
         
         '''Creates Dao with in-memory DB'''
         self.conf = {}
@@ -27,9 +32,13 @@ class TestDao(unittest.TestCase):
     
     def tearDown(self):
         ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree(configLocation, ignore_errors=True)
+        shutil.rmtree('./conf', ignore_errors=True)
         ''' Deletes 'out' folder under test dir'''
         shutil.rmtree('out', ignore_errors=True)
+    
+    def testInvalidConfig(self):
+        with self.assertRaises(ValueError) as ve:
+            dao = Dao({})
     
 class TestFileOutputHandler(unittest.TestCase):
     def tearDown(self):
@@ -50,13 +59,20 @@ class TestFileOutputHandler(unittest.TestCase):
         pod['topologyType'] = 'pod-dev-IF'
         return Pod("TestPod", **pod)
 
-    def testInit(self):
+    def testDefaultInit(self):
         pod = self.createPod()
             
         FileOutputHandler({}, pod)
         dirName = 'out/' + pod.name
         self.assertTrue(os.path.exists(dirName))
 
+    def testInitFromConfig(self):
+        pod = self.createPod()
+            
+        FileOutputHandler({'outputDir':'out2'}, pod)
+        dirName = 'out2/' + pod.name
+        self.assertTrue(os.path.exists(dirName))
+        
     def testHandle(self):
         pod = self.createPod()
             
@@ -72,6 +88,13 @@ class TestL3Clos(TestDao):
 
         l3ClosMediation.loadClosDefinition()
         self.assertEqual(2, len(dao.getAll(Pod)))
+
+    def testLoadNonExistingClosDefinition(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        dao = l3ClosMediation.dao
+
+        l3ClosMediation.loadClosDefinition('non-existing.yaml')
+        self.assertEqual(0, len(dao.getAll(Pod)))
 
     def testCreatePods(self):
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -102,6 +125,20 @@ class TestL3Clos(TestDao):
             l3ClosMediation.processTopology("pod1")
         error = ve.exception.message
         self.assertEqual(1, error.count('MultipleResultsFound'))
+
+    def testProcessTopologyNoTopology(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+
+        podString = u'{"pod1" : {"leafDeviceType": "QFX5100-24Q", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
+        l3ClosMediation.createPods(json.loads(podString))
+
+        with self.assertRaises(ValueError) as ve:
+            l3ClosMediation.processTopology("pod1")
+        
+    def testProcessTopology(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        l3ClosMediation.loadClosDefinition()
+        l3ClosMediation.processTopology('labLeafSpine')
 
     def createPod(self, l3ClosMediation):
         podString = u'{"pod1" : {"leafDeviceType": "QFX5100-24Q", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
