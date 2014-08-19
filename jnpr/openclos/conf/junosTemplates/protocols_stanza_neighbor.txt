@@ -1,3 +1,0 @@
-            neighbor <<<peer_ip>>> {
-                peer-as <<<peer_asn>>>;
-            }

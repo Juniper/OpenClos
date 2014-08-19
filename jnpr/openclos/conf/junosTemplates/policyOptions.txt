@@ -8,13 +8,13 @@ policy-options {
     policy-statement bgp-clos-in {
         term loopbacks {
             from {
-                route-filter <<<lo0_in_subnet>>> orlonger;
+                route-filter {{subnet['lo0_in']}} orlonger;
             }
             then accept;
         }
         term server-L3-gw {
             from {
-                route-filter <<<irb_in_subnet>>> orlonger;
+                route-filter {{subnet['irb_in']}} orlonger;
             }
             then accept;
         }
@@ -26,7 +26,7 @@ policy-options {
         term loopback {
             from {
                 protocol direct;
-                route-filter <<<lo0_out_subnet>>> orlonger;
+                route-filter {{subnet['lo0_out']}} orlonger;
             }
             then {
                 next-hop self;
@@ -36,7 +36,7 @@ policy-options {
         term server-L3-gw {
             from {
                 protocol direct;
-                route-filter <<<irb_out_subnet>>> orlonger;
+                route-filter {{subnet['irb_out']}} orlonger;
             }
             then {
                 next-hop self;
