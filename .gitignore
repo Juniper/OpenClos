@@ -17,3 +17,8 @@ jnpr/openclos/out/
 # Eclipse files
 .project
 .pydevproject
+
+#test and coverage files
+.coverage
+coverage.xml
+nosetests.xml
