@@ -10,6 +10,7 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #t
 import unittest
 import shutil
 import json
+from flexmock import flexmock
 from jnpr.openclos.l3Clos import loadConfig, Dao, configLocation, L3ClosMediation, FileOutputHandler
 from jnpr.openclos.model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
 
@@ -134,12 +135,17 @@ class TestL3Clos(TestDao):
 
         with self.assertRaises(ValueError) as ve:
             l3ClosMediation.processTopology("pod1")
-        
+
     def testProcessTopology(self):
         l3ClosMediation = L3ClosMediation(self.conf)
         l3ClosMediation.loadClosDefinition()
+        
+        l3ClosMediation = flexmock(l3ClosMediation)
+        l3ClosMediation.should_receive('generateConfig').once()
+        
         l3ClosMediation.processTopology('labLeafSpine')
-
+        self.assertIsNotNone(l3ClosMediation.output)
+            
     def createPod(self, l3ClosMediation):
         podString = u'{"pod1" : {"leafDeviceType": "QFX5100-24Q", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
         l3ClosMediation.createPods(json.loads(podString))

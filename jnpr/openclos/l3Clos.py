@@ -12,7 +12,7 @@ from netaddr import IPNetwork
 from jnpr.openclos.model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session, exc
-
+from jinja2 import Environment, PackageLoader
 
 configLocation = os.path.dirname(os.path.abspath(__file__)) + '/conf/'
 junosTemplateLocation = configLocation + 'junosTemplates/'
@@ -107,12 +107,15 @@ class FileOutputHandler():
                 f.write(config)
 
 class L3ClosMediation():
-    def __init__(self, conf = {}):
+    def __init__(self, conf = {}, templateEnv = None):
         if any(conf) == False:
             self.conf = loadConfig()
         else:
             self.conf = conf
         self.dao = Dao(self.conf)
+        if templateEnv is None:
+            self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
+        
         
     def loadClosDefinition(self, closDefination = configLocation + 'closTemplate.yaml'):
         '''
@@ -397,51 +400,44 @@ class L3ClosMediation():
         return candidate
 
     def createProtocols(self, device):
-        with open(junosTemplateLocation + 'protocols_stanza_init.txt', 'r') as f:
-            config = f.read()
+        template = self.templateEnv.get_template('protocolBgpLldp.txt')
 
-        with open(junosTemplateLocation + 'protocols_stanza_neighbor.txt', 'r') as f:
-            neighborStanza = f.read()
-            
+        neighborList = []
         deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name).all()
         for ifd in deviceInterconnectIfds:
             peerIfd = ifd.peer
             peerDevice = peerIfd.device
             peerInterconnectIfl = peerIfd.layerAboves[0]
             peerInterconnectIpNoCidr = peerInterconnectIfl.ipaddress.split('/')[0]
-            candidate = neighborStanza.replace("<<<peer_ip>>>", peerInterconnectIpNoCidr)
-            candidate = candidate.replace("<<<peer_asn>>>", str(peerDevice.asn))
-            config += candidate
-            
-        with open(junosTemplateLocation + 'protocols_stanza_end.txt', 'r') as f:
-            config += f.read()
+            neighborList.append({'peer_ip': peerInterconnectIpNoCidr, 'peer_asn': peerDevice.asn})
 
-        return config        
-            
+        return template.render(neighbors=neighborList)        
+         
     def createPolicyOption(self, device):
         pod = device.pod
         
-        with open(junosTemplateLocation + 'policy_options_stanza.txt', 'r') as f:
-            config = f.read()
+        template = self.templateEnv.get_template('policyOptions.txt')
+        subnetDict = {}
+        subnetDict['lo0_in'] = pod.allocatedLoopbackBlock
+        subnetDict['irb_in'] = pod.allocatedIrbBlock
         
-        config = config.replace("<<<lo0_in_subnet>>>", pod.allocatedLoopbackBlock)
-        config = config.replace("<<<irb_in_subnet>>>", pod.allocatedIrbBlock)
-
         if device.role == 'leaf':
             deviceLoopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
             deviceIrbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.id == device.id).one()
-            config = config.replace("<<<lo0_out_subnet>>>", deviceLoopbackIfl.ipaddress)
-            config = config.replace("<<<irb_out_subnet>>>", deviceIrbIfl.ipaddress)
+            subnetDict['lo0_out'] = deviceLoopbackIfl.ipaddress
+            subnetDict['irb_out'] = deviceIrbIfl.ipaddress
         else:
-            config = config.replace("<<<lo0_out_subnet>>>", pod.allocatedLoopbackBlock)
-            config = config.replace("<<<irb_out_subnet>>>", pod.allocatedIrbBlock)
-            
-        return config
-
+            subnetDict['lo0_out'] = pod.allocatedLoopbackBlock
+            subnetDict['irb_out'] = pod.allocatedIrbBlock
+         
+        return template.render(subnet=subnetDict)
+        
     def createVlan(self, device):
-        with open(junosTemplateLocation + 'vlans_stanza.txt', 'r') as f:
-            config = f.read()
-        return config
+        if device.role == 'leaf':
+            template = self.templateEnv.get_template('vlans.txt')
+            return template.render()
+        else:
+            return ''
         
 if __name__ == '__main__':
     l3ClosMediation = L3ClosMediation()
