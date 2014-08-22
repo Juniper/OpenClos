@@ -45,6 +45,8 @@ class TestFileOutputHandler(unittest.TestCase):
     def tearDown(self):
         ''' Deletes 'out' folder under test dir'''
         shutil.rmtree('out', ignore_errors=True)
+        ''' Deletes 'out2' folder under test dir'''
+        shutil.rmtree('out2', ignore_errors=True)
 
     def createPod(self):
         pod = {}
@@ -85,6 +87,7 @@ class TestL3Clos(TestDao):
     
     def testLoadClosDefinition(self):
         l3ClosMediation = L3ClosMediation(self.conf)
+        self.assertIsNotNone(l3ClosMediation.templateEnv)
         dao = l3ClosMediation.dao
 
         l3ClosMediation.loadClosDefinition()
@@ -285,6 +288,13 @@ class TestL3Clos(TestDao):
         
         self.assertEqual(100, session.query(Device).filter(Device.role == 'spine').all()[0].asn)
         self.assertEqual(201, session.query(Device).filter(Device.role == 'leaf').all()[1].asn)
+
+    def testGenerateConfig(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        dao = l3ClosMediation.dao
+
+        l3ClosMediation.loadClosDefinition()
+        l3ClosMediation.processTopology('labLeafSpine')
         
 if __name__ == '__main__':
     unittest.main()
