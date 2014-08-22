@@ -16,6 +16,7 @@ from jinja2 import Environment, PackageLoader
 
 configLocation = os.path.dirname(os.path.abspath(__file__)) + '/conf/'
 junosTemplateLocation = configLocation + 'junosTemplates/'
+junosTemplateLocationRelative = 'conf/junosTemplates'
 
 def loadConfig(confFile = 'openclos.yaml'):
     '''
@@ -114,7 +115,7 @@ class L3ClosMediation():
             self.conf = conf
         self.dao = Dao(self.conf)
         if templateEnv is None:
-            self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
+            self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocationRelative))
         
         
     def loadClosDefinition(self, closDefination = configLocation + 'closTemplate.yaml'):
