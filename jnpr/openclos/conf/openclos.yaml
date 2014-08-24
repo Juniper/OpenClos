@@ -7,7 +7,26 @@ outputDir : out/
 # for relative file location ./data/sqllite3.db, url is sqlite:///data/sqllite3.db
 # absolute file location /tmp/sqllite3.db, url is sqlite:////tmp/sqllite3.db
 dbUrl : sqlite:///data/sqllite3.db
+
+# debug SQL and ORM
+# "true" will enable logging all SQL statements to underlying DB
+debugSql : false
     
     
 # Device family and port names
-#    
+# QFX5100-24Q ports could be [0-32] with two four-port expansion modules
+# unlike 48S or 96S for 24Q there is no specific uplink/downlink
+deviceFamily :
+    QFX5100-24Q :
+        uplinkPorts : 
+        downlinkPorts : 
+        ports : 'et-0/0/[0-23]' 
+    QFX5100-48S :
+        uplinkPorts : 'et-0/0/[48-53]' 
+        downlinkPorts : 'xe-0/0/[0-47]'
+        ports :  
+    QFX5100-96S :
+        uplinkPorts : 'et-0/0/[96-103]' 
+        downlinkPorts : 'xe-0/0/[0-95]'
+        ports :  
+    

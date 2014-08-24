@@ -9,10 +9,12 @@ import os
 import json
 import math
 from netaddr import IPNetwork
-from jnpr.openclos.model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session, exc
 from jinja2 import Environment, PackageLoader
+
+from model import Pod, Device, InterfaceLogical, InterfaceDefinition, Base
+import util
 
 configLocation = os.path.dirname(os.path.abspath(__file__)) + '/conf/'
 junosTemplateLocation = configLocation + 'junosTemplates/'
@@ -39,8 +41,7 @@ def loadConfig(confFile = 'openclos.yaml'):
 class Dao:
     def __init__(self, conf):
         if conf is not None and 'dbUrl' in conf:
-            #Change "echo=True" to troubleshoot ORM issue
-            engine = sqlalchemy.create_engine(conf['dbUrl'], echo=False)  
+            engine = sqlalchemy.create_engine(conf['dbUrl'], echo = conf.get('debugSql', False))  
             Base.metadata.create_all(engine) 
             session_factory = sessionmaker(bind=engine)
             self.Session = scoped_session(session_factory)
@@ -171,12 +172,12 @@ class L3ClosMediation():
         devices = []
         interfaces = []
         for spine in spines:
-            device = Device(spine['name'], spine['user'], spine['password'], 'spine', spine['mgmt_ip'], pod)
+            device = Device(spine['name'], pod.spineDeviceType, spine['user'], spine['password'], 'spine', spine['mgmt_ip'], pod)
             devices.append(device)
-            # all downlink IFDs towards leaf
-            # TODO: range value and idfname should come from property file
-            for num in range(0, 24):
-                ifd = InterfaceDefinition("et-0/0/" + str(num), device)
+
+            portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
+            for name in portNames['ports']:     # spine does not have any uplink/downlink marked, it is just ports
+                ifd = InterfaceDefinition(name, device)
                 interfaces.append(ifd)
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
@@ -185,16 +186,16 @@ class L3ClosMediation():
         devices = []
         interfaces = []
         for leaf in leafs:
-            device = Device(leaf['name'], leaf['user'], leaf['password'], 'leaf', leaf['mgmt_ip'], pod)
+            device = Device(leaf['name'], pod.leafDeviceType, leaf['user'], leaf['password'], 'leaf', leaf['mgmt_ip'], pod)
             devices.append(device)
-            # TODO: range value and idfname should come from property file
-            # all uplink IFDs towards spine
-            for num in range(48, 54):
-                ifd = InterfaceDefinition("et-0/0/" + str(num), device)
+            
+            portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
+            for name in portNames['uplinkPorts']:   # all uplink IFDs towards spine
+                ifd = InterfaceDefinition(name, device)
                 interfaces.append(ifd)
-            # all downlink IFDs towards server
-            for num in range(0, 48):
-                ifd = InterfaceDefinition("xe-0/0/" + str(num), device)
+
+            for name in portNames['downlinkPorts']:   # all downlink IFDs towards Access/Server
+                ifd = InterfaceDefinition(name, device)
                 interfaces.append(ifd)
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
