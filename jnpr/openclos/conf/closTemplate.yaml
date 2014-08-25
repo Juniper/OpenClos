@@ -1,9 +1,6 @@
 pods:
     # pod name or pod identifier
     labLeafSpine:
-        num_leaf_downlinks : 48
-        num_leaf_uplinks : 6 
-        num_spine_downlinks : 24
         spineCount : 4
         spineDeviceType : QFX5100-24Q
         leafCount : 6
@@ -16,9 +13,6 @@ pods:
         topologyType : leaf-spine
         topology : topologyLabKurt.json
     barclaysL3Clos: 
-        num_leaf_downlinks : 48 
-        num_leaf_uplinks : 6 
-        num_spine_downlinks : 24
         spineCount : 4
         spineDeviceType : QFX5100
         leafCount : 6

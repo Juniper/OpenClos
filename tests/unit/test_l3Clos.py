@@ -12,14 +12,15 @@ import shutil
 import json
 from flexmock import flexmock
 from jnpr.openclos.l3Clos import loadConfig, Dao, configLocation, L3ClosMediation, FileOutputHandler
-from jnpr.openclos.model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
+from jnpr.openclos.model import Pod, Device, InterfaceLogical, InterfaceDefinition, Base
+
 
 class TestFunctions(unittest.TestCase):
     def testLoadDefaultConfig(self):
         self.assertIsNotNone(loadConfig())
     def testLoadNonExistingConfig(self):
         self.assertIsNone(loadConfig('non-existing.yaml'))
-    
+
 class TestDao(unittest.TestCase):
     def setUp(self):
         ''' Deletes 'conf' folder under test dir'''
@@ -40,7 +41,24 @@ class TestDao(unittest.TestCase):
     def testInvalidConfig(self):
         with self.assertRaises(ValueError) as ve:
             dao = Dao({})
-    
+
+    def testCreateObjects(self):
+        from test_model import createDevice
+        #self.conf['debugSql'] = True
+        dao = Dao(self.conf)
+        session = dao.Session()
+        
+        device = createDevice(session, "test")
+        ifd1 = InterfaceDefinition('ifd1', device)
+        ifd2 = InterfaceDefinition('ifd2', device)
+        ifd3 = InterfaceDefinition('ifd1', device)
+        ifd4 = InterfaceDefinition('ifd2', device)
+        dao.createObjects([ifd1, ifd2, ifd3, ifd4])
+
+        self.assertEqual(4, len(dao.getAll(InterfaceDefinition)))
+        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'ifd1')))
+        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'ifd2')))
+
 class TestFileOutputHandler(unittest.TestCase):
     def tearDown(self):
         ''' Deletes 'out' folder under test dir'''
@@ -78,11 +96,11 @@ class TestFileOutputHandler(unittest.TestCase):
         pod = self.createPod()
             
         out = FileOutputHandler({}, pod)
-        out.handle(pod, Device("TestDevice", "", "", "spine", "", pod), '')
+        out.handle(pod, Device("TestDevice", "", "", "", "spine", "", pod), '')
         self.assertTrue(os.path.exists(out.outputDir + '/TestDevice.conf'))            
 
 class TestL3Clos(TestDao):
-    
+
     def testLoadClosDefinition(self):
         l3ClosMediation = L3ClosMediation(self.conf)
         dao = l3ClosMediation.dao
@@ -141,17 +159,26 @@ class TestL3Clos(TestDao):
         l3ClosMediation.loadClosDefinition()
         
         l3ClosMediation = flexmock(l3ClosMediation)
+        l3ClosMediation.should_receive('createSpineIFDs').once()
+        l3ClosMediation.should_receive('createLeafIFDs').once()
+        l3ClosMediation.should_receive('createLinkBetweenIFDs').once()
         l3ClosMediation.should_receive('generateConfig').once()
-        
+        l3ClosMediation.should_receive('allocateResource').once()
+
         l3ClosMediation.processTopology('labLeafSpine')
         self.assertIsNotNone(l3ClosMediation.output)
             
     def createPod(self, l3ClosMediation):
-        podString = u'{"pod1" : {"leafDeviceType": "QFX5100-24Q", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
+        podString = u'{"pod1" : {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
         l3ClosMediation.createPods(json.loads(podString))
         return l3ClosMediation.dao.getUniqueObjectByName(Pod, 'pod1')
 
     def testCreateSpines(self):
+        from jnpr.openclos.l3Clos import util
+        flexmock(util, getPortNamesForDeviceFamily={'ports': ['et-0/0/0', 'et-0/0/1']})
+        self.conf['deviceFamily'] = {}
+        #self.conf['debugSql'] = True
+
         l3ClosMediation = L3ClosMediation(self.conf)
         dao = l3ClosMediation.dao
         pod = self.createPod(l3ClosMediation)
@@ -161,11 +188,15 @@ class TestL3Clos(TestDao):
 
         self.assertEqual(2, len(dao.getAll(Device)))
         self.assertEqual(0, len(dao.getAll(InterfaceLogical)))
-        self.assertEqual(48, len(dao.getAll(InterfaceDefinition)))
+        self.assertEqual(4, len(dao.getAll(InterfaceDefinition)))
         self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'et-0/0/0')))
-        self.assertEqual(0, len(dao.getObjectsByName(InterfaceDefinition, 'xe-0/0/0')))
+        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'et-0/0/1')))
 
     def testCreateLeafs(self):
+        from jnpr.openclos.l3Clos import util
+        flexmock(util, getPortNamesForDeviceFamily={'uplinkPorts': ['et-0/0/48'], 'downlinkPorts': ['xe-0/0/0', 'xe-0/0/1']})
+        self.conf['deviceFamily'] = {}
+
         l3ClosMediation = L3ClosMediation(self.conf)
         dao = l3ClosMediation.dao
         pod = self.createPod(l3ClosMediation)
@@ -175,11 +206,15 @@ class TestL3Clos(TestDao):
 
         self.assertEqual(2, len(dao.getAll(Device)))
         self.assertEqual(0, len(dao.getAll(InterfaceLogical)))
-        self.assertEqual(108, len(dao.getAll(InterfaceDefinition)))
+        self.assertEqual(6, len(dao.getAll(InterfaceDefinition)))
         self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'et-0/0/48')))
         self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'xe-0/0/0')))
 
     def createPodSpineLeaf(self, l3ClosMediation):
+        from jnpr.openclos.l3Clos import util
+        flexmock(util, getPortNamesForDeviceFamily={'ports': ['et-0/0/0', 'et-0/0/1'], 'uplinkPorts': ['et-0/0/48', 'et-0/0/49'], 'downlinkPorts': ['xe-0/0/0', 'xe-0/0/1']})
+        self.conf['deviceFamily'] = {}
+
         pod = self.createPod(l3ClosMediation)
         spineString = u'[{ "name" : "spine-01", "mac_address" : "aa:bb:cc:dd:ee:f1", "mgmt_ip" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "spine-02", "mac_address" : "aa:bb:cc:dd:ee:f2", "mgmt_ip" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
         l3ClosMediation.createSpineIFDs(pod, json.loads(spineString))
@@ -285,7 +320,6 @@ class TestL3Clos(TestDao):
         
         self.assertEqual(100, session.query(Device).filter(Device.role == 'spine').all()[0].asn)
         self.assertEqual(201, session.query(Device).filter(Device.role == 'leaf').all()[1].asn)
-        
+
 if __name__ == '__main__':
     unittest.main()
-

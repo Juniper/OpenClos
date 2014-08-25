@@ -33,7 +33,7 @@ def createPod(name, session):
     return pod
 
 def createDevice(session, name):
-    device = Device(name, "", "", "spine", "", createPod(name, session))
+    device = Device(name, "", "", "", "spine", "", createPod(name, session))
     session.add(device)
     session.commit()
     return device
@@ -132,11 +132,11 @@ class TestPod(TestOrm):
 class TestDevice(TestOrm):
     def testConstructorPass(self):
         podOne = createPod('testpod', self.session)
-        self.assertTrue(Device('testdevice', 'admin', 'admin', "spine", "", podOne) is not None)    
+        self.assertTrue(Device('testdevice', 'QFX5100-48S', 'admin', 'admin', "spine", "", podOne) is not None)    
 
     def testOrm(self):
         podOne = createPod('testpod', self.session)
-        device = Device('testdevice', 'admin', 'admin', "spine", "", podOne)
+        device = Device('testdevice', 'QFX5100-48S', 'admin', 'admin', "spine", "", podOne)
         self.session.add(device)
         self.session.commit()  
         fetched = self.session.query(Device).one()
@@ -149,13 +149,13 @@ class TestDevice(TestOrm):
         
     def testRelationPodDevice(self):
         podOne = createPod('testpodOne', self.session)
-        deviceOne = Device('testDeviceOne', 'admin', 'admin',  "spine", "", podOne)
+        deviceOne = Device('testDeviceOne', 'QFX5100-48S', 'admin', 'admin',  "spine", "", podOne)
         self.session.add(deviceOne)
            
         podTwo = createPod('testpodTwo', self.session)
-        deviceTwo = Device('testDeviceOne', 'admin', 'admin',  "spine", "", podTwo)
+        deviceTwo = Device('testDeviceOne', 'QFX5100-48S', 'admin', 'admin',  "spine", "", podTwo)
         self.session.add(deviceTwo)
-        deviceThree = Device('testDeviceOne', 'admin', 'admin',  "spine", "", podTwo)
+        deviceThree = Device('testDeviceOne', 'QFX5100-48S', 'admin', 'admin',  "spine", "", podTwo)
         self.session.add(deviceThree)
         self.session.commit()
 
