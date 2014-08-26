@@ -16,15 +16,15 @@ from jinja2 import Environment, PackageLoader
 from model import Pod, Device, InterfaceLogical, InterfaceDefinition, Base
 import util
 
-configLocation = os.path.dirname(os.path.abspath(__file__)) + '/conf/'
-junosTemplateLocation = configLocation + 'junosTemplates/'
+configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
+junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 
 def loadConfig(confFile = 'openclos.yaml'):
     '''
     Loads global configuration and creates hash 'conf'
     '''
     try:
-        confStream = open(configLocation + confFile, 'r')
+        confStream = open(os.path.join(configLocation, confFile), 'r')
         conf = yaml.load(confStream)
         
     except (OSError, IOError) as e:
@@ -118,7 +118,7 @@ class L3ClosMediation():
             self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
         
         
-    def loadClosDefinition(self, closDefination = configLocation + 'closTemplate.yaml'):
+    def loadClosDefinition(self, closDefination = os.path.join(configLocation, 'closTemplate.yaml')):
         '''
         Loads clos definition from yaml file and creates pod object
         '''
@@ -154,7 +154,7 @@ class L3ClosMediation():
             raise ValueError("Multiple Pods found with pod name: '%s', exc.MultipleResultsFound: %s" % (podName, e.message))
  
         if pod.topology is not None:
-            json_data = open(configLocation + pod.topology)
+            json_data = open(os.path.join(configLocation, pod.topology))
             data = json.load(json_data)
             json_data.close()    
             
@@ -330,29 +330,29 @@ class L3ClosMediation():
             self.output.handle(pod, device, config)
             
     def createBaseConfig(self, device):
-        with open(junosTemplateLocation + 'baseTemplate.txt', 'r') as f:
+        with open(os.path.join(junosTemplateLocation, 'baseTemplate.txt'), 'r') as f:
             baseTemplate = f.read()
             f.close()
             return baseTemplate
 
     def createInterfaces(self, device): 
-        with open(junosTemplateLocation + 'interface_stanza.txt', 'r') as f:
+        with open(os.path.join(junosTemplateLocation, 'interface_stanza.txt'), 'r') as f:
             interfaceStanza = f.read()
             f.close()
         
-        with open(junosTemplateLocation + 'lo0_stanza.txt', 'r') as f:
+        with open(os.path.join(junosTemplateLocation, 'lo0_stanza.txt'), 'r') as f:
             lo0Stanza = f.read()
             f.close()
             
-        with open(junosTemplateLocation + 'mgmt_interface.txt', 'r') as f:
+        with open(os.path.join(junosTemplateLocation, 'mgmt_interface.txt'), 'r') as f:
             mgmtStanza = f.read()
             f.close()
 
-        with open(junosTemplateLocation + 'rvi_stanza.txt', 'r') as f:
+        with open(os.path.join(junosTemplateLocation, 'rvi_stanza.txt'), 'r') as f:
             rviStanza = f.read()
             f.close()
             
-        with open(junosTemplateLocation + 'server_interface_stanza.txt', 'r') as f:
+        with open(os.path.join(junosTemplateLocation, 'server_interface_stanza.txt'), 'r') as f:
             serverInterfaceStanza = f.read()
             f.close()
             
@@ -389,7 +389,7 @@ class L3ClosMediation():
         return config
 
     def createRoutingOption(self, device):
-        with open(junosTemplateLocation + 'routing_options_stanza.txt', 'r') as f:
+        with open(os.path.join(junosTemplateLocation, 'routing_options_stanza.txt'), 'r') as f:
             routingOptionStanza = f.read()
 
         loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
