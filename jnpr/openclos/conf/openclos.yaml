@@ -11,3 +11,11 @@ dbUrl : sqlite:///data/sqllite3.db
     
 # Device family and port names
 #    
+DOT:
+   colors:
+       - red
+       - blue
+       - green
+       - violet
+       
+   ranksep : 5 equally 

@@ -13,8 +13,10 @@ from jnpr.openclos.model import Pod, Device, Interface, InterfaceLogical, Interf
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session, exc
 from jinja2 import Environment, PackageLoader
+from jnpr.openclos.dotHandler import createDOTFile
 
 configLocation = os.path.dirname(os.path.abspath(__file__)) + '/conf/'
+#configLocation =  'conf/'
 junosTemplateLocation = configLocation + 'junosTemplates/'
 
 def loadConfig(confFile = 'openclos.yaml'):
@@ -137,7 +139,9 @@ class L3ClosMediation():
     def createPods(self, podsDict):
         pods = []
         for name, pod in podsDict.iteritems():
-            pods.append(Pod(name, **pod))
+            localPod = Pod(name, **pod)
+            localPod.validate()
+            pods.append(localPod)
         self.dao.createObjects(pods)
 
     def processTopology(self, podName):
@@ -163,6 +167,7 @@ class L3ClosMediation():
             self.allocateResource(pod)
             self.output = FileOutputHandler(self.conf, pod)
             self.generateConfig(pod)
+            self.generateDOTFile(pod)
 
         else:
             raise ValueError("No topology found for pod name: '%s'", (podName))
@@ -176,7 +181,7 @@ class L3ClosMediation():
             # all downlink IFDs towards leaf
             # TODO: range value and idfname should come from property file
             for num in range(0, 24):
-                ifd = InterfaceDefinition("et-0/0/" + str(num), device)
+                ifd = InterfaceDefinition("et-0/0/" + str(num), device, 'downlink')
                 interfaces.append(ifd)
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
@@ -190,11 +195,11 @@ class L3ClosMediation():
             # TODO: range value and idfname should come from property file
             # all uplink IFDs towards spine
             for num in range(48, 54):
-                ifd = InterfaceDefinition("et-0/0/" + str(num), device)
+                ifd = InterfaceDefinition("et-0/0/" + str(num), device, 'uplink')
                 interfaces.append(ifd)
             # all downlink IFDs towards server
             for num in range(0, 48):
-                ifd = InterfaceDefinition("xe-0/0/" + str(num), device)
+                ifd = InterfaceDefinition("xe-0/0/" + str(num), device, 'downlink')
                 interfaces.append(ifd)
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
@@ -327,6 +332,9 @@ class L3ClosMediation():
             config += self.createPolicyOption(device)
             config += self.createVlan(device)
             self.output.handle(pod, device, config)
+            
+    def generateDOTFile(self, pod): 
+        createDOTFile(pod.devices)
             
     def createBaseConfig(self, device):
         with open(junosTemplateLocation + 'baseTemplate.txt', 'r') as f:
