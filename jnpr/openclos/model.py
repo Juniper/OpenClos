@@ -153,16 +153,18 @@ class Device(ManagedElement, Base):
     pwd = Column(String(100))
     role = Column(String(32))
     managementIp = Column(String(32))
+    family = Column(String(100))
     asn = Column(Integer)
     pod_id = Column(Integer, ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name))
         
-    def __init__(self, name, username, pwd, role, mgmtIp, pod):
+    def __init__(self, name, family, username, pwd, role, mgmtIp, pod):
         '''
         Creates Device object.
         '''
         self.id = str(uuid.uuid4())
         self.name = name
+        self.family = family
         self.username = username
         self.pwd = pwd
         self.role = role
