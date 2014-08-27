@@ -2,15 +2,18 @@ pods:
     # pod name or pod identifier
     labLeafSpine:
         spineCount : 4
+        # possible options for leafDeviceType are QFX5100-24Q
         spineDeviceType : QFX5100-24Q
         leafCount : 6
+        # possible options for leafDeviceType are QFX5100-96S, QFX5100-48S
         leafDeviceType : QFX5100-48S
         interConnectPrefix : 192.168.0.0
         vlanPrefix : 172.16.0.0
         loopbackPrefix : 10.0.0.0
         spineAS : 100
         leafAS : 200
-        topologyType : leaf-spine
+        # possible options for topologyType are 3Stage, 5StagePod, 5StagePerformance
+        topologyType : 3Stage
         topology : topologyLabKurt.json
     barclaysL3Clos: 
         spineCount : 4
