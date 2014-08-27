@@ -8,16 +8,21 @@ import yaml
 import os
 import json
 import math
+import logging
+
 from netaddr import IPNetwork
-import sqlalchemy
-from sqlalchemy.orm import sessionmaker, scoped_session, exc
+from sqlalchemy.orm import exc
 from jinja2 import Environment, PackageLoader
 
-from model import Pod, Device, InterfaceLogical, InterfaceDefinition, Base
+from model import Pod, Device, InterfaceLogical, InterfaceDefinition
+from dao import Dao
 import util
 
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger('openclos')
 
 def loadConfig(confFile = 'openclos.yaml'):
     '''
@@ -38,61 +43,6 @@ def loadConfig(confFile = 'openclos.yaml'):
         pass
     return conf
 
-class Dao:
-    def __init__(self, conf):
-        if conf is not None and 'dbUrl' in conf:
-            engine = sqlalchemy.create_engine(conf['dbUrl'], echo = conf.get('debugSql', False))  
-            Base.metadata.create_all(engine) 
-            session_factory = sessionmaker(bind=engine)
-            self.Session = scoped_session(session_factory)
-        else:
-            raise ValueError("Missing configuration parameter:'dbUrl'")
-        
-    # Don't remove session after each operation, it detaches the object from ORM,
-    # which disables further operations on the object like lazy load of collection.
-    # When thread dies, it gets GCed automatically
-    def createObjects(self, objects):
-        session = self.Session()
-        try:
-            session.add_all(objects)
-            session.commit()
-        finally:
-            #self.Session.remove()
-            pass
-    
-    def updateObjects(self, objects):
-        session = self.Session()
-        try:
-            for obj in objects:
-                session.merge(obj)
-            session.commit()
-        finally:
-            #self.Session.remove()
-            pass
-    def getAll(self, objectType):
-        session = self.Session()
-        try:
-            return session.query(objectType).order_by(objectType.name).all()
-        finally:
-            #self.Session.remove()
-            pass
-
-    def getUniqueObjectByName(self, objectType, name):
-        session = self.Session()
-        try:
-            return session.query(objectType).filter_by(name = name).one()
-        finally:
-            #self.Session.remove()
-            pass
-
-    def getObjectsByName(self, objectType, name):
-        session = self.Session()
-        try:
-            return session.query(objectType).filter_by(name = name).all()
-        finally:
-            #self.Session.remove()
-            pass
-
 class FileOutputHandler():
     def __init__(self, conf, pod):
         if 'outputDir' in conf:
@@ -103,7 +53,7 @@ class FileOutputHandler():
             os.makedirs(self.outputDir)
 
     def handle(self, pod, device, config):
-        print "Writing config for device: %s" % (device.name)
+        logger.info('Writing config for device: %s' % (device.name))
         with open(self.outputDir + "/" + device.name + '.conf', 'w') as f:
                 f.write(config)
 
@@ -111,8 +61,11 @@ class L3ClosMediation():
     def __init__(self, conf = {}, templateEnv = None):
         if any(conf) == False:
             self.conf = loadConfig()
+            logging.basicConfig(level=logging.getLevelName(self.conf['logLevel']))
+            logger = logging.getLogger('openclos')
         else:
             self.conf = conf
+
         self.dao = Dao(self.conf)
         if templateEnv is None:
             self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))

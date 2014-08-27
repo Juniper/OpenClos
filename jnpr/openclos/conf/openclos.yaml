@@ -8,6 +8,10 @@ outputDir : out/
 # absolute file location /tmp/sqllite3.db, url is sqlite:////tmp/sqllite3.db
 dbUrl : sqlite:///data/sqllite3.db
 
+# Logging level
+# possible options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+logLevel : INFO
+
 # debug SQL and ORM
 # "true" will enable logging all SQL statements to underlying DB
 debugSql : false

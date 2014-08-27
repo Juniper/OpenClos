@@ -11,8 +11,8 @@ import unittest
 import shutil
 import json
 from flexmock import flexmock
-from jnpr.openclos.l3Clos import loadConfig, Dao, configLocation, L3ClosMediation, FileOutputHandler
-from jnpr.openclos.model import Pod, Device, InterfaceLogical, InterfaceDefinition, Base
+from jnpr.openclos.l3Clos import loadConfig, configLocation, L3ClosMediation, FileOutputHandler
+from jnpr.openclos.model import Pod, Device, InterfaceLogical, InterfaceDefinition
 
 
 class TestFunctions(unittest.TestCase):
@@ -20,44 +20,6 @@ class TestFunctions(unittest.TestCase):
         self.assertIsNotNone(loadConfig())
     def testLoadNonExistingConfig(self):
         self.assertIsNone(loadConfig('non-existing.yaml'))
-
-class TestDao(unittest.TestCase):
-    def setUp(self):
-        ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree('./conf', ignore_errors=True)
-        ''' Copies 'conf' folder under test dir, to perform tests'''
-        shutil.copytree(configLocation, './conf')
-        
-        '''Creates Dao with in-memory DB'''
-        self.conf = {}
-        self.conf['dbUrl'] = 'sqlite:///'
-    
-    def tearDown(self):
-        ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree('./conf', ignore_errors=True)
-        ''' Deletes 'out' folder under test dir'''
-        shutil.rmtree('out', ignore_errors=True)
-    
-    def testInvalidConfig(self):
-        with self.assertRaises(ValueError) as ve:
-            dao = Dao({})
-
-    def testCreateObjects(self):
-        from test_model import createDevice
-        #self.conf['debugSql'] = True
-        dao = Dao(self.conf)
-        session = dao.Session()
-        
-        device = createDevice(session, "test")
-        ifd1 = InterfaceDefinition('ifd1', device)
-        ifd2 = InterfaceDefinition('ifd2', device)
-        ifd3 = InterfaceDefinition('ifd1', device)
-        ifd4 = InterfaceDefinition('ifd2', device)
-        dao.createObjects([ifd1, ifd2, ifd3, ifd4])
-
-        self.assertEqual(4, len(dao.getAll(InterfaceDefinition)))
-        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'ifd1')))
-        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'ifd2')))
 
 class TestFileOutputHandler(unittest.TestCase):
     def tearDown(self):
@@ -91,7 +53,7 @@ class TestFileOutputHandler(unittest.TestCase):
         FileOutputHandler({'outputDir':'out2'}, pod)
         dirName = 'out2/' + pod.name
         self.assertTrue(os.path.exists(dirName))
-        
+
     def testHandle(self):
         pod = self.createPod()
             
@@ -99,7 +61,23 @@ class TestFileOutputHandler(unittest.TestCase):
         out.handle(pod, Device("TestDevice", "", "", "", "spine", "", pod), '')
         self.assertTrue(os.path.exists(out.outputDir + '/TestDevice.conf'))            
 
-class TestL3Clos(TestDao):
+class TestL3Clos(unittest.TestCase):
+    def setUp(self):
+        ''' Deletes 'conf' folder under test dir'''
+        shutil.rmtree('./conf', ignore_errors=True)
+        ''' Copies 'conf' folder under test dir, to perform tests'''
+        shutil.copytree(configLocation, './conf')
+        
+        '''Creates Dao with in-memory DB'''
+        self.conf = {}
+        self.conf['dbUrl'] = 'sqlite:///'
+    
+    def tearDown(self):
+        ''' Deletes 'conf' folder under test dir'''
+        shutil.rmtree('./conf', ignore_errors=True)
+        ''' Deletes 'out' folder under test dir'''
+        shutil.rmtree('out', ignore_errors=True)
+
     def testInitWithTemplate(self):
         from jinja2 import TemplateNotFound
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -158,7 +136,7 @@ class TestL3Clos(TestDao):
         podString = u'{"pod1" : {"leafDeviceType": "QFX5100-24Q", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
         l3ClosMediation.createPods(json.loads(podString))
 
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(ValueError):
             l3ClosMediation.processTopology("pod1")
 
     def testProcessTopology(self):

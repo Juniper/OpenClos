@@ -39,9 +39,10 @@ def createDevice(session, name):
     return device
 
 def createInterface(session, name):
-    IF = Interface(name, createDevice(session, name))
-    session.add(IF)
+    interface = Interface(name, createDevice(session, name))
+    session.add(interface)
     session.commit()
+    return interface
     
 class TestManagedElement(unittest.TestCase):
     def test__str__(self):
@@ -71,9 +72,9 @@ class TestOrm(unittest.TestCase):
 class TestPod(TestOrm):
   
     def testValidateEnum(self):
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(ValueError) :
             Pod.validateEnum('Pod.TopologyTypeEnum', 'abcd', Pod.TopologyTypeEnum)
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(ValueError) :
             Pod.validateEnum('Pod.TopologyTypeEnum', ['abcd'], Pod.TopologyTypeEnum)
 
     def testConstructorMisingAllRequiredFields(self):
