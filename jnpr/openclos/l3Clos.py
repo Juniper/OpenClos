@@ -20,9 +20,10 @@ import util
 
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
+moduleName = 'fabric'
 
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger('openclos')
+logger = logging.getLogger(moduleName)
 
 def loadConfig(confFile = 'openclos.yaml'):
     '''
@@ -61,8 +62,8 @@ class L3ClosMediation():
     def __init__(self, conf = {}, templateEnv = None):
         if any(conf) == False:
             self.conf = loadConfig()
-            logging.basicConfig(level=logging.getLevelName(self.conf['logLevel']))
-            logger = logging.getLogger('openclos')
+            logging.basicConfig(level=logging.getLevelName(self.conf['logLevel'][moduleName]))
+            logger = logging.getLogger(moduleName)
         else:
             self.conf = conf
 

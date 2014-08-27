@@ -9,8 +9,12 @@ outputDir : out/
 dbUrl : sqlite:///data/sqllite3.db
 
 # Logging level
-# possible options: DEBUG, INFO, WARNING, ERROR, CRITICAL
-logLevel : INFO
+# possible values: DEBUG, INFO, WARNING, ERROR, CRITICAL
+logLevel : 
+    fabric : INFO
+    reporting : INFO
+    ztp : INFO
+    rest : INFO
 
 # debug SQL and ORM
 # "true" will enable logging all SQL statements to underlying DB

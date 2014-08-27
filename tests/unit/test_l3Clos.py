@@ -23,8 +23,9 @@ class TestFunctions(unittest.TestCase):
 
 class TestFileOutputHandler(unittest.TestCase):
     def tearDown(self):
-        ''' Deletes 'out' folder under test dir'''
+        ''' Deletes 'out' and 'out2' folder under test dir'''
         shutil.rmtree('out', ignore_errors=True)
+        shutil.rmtree('out2', ignore_errors=True)
 
     def createPod(self):
         pod = {}
