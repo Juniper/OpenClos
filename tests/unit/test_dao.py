@@ -4,6 +4,7 @@ Created on Aug 26, 2014
 @author: moloyc
 '''
 import unittest
+from sqlalchemy import exc
 
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition
@@ -37,6 +38,13 @@ class TestDao(unittest.TestCase):
         self.assertEqual(4, len(dao.getAll(InterfaceDefinition)))
         self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'ifd1')))
         self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'ifd2')))
+
+    def testDeleteNonExistingPod(self):
+        dao = Dao(self.conf)
+        dict = {}
+        pod = Pod('unknown', **dict)
+        with self.assertRaises(exc.InvalidRequestError):
+            dao.deleteObject(pod)
 
     def testCascadeDeletePodDevice(self):
         from test_model import createDevice

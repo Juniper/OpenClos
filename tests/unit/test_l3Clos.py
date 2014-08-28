@@ -89,10 +89,9 @@ class TestL3Clos(unittest.TestCase):
 
     def testLoadClosDefinition(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        dao = l3ClosMediation.dao
 
-        l3ClosMediation.loadClosDefinition()
-        self.assertEqual(2, len(dao.getAll(Pod)))
+        pods = l3ClosMediation.loadClosDefinition()
+        self.assertEqual(2, len(pods))
 
     def testLoadNonExistingClosDefinition(self):
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -100,14 +99,6 @@ class TestL3Clos(unittest.TestCase):
 
         l3ClosMediation.loadClosDefinition('non-existing.yaml')
         self.assertEqual(0, len(dao.getAll(Pod)))
-
-    def testCreatePods(self):
-        l3ClosMediation = L3ClosMediation(self.conf)
-        dao = l3ClosMediation.dao
-
-        podString = u'{"barclaysL3Clos" : {"leafDeviceType": "QFX5100", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}, "testL3Clos" : {"leafDeviceType": "QFX5100", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
-        l3ClosMediation.createPods(json.loads(podString))
-        self.assertEqual(2, len(dao.getAll(Pod)))
 
     def testProcessTopologyNoPodFound(self):
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -120,11 +111,11 @@ class TestL3Clos(unittest.TestCase):
     def testProcessTopologyMultiplePods(self):
         l3ClosMediation = L3ClosMediation(self.conf)
 
-        podString = u'{"pod1" : {"leafDeviceType": "QFX5100-24Q", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
-        l3ClosMediation.createPods(json.loads(podString))
-
-        podString = u'{"pod1" : {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
-        l3ClosMediation.createPods(json.loads(podString))
+        podDict = {"leafDeviceType": "QFX5100-24Q", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        pod1 = Pod('pod1', **podDict)
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        pod2 = Pod('pod1', **podDict)
+        l3ClosMediation.dao.createObjects([pod1, pod2])
         
         with self.assertRaises(ValueError) as ve:
             l3ClosMediation.processTopology("pod1")
@@ -134,15 +125,16 @@ class TestL3Clos(unittest.TestCase):
     def testProcessTopologyNoTopology(self):
         l3ClosMediation = L3ClosMediation(self.conf)
 
-        podString = u'{"pod1" : {"leafDeviceType": "QFX5100-24Q", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
-        l3ClosMediation.createPods(json.loads(podString))
+        podDict = {"leafDeviceType": "QFX5100-24Q", "spineAS": 100, "spineDeviceType": "QFX5100", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        l3ClosMediation.dao.createObjects([Pod('pod1', **podDict)])
 
         with self.assertRaises(ValueError):
             l3ClosMediation.processTopology("pod1")
 
     def testProcessTopology(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        l3ClosMediation.loadClosDefinition()
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "topology" : "topologyLabKurt.json"}
+        l3ClosMediation.dao.createObjects([Pod('pod1', **podDict)])
         
         l3ClosMediation = flexmock(l3ClosMediation)
         l3ClosMediation.should_receive('createSpineIFDs').once()
@@ -151,13 +143,69 @@ class TestL3Clos(unittest.TestCase):
         l3ClosMediation.should_receive('generateConfig').once()
         l3ClosMediation.should_receive('allocateResource').once()
 
-        l3ClosMediation.processTopology('labLeafSpine')
+        l3ClosMediation.processTopology('pod1')
         self.assertIsNotNone(l3ClosMediation.output)
-            
+
     def createPod(self, l3ClosMediation):
-        podString = u'{"pod1" : {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}}'
-        l3ClosMediation.createPods(json.loads(podString))
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        l3ClosMediation.dao.createObjects([Pod('pod1', **podDict)])
+
         return l3ClosMediation.dao.getUniqueObjectByName(Pod, 'pod1')
+
+    def testIsRecreateFabricFalse(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        pod = self.createPod(l3ClosMediation)
+
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        self.assertEqual(False, l3ClosMediation.isRecreateFabric(pod, podDict)) 
+
+    def testIsRecreateFabricTrue(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        pod = self.createPod(l3ClosMediation)
+
+        podDict = {"leafDeviceType": "QFX5100-96S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        self.assertEqual(True, l3ClosMediation.isRecreateFabric(pod, podDict)) 
+
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 500, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        self.assertEqual(True, l3ClosMediation.isRecreateFabric(pod, podDict)) 
+
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q-32", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        self.assertEqual(True, l3ClosMediation.isRecreateFabric(pod, podDict)) 
+        
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.169.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        self.assertEqual(True, l3ClosMediation.isRecreateFabric(pod, podDict)) 
+        
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.17.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        self.assertEqual(True, l3ClosMediation.isRecreateFabric(pod, podDict)) 
+
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.17.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "11.0.0.0", "leafAS": 200}
+        self.assertEqual(True, l3ClosMediation.isRecreateFabric(pod, podDict)) 
+    
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.17.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 300}
+        self.assertEqual(True, l3ClosMediation.isRecreateFabric(pod, podDict)) 
+
+    def testProcessFabricReCreateFabric(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        pod = self.createPod(l3ClosMediation)
+        
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        l3ClosMediation = flexmock(l3ClosMediation)
+        l3ClosMediation.should_receive('processTopology').once()
+        newPod = l3ClosMediation.processFabric(pod.name, podDict, True)
+        
+        self.assertNotEqual(pod.id, newPod.id)
+
+    def testProcessFabricUpdateFabric(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        pod = self.createPod(l3ClosMediation)
+        
+        podDict = {"leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 10, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "leaf-spine", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        l3ClosMediation = flexmock(l3ClosMediation)
+        l3ClosMediation.should_receive('processTopology')
+        newPod = l3ClosMediation.processFabric(pod.name, podDict)
+        
+        self.assertEqual(pod.id, newPod.id)
+        self.assertEqual(10, newPod.leafCount)
 
     def testCreateSpines(self):
         from jnpr.openclos.l3Clos import util

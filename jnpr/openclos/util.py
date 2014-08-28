@@ -63,3 +63,6 @@ def expandPortName(portName):
         portNames.append(preRegx[:-1] + str(id) + postRegx[1:])
         
     return portNames
+
+def backupDatabase(conf):
+    pass

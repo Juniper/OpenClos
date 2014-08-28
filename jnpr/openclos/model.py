@@ -92,9 +92,19 @@ class Pod(ManagedElement, Base):
             error += 'topologyType, '
         self.topology = kwargs.get('topology')
         
-        if error != '':
-            raise ValueError('Missing required fields: ' + error[:-2])
+        # TODO: removed validation for now, as validation is being re-factored
+        #if error != '':
+        #    raise ValueError('Missing required fields: ' + error[:-2])
         super(Pod, self).__init__(**kwargs)
+
+    def update(self, **kwargs):
+        '''
+        Updates a Pod ORM object from dict, it updates only following fields.
+        spineCount, leafCount
+        '''
+        self.spineCount = kwargs.get('spineCount')
+        self.leafCount = kwargs.get('leafCount')
+        
         
 class Device(ManagedElement, Base):
     __tablename__ = 'device'

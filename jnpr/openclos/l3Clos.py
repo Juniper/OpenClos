@@ -80,7 +80,7 @@ class L3ClosMediation():
             stream = open(closDefination, 'r')
             yamlStream = yaml.load(stream)
             
-            self.createPods(yamlStream['pods'])
+            return yamlStream['pods']
         except (OSError, IOError) as e:
             print "File error:", e
         except (yaml.scanner.ScannerError) as e:
@@ -89,13 +89,52 @@ class L3ClosMediation():
         finally:
             pass
        
-    def createPods(self, podsDict):
-        pods = []
-        for name, pod in podsDict.iteritems():
-            pods.append(Pod(name, **pod))
-        self.dao.createObjects(pods)
-
-    def processTopology(self, podName):
+    def isRecreateFabric(self, podInDb, podDict):
+        '''
+        If any device type/family, ASN range or IP block changed, that would require 
+        re-generation of the fabric, causing new set of IP and ASN assignment per device
+        '''
+        if (podInDb.spineDeviceType != podDict['spineDeviceType'] or \
+            podInDb.leafDeviceType != podDict['leafDeviceType'] or \
+            podInDb.interConnectPrefix != podDict['interConnectPrefix'] or \
+            podInDb.vlanPrefix != podDict['vlanPrefix'] or \
+            podInDb.loopbackPrefix != podDict['loopbackPrefix'] or \
+            podInDb.spineAS != podDict['spineAS'] or \
+            podInDb.leafAS != podDict['leafAS']): 
+            return True
+        return False
+        
+    def processFabric(self, podName, pod, reCreateFabric = False):
+        try:
+            podInDb = self.dao.getUniqueObjectByName(Pod, podName)
+        except (exc.NoResultFound) as e:
+            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message)) 
+            podInDb = Pod(podName, **pod)
+            self.dao.createObjects([podInDb])
+            logger.debug("Created pod name: '%s'" % (podName))
+            self.processTopology(podName, True)
+            return podInDb
+        
+        if reCreateFabric == True and podInDb is not None:
+            # TODO: take backup of database
+            # util.backupDatabase(self.conf)
+            
+            self.dao.deleteObject(podInDb)
+            logger.debug("Deleted existing pod name: '%s'" % (podName))     
+            podInDb = Pod(podName, **pod)
+            self.dao.createObjects([podInDb])
+            logger.debug("Re-created pod name: '%s'" % (podName))     
+            self.processTopology(podName, True)
+            return podInDb
+        
+        # Fabric is existing and leaf/spine/access counts are changed
+        podInDb.update(**pod)
+        self.dao.updateObjects([podInDb])
+        # TODO: need to call optimized version of processTopology
+        # processTopology should get replaced by cabling-plan
+        return podInDb
+    
+    def processTopology(self, podName, reCreateFabric = False):
         '''
         Finds Pod object by name and process topology
         It also creates the output folders for pod
@@ -396,6 +435,6 @@ class L3ClosMediation():
         
 if __name__ == '__main__':
     l3ClosMediation = L3ClosMediation()
-    l3ClosMediation.loadClosDefinition()
-    l3ClosMediation.processTopology('labLeafSpine')
+    pods = l3ClosMediation.loadClosDefinition()
+    l3ClosMediation.processFabric('labLeafSpine', pods['labLeafSpine'], reCreateFabric = True)
 
