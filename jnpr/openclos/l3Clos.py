@@ -12,10 +12,10 @@ from netaddr import IPNetwork
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session, exc
 from jinja2 import Environment, PackageLoader
-from jnpr.openclos.dotHandler import createDOTFile
 
 from model import Pod, Device, InterfaceLogical, InterfaceDefinition, Base
 import util
+from dotHandler import createDOTFile
 
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
@@ -179,9 +179,9 @@ class L3ClosMediation():
             device = Device(spine['name'], pod.spineDeviceType, spine['user'], spine['password'], 'spine', spine['mgmt_ip'], pod)
             devices.append(device)
             
-	    portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
+            portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
             for name in portNames['ports']:     # spine does not have any uplink/downlink marked, it is just ports
-                ifd = InterfaceDefinition(name, device)
+                ifd = InterfaceDefinition(name, device, 'downlink')
                 interfaces.append(ifd)
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
@@ -195,11 +195,11 @@ class L3ClosMediation():
 
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
             for name in portNames['uplinkPorts']:   # all uplink IFDs towards spine
-                ifd = InterfaceDefinition(name, device)
+                ifd = InterfaceDefinition(name, device, 'uplink')
                 interfaces.append(ifd)
 
             for name in portNames['downlinkPorts']:   # all downlink IFDs towards Access/Server
-                ifd = InterfaceDefinition(name, device)
+                ifd = InterfaceDefinition(name, device, 'downlink')
                 interfaces.append(ifd)
         
         self.dao.createObjects(devices)
@@ -335,7 +335,7 @@ class L3ClosMediation():
             self.output.handle(pod, device, config)
             
     def generateDOTFile(self, pod): 
-        createDOTFile(pod.devices)
+        createDOTFile(pod.devices, self.conf['DOT'])
             
     def createBaseConfig(self, device):
         with open(os.path.join(junosTemplateLocation, 'baseTemplate.txt'), 'r') as f:

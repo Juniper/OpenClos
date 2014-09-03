@@ -32,16 +32,13 @@ deviceFamily :
 #colors for the interconnect in topology DOT file 
 DOT:
    colors:
-       - pink
        - blue
        - green
        - violet
-       - crimson
-       - cyan
-       - gold
-       - choclate4
-       - aquamarine4
-       - bisque
+       - brown
+       - aquamarine
+       - pink
+       - cadetblue
 
    ranksep : 5 equally
 

@@ -7,43 +7,25 @@ import pydot
 import yaml
 import sys
 import os
-from jnpr.openclos.model import Pod, Device, Interface, InterfaceDefinition
-
-
-
-def loadConfig(confFile = 'openclos.yaml'):
-    '''
-    Loads global configuration and creates hash 'conf'
-
-    '''
-    configLocation = 'conf/'
-    junosTemplateLocation = configLocation + 'junosTemplates/'
-    try:
-        confStream = open(configLocation + confFile, 'r')
-        conf = yaml.load(confStream)
-        
-    except (OSError, IOError) as e:
-        print "File error:", e
-    except (yaml.scanner.ScannerError) as e:
-        print "YAML error:", e
-        confStream.close()
-    finally:
-        pass
-    return conf
-
-def createLabelForDevices(devices):
-    conf = loadConfig()
-    ranksep = conf['DOT']['ranksep']
+from model import Pod, Device, Interface, InterfaceDefinition
+    
+def createLabelForDevices(devices,conf):
+    #create the graph 
+    ranksep = conf['ranksep']
     topology = pydot.Dot(graph_type='graph', splines='polyline', ranksep=ranksep)
     for device in devices:
         label = createLabelForDevice(device)
         createDeviceInGraph(label, device, topology)
-    return topology
+    return topology    
+            
 
-def createDOTFile(devices):
-    topology = createLabelForDevices(devices)
-    conf = loadConfig()
-    colors = conf['DOT']['colors']
+def createDOTFile(devices, conf):
+    '''
+    creates DOT file for devices in topology which has peers
+    '''
+   
+    topology = createLabelForDevices(devices,conf)
+    colors = conf['colors']
     i =0
     for device in devices:
         linkLabel = createLabelForLinks(device)
@@ -56,7 +38,7 @@ def createDOTFile(devices):
             i+=1
         
     topology.write_raw('l3closDOT.dot')
-    print("wrote l3closDOT.dot")
+    print("writing DOT file l3closDOT.dot")
        
 def createLabelForDevice(device):
     label = '{'
@@ -83,15 +65,16 @@ def createLabelForDevice(device):
     if label.endswith('|'):
         label = label[:-1]
         label += '}}'
-    else:
+    
         label = label[:-2]
         label += '}'
         
     return label
 
 def createDeviceInGraph(labelStrs, device, testDeviceLabel):
+    #create device in DOT graph
     testDeviceLabel.add_node(pydot.Node(device.id, shape='record', label= labelStrs))
-
+        
 def createLabelForLinks(device):
     links = {}
                   
@@ -106,6 +89,7 @@ def createLabelForLinks(device):
     return links
 
 def createLinksInGraph(links, linksInTopology, color):
+    #create peer links between the devices in DOT graph
     for interface, peer in links.iteritems():
         linksInTopology.add_edge(pydot.Edge(interface, peer,color=color))
         

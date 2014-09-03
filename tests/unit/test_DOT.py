@@ -11,19 +11,12 @@ import unittest
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 import pydot
-import shutil
-from jnpr.openclos.l3Clos import configLocation
-from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
-from jnpr.openclos.dotHandler import createDeviceInGraph, createLinksInGraph, createDOTFile
-from tests.unit.test_model import createPod, createDevice
+from jnpr.openclos.model import Device, InterfaceDefinition, Base
+from jnpr.openclos.dotHandler import createDOTFile, createDeviceInGraph, createLinksInGraph
+from test_model import createPod, createDevice
 
 class TestOrm(unittest.TestCase):
     def setUp(self):
-        
-        ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree('./conf', ignore_errors=True)
-        ''' Copies 'conf' folder under test dir, to perform tests'''
-        shutil.copytree(configLocation, './conf')
         '''
         Change echo=True to troubleshoot ORM issue
         '''
@@ -33,33 +26,31 @@ class TestOrm(unittest.TestCase):
         self.session = Session()
 
     def tearDown(self):
-        ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree('./conf', ignore_errors=True)
-        ''' Deletes 'out' folder under test dir'''
-        shutil.rmtree('out', ignore_errors=True)
         self.session.close_all()
         
 class testGenerateDOTFile(TestOrm):
     
     def testCreateDeviceInGraph(self):
-        # create topology obj
+               
         testDeviceTopology = pydot.Dot(graph_type='graph', )
         device = createDevice(self.session, 'Preethi')
         device.id = 'preethi-1'
         createDeviceInGraph(device.name, device, testDeviceTopology)
         testDeviceTopology.write_raw('testDevicelabel.dot')
         data = open("testDevicelabel.dot", 'r').read()
+        #check the generated label for device
         self.assertTrue('"preethi-1" [shape=record, label=Preethi];' in data)
 
     def testcreateLinksInGraph(self):
+        
         testLinksInTopology = pydot.Dot(graph_type='graph')
         podOne = createPod('testpodOne', self.session)
-        deviceOne = Device('spine01', 'admin', 'admin',  'spine', "", podOne)
+        deviceOne = Device('spine01',"", 'admin', 'admin',  'spine', "", podOne)
         deviceOne.id = 'spine01'
         IF1 = InterfaceDefinition('IF1', deviceOne, 'downlink')
         IF1.id = 'IF1'
         
-        deviceTwo = Device('leaf01', 'admin', 'admin',  'leaf', "", podOne)
+        deviceTwo = Device('leaf01',"", 'admin', 'admin',  'leaf', "", podOne)
         deviceTwo.id = 'leaf01'
         IF21 = InterfaceDefinition('IF1', deviceTwo, 'uplink')
         IF21.id = 'IF21'
@@ -70,20 +61,26 @@ class testGenerateDOTFile(TestOrm):
         createLinksInGraph(linkLabel, testLinksInTopology, 'red')
         testLinksInTopology.write_raw('testLinklabel.dot')
         data = open("testLinklabel.dot", 'r').read()
+        #check generated label for links
         self.assertTrue('spine01:IF1 -- leaf01:IF21  [color=red];' in data)
         
     def testcreateDOTFile(self):
-        
+        # create pod
+        # create device
+        #create interface
+        conf = {'ranksep' : '5 equally',
+                 'colors': ['red', 'green', 'blue']
+                }
         podOne = createPod('testpodOne', self.session)
         self.session.add(podOne)
-        deviceOne = Device('spine01', 'admin', 'admin',  'spine', "", podOne)
+        deviceOne = Device('spine01',"", 'admin', 'admin',  'spine', "", podOne)
         self.session.add(deviceOne)
         IF1 = InterfaceDefinition('IF1', deviceOne, 'downlink')
         self.session.add(IF1)
         IF2 = InterfaceDefinition('IF2', deviceOne, 'downlink')
         self.session.add(IF2)
         
-        deviceTwo = Device('leaf01', 'admin', 'admin',  'leaf', "", podOne)
+        deviceTwo = Device('leaf01',"", 'admin', 'admin',  'leaf', "", podOne)
         self.session.add(deviceTwo)
         IF21 = InterfaceDefinition('IF1', deviceTwo, 'uplink')
         self.session.add(IF21)
@@ -94,7 +91,7 @@ class testGenerateDOTFile(TestOrm):
         IF24 = InterfaceDefinition('IF3', deviceTwo, 'downlink')
         self.session.add(IF24)
         
-        deviceThree = Device('Access01', 'admin', 'admin',  'leaf', "", podOne)
+        deviceThree = Device('Access01', "",'admin', 'admin',  'leaf', "", podOne)
         self.session.add(deviceThree)
         IF31 = InterfaceDefinition('IF1', deviceThree, 'uplink')
         self.session.add(IF31)
@@ -112,4 +109,5 @@ class testGenerateDOTFile(TestOrm):
         
         self.session.commit()
         devices = self.session.query(Device).all()
-        createDOTFile(devices)
+        #check the DOT file is generated
+        createDOTFile(devices,conf)
