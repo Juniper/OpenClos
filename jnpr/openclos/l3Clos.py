@@ -8,16 +8,22 @@ import yaml
 import os
 import json
 import math
+import logging
+
 from netaddr import IPNetwork
-import sqlalchemy
-from sqlalchemy.orm import sessionmaker, scoped_session, exc
+from sqlalchemy.orm import exc
 from jinja2 import Environment, PackageLoader
 
-from model import Pod, Device, InterfaceLogical, InterfaceDefinition, Base
+from model import Pod, Device, InterfaceLogical, InterfaceDefinition
+from dao import Dao
 import util
 
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
+moduleName = 'fabric'
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(moduleName)
 
 def loadConfig(confFile = 'openclos.yaml'):
     '''
@@ -38,61 +44,6 @@ def loadConfig(confFile = 'openclos.yaml'):
         pass
     return conf
 
-class Dao:
-    def __init__(self, conf):
-        if conf is not None and 'dbUrl' in conf:
-            engine = sqlalchemy.create_engine(conf['dbUrl'], echo = conf.get('debugSql', False))  
-            Base.metadata.create_all(engine) 
-            session_factory = sessionmaker(bind=engine)
-            self.Session = scoped_session(session_factory)
-        else:
-            raise ValueError("Missing configuration parameter:'dbUrl'")
-        
-    # Don't remove session after each operation, it detaches the object from ORM,
-    # which disables further operations on the object like lazy load of collection.
-    # When thread dies, it gets GCed automatically
-    def createObjects(self, objects):
-        session = self.Session()
-        try:
-            session.add_all(objects)
-            session.commit()
-        finally:
-            #self.Session.remove()
-            pass
-    
-    def updateObjects(self, objects):
-        session = self.Session()
-        try:
-            for obj in objects:
-                session.merge(obj)
-            session.commit()
-        finally:
-            #self.Session.remove()
-            pass
-    def getAll(self, objectType):
-        session = self.Session()
-        try:
-            return session.query(objectType).order_by(objectType.name).all()
-        finally:
-            #self.Session.remove()
-            pass
-
-    def getUniqueObjectByName(self, objectType, name):
-        session = self.Session()
-        try:
-            return session.query(objectType).filter_by(name = name).one()
-        finally:
-            #self.Session.remove()
-            pass
-
-    def getObjectsByName(self, objectType, name):
-        session = self.Session()
-        try:
-            return session.query(objectType).filter_by(name = name).all()
-        finally:
-            #self.Session.remove()
-            pass
-
 class FileOutputHandler():
     def __init__(self, conf, pod):
         if 'outputDir' in conf:
@@ -103,7 +54,7 @@ class FileOutputHandler():
             os.makedirs(self.outputDir)
 
     def handle(self, pod, device, config):
-        print "Writing config for device: %s" % (device.name)
+        logger.info('Writing config for device: %s' % (device.name))
         with open(self.outputDir + "/" + device.name + '.conf', 'w') as f:
                 f.write(config)
 
@@ -111,8 +62,11 @@ class L3ClosMediation():
     def __init__(self, conf = {}, templateEnv = None):
         if any(conf) == False:
             self.conf = loadConfig()
+            logging.basicConfig(level=logging.getLevelName(self.conf['logLevel'][moduleName]))
+            logger = logging.getLogger(moduleName)
         else:
             self.conf = conf
+
         self.dao = Dao(self.conf)
         if templateEnv is None:
             self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
@@ -126,7 +80,7 @@ class L3ClosMediation():
             stream = open(closDefination, 'r')
             yamlStream = yaml.load(stream)
             
-            self.createPods(yamlStream['pods'])
+            return yamlStream['pods']
         except (OSError, IOError) as e:
             print "File error:", e
         except (yaml.scanner.ScannerError) as e:
@@ -135,13 +89,52 @@ class L3ClosMediation():
         finally:
             pass
        
-    def createPods(self, podsDict):
-        pods = []
-        for name, pod in podsDict.iteritems():
-            pods.append(Pod(name, **pod))
-        self.dao.createObjects(pods)
-
-    def processTopology(self, podName):
+    def isRecreateFabric(self, podInDb, podDict):
+        '''
+        If any device type/family, ASN range or IP block changed, that would require 
+        re-generation of the fabric, causing new set of IP and ASN assignment per device
+        '''
+        if (podInDb.spineDeviceType != podDict['spineDeviceType'] or \
+            podInDb.leafDeviceType != podDict['leafDeviceType'] or \
+            podInDb.interConnectPrefix != podDict['interConnectPrefix'] or \
+            podInDb.vlanPrefix != podDict['vlanPrefix'] or \
+            podInDb.loopbackPrefix != podDict['loopbackPrefix'] or \
+            podInDb.spineAS != podDict['spineAS'] or \
+            podInDb.leafAS != podDict['leafAS']): 
+            return True
+        return False
+        
+    def processFabric(self, podName, pod, reCreateFabric = False):
+        try:
+            podInDb = self.dao.getUniqueObjectByName(Pod, podName)
+        except (exc.NoResultFound) as e:
+            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message)) 
+            podInDb = Pod(podName, **pod)
+            self.dao.createObjects([podInDb])
+            logger.debug("Created pod name: '%s'" % (podName))
+            self.processTopology(podName, True)
+            return podInDb
+        
+        if reCreateFabric == True and podInDb is not None:
+            # TODO: take backup of database
+            # util.backupDatabase(self.conf)
+            
+            self.dao.deleteObject(podInDb)
+            logger.debug("Deleted existing pod name: '%s'" % (podName))     
+            podInDb = Pod(podName, **pod)
+            self.dao.createObjects([podInDb])
+            logger.debug("Re-created pod name: '%s'" % (podName))     
+            self.processTopology(podName, True)
+            return podInDb
+        
+        # Fabric is existing and leaf/spine/access counts are changed
+        podInDb.update(**pod)
+        self.dao.updateObjects([podInDb])
+        # TODO: need to call optimized version of processTopology
+        # processTopology should get replaced by cabling-plan
+        return podInDb
+    
+    def processTopology(self, podName, reCreateFabric = False):
         '''
         Finds Pod object by name and process topology
         It also creates the output folders for pod
@@ -442,6 +435,6 @@ class L3ClosMediation():
         
 if __name__ == '__main__':
     l3ClosMediation = L3ClosMediation()
-    l3ClosMediation.loadClosDefinition()
-    l3ClosMediation.processTopology('labLeafSpine')
+    pods = l3ClosMediation.loadClosDefinition()
+    l3ClosMediation.processFabric('labLeafSpine', pods['labLeafSpine'], reCreateFabric = True)
 
