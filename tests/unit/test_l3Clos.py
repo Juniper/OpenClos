@@ -142,6 +142,7 @@ class TestL3Clos(unittest.TestCase):
         l3ClosMediation.should_receive('createLinkBetweenIFDs').once()
         l3ClosMediation.should_receive('generateConfig').once()
         l3ClosMediation.should_receive('allocateResource').once()
+        l3ClosMediation.should_receive('generateDOTFile').once()
 
         l3ClosMediation.processTopology('pod1')
         self.assertIsNotNone(l3ClosMediation.output)
