@@ -7,10 +7,10 @@ Created on Sep 2, 2014
 import os
 import logging
 import bottle
-#from bottle import Bottle, run, route, app
+from sqlalchemy.orm import exc
 
 import util
-from model import Pod
+from model import Pod, Device
 from dao import Dao
 
 moduleName = 'rest'
@@ -28,7 +28,6 @@ class ResourceLink():
         return self.__str__()
     def toDict(self):
         return {'href': self.baseUrl + self.path}
-
 
 class RestServer():
     def __init__(self, conf = {}):
@@ -79,10 +78,24 @@ class RestServer():
         return jsonBody
     
     def getDeviceConfig(self, podName, deviceName):
-        #return "Hello %s" % (deviceName)
-        fileName = os.path.join(podName, deviceName+'.conf')
-        return bottle.static_file(fileName, root='out')
 
+        if not self.isDeviceExists(podName, deviceName):
+            raise bottle.HTTPError(404, "No device found with pod name: '%s', device name: '%s'" % (podName, deviceName))
+        
+        fileName = os.path.join(podName, deviceName+'.conf')
+        config = bottle.static_file(fileName, root='out')
+        if isinstance(config, bottle.HTTPError):
+            logger.debug("Device exists but no config found. Pod name: '%s', device name: '%s'" % (podName, deviceName))
+            raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. Pod name: '%s', device name: '%s'" % (podName, deviceName))
+        return config
+
+    def isDeviceExists(self, podName, deviceName):
+        try:
+            self.dao.Session.query(Device).join(Pod).filter(Device.name == deviceName).filter(Pod.name == podName).one()
+            return True
+        except (exc.NoResultFound):
+            logger.debug("No device found with pod name: '%s', device name: '%s'" % (podName, deviceName))
+            return False
     
 if __name__ == '__main__':
     RestServer()
