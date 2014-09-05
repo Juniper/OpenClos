@@ -17,6 +17,7 @@ from jinja2 import Environment, PackageLoader
 from model import Pod, Device, InterfaceLogical, InterfaceDefinition
 from dao import Dao
 import util
+from dotHandler import createDOTFile
 
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
@@ -110,6 +111,7 @@ class L3ClosMediation():
         except (exc.NoResultFound) as e:
             logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message)) 
             podInDb = Pod(podName, **pod)
+            podInDb.validate()
             self.dao.createObjects([podInDb])
             logger.debug("Created pod name: '%s'" % (podName))
             self.processTopology(podName, True)
@@ -122,6 +124,7 @@ class L3ClosMediation():
             self.dao.deleteObject(podInDb)
             logger.debug("Deleted existing pod name: '%s'" % (podName))     
             podInDb = Pod(podName, **pod)
+            podInDb.validate()
             self.dao.createObjects([podInDb])
             logger.debug("Re-created pod name: '%s'" % (podName))     
             self.processTopology(podName, True)
@@ -129,6 +132,7 @@ class L3ClosMediation():
         
         # Fabric is existing and leaf/spine/access counts are changed
         podInDb.update(**pod)
+        podInDb.validate()
         self.dao.updateObjects([podInDb])
         # TODO: need to call optimized version of processTopology
         # processTopology should get replaced by cabling-plan
@@ -157,6 +161,7 @@ class L3ClosMediation():
             self.allocateResource(pod)
             self.output = FileOutputHandler(self.conf, pod)
             self.generateConfig(pod)
+            self.generateDOTFile(pod)
 
         else:
             raise ValueError("No topology found for pod name: '%s'", (podName))
@@ -167,10 +172,10 @@ class L3ClosMediation():
         for spine in spines:
             device = Device(spine['name'], pod.spineDeviceType, spine['user'], spine['password'], 'spine', spine['mgmt_ip'], pod)
             devices.append(device)
-
+            
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
             for name in portNames['ports']:     # spine does not have any uplink/downlink marked, it is just ports
-                ifd = InterfaceDefinition(name, device)
+                ifd = InterfaceDefinition(name, device, 'downlink')
                 interfaces.append(ifd)
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
@@ -181,15 +186,16 @@ class L3ClosMediation():
         for leaf in leafs:
             device = Device(leaf['name'], pod.leafDeviceType, leaf['user'], leaf['password'], 'leaf', leaf['mgmt_ip'], pod)
             devices.append(device)
-            
+
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
             for name in portNames['uplinkPorts']:   # all uplink IFDs towards spine
-                ifd = InterfaceDefinition(name, device)
+                ifd = InterfaceDefinition(name, device, 'uplink')
                 interfaces.append(ifd)
 
             for name in portNames['downlinkPorts']:   # all downlink IFDs towards Access/Server
-                ifd = InterfaceDefinition(name, device)
+                ifd = InterfaceDefinition(name, device, 'downlink')
                 interfaces.append(ifd)
+        
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
 
@@ -321,6 +327,9 @@ class L3ClosMediation():
             config += self.createPolicyOption(device)
             config += self.createVlan(device)
             self.output.handle(pod, device, config)
+            
+    def generateDOTFile(self, pod): 
+        createDOTFile(pod.devices, self.conf['DOT'])
             
     def createBaseConfig(self, device):
         with open(os.path.join(junosTemplateLocation, 'baseTemplate.txt'), 'r') as f:

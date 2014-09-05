@@ -12,7 +12,8 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #t
 import unittest
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-
+import shutil
+from jnpr.openclos.l3Clos import configLocation
 from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
 
 def createPod(name, session):  
@@ -58,6 +59,7 @@ class TestManagedElement(unittest.TestCase):
               
 class TestOrm(unittest.TestCase):
     def setUp(self):
+    
         '''
         Change echo=True to troubleshoot ORM issue
         '''
@@ -67,9 +69,26 @@ class TestOrm(unittest.TestCase):
         self.session = Session()
 
     def tearDown(self):
+
         self.session.close_all()
 
 class TestPod(TestOrm):
+    
+    def testPodValidate(self):
+        pod = {}
+        pod['spineCount'] = '3'
+        pod['spineDeviceType'] = 'esx-switch'
+        pod['leafCount'] = '5'
+        pod['leafDeviceType'] = 'esx-switch'
+        pod['interConnectPrefix'] = '1.2.0.0'
+        pod['vlanPrefix'] = '1.3.0.0'
+        pod['loopbackPrefix'] = '1.3.0.0'
+        pod['spineAS'] = '100'
+        pod['leafAS'] = '100'
+        pod['topologyType'] = 'pod-dev-IF'
+        pod = Pod("test", **pod)
+        
+        pod.validateIPaddr()
   
     def testValidateEnum(self):
         with self.assertRaises(ValueError) :
@@ -81,7 +100,8 @@ class TestPod(TestOrm):
     def testConstructorMisingAllRequiredFields(self):
         pod = {}
         with self.assertRaises(ValueError) as ve:
-            Pod('testPod', **pod)
+            pod = Pod('testPod', **pod)
+            pod.validateRequiredFields()
         error = ve.exception.message
         self.assertEqual(9, error.count(','))
 
@@ -90,7 +110,8 @@ class TestPod(TestOrm):
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['leafAS'] = '100'
         with self.assertRaises(ValueError) as ve:
-            Pod('testPod', **pod)
+            pod = Pod('testPod', **pod)
+            pod.validateRequiredFields()
         error = ve.exception.message
         self.assertEqual(7, error.count(','), 'Number of missing field is not correct')
     '''
@@ -121,6 +142,7 @@ class TestPod(TestOrm):
         pod['leafAS'] = '100'
         pod['topologyType'] = 'pod-dev-IF' 
         podOne = Pod('testPod', **pod)
+        podOne.validateRequiredFields()
         self.session.add(podOne)
         self.session.commit()
         
@@ -275,7 +297,7 @@ class TestInterfaceDefinition(TestOrm):
     
     def testConstructorPass(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        self.assertTrue(InterfaceDefinition('testIntf', deviceOne) is not None)
+        self.assertTrue(InterfaceDefinition('testIntf', deviceOne, 'downlink') is not None)
         self.assertTrue(InterfaceDefinition('testIntf', deviceOne, 9000) is not None)
         
     def testOrm(self):

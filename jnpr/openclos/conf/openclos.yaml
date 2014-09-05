@@ -37,4 +37,17 @@ deviceFamily :
         uplinkPorts : 'et-0/0/[96-103]' 
         downlinkPorts : 'xe-0/0/[0-95]'
         ports :  
-    
+
+
+# List of colors used in the DOT file to represent interconnects 
+DOT :
+   colors :
+       - blue
+       - green
+       - violet
+       - brown
+       - aquamarine
+       - pink
+       - cadetblue
+   ranksep : 5 equally
+

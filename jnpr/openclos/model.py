@@ -8,6 +8,7 @@ import uuid
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
+from netaddr import IPAddress, AddrFormatError
 Base = declarative_base()
 
 class ManagedElement(object):
@@ -106,6 +107,54 @@ class Pod(ManagedElement, Base):
         self.leafCount = kwargs.get('leafCount')
         
         
+    def validate(self):
+            self.validateRequiredFields()
+            self.validateIPaddr()  
+    
+    def validateRequiredFields(self):
+        
+        error = ''
+        if self.spineCount is None:
+            error += 'spineCount, '
+        if self.spineDeviceType is None:
+            error += 'spineDeviceType, '
+        if self.leafCount is None:
+            error += 'leafCount, '
+        if self.leafDeviceType is None:
+            error += 'leafDeviceType, '
+        if self.interConnectPrefix is None:
+            error += 'interConnectPrefix, '
+        if self.vlanPrefix is None:
+            error += 'vlanPrefix, '
+        if self.loopbackPrefix is None:
+            error += 'loopbackPrefix, '
+        if self.spineAS is None:
+            error += 'spineAS,'
+        if self.leafAS is None:
+            error += 'leafAS,'
+        if self.topologyType is None:
+            error += 'topologyType, '
+        if error != '':
+            raise ValueError('Missing required fields: ' + error)
+        
+    def validateIPaddr(self):   
+        error = ''     
+ 
+        try:
+            IPAddress(self.interConnectPrefix)  
+        except AddrFormatError:
+                error += 'interConnectPrefix, ' 
+        try:
+            IPAddress(self.vlanPrefix)  
+        except AddrFormatError:
+                error += 'vlanPrefix, '
+        try:
+            IPAddress(self.loopbackPrefix)  
+        except AddrFormatError:
+                error += 'loopbackPrefix, '
+        if error != '':
+            raise ValueError('invalid IP format: ' + error)
+        
 class Device(ManagedElement, Base):
     __tablename__ = 'device'
     id = Column(String(60), primary_key=True)
@@ -178,14 +227,16 @@ class InterfaceLogical(Interface):
 class InterfaceDefinition(Interface):
     __tablename__ = 'IFD'
     id = Column(String(60), ForeignKey('interface.id' ), primary_key=True)
+    role = Column(String(60))
     mtu = Column(Integer)
         
     __mapper_args__ = {
         'polymorphic_identity':'physical',
     }
 
-    def __init__(self, name, device,  mtu=0):
+    def __init__(self, name, device, role, mtu=0):
         
         super(InterfaceDefinition, self).__init__(name, device)
         self.mtu = mtu
+        self.role = role
         
