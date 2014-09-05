@@ -58,12 +58,7 @@ class TestManagedElement(unittest.TestCase):
               
 class TestOrm(unittest.TestCase):
     def setUp(self):
-        
-        ''' Deletes 'conf' folder under test dir'''
-        
-        shutil.rmtree('./conf', ignore_errors=True)
-        ''' Copies 'conf' folder under test dir, to perform tests'''
-        shutil.copytree(configLocation, './conf')
+    
         '''
         Change echo=True to troubleshoot ORM issue
         '''
@@ -73,10 +68,7 @@ class TestOrm(unittest.TestCase):
         self.session = Session()
 
     def tearDown(self):
-        ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree('./conf', ignore_errors=True)
-        ''' Deletes 'out' folder under test dir'''
-        shutil.rmtree('out', ignore_errors=True)
+
         self.session.close_all()
 
 class TestPod(TestOrm):
