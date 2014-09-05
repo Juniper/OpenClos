@@ -5,8 +5,31 @@ Created on Aug 21, 2014
 '''
 
 import re
+import os
+import yaml
 
-__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
+#__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
+configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
+
+def loadConfig(confFile = 'openclos.yaml'):
+    '''
+    Loads global configuration and creates hash 'conf'
+    '''
+    try:
+        confStream = open(os.path.join(configLocation, confFile), 'r')
+        conf = yaml.load(confStream)
+        
+    except (OSError, IOError) as e:
+        print "File error:", e
+        return None
+    except (yaml.scanner.ScannerError) as e:
+        print "YAML error:", e
+        confStream.close()
+        return None
+    finally:
+        pass
+    return conf
+
 
 def getPortNamesForDeviceFamily(deviceFamily, conf):
     '''

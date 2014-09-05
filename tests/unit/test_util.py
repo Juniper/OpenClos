@@ -18,6 +18,11 @@ class TestFunctions(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def testLoadDefaultConfig(self):
+        self.assertIsNotNone(loadConfig())
+    def testLoadNonExistingConfig(self):
+        self.assertIsNone(loadConfig('non-existing.yaml'))
+
     def testGetPortNamesForDeviceFamilyNullConf(self):
         with self.assertRaises(ValueError) as ve:
             getPortNamesForDeviceFamily(None, None)

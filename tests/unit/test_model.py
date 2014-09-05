@@ -12,8 +12,6 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #t
 import unittest
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-import shutil
-from jnpr.openclos.l3Clos import configLocation
 from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
 
 def createPod(name, session):  

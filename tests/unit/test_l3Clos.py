@@ -11,15 +11,9 @@ import unittest
 import shutil
 import json
 from flexmock import flexmock
-from jnpr.openclos.l3Clos import loadConfig, configLocation, L3ClosMediation, FileOutputHandler
+from jnpr.openclos.l3Clos import L3ClosMediation, FileOutputHandler
 from jnpr.openclos.model import Pod, Device, InterfaceLogical, InterfaceDefinition
-
-
-class TestFunctions(unittest.TestCase):
-    def testLoadDefaultConfig(self):
-        self.assertIsNotNone(loadConfig())
-    def testLoadNonExistingConfig(self):
-        self.assertIsNone(loadConfig('non-existing.yaml'))
+from jnpr.openclos.util import configLocation
 
 class TestFileOutputHandler(unittest.TestCase):
     def tearDown(self):
