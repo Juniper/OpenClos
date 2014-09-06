@@ -22,3 +22,6 @@ jnpr/openclos/out/
 .coverage
 coverage.xml
 nosetests.xml
+
+#DOT files
+*.dot

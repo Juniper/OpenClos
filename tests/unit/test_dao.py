@@ -29,10 +29,10 @@ class TestDao(unittest.TestCase):
         session = dao.Session()
         
         device = createDevice(session, "test")
-        ifd1 = InterfaceDefinition('ifd1', device)
-        ifd2 = InterfaceDefinition('ifd2', device)
-        ifd3 = InterfaceDefinition('ifd1', device)
-        ifd4 = InterfaceDefinition('ifd2', device)
+        ifd1 = InterfaceDefinition('ifd1', device, 'downlink')
+        ifd2 = InterfaceDefinition('ifd2', device, 'downlink')
+        ifd3 = InterfaceDefinition('ifd1', device, 'downlink')
+        ifd4 = InterfaceDefinition('ifd2', device, 'downlink')
         dao.createObjects([ifd1, ifd2, ifd3, ifd4])
 
         self.assertEqual(4, len(dao.getAll(InterfaceDefinition)))

@@ -19,31 +19,11 @@ from dao import Dao
 import util
 from dotHandler import createDOTFile
 
-configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 moduleName = 'fabric'
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(moduleName)
-
-def loadConfig(confFile = 'openclos.yaml'):
-    '''
-    Loads global configuration and creates hash 'conf'
-    '''
-    try:
-        confStream = open(os.path.join(configLocation, confFile), 'r')
-        conf = yaml.load(confStream)
-        
-    except (OSError, IOError) as e:
-        print "File error:", e
-        return None
-    except (yaml.scanner.ScannerError) as e:
-        print "YAML error:", e
-        confStream.close()
-        return None
-    finally:
-        pass
-    return conf
 
 class FileOutputHandler():
     def __init__(self, conf, pod):
@@ -62,7 +42,7 @@ class FileOutputHandler():
 class L3ClosMediation():
     def __init__(self, conf = {}, templateEnv = None):
         if any(conf) == False:
-            self.conf = loadConfig()
+            self.conf = util.loadConfig()
             logging.basicConfig(level=logging.getLevelName(self.conf['logLevel'][moduleName]))
             logger = logging.getLogger(moduleName)
         else:
@@ -73,7 +53,7 @@ class L3ClosMediation():
             self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
         
         
-    def loadClosDefinition(self, closDefination = os.path.join(configLocation, 'closTemplate.yaml')):
+    def loadClosDefinition(self, closDefination = os.path.join(util.configLocation, 'closTemplate.yaml')):
         '''
         Loads clos definition from yaml file and creates pod object
         '''
@@ -151,7 +131,7 @@ class L3ClosMediation():
             raise ValueError("Multiple Pods found with pod name: '%s', exc.MultipleResultsFound: %s" % (podName, e.message))
  
         if pod.topology is not None:
-            json_data = open(os.path.join(configLocation, pod.topology))
+            json_data = open(os.path.join(util.configLocation, pod.topology))
             data = json.load(json_data)
             json_data.close()    
             

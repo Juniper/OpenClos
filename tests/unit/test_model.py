@@ -12,8 +12,6 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #t
 import unittest
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-import shutil
-from jnpr.openclos.l3Clos import configLocation
 from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
 
 def createPod(name, session):  
@@ -74,7 +72,7 @@ class TestOrm(unittest.TestCase):
 
 class TestPod(TestOrm):
     
-    def testPodValidate(self):
+    def testPodValidateSuccess(self):
         pod = {}
         pod['spineCount'] = '3'
         pod['spineDeviceType'] = 'esx-switch'
@@ -88,16 +86,9 @@ class TestPod(TestOrm):
         pod['topologyType'] = 'pod-dev-IF'
         pod = Pod("test", **pod)
         
-        pod.validateIPaddr()
+        pod.validate()
   
-    def testValidateEnum(self):
-        with self.assertRaises(ValueError) :
-            Pod.validateEnum('Pod.TopologyTypeEnum', 'abcd', Pod.TopologyTypeEnum)
-        with self.assertRaises(ValueError) :
-            Pod.validateEnum('Pod.TopologyTypeEnum', ['abcd'], Pod.TopologyTypeEnum)
-
-    ''' TODO: commented for now, as validation is being re-factored
-    def testConstructorMisingAllRequiredFields(self):
+    def testPodValidateMisingAllRequiredFields(self):
         pod = {}
         with self.assertRaises(ValueError) as ve:
             pod = Pod('testPod', **pod)
@@ -105,7 +96,7 @@ class TestPod(TestOrm):
         error = ve.exception.message
         self.assertEqual(9, error.count(','))
 
-    def testConstructorMisingFewRequiredFields(self):
+    def testPodValidateMisingFewRequiredFields(self):
         pod = {}
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['leafAS'] = '100'
@@ -114,7 +105,24 @@ class TestPod(TestOrm):
             pod.validateRequiredFields()
         error = ve.exception.message
         self.assertEqual(7, error.count(','), 'Number of missing field is not correct')
-    '''
+
+    def testPodValidateMisingBadIpAddress(self):
+        pod = {}
+        pod['interConnectPrefix'] = '1.2.0.0.0'
+        pod['vlanPrefix'] = '1.2.0.257'
+        pod['loopbackPrefix'] = None
+        with self.assertRaises(ValueError) as ve:
+            pod = Pod('testPod', **pod)
+            pod.validateIPaddr()
+        error = ve.exception.message
+        self.assertEqual(2, error.count(','), 'Number of bad Ip address format field is not correct')
+
+    def testValidateEnum(self):
+        with self.assertRaises(ValueError) :
+            Pod.validateEnum('Pod.TopologyTypeEnum', 'abcd', Pod.TopologyTypeEnum)
+        with self.assertRaises(ValueError) :
+            Pod.validateEnum('Pod.TopologyTypeEnum', ['abcd'], Pod.TopologyTypeEnum)
+
     def testConstructorPass(self):
         pod = {}
         pod['spineCount'] = '3'

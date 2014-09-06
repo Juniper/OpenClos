@@ -20,7 +20,6 @@ logLevel :
 # "true" will enable logging all SQL statements to underlying DB
 debugSql : false
     
-    
 # Device family and port names
 # QFX5100-24Q ports could be [0-32] with two four-port expansion modules
 # unlike 48S or 96S for 24Q there is no specific uplink/downlink
@@ -38,7 +37,6 @@ deviceFamily :
         downlinkPorts : 'xe-0/0/[0-95]'
         ports :  
 
-
 # List of colors used in the DOT file to represent interconnects 
 DOT :
    colors :
@@ -51,3 +49,8 @@ DOT :
        - cadetblue
    ranksep : 5 equally
 
+# HttpServer for REST and ZTP.
+# If no IP address is provided, it would bind to 'localhost'        
+httpServer :
+    ipAddr : 
+    port : 8080

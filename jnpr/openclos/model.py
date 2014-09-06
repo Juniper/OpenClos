@@ -58,44 +58,19 @@ class Pod(ManagedElement, Base):
         self.id = str(uuid.uuid4())
         self.name = name
                    
-        error = ''
         self.spineCount = kwargs.get('spineCount')
-        if self.spineCount is None:
-            error += 'spineCount, '
         self.spineDeviceType = kwargs.get('spineDeviceType')
-        if self.spineDeviceType is None:
-            error += 'spineDeviceType, '
         self.leafCount = kwargs.get('leafCount')
-        if self.leafCount is None:
-            error += 'leafCount, '
         self.leafDeviceType = kwargs.get('spineDeviceType')
-        if self.leafDeviceType is None:
-            error += 'leafDeviceType, '
         self.interConnectPrefix = kwargs.get('interConnectPrefix')
-        if self.interConnectPrefix is None:
-            error += 'interConnectPrefix, '
         self.vlanPrefix = kwargs.get('vlanPrefix')
-        if self.vlanPrefix is None:
-            error += 'vlanPrefix, '
         self.loopbackPrefix = kwargs.get('loopbackPrefix')
-        if self.loopbackPrefix is None:
-            error += 'loopbackPrefix, '
         if kwargs.has_key('spineAS'):
             self.spineAS = int(kwargs.get('spineAS'))
-        else:
-            error += 'spineAS, '
         if kwargs.has_key('leafAS'):
             self.leafAS = int(kwargs.get('leafAS'))
-        else:
-            error += 'leafAS, '
         self.topologyType = kwargs.get('topologyType')
-        if self.topologyType is None:
-            error += 'topologyType, '
         self.topology = kwargs.get('topology')
-        
-        # TODO: removed validation for now, as validation is being re-factored
-        #if error != '':
-        #    raise ValueError('Missing required fields: ' + error[:-2])
         super(Pod, self).__init__(**kwargs)
 
     def update(self, **kwargs):
@@ -131,9 +106,9 @@ class Pod(ManagedElement, Base):
         if self.spineAS is None:
             error += 'spineAS,'
         if self.leafAS is None:
-            error += 'leafAS,'
+            error += 'leafAS, '
         if self.topologyType is None:
-            error += 'topologyType, '
+            error += 'topologyType'
         if error != '':
             raise ValueError('Missing required fields: ' + error)
         
@@ -151,7 +126,7 @@ class Pod(ManagedElement, Base):
         try:
             IPAddress(self.loopbackPrefix)  
         except AddrFormatError:
-                error += 'loopbackPrefix, '
+                error += 'loopbackPrefix'
         if error != '':
             raise ValueError('invalid IP format: ' + error)
         
