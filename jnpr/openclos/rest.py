@@ -16,16 +16,12 @@ from dao import Dao
 moduleName = 'rest'
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(moduleName)
-webServerRoot = os.path.join('out', 'junosTemplates')
+webServerRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
 
 class ResourceLink():
     def __init__(self, baseUrl, path):
         self.baseUrl = baseUrl
         self.path = path
-    def __str__(self):
-        return str("{'href': %s%s}" % (self.baseUrl, self.path))
-    def __repr__(self):
-        return self.__str__()
     def toDict(self):
         return {'href': self.baseUrl + self.path}
 
@@ -39,14 +35,24 @@ class RestServer():
             self.conf = conf
         self.dao = Dao(self.conf)
 
-        if (self.conf['httpServer']['ipAddr'] is None):
-            host = 'localhost'
-        port = self.conf['httpServer']['port']
-        self.baseUrl = 'http://%s:%d' % (host, port)
+        if 'httpServer' in self.conf and 'ipAddr' in self.conf['httpServer'] and self.conf['httpServer']['ipAddr'] is not None:
+            self.host = self.conf['httpServer']['ipAddr']
+        else:
+            self.host = 'localhost'
+
+        if 'httpServer' in self.conf and 'port' in self.conf['httpServer']:
+            self.port = self.conf['httpServer']['port']
+        else:
+            self.port = 8080
+        self.baseUrl = 'http://%s:%d' % (self.host, self.port)
         
+    def initRest(self):
         self.addRoutes(self.baseUrl)
-        app = bottle.app()
-        bottle.run(app, host=host, port=port)
+        self.app = bottle.app()
+
+    def start(self):
+        logger.info('REST server started at %s:%d' % (self.host, self.port))
+        bottle.run(self.app, host=self.host, port=self.port)
 
     def addRoutes(self, baseUrl):
         self.indexLinks = []
@@ -83,7 +89,9 @@ class RestServer():
             raise bottle.HTTPError(404, "No device found with pod name: '%s', device name: '%s'" % (podName, deviceName))
         
         fileName = os.path.join(podName, deviceName+'.conf')
-        config = bottle.static_file(fileName, root='out')
+        logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
+
+        config = bottle.static_file(fileName, root=webServerRoot)
         if isinstance(config, bottle.HTTPError):
             logger.debug("Device exists but no config found. Pod name: '%s', device name: '%s'" % (podName, deviceName))
             raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. Pod name: '%s', device name: '%s'" % (podName, deviceName))
@@ -98,4 +106,6 @@ class RestServer():
             return False
     
 if __name__ == '__main__':
-    RestServer()
+    restServer = RestServer()
+    restServer.initRest()
+    restServer.start()
