@@ -9,8 +9,9 @@ import shutil
 from webtest import TestApp, AppError
 
 from jnpr.openclos.rest import RestServer
-configLocation = os.path.join('..', '..', 'jnpr', 'openclos', 'out',)
-#configLocation = 'out'
+
+import jnpr.openclos.rest
+configLocation = os.path.join(os.path.dirname(jnpr.openclos.rest.__file__), 'out',)
 
 class TestRest(unittest.TestCase):
 
@@ -80,7 +81,6 @@ class TestRest(unittest.TestCase):
         self.assertTrue('404 Not Found' in e.exception.message)
         self.assertTrue('Device exists but no config found' in e.exception.message)
 
-    ''' TODO: need to fix it, some how not working....
     def testGetConfig(self):
         restServerTestApp = self.setupRestWithTwoDevices()
         podDir = os.path.join(configLocation, 'test1')
@@ -88,11 +88,8 @@ class TestRest(unittest.TestCase):
             os.makedirs(podDir)
 
         open(os.path.join(podDir, 'test1.conf'), "a") 
-
-        print ('file: %s, exists: %s' % ())
         response = restServerTestApp.get('/pods/test1/devices/test1/config')
         self.assertEqual(200, response.status_int)
-    '''
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
