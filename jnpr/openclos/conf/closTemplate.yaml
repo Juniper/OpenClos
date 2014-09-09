@@ -7,6 +7,7 @@ pods:
         leafCount : 6
         # possible options for leafDeviceType are QFX5100-96S, QFX5100-48S
         leafDeviceType : QFX5100-48S
+        hostOrVmCountPerLeaf : 254
         interConnectPrefix : 192.168.0.0
         vlanPrefix : 172.16.0.0
         loopbackPrefix : 10.0.0.0

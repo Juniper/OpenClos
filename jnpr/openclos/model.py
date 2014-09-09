@@ -37,6 +37,7 @@ class Pod(ManagedElement, Base):
     spineDeviceType = Column(String(100))
     leafCount = Column(Integer)
     leafDeviceType = Column(String(100))
+    hostOrVmCountPerLeaf = Column(Integer)
     interConnectPrefix = Column(String(32))
     vlanPrefix = Column(String(32))
     loopbackPrefix = Column(String(32))
@@ -47,6 +48,9 @@ class Pod(ManagedElement, Base):
     allocatedInterConnectBlock = Column(String(32))
     allocatedIrbBlock = Column(String(32))
     allocatedLoopbackBlock = Column(String(32))
+    allocatedSpineAS = Column(Integer)
+    allocatefLeafAS = Column(Integer)
+    
 
     TopologyTypeEnum = ['3Stage', '5Stage', 'Pod']
   
@@ -62,6 +66,7 @@ class Pod(ManagedElement, Base):
         self.spineDeviceType = kwargs.get('spineDeviceType')
         self.leafCount = kwargs.get('leafCount')
         self.leafDeviceType = kwargs.get('spineDeviceType')
+        self.hostOrVmCountPerLeaf = kwargs.get('hostOrVmCountPerLeaf')
         self.interConnectPrefix = kwargs.get('interConnectPrefix')
         self.vlanPrefix = kwargs.get('vlanPrefix')
         self.loopbackPrefix = kwargs.get('loopbackPrefix')
@@ -81,7 +86,12 @@ class Pod(ManagedElement, Base):
         self.spineCount = kwargs.get('spineCount')
         self.leafCount = kwargs.get('leafCount')
         
-        
+
+    '''
+    Additional validations - 
+    1. Spine ASN less then leaf ASN
+    2. Add range check
+    '''        
     def validate(self):
             self.validateRequiredFields()
             self.validateIPaddr()  
@@ -97,6 +107,8 @@ class Pod(ManagedElement, Base):
             error += 'leafCount, '
         if self.leafDeviceType is None:
             error += 'leafDeviceType, '
+        if self.hostOrVmCountPerLeaf is None:
+            error += 'hostOrVmCountPerLeaf, '
         if self.interConnectPrefix is None:
             error += 'interConnectPrefix, '
         if self.vlanPrefix is None:

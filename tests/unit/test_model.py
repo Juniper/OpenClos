@@ -75,9 +75,10 @@ class TestPod(TestOrm):
     def testPodValidateSuccess(self):
         pod = {}
         pod['spineCount'] = '3'
-        pod['spineDeviceType'] = 'esx-switch'
+        pod['spineDeviceType'] = 'QFX5100-24Q'
         pod['leafCount'] = '5'
-        pod['leafDeviceType'] = 'esx-switch'
+        pod['leafDeviceType'] = 'QFX5100-48S'
+        pod['hostOrVmCountPerLeaf'] = 100
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.3.0.0'
@@ -94,7 +95,7 @@ class TestPod(TestOrm):
             pod = Pod('testPod', **pod)
             pod.validateRequiredFields()
         error = ve.exception.message
-        self.assertEqual(9, error.count(','))
+        self.assertEqual(10, error.count(','))
 
     def testPodValidateMisingFewRequiredFields(self):
         pod = {}
@@ -104,7 +105,7 @@ class TestPod(TestOrm):
             pod = Pod('testPod', **pod)
             pod.validateRequiredFields()
         error = ve.exception.message
-        self.assertEqual(7, error.count(','), 'Number of missing field is not correct')
+        self.assertEqual(8, error.count(','), 'Number of missing field is not correct')
 
     def testPodValidateMisingBadIpAddress(self):
         pod = {}
@@ -150,7 +151,6 @@ class TestPod(TestOrm):
         pod['leafAS'] = '100'
         pod['topologyType'] = 'pod-dev-IF' 
         podOne = Pod('testPod', **pod)
-        podOne.validateRequiredFields()
         self.session.add(podOne)
         self.session.commit()
         

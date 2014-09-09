@@ -12,7 +12,7 @@ dbUrl : sqlite:///data/sqllite3.db
 # possible values: DEBUG, INFO, WARNING, ERROR, CRITICAL
 logLevel : 
     fabric : INFO
-    reporting : INFO
+    report : INFO
     ztp : INFO
     rest : INFO
 
