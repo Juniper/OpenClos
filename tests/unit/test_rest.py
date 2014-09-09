@@ -8,10 +8,10 @@ import os
 import shutil
 from webtest import TestApp, AppError
 
-from jnpr.openclos.rest import RestServer
+from jnpr.openclos.rest import RestServer, webServerRoot, junosImageRoot
 
-import jnpr.openclos.rest
-configLocation = os.path.join(os.path.dirname(jnpr.openclos.rest.__file__), 'out',)
+configLocation = webServerRoot
+imageLocation = junosImageRoot
 
 class TestRest(unittest.TestCase):
 
@@ -25,7 +25,7 @@ class TestRest(unittest.TestCase):
 
 
     def tearDown(self):
-        shutil.rmtree(configLocation, ignore_errors=True)
+        shutil.rmtree(os.path.join(configLocation, 'test1'), ignore_errors=True)
 
 
     def testInit(self):
@@ -91,6 +91,22 @@ class TestRest(unittest.TestCase):
         response = restServerTestApp.get('/pods/test1/devices/test1/config')
         self.assertEqual(200, response.status_int)
 
+    def testGetJunosImage404(self):
+        restServerTestApp = self.setupRestWithTwoDevices()
+
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.get('/abcd.tgz')
+        self.assertTrue('404 Not Found' in e.exception.message)
+
+    def testGetJunosImage(self):
+        restServerTestApp = self.setupRestWithTwoDevices()
+
+        open(os.path.join(imageLocation, 'efgh.tgz'), "a") 
+        
+        response = restServerTestApp.get('/efgh.tgz')
+        self.assertEqual(200, response.status_int)
+        os.remove(os.path.join(imageLocation, 'efgh.tgz'))
+        
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
