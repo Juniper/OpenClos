@@ -17,6 +17,7 @@ moduleName = 'rest'
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(moduleName)
 webServerRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
+junosImageRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf', 'junosImages')
 
 class ResourceLink():
     def __init__(self, baseUrl, path):
@@ -57,6 +58,7 @@ class RestServer():
     def addRoutes(self, baseUrl):
         self.indexLinks = []
         bottle.route('/', 'GET', self.getIndex)
+        bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/pods/<podName>/devices/<deviceName>/config', 'GET', self.getDeviceConfig)
         # TODO: the resource lookup should hierarchical
         # /pods/*
@@ -104,7 +106,18 @@ class RestServer():
         except (exc.NoResultFound):
             logger.debug("No device found with pod name: '%s', device name: '%s'" % (podName, deviceName))
             return False
-    
+
+    def getJunosImage(self, junosImageName):
+
+        fileName = os.path.join(junosImageRoot, junosImageName)
+        logger.debug('junosImageRoot: %s, image: %s, exists: %s' % (junosImageRoot, junosImageName, os.path.exists(fileName)))
+
+        config = bottle.static_file(junosImageName, root=junosImageRoot)
+        if isinstance(config, bottle.HTTPError):
+            logger.debug("Junos image file found. name: '%s'" % (junosImageName))
+            raise bottle.HTTPError(404, "Junos image file not found. name: '%s'" % (junosImageName))
+        return config
+        
 if __name__ == '__main__':
     restServer = RestServer()
     restServer.initRest()

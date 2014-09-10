@@ -7,14 +7,20 @@ pods:
         leafCount : 6
         # possible options for leafDeviceType are QFX5100-96S, QFX5100-48S
         leafDeviceType : QFX5100-48S
+        hostOrVmCountPerLeaf : 254
         interConnectPrefix : 192.168.0.0
         vlanPrefix : 172.16.0.0
         loopbackPrefix : 10.0.0.0
+        managementIpPrefix : 172.32.32.0
         spineAS : 100
         leafAS : 200
         # possible options for topologyType are 3Stage, 5StagePod, 5StagePerformance
         topologyType : 3Stage
         topology : topologyLabKurt.json
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/junosImages
+        # if not placed under this dir, the file would not be accessible from http server
+        # and ZTP process will be broken
+        junosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
     barclaysL3Clos: 
         spineCount : 4
         spineDeviceType : QFX5100

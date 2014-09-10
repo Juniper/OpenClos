@@ -235,7 +235,7 @@ class L3ClosMediation():
         self.dao.createObjects(interfaces)
 
     def allocateIrb(self, pod, irbPrefix, leafs):
-        numOfHostIpsPerSwitch = 254     #TODO: should come from property file
+        numOfHostIpsPerSwitch = pod.hostOrVmCountPerLeaf
         numOfSubnets = len(leafs)
         bitsPerSubnet = int(math.ceil(math.log(numOfHostIpsPerSwitch + 2, 2)))  # +2 for network and broadcast
         cidrForEachSubnet = 32 - bitsPerSubnet
@@ -270,6 +270,8 @@ class L3ClosMediation():
         interconnectSubnets = list(interconnectBlock.subnet(cidrForEachSubnet))
 
         interfaces = [] 
+        spines[0].pod.allocatedInterConnectBlock = str(interconnectBlock.cidr)
+
         for spine in spines:
             ifdsHasPeer = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == spine.id).filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name).all()
             for spineIfdHasPeer in ifdsHasPeer:
@@ -292,10 +294,14 @@ class L3ClosMediation():
             spine.asn = spineAsn
             spineAsn += 1
             devices.append(spine)
+        spines[0].pod.allocatedSpineAS = spineAsn - 1
+        
         for leaf in leafs:
             leaf.asn = leafAsn
             leafAsn += 1
             devices.append(leaf)
+        leafs[0].pod.allocatefLeafAS = leafAsn - 1
+
         self.dao.updateObjects(devices)
 
     def generateConfig(self, pod):
