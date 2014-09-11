@@ -17,7 +17,7 @@ moduleName = 'rest'
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(moduleName)
 webServerRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
-junosImageRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf', 'junosImages')
+junosImageRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf', 'ztp')
 
 class ResourceLink():
     def __init__(self, baseUrl, path):

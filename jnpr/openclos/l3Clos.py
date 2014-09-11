@@ -150,7 +150,7 @@ class L3ClosMediation():
         devices = []
         interfaces = []
         for spine in spines:
-            device = Device(spine['name'], pod.spineDeviceType, spine['user'], spine['password'], 'spine', spine['mgmt_ip'], pod)
+            device = Device(spine['name'], pod.spineDeviceType, spine['user'], spine['password'], 'spine', spine['mac_address'], spine['mgmt_ip'], pod)
             devices.append(device)
             
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
@@ -164,7 +164,7 @@ class L3ClosMediation():
         devices = []
         interfaces = []
         for leaf in leafs:
-            device = Device(leaf['name'], pod.leafDeviceType, leaf['user'], leaf['password'], 'leaf', leaf['mgmt_ip'], pod)
+            device = Device(leaf['name'], pod.leafDeviceType, leaf['user'], leaf['password'], 'leaf', leaf['mac_address'], leaf['mgmt_ip'], pod)
             devices.append(device)
 
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])

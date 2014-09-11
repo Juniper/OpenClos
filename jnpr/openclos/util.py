@@ -7,6 +7,7 @@ Created on Aug 21, 2014
 import re
 import os
 import yaml
+import platform
 
 #__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
@@ -30,6 +31,22 @@ def loadConfig(confFile = 'openclos.yaml'):
         pass
     return conf
 
+def loadClosDefinition(closDefination = os.path.join(configLocation, 'closTemplate.yaml')):
+    '''
+    Loads clos definition from yaml file
+    '''
+    try:
+        stream = open(closDefination, 'r')
+        yamlStream = yaml.load(stream)
+        
+        return yamlStream
+    except (OSError, IOError) as e:
+        print "File error:", e
+    except (yaml.scanner.ScannerError) as e:
+        print "YAML error:", e
+        stream.close()
+    finally:
+        pass
 
 def getPortNamesForDeviceFamily(deviceFamily, conf):
     '''
@@ -86,6 +103,9 @@ def expandPortName(portName):
         portNames.append(preRegx[:-1] + str(id) + postRegx[1:])
         
     return portNames
+
+def isPlatformUbuntu():
+    return 'ubuntu' in platform.platform().lower()
 
 def backupDatabase(conf):
     pass

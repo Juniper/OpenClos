@@ -45,12 +45,12 @@ class testGenerateDOTFile(TestOrm):
         
         testLinksInTopology = pydot.Dot(graph_type='graph')
         podOne = createPod('testpodOne', self.session)
-        deviceOne = Device('spine01',"", 'admin', 'admin',  'spine', "", podOne)
+        deviceOne = Device('spine01',"", 'admin', 'admin',  'spine', "",  "", podOne)
         deviceOne.id = 'spine01'
         IF1 = InterfaceDefinition('IF1', deviceOne, 'downlink')
         IF1.id = 'IF1'
         
-        deviceTwo = Device('leaf01',"", 'admin', 'admin',  'leaf', "", podOne)
+        deviceTwo = Device('leaf01',"", 'admin', 'admin',  'leaf', "", "", podOne)
         deviceTwo.id = 'leaf01'
         IF21 = InterfaceDefinition('IF1', deviceTwo, 'uplink')
         IF21.id = 'IF21'
@@ -73,14 +73,14 @@ class testGenerateDOTFile(TestOrm):
                 }
         podOne = createPod('testpodOne', self.session)
         self.session.add(podOne)
-        deviceOne = Device('spine01',"", 'admin', 'admin',  'spine', "", podOne)
+        deviceOne = Device('spine01',"", 'admin', 'admin',  'spine', "",  "", podOne)
         self.session.add(deviceOne)
         IF1 = InterfaceDefinition('IF1', deviceOne, 'downlink')
         self.session.add(IF1)
         IF2 = InterfaceDefinition('IF2', deviceOne, 'downlink')
         self.session.add(IF2)
         
-        deviceTwo = Device('leaf01',"", 'admin', 'admin',  'leaf', "", podOne)
+        deviceTwo = Device('leaf01',"", 'admin', 'admin',  'leaf', "", "", podOne)
         self.session.add(deviceTwo)
         IF21 = InterfaceDefinition('IF1', deviceTwo, 'uplink')
         self.session.add(IF21)
@@ -91,7 +91,7 @@ class testGenerateDOTFile(TestOrm):
         IF24 = InterfaceDefinition('IF3', deviceTwo, 'downlink')
         self.session.add(IF24)
         
-        deviceThree = Device('Access01', "",'admin', 'admin',  'leaf', "", podOne)
+        deviceThree = Device('Access01', "",'admin', 'admin',  'leaf', "", "", podOne)
         self.session.add(deviceThree)
         IF31 = InterfaceDefinition('IF1', deviceThree, 'uplink')
         self.session.add(IF31)

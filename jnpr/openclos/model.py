@@ -45,6 +45,7 @@ class Pod(ManagedElement, Base):
     leafAS = Column(Integer)
     topologyType = Column(String(100))
     topology = Column(String(100))
+    junosImage = Column(String(100))
     allocatedInterConnectBlock = Column(String(32))
     allocatedIrbBlock = Column(String(32))
     allocatedLoopbackBlock = Column(String(32))
@@ -76,6 +77,7 @@ class Pod(ManagedElement, Base):
             self.leafAS = int(kwargs.get('leafAS'))
         self.topologyType = kwargs.get('topologyType')
         self.topology = kwargs.get('topology')
+        self.junosImage = kwargs.get('junosImage')
         super(Pod, self).__init__(**kwargs)
 
     def update(self, **kwargs):
@@ -149,13 +151,14 @@ class Device(ManagedElement, Base):
     username = Column(String(100))
     pwd = Column(String(100))
     role = Column(String(32))
+    macAddress = Column(String(32))
     managementIp = Column(String(32))
     family = Column(String(100))
     asn = Column(Integer)
     pod_id = Column(Integer, ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
         
-    def __init__(self, name, family, username, pwd, role, mgmtIp, pod):
+    def __init__(self, name, family, username, pwd, role, mac, mgmtIp, pod):
         '''
         Creates Device object.
         '''
@@ -165,6 +168,7 @@ class Device(ManagedElement, Base):
         self.username = username
         self.pwd = pwd
         self.role = role
+        self.macAddress = mac
         self.managementIp = mgmtIp
         self.pod = pod
      
