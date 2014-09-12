@@ -53,7 +53,7 @@ class TestFileOutputHandler(unittest.TestCase):
         pod = self.createPod()
             
         out = FileOutputHandler({}, pod)
-        out.handle(pod, Device("TestDevice", "", "", "", "spine", "", pod), '')
+        out.handle(pod, Device("TestDevice", "", "", "", "spine", "", "", pod), '')
         self.assertTrue(os.path.exists(out.outputDir + '/TestDevice.conf'))            
 
 class TestL3Clos(unittest.TestCase):
@@ -352,7 +352,7 @@ class TestL3Clos(unittest.TestCase):
         
     def testCreatePolicyOptionSpine(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        device = Device("test", "QFX5100-24Q", "user", "pwd", "spine", "mgmtIp", self.createPod(l3ClosMediation))
+        device = Device("test", "QFX5100-24Q", "user", "pwd", "spine", "mac", "mgmtIp", self.createPod(l3ClosMediation))
         device.pod.allocatedIrbBlock = '10.0.0.0/28'
         device.pod.allocatedLoopbackBlock = '11.0.0.0/28'
         configlet = l3ClosMediation.createPolicyOption(device)
@@ -364,7 +364,7 @@ class TestL3Clos(unittest.TestCase):
 
     def testCreatePolicyOptionLeaf(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mgmtIp", self.createPod(l3ClosMediation))
+        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mac", "mgmtIp", self.createPod(l3ClosMediation))
         device.pod.allocatedIrbBlock = '10.0.0.0/28'
         device.pod.allocatedLoopbackBlock = '11.0.0.0/28'        
         flexmock(l3ClosMediation.dao.Session).should_receive('query.join.filter.filter.one').and_return(InterfaceLogical("test", device, '12.0.0.0/28'))
