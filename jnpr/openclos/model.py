@@ -44,7 +44,7 @@ class Pod(ManagedElement, Base):
     spineAS = Column(Integer)
     leafAS = Column(Integer)
     topologyType = Column(String(100))
-    topology = Column(String(100))
+    inventory = Column(String(100))
     junosImage = Column(String(100))
     allocatedInterConnectBlock = Column(String(32))
     allocatedIrbBlock = Column(String(32))
@@ -53,7 +53,7 @@ class Pod(ManagedElement, Base):
     allocatefLeafAS = Column(Integer)
     
 
-    TopologyTypeEnum = ['3Stage', '5Stage', 'Pod']
+    TopologyTypeEnum = ['threeStage', 'fiveStageRealEstate', 'fiveStagePerformance']
   
     def __init__(self, name, **kwargs):
         '''
@@ -76,7 +76,7 @@ class Pod(ManagedElement, Base):
         if kwargs.has_key('leafAS'):
             self.leafAS = int(kwargs.get('leafAS'))
         self.topologyType = kwargs.get('topologyType')
-        self.topology = kwargs.get('topology')
+        self.inventory = kwargs.get('inventory')
         self.junosImage = kwargs.get('junosImage')
         super(Pod, self).__init__(**kwargs)
 

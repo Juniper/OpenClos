@@ -8,6 +8,8 @@ import re
 import os
 import yaml
 import platform
+import sys
+from subprocess import Popen, PIPE
 
 #__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
@@ -108,4 +110,17 @@ def isPlatformUbuntu():
     return 'ubuntu' in platform.platform().lower()
 
 def backupDatabase(conf):
-    pass
+    # it is possible that we are not configured to backup
+    if 'dbUrl' in conf and 'script' in conf and 'database' in conf['script'] and 'backup' in conf['script']['database']:
+        # populate list of arguments
+        args = [conf['script']['database']['backup'], conf['dbUrl']]
+
+        # run script
+        p = Popen(args, stdout=PIPE)
+        # let user see output of the script
+        for line in iter(p.stdout.readline, ''):
+            print line
+            sys.stdout.flush()    
+        
+        p.stdout.close()
+        p.wait()
