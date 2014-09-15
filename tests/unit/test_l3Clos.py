@@ -53,7 +53,7 @@ class TestL3Clos(unittest.TestCase):
         l3ClosMediation = L3ClosMediation(self.conf)
 
         pods = l3ClosMediation.loadClosDefinition()
-        self.assertEqual(1, len(pods))
+        self.assertEqual(2, len(pods))
 
     def testLoadNonExistingClosDefinition(self):
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -303,5 +303,38 @@ class TestL3Clos(unittest.TestCase):
         self.assertEqual(100, session.query(Device).filter(Device.role == 'spine').all()[0].asn)
         self.assertEqual(201, session.query(Device).filter(Device.role == 'leaf').all()[1].asn)
         
+    def testCreatePolicyOptionSpine(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        device = Device("test", "QFX5100-24Q", "user", "pwd", "spine", "mac", "mgmtIp", self.createPod(l3ClosMediation))
+        device.pod.allocatedIrbBlock = '10.0.0.0/28'
+        device.pod.allocatedLoopbackBlock = '11.0.0.0/28'
+        configlet = l3ClosMediation.createPolicyOption(device)
+        
+        self.assertTrue('irb_in' not in configlet and '10.0.0.0/28' in configlet)
+        self.assertTrue('lo0_in' not in configlet and '11.0.0.0/28' in configlet)
+        self.assertTrue('lo0_out' not in configlet)
+        self.assertTrue('irb_out' not in configlet)
+
+    def testCreatePolicyOptionLeaf(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mac", "mgmtIp", self.createPod(l3ClosMediation))
+        device.pod.allocatedIrbBlock = '10.0.0.0/28'
+        device.pod.allocatedLoopbackBlock = '11.0.0.0/28'        
+        flexmock(l3ClosMediation.dao.Session).should_receive('query.join.filter.filter.one').and_return(InterfaceLogical("test", device, '12.0.0.0/28'))
+
+        configlet = l3ClosMediation.createPolicyOption(device)
+        self.assertTrue('irb_in' not in configlet and '10.0.0.0/28' in configlet)
+        self.assertTrue('lo0_in' not in configlet and '11.0.0.0/28' in configlet)
+        self.assertTrue('lo0_out' not in configlet and '12.0.0.0/28' in configlet)
+        self.assertTrue('irb_out' not in configlet)
+  
+    def testInitWithTemplate(self):
+        from jinja2 import TemplateNotFound
+        l3ClosMediation = L3ClosMediation(self.conf)
+        self.assertIsNotNone(l3ClosMediation.templateEnv.get_template('protocolBgpLldp.txt'))
+        with self.assertRaises(TemplateNotFound) as e:
+            l3ClosMediation.templateEnv.get_template('unknown-template')
+        self.assertTrue('unknown-template' in e.exception.message)
+  
 if __name__ == '__main__':
     unittest.main()

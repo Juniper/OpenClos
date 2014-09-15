@@ -17,6 +17,9 @@ from model import Pod, Device, InterfaceLogical, InterfaceDefinition
 from dao import Dao
 import util
 from writer import ConfigWriter, CablingPlanWriter
+from jinja2 import Environment, PackageLoader
+
+junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 
 moduleName = 'fabric'
 
@@ -33,6 +36,7 @@ class L3ClosMediation():
             self.conf = conf
 
         self.dao = Dao(self.conf)
+        self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
         
     def loadClosDefinition(self, closDefination = os.path.join(util.configLocation, 'closTemplate.yaml')):
         '''
@@ -119,8 +123,7 @@ class L3ClosMediation():
             # 3. create configuration files
             self.createLinkBetweenIFDs(pod, cablingPlanJSON['links'])
             self.allocateResource(pod)
-            configWriter = ConfigWriter(self.conf, pod, self.dao)
-            configWriter.write()
+            self.generateConfig(pod);
             
             # 4. create cabling plan in DOT format
             cablingPlanWriter.writeDOT()
@@ -286,6 +289,128 @@ class L3ClosMediation():
         leafs[0].pod.allocatefLeafAS = leafAsn - 1
 
         self.dao.updateObjects(devices)
+        
+    def generateConfig(self, pod):
+        configWriter = ConfigWriter(self.conf, pod, self.dao)
+        for device in pod.devices:
+            config = self.createBaseConfig(device)
+            config += self.createInterfaces(device)
+            config += self.createRoutingOption(device)
+            config += self.createProtocols(device)
+            config += self.createPolicyOption(device)
+            config += self.createVlan(device)
+            configWriter.write(device, config)
+            
+    def createBaseConfig(self, device):
+        with open(os.path.join(junosTemplateLocation, 'baseTemplate.txt'), 'r') as f:
+            baseTemplate = f.read()
+            f.close()
+            return baseTemplate
+
+    def createInterfaces(self, device): 
+        with open(os.path.join(junosTemplateLocation, 'interface_stanza.txt'), 'r') as f:
+            interfaceStanza = f.read()
+            f.close()
+        
+        with open(os.path.join(junosTemplateLocation, 'lo0_stanza.txt'), 'r') as f:
+            lo0Stanza = f.read()
+            f.close()
+            
+        with open(os.path.join(junosTemplateLocation, 'mgmt_interface.txt'), 'r') as f:
+            mgmtStanza = f.read()
+            f.close()
+
+        with open(os.path.join(junosTemplateLocation, 'rvi_stanza.txt'), 'r') as f:
+            rviStanza = f.read()
+            f.close()
+            
+        with open(os.path.join(junosTemplateLocation, 'server_interface_stanza.txt'), 'r') as f:
+            serverInterfaceStanza = f.read()
+            f.close()
+            
+        config = "interfaces {" + "\n" 
+        # management interface
+        candidate = mgmtStanza.replace("<<<mgmt_address>>>", device.managementIp)
+        config += candidate
+                
+        #loopback interface
+        loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
+        candidate = lo0Stanza.replace("<<<address>>>", loopbackIfl.ipaddress)
+        config += candidate
+
+        # For Leaf add IRB and server facing interfaces        
+        if device.role == 'leaf':
+            irbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.id == device.id).one()
+            candidate = rviStanza.replace("<<<address>>>", irbIfl.ipaddress)
+            config += candidate
+            config += serverInterfaceStanza
+
+        # Interconnect interfaces
+        deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name).all()
+        for interconnectIfd in deviceInterconnectIfds:
+            peerDevice = interconnectIfd.peer.device
+            interconnectIfl = interconnectIfd.layerAboves[0]
+            namePlusUnit = interconnectIfl.name.split('.')  # example et-0/0/0.0
+            candidate = interfaceStanza.replace("<<<ifd_name>>>", namePlusUnit[0])
+            candidate = candidate.replace("<<<unit>>>", namePlusUnit[1])
+            candidate = candidate.replace("<<<description>>>", "facing_" + peerDevice.name)
+            candidate = candidate.replace("<<<address>>>", interconnectIfl.ipaddress)
+            config += candidate
+                
+        config += "}\n"
+        return config
+
+    def createRoutingOption(self, device):
+        with open(os.path.join(junosTemplateLocation, 'routing_options_stanza.txt'), 'r') as f:
+            routingOptionStanza = f.read()
+
+        loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
+        loopbackIpWithNoCidr = loopbackIfl.ipaddress.split('/')[0]
+        
+        candidate = routingOptionStanza.replace("<<<routerId>>>", loopbackIpWithNoCidr)
+        candidate = candidate.replace("<<<asn>>>", str(device.asn))
+        
+        return candidate
+
+    def createProtocols(self, device):
+        template = self.templateEnv.get_template('protocolBgpLldp.txt')
+
+        neighborList = []
+        deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name).all()
+        for ifd in deviceInterconnectIfds:
+            peerIfd = ifd.peer
+            peerDevice = peerIfd.device
+            peerInterconnectIfl = peerIfd.layerAboves[0]
+            peerInterconnectIpNoCidr = peerInterconnectIfl.ipaddress.split('/')[0]
+            neighborList.append({'peer_ip': peerInterconnectIpNoCidr, 'peer_asn': peerDevice.asn})
+
+        return template.render(neighbors=neighborList)        
+         
+    def createPolicyOption(self, device):
+        pod = device.pod
+        
+        template = self.templateEnv.get_template('policyOptions.txt')
+        subnetDict = {}
+        subnetDict['lo0_in'] = pod.allocatedLoopbackBlock
+        subnetDict['irb_in'] = pod.allocatedIrbBlock
+        
+        if device.role == 'leaf':
+            deviceLoopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
+            deviceIrbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.id == device.id).one()
+            subnetDict['lo0_out'] = deviceLoopbackIfl.ipaddress
+            subnetDict['irb_out'] = deviceIrbIfl.ipaddress
+        else:
+            subnetDict['lo0_out'] = pod.allocatedLoopbackBlock
+            subnetDict['irb_out'] = pod.allocatedIrbBlock
+         
+        return template.render(subnet=subnetDict)
+        
+    def createVlan(self, device):
+        if device.role == 'leaf':
+            template = self.templateEnv.get_template('vlans.txt')
+            return template.render()
+        else:
+            return ''
         
 if __name__ == '__main__':
     l3ClosMediation = L3ClosMediation()

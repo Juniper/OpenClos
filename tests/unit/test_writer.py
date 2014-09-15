@@ -30,13 +30,6 @@ class TestWriterBase(unittest.TestCase):
         self.conf = {}
         self.conf['outputDir'] = 'out/'
         self.conf['dbUrl'] = 'sqlite:///'
-        self.conf['logLevel'] = { 
-                'fabric' : 'INFO',
-                'reporting' : 'INFO',
-                'ztp' : 'INFO',
-                'rest' : 'INFO',
-                'writer' : 'INFO'
-        }
         self.conf['DOT'] = {'ranksep' : '5 equally', 'colors': ['red', 'green', 'blue']}
         self.conf['deviceFamily'] = {
             "QFX5100-24Q": {
@@ -59,42 +52,13 @@ class TestWriterBase(unittest.TestCase):
         
 class TestConfigWriter(TestWriterBase):
 
-    def testInitWithTemplate(self):
-        from jinja2 import TemplateNotFound
+    def testWrite(self):
         pod = createPod('pod1', self.dao.Session())
+        device = Device('test_device', "",'admin', 'admin',  'spine', "", "", pod)
         configWriter = ConfigWriter(self.conf, pod, self.dao)
-        self.assertIsNotNone(configWriter.templateEnv.get_template('protocolBgpLldp.txt'))
-        with self.assertRaises(TemplateNotFound) as e:
-            configWriter.templateEnv.get_template('unknown-template')
-        self.assertTrue('unknown-template' in e.exception.message)
+        configWriter.write(device, "dummy config")
+        self.assertTrue(os.path.exists(configWriter.outputDir + '/test_device.conf'))
 
-    def testCreatePolicyOptionSpine(self):
-        pod = createPod('pod1', self.dao.Session())
-        configWriter = ConfigWriter(self.conf, pod, self.dao)
-        device = Device("test", "QFX5100-24Q", "user", "pwd", "spine", "mac", "mgmtIp", pod)
-        device.pod.allocatedIrbBlock = '10.0.0.0/28'
-        device.pod.allocatedLoopbackBlock = '11.0.0.0/28'
-        configlet = configWriter.createPolicyOption(device)
-        
-        self.assertTrue('irb_in' not in configlet and '10.0.0.0/28' in configlet)
-        self.assertTrue('lo0_in' not in configlet and '11.0.0.0/28' in configlet)
-        self.assertTrue('lo0_out' not in configlet)
-        self.assertTrue('irb_out' not in configlet)
-
-    def testCreatePolicyOptionLeaf(self):
-        pod = createPod('pod1', self.dao.Session())
-        configWriter = ConfigWriter(self.conf, pod, self.dao)
-        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
-        device.pod.allocatedIrbBlock = '10.0.0.0/28'
-        device.pod.allocatedLoopbackBlock = '11.0.0.0/28'        
-        flexmock(self.dao.Session).should_receive('query.join.filter.filter.one').and_return(InterfaceLogical("test", device, '12.0.0.0/28'))
-
-        configlet = configWriter.createPolicyOption(device)
-        self.assertTrue('irb_in' not in configlet and '10.0.0.0/28' in configlet)
-        self.assertTrue('lo0_in' not in configlet and '11.0.0.0/28' in configlet)
-        self.assertTrue('lo0_out' not in configlet and '12.0.0.0/28' in configlet)
-        self.assertTrue('irb_out' not in configlet)
-        
 class TestCablingPlanWriter(TestWriterBase):
     
     def testInitWithTemplate(self):
