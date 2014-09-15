@@ -17,15 +17,16 @@ from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, Interfac
 def createPod(name, session):  
     pod = {}
     pod['spineCount'] = '3'
-    pod['spineDeviceType'] = 'esx-switch'
+    pod['spineDeviceType'] = 'QFX5100-24Q'
     pod['leafCount'] = '5'
-    pod['leafDeviceType'] = 'esx-switch'
+    pod['leafDeviceType'] = 'QFX5100-48S'
     pod['interConnectPrefix'] = '1.2.0.0'
     pod['vlanPrefix'] = '1.3.0.0'
     pod['loopbackPrefix'] = '1.4.0.0'
     pod['spineAS'] = '100'
     pod['leafAS'] = '100'
-    pod['topologyType'] = 'pod-dev-IF'
+    pod['topologyType'] = 'threeStage'
+    pod['inventory'] = 'inventoryLabKurt.json'
     pod = Pod(name, **pod)
     session.add(pod)
     session.commit()
@@ -33,6 +34,12 @@ def createPod(name, session):
 
 def createDevice(session, name):
     device = Device(name, "", "", "", "spine", "", "", createPod(name, session))
+    session.add(device)
+    session.commit()
+    return device
+
+def createPodDevice(session, name, pod):
+    device = Device(name, "", "", "", "spine", "", "", pod)
     session.add(device)
     session.commit()
     return device
@@ -81,10 +88,11 @@ class TestPod(TestOrm):
         pod['hostOrVmCountPerLeaf'] = 100
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
-        pod['loopbackPrefix'] = '1.3.0.0'
+        pod['loopbackPrefix'] = '1.4.0.0'
         pod['spineAS'] = '100'
         pod['leafAS'] = '100'
-        pod['topologyType'] = 'pod-dev-IF'
+        pod['topologyType'] = 'threeStage'
+        pod['inventory'] = 'inventoryLabKurt.json'
         pod = Pod("test", **pod)
         
         pod.validate()
@@ -127,29 +135,31 @@ class TestPod(TestOrm):
     def testConstructorPass(self):
         pod = {}
         pod['spineCount'] = '3'
-        pod['spineDeviceType'] = 'esx-switch'
+        pod['spineDeviceType'] = 'QFX5100-24Q'
         pod['leafCount'] = '5'
-        pod['leafDeviceType'] = 'esx-switch'
+        pod['leafDeviceType'] = 'QFX5100-48S'
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
         pod['spineAS'] = '100'
         pod['leafAS'] = '100'
-        pod['topologyType'] = 'pod-dev-IF' 
+        pod['topologyType'] = 'threeStage'
+        pod['inventory'] = 'inventoryLabKurt.json'
         self.assertTrue(Pod('testPod', **pod) is not None)
 
     def testOrm(self):
         pod = {}
         pod['spineCount'] = '3'
-        pod['spineDeviceType'] = 'esx-switch'
+        pod['spineDeviceType'] = 'QFX5100-24Q'
         pod['leafCount'] = '5'
-        pod['leafDeviceType'] = 'esx-switch'
+        pod['leafDeviceType'] = 'QFX5100-48S'
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
         pod['spineAS'] = '100'
         pod['leafAS'] = '100'
-        pod['topologyType'] = 'pod-dev-IF' 
+        pod['topologyType'] = 'threeStage'
+        pod['inventory'] = 'inventoryLabKurt.json'
         podOne = Pod('testPod', **pod)
         self.session.add(podOne)
         self.session.commit()

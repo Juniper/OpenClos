@@ -15,6 +15,7 @@ logLevel :
     report : INFO
     ztp : INFO
     rest : INFO
+    writer : INFO
 
 # debug SQL and ORM
 # "true" will enable logging all SQL statements to underlying DB
@@ -56,3 +57,9 @@ DOT :
 httpServer :
     ipAddr : 
     port : 80
+
+# various scripts
+# Note for release 1.0, the backup database script is engine specific
+script : 
+    database: 
+        backup : script/backup_sqlite.sh
