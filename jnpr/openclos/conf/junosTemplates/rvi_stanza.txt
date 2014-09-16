@@ -5,7 +5,7 @@
             description LOCAL_SERVERS;
             family inet {
                 mtu 9000;
-                address <<<address>>>;
+                address {{address}};
             }
         }
     }

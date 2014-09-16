@@ -37,6 +37,7 @@ class L3ClosMediation():
 
         self.dao = Dao(self.conf)
         self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
+        self.templateEnv.keep_trailing_newline = True
         
     def loadClosDefinition(self, closDefination = os.path.join(util.configLocation, 'closTemplate.yaml')):
         '''
@@ -308,42 +309,25 @@ class L3ClosMediation():
             return baseTemplate
 
     def createInterfaces(self, device): 
-        with open(os.path.join(junosTemplateLocation, 'interface_stanza.txt'), 'r') as f:
-            interfaceStanza = f.read()
-            f.close()
-        
-        with open(os.path.join(junosTemplateLocation, 'lo0_stanza.txt'), 'r') as f:
-            lo0Stanza = f.read()
-            f.close()
-            
-        with open(os.path.join(junosTemplateLocation, 'mgmt_interface.txt'), 'r') as f:
-            mgmtStanza = f.read()
-            f.close()
-
-        with open(os.path.join(junosTemplateLocation, 'rvi_stanza.txt'), 'r') as f:
-            rviStanza = f.read()
-            f.close()
-            
-        with open(os.path.join(junosTemplateLocation, 'server_interface_stanza.txt'), 'r') as f:
-            serverInterfaceStanza = f.read()
-            f.close()
+        interfaceStanza = self.templateEnv.get_template('interface_stanza.txt')
+        lo0Stanza = self.templateEnv.get_template('lo0_stanza.txt')
+        mgmtStanza = self.templateEnv.get_template('mgmt_interface.txt')
+        rviStanza = self.templateEnv.get_template('rvi_stanza.txt')
+        serverInterfaceStanza = self.templateEnv.get_template('server_interface_stanza.txt')
             
         config = "interfaces {" + "\n" 
         # management interface
-        candidate = mgmtStanza.replace("<<<mgmt_address>>>", device.managementIp)
-        config += candidate
+        config += mgmtStanza.render(mgmt_address=device.managementIp)
                 
         #loopback interface
         loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
-        candidate = lo0Stanza.replace("<<<address>>>", loopbackIfl.ipaddress)
-        config += candidate
-
+        config += lo0Stanza.render(address=loopbackIfl.ipaddress)
+        
         # For Leaf add IRB and server facing interfaces        
         if device.role == 'leaf':
             irbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.id == device.id).one()
-            candidate = rviStanza.replace("<<<address>>>", irbIfl.ipaddress)
-            config += candidate
-            config += serverInterfaceStanza
+            config += rviStanza.render(address=irbIfl.ipaddress)
+            config += serverInterfaceStanza.render()
 
         # Interconnect interfaces
         deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name).all()
@@ -351,26 +335,21 @@ class L3ClosMediation():
             peerDevice = interconnectIfd.peer.device
             interconnectIfl = interconnectIfd.layerAboves[0]
             namePlusUnit = interconnectIfl.name.split('.')  # example et-0/0/0.0
-            candidate = interfaceStanza.replace("<<<ifd_name>>>", namePlusUnit[0])
-            candidate = candidate.replace("<<<unit>>>", namePlusUnit[1])
-            candidate = candidate.replace("<<<description>>>", "facing_" + peerDevice.name)
-            candidate = candidate.replace("<<<address>>>", interconnectIfl.ipaddress)
-            config += candidate
+            config += interfaceStanza.render(ifd_name=namePlusUnit[0],
+                                             unit=namePlusUnit[1],
+                                             description="facing_" + peerDevice.name,
+                                             address=interconnectIfl.ipaddress)
                 
         config += "}\n"
         return config
 
     def createRoutingOption(self, device):
-        with open(os.path.join(junosTemplateLocation, 'routing_options_stanza.txt'), 'r') as f:
-            routingOptionStanza = f.read()
+        routingOptionStanza = self.templateEnv.get_template('routing_options_stanza.txt')
 
         loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
         loopbackIpWithNoCidr = loopbackIfl.ipaddress.split('/')[0]
         
-        candidate = routingOptionStanza.replace("<<<routerId>>>", loopbackIpWithNoCidr)
-        candidate = candidate.replace("<<<asn>>>", str(device.asn))
-        
-        return candidate
+        return routingOptionStanza.render(routerId=loopbackIpWithNoCidr, asn=str(device.asn))
 
     def createProtocols(self, device):
         template = self.templateEnv.get_template('protocolBgpLldp.txt')
