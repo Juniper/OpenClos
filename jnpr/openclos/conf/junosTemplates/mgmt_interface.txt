@@ -2,7 +2,7 @@
     vme {
         unit 0 {
             family inet {
-                address <<<mgmt_address>>>;
+                address {{mgmt_address}};
             }
         }
     }
