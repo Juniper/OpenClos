@@ -109,9 +109,14 @@ def expandPortName(portName):
 def isPlatformUbuntu():
     return 'ubuntu' in platform.platform().lower()
 
+def isPlatformWindows():
+    return 'windows' in platform.platform().lower()
+
 def backupDatabase(conf):
     # it is possible that we are not configured to backup
-    if 'dbUrl' in conf and 'script' in conf and 'database' in conf['script'] and 'backup' in conf['script']['database']:
+    # specific for unix only
+    
+    if not isPlatformWindows() and 'dbUrl' in conf and 'script' in conf and 'database' in conf['script'] and 'backup' in conf['script']['database']:
         # populate list of arguments
         args = [conf['script']['database']['backup'], conf['dbUrl']]
 

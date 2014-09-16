@@ -1,7 +1,7 @@
 # Generated file/configuration location
 # default value 'out' relative to current dir 
 # can take absolute path as '/tmp/out/'
-outputDir : out/
+outputDir : out
 
 # Sqllite3 database URL
 # for relative file location ./data/sqllite3.db, url is sqlite:///data/sqllite3.db

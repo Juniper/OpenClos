@@ -22,16 +22,15 @@ from jinja2 import Environment, PackageLoader
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 
 moduleName = 'fabric'
-
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig()
 logger = logging.getLogger(moduleName)
+logger.setLevel(logging.DEBUG)
 
 class L3ClosMediation():
     def __init__(self, conf = {}):
         if any(conf) == False:
             self.conf = util.loadConfig()
-            logging.basicConfig(level=logging.getLevelName(self.conf['logLevel'][moduleName]))
-            logger = logging.getLogger(moduleName)
+            logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
         else:
             self.conf = conf
 
@@ -83,7 +82,7 @@ class L3ClosMediation():
         podInDb = Pod(podName, **pod)
         podInDb.validate()
         self.dao.createObjects([podInDb])
-        logger.debug("Created pod name: '%s'" % (podName))     
+        logger.info("Created pod name: '%s'" % (podName))     
         self.processTopology(podName, reCreateFabric)
 
         # backup current database
@@ -119,14 +118,13 @@ class L3ClosMediation():
             # 2. create cabling plan in JSON format
             cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
             cablingPlanJSON = cablingPlanWriter.writeJSON()
+            # 2. create cabling plan in DOT format
+            cablingPlanWriter.writeDOT()
             
             # 3. create configuration files
             self.createLinkBetweenIFDs(pod, cablingPlanJSON['links'])
             self.allocateResource(pod)
             self.generateConfig(pod);
-            
-            # 4. create cabling plan in DOT format
-            cablingPlanWriter.writeDOT()
             
             return True
         else:
@@ -136,7 +134,9 @@ class L3ClosMediation():
         devices = []
         interfaces = []
         for spine in spines:
-            device = Device(spine['name'], pod.spineDeviceType, spine['user'], spine['password'], 'spine', spine['mac_address'], spine['mgmt_ip'], pod)
+            user = spine.get('user')
+            password = spine.get('pass')
+            device = Device(spine['name'], pod.spineDeviceType, user, password, 'spine', spine['mac_address'], spine['mgmt_ip'], pod)
             devices.append(device)
             
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
@@ -150,7 +150,9 @@ class L3ClosMediation():
         devices = []
         interfaces = []
         for leaf in leafs:
-            device = Device(leaf['name'], pod.leafDeviceType, leaf['user'], leaf['password'], 'leaf', leaf['mac_address'], leaf['mgmt_ip'], pod)
+            user = leaf.get('user')
+            password = leaf.get('pass')
+            device = Device(leaf['name'], pod.leafDeviceType, user, password, 'leaf', leaf['mac_address'], leaf['mgmt_ip'], pod)
             devices.append(device)
 
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
@@ -416,4 +418,5 @@ if __name__ == '__main__':
     l3ClosMediation = L3ClosMediation()
     pods = l3ClosMediation.loadClosDefinition()
     l3ClosMediation.processFabric('labLeafSpine', pods['labLeafSpine'], reCreateFabric = True)
+    l3ClosMediation.processFabric('anotherPod', pods['anotherPod'], reCreateFabric = True)
 

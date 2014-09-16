@@ -4,30 +4,24 @@ Created on Aug 14, 2014
 @author: preethi
 '''
 import pydot
-import yaml
-import sys
 import os
 import json
 import logging
 from jinja2 import Environment, PackageLoader
-from model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition
-from dao import Dao
+from model import InterfaceDefinition
 import util
 
 cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
 
 moduleName = 'writer'
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig()
 logger = logging.getLogger(moduleName)
+logger.setLevel(logging.DEBUG)
 
 class WriterBase():
     def __init__(self, conf, pod, dao):
-        # get logger
         if 'logLevel' in conf:
-            logging.basicConfig(level=logging.getLevelName(conf['logLevel'][moduleName]))
-        else:
-            logging.basicConfig(level=logging.DEBUG)
-        logger = logging.getLogger(moduleName)
+            logger.setLevel(logging.getLevelName(conf['logLevel'][moduleName]))        
         
         # use dao to generate various output
         self.dao = dao
@@ -40,11 +34,9 @@ class WriterBase():
         # resolve output directory
         if 'outputDir' in conf:
             outputPath = conf['outputDir']
-            if (outputPath[-1] != '/'):
-                outputPath += '/'
-            self.outputDir = outputPath + pod.name
+            self.outputDir = os.path.join(outputPath, pod.name)
         else:
-            self.outputDir = 'out/' + pod.name
+            self.outputDir = os.path.join('out', pod.name)
         if not os.path.exists(self.outputDir):
             os.makedirs(self.outputDir)
 
@@ -54,9 +46,29 @@ class ConfigWriter(WriterBase):
         
     def write(self, device, config):
         logger.info('Writing config for device: %s' % (device.name))
-        with open(self.outputDir + "/" + device.name + '.conf', 'w') as f:
+        with open(os.path.join(self.outputDir, device.name + '.conf'), 'w') as f:
                 f.write(config)
-                
+
+class DhcpConfWriter(WriterBase):
+    def __init__(self, conf, pod, dao):
+        WriterBase.__init__(self, conf, pod, dao)
+
+    def write(self, dhcpConf):
+        if dhcpConf is not None:
+            logger.info('Writing dhcpd.conf for pod: %s' % (self.pod.name))
+            with open(os.path.join(self.outputDir, 'dhcpd.conf'), 'w') as f:
+                    f.write(dhcpConf)
+        else:
+            logger.error('No content, skipping writing dhcpd.conf for pod: %s' % (self.pod.name))
+
+    def writeSingle(self, dhcpConf):
+        if dhcpConf is not None:
+            logger.info('Writing single dhcpd.conf for all pods')
+            with open(os.path.join(self.outputDir, '..', 'dhcpd.conf'), 'w') as f:
+                    f.write(dhcpConf)
+        else:
+            logger.error('No content, skipping writing single dhcpd.conf for all pods')
+
 class CablingPlanWriter(WriterBase):
     def __init__(self, conf, pod, dao):
         WriterBase.__init__(self, conf, pod, dao)
@@ -100,7 +112,7 @@ class CablingPlanWriter(WriterBase):
                 leaves=deviceDict['leaves'], 
                 leafPorts=leafPortNames['uplinkPorts'])
 
-        path = self.outputDir + '/cablingPlan.json'
+        path = os.path.join(self.outputDir, 'cablingPlan.json')
         logger.info('Writing cabling plan: %s' % (path))
         with open(path, 'w') as f:
                 f.write(cablingPlanJSON)
@@ -140,7 +152,7 @@ class CablingPlanWriter(WriterBase):
                 self.createLinksInGraph(linkLabel, topology, colors[i])
                 i+=1
             
-        path = self.outputDir + '/cablingPlan.dot'
+        path = os.path.join(self.outputDir, 'cablingPlan.dot')
         logger.info('Writing cabling plan: %s' % (path))
         topology.write_raw(path)
 
