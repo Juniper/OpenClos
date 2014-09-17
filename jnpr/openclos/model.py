@@ -45,7 +45,8 @@ class Pod(ManagedElement, Base):
     leafAS = Column(Integer)
     topologyType = Column(String(100))
     inventory = Column(String(100))
-    junosImage = Column(String(100))
+    spineJunosImage = Column(String(126))
+    leafJunosImage = Column(String(126))
     allocatedInterConnectBlock = Column(String(32))
     allocatedIrbBlock = Column(String(32))
     allocatedLoopbackBlock = Column(String(32))
@@ -77,7 +78,8 @@ class Pod(ManagedElement, Base):
             self.leafAS = int(kwargs.get('leafAS'))
         self.topologyType = kwargs.get('topologyType')
         self.inventory = kwargs.get('inventory')
-        self.junosImage = kwargs.get('junosImage')
+        self.spineJunosImage = kwargs.get('spineJunosImage')
+        self.leafJunosImage = kwargs.get('leafJunosImage')
         super(Pod, self).__init__(**kwargs)
 
     def update(self, **kwargs):

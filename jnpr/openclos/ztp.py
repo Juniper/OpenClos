@@ -12,18 +12,22 @@ from netaddr import IPNetwork
 import util
 from model import Pod
 from dao import Dao
+from writer import DhcpConfWriter
 
 moduleName = 'ztp'
-ztpTemplateLocation = os.path.join('conf', 'ztp')
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig()
 logger = logging.getLogger(moduleName)
+logger.setLevel(logging.DEBUG)
+
+ztpTemplateLocation = os.path.join('conf', 'ztp')
+
 
 class ZtpServer():
     def __init__(self, conf = {}, templateEnv = None):
         if any(conf) == False:
             self.conf = util.loadConfig()
-            logging.basicConfig(level=logging.getLevelName(self.conf['logLevel'][moduleName]))
-            logger = logging.getLogger(moduleName)
+            logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
+
         else:
             self.conf = conf
         self.dao = Dao(self.conf)
@@ -34,23 +38,38 @@ class ZtpServer():
     
     def dcpServerReloadConfig(self):
         #TODO: sudo service isc-dhcp-server force-reload
+        # Not needed as of now
         pass
     
-    def createDhcpconfFile(self):
-        #TODO: reuse the FileOutputHandler
-        pass
-    
-                
-    def generateDhcpConf(self):
-        if util.isPlatformUbuntu():
-            dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
-            return dhcpTemplate.render(ztp = self.populateDhcpSettings())
+    def createSingleDhcpConfFile(self):
+        pods = self.dao.getAll(Pod)
 
-    def populateDhcpSettings(self):
-        ztp = self.populateDhcpGlobalSettings()
-        return self.populateDhcpDeviceSpecificSetting(ztp)
-                
-    def populateDhcpGlobalSettings(self, ztp = {}):
+        if len(pods) > 0:
+            confWriter = DhcpConfWriter(self.conf, pods[0], self.dao)
+            confWriter.writeSingle(self.generateSingleDhcpConf())
+
+    def generateSingleDhcpConf(self):
+        if util.isPlatformUbuntu():
+            ztp = self.populateDhcpGlobalSettings()
+            dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
+            return dhcpTemplate.render(ztp = self.populateDhcpDeviceSpecificSettingForAllPods(ztp))
+
+    def createPodSpecificDhcpConfFile(self, podName):
+        pod = self.dao.getUniqueObjectByName(Pod, podName)
+
+        confWriter = DhcpConfWriter(self.conf, pod, self.dao)
+        confWriter.write(self.generatePodSpecificDhcpConf(pod.name))
+
+    def generatePodSpecificDhcpConf(self, podName):
+        if util.isPlatformUbuntu():
+            ztp = self.populateDhcpGlobalSettings()
+            dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
+            conf = dhcpTemplate.render(ztp = self.populateDhcpDeviceSpecificSetting(podName, ztp))
+            logger.debug('dhcpd.conf\n%s' % (conf))
+            return conf
+        
+    def populateDhcpGlobalSettings(self):
+        ztp = {}
         ztpGlobalSettings = util.loadClosDefinition()['ztp']
         subnet = ztpGlobalSettings['dhcpSubnet']
         dhcpBlock = IPNetwork(subnet)
@@ -70,19 +89,35 @@ class ZtpServer():
 
         return ztp
     
-    def populateDhcpDeviceSpecificSetting(self, ztp = {}):
-        ztp['devices'] = []
-        
+    def populateDhcpDeviceSpecificSettingForAllPods(self, ztp = {}):
         pods = self.dao.getAll(Pod)
         for pod in pods:
-            for device in pod.devices:
-                ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
-                'configUrl': '/pods/' + pod.name + '/devices/' + device.name + '/config',
-                'imageUrl': pod.junosImage})
+            ztp = self.populateDhcpDeviceSpecificSetting(pod.name, ztp)
+        return ztp
+
+    def populateDhcpDeviceSpecificSetting(self, podName, ztp = {}):
+        
+        if ztp.get('devices') is None:
+            ztp['devices'] = []
+        
+        pod = self.dao.getUniqueObjectByName(Pod, podName)
+        for device in pod.devices:
+            if device.role == 'spine':
+                image = pod.spineJunosImage
+            elif device.role == 'leaf':
+                image = pod.leafJunosImage
+            else:
+                image = None
+                logger.error('Pod: %s, Device: %s with unknown role: %s' % (pod.name, device.name, device.role))
+                
+            ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
+            'configUrl': '/pods/' + pod.name + '/devices/' + device.name + '/config',
+            'imageUrl': image})
                 
         return ztp
 
 if __name__ == '__main__':
     ztpServer = ZtpServer()
-    dhcpConf = ztpServer.generateDhcpConf()
-    print dhcpConf
+    ztpServer.createPodSpecificDhcpConfFile('labLeafSpine')
+    ztpServer.createPodSpecificDhcpConfFile('anotherPod')
+    ztpServer.createSingleDhcpConfFile()

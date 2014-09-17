@@ -14,8 +14,10 @@ from model import Pod, Device
 from dao import Dao
 
 moduleName = 'rest'
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig()
 logger = logging.getLogger(moduleName)
+logger.setLevel(logging.DEBUG)
+
 webServerRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
 junosImageRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf', 'ztp')
 
@@ -30,8 +32,8 @@ class RestServer():
     def __init__(self, conf = {}):
         if any(conf) == False:
             self.conf = util.loadConfig()
-            logging.basicConfig(level=logging.getLevelName(self.conf['logLevel'][moduleName]))
-            logger = logging.getLogger(moduleName)
+            logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
+
         else:
             self.conf = conf
         self.dao = Dao(self.conf)

@@ -11,15 +11,16 @@ from dao import Dao
 from model import Pod
 
 moduleName = 'report'
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig()
 logger = logging.getLogger(moduleName)
+logger.setLevel(logging.DEBUG)
 
 class ResourceAllocationReport:
     def __init__(self, conf = {}):
         if any(conf) == False:
             self.conf = util.loadConfig()
-            logging.basicConfig(level=logging.getLevelName(self.conf['logLevel'][moduleName]))
-            logger = logging.getLogger(moduleName)
+            logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
+
         else:
             self.conf = conf
         self.dao = Dao(self.conf)
