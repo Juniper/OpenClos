@@ -190,7 +190,7 @@ class CablingPlanWriter(WriterBase):
         if label.endswith('|'):
             label = label[:-1]
             label += '}}'
-        
+        else:
             label = label[:-2]
             label += '}'
             

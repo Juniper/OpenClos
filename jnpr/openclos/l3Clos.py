@@ -119,11 +119,11 @@ class L3ClosMediation():
             # 2. create cabling plan in JSON format
             cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
             cablingPlanJSON = cablingPlanWriter.writeJSON()
-            # 2. create cabling plan in DOT format
+            self.createLinkBetweenIFDs(pod, cablingPlanJSON['links'])
+            # create cabling plan in DOT format
             cablingPlanWriter.writeDOT()
             
-            # 3. create configuration files
-            self.createLinkBetweenIFDs(pod, cablingPlanJSON['links'])
+            # 3. allocate resource and create configuration files
             self.allocateResource(pod)
             self.generateConfig(pod);
             
