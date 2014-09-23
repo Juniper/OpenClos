@@ -68,7 +68,25 @@ class TestZtp(unittest.TestCase):
         self.assertFalse('}}' in dhcpConf)
         self.assertEquals(5, dhcpConf.count('host-name')) # 1 global + 4 device
 
+    def testPopulateDhcpGlobalSettings(self):
+        from jnpr.openclos.l3Clos import util
+        globalZtpConf = {'ztp': {'dhcpSubnet': '10.20.30.0/25', 'dhcpOptionRoute': '10.20.30.254', 'dhcpOptionRangeStart': '10.20.30.15','dhcpOptionRangeEnd': '10.20.30.20'}}
+        flexmock(util, loadClosDefinition = globalZtpConf)
+        globalSetting = self.ztpServer.populateDhcpGlobalSettings()
+        
+        self.assertEquals('10.20.30.0', globalSetting['network'])
+        self.assertEquals('255.255.255.128', globalSetting['netmask'])
+        self.assertEquals('10.20.30.254', globalSetting['defaultRoute'])
+        self.assertEquals('10.20.30.15', globalSetting['rangeStart'])
+        self.assertEquals('10.20.30.20', globalSetting['rangeEnd'])
 
+        globalZtpConf = {'ztp': {'dhcpSubnet': '10.20.30.0/25'}}
+        flexmock(util, loadClosDefinition = globalZtpConf)
+        globalSetting = self.ztpServer.populateDhcpGlobalSettings()
+        
+        self.assertEquals('10.20.30.1', globalSetting['defaultRoute'])
+        self.assertEquals('10.20.30.2', globalSetting['rangeStart'])
+        self.assertEquals('10.20.30.126', globalSetting['rangeEnd'])
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

@@ -76,16 +76,22 @@ class ZtpServer():
         ipList = list(dhcpBlock.iter_hosts())
         ztp['network'] = str(dhcpBlock.network)
         ztp['netmask'] = str(dhcpBlock.netmask)
-        ztp['rangeStart'] = str(ipList[1])
-        ztp['rangeEnd'] = str(ipList[-1])
 
-        ztp['defaultRoute'] = ztpGlobalSettings['defaultRoute']
+        ztp['defaultRoute'] = ztpGlobalSettings.get('dhcpOptionRoute')
         if  ztp['defaultRoute'] is None or ztp['defaultRoute'] == '': 
             ztp['defaultRoute'] = str(ipList[0])
-        
+
+        ztp['rangeStart'] = ztpGlobalSettings.get('dhcpOptionRangeStart')
+        if  ztp['rangeStart'] is None or ztp['rangeStart'] == '': 
+            ztp['rangeStart'] = str(ipList[1])
+
+        ztp['rangeEnd'] = ztpGlobalSettings.get('dhcpOptionRangeEnd')
+        if  ztp['rangeEnd'] is None or ztp['rangeEnd'] == '': 
+            ztp['rangeEnd'] = str(ipList[-1])
+
         ztp['broadcast'] = str(dhcpBlock.broadcast)
         ztp['httpServerIp'] = self.conf['httpServer']['ipAddr']
-        ztp['imageUrl'] = '/' + ztpGlobalSettings['junosImage']
+        ztp['imageUrl'] = ztpGlobalSettings.get('junosImage')
 
         return ztp
     
@@ -111,7 +117,7 @@ class ZtpServer():
                 logger.error('Pod: %s, Device: %s with unknown role: %s' % (pod.name, device.name, device.role))
                 
             ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
-            'configUrl': '/pods/' + pod.name + '/devices/' + device.name + '/config',
+            'configUrl': 'pods/' + pod.name + '/devices/' + device.name + '/config',
             'imageUrl': image})
                 
         return ztp
