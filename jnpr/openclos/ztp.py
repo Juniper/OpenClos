@@ -48,13 +48,13 @@ class ZtpServer():
         if len(pods) > 0:
             confWriter = DhcpConfWriter(self.conf, pods[0], self.dao)
             confWriter.writeSingle(self.generateSingleDhcpConf())
+    '''
    
     def generateSingleDhcpConf(self):
         if util.isPlatformUbuntu():
             ztp = self.populateDhcpGlobalSettings()
             dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
             return dhcpTemplate.render(ztp = self.populateDhcpDeviceSpecificSettingForAllPods(ztp))
-    '''
 
     def createPodSpecificDhcpConfFile(self, podName):
         pod = self.dao.getUniqueObjectByName(Pod, podName)
