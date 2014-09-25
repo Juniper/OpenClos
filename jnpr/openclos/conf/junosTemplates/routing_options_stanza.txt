@@ -3,7 +3,7 @@ routing-options {
     {% if gateway %}
     static {
         {% for oobNetwork in oobNetworks %}
-        route {{oobNetwork}} next-hop {{gateway}}
+        route {{oobNetwork}} next-hop {{gateway}};
         {% endfor %}
     }
     {% endif %}        
