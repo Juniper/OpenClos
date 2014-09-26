@@ -145,6 +145,7 @@ class TestPod(TestOrm):
         pod['leafAS'] = '100'
         pod['topologyType'] = 'threeStage'
         pod['inventory'] = 'inventoryLabKurt.json'
+        pod['outOfBandAddressList'] = ['1.2.3.4', '5.6.7.8']
         self.assertTrue(Pod('testPod', **pod) is not None)
 
     def testOrm(self):
@@ -160,6 +161,7 @@ class TestPod(TestOrm):
         pod['leafAS'] = '100'
         pod['topologyType'] = 'threeStage'
         pod['inventory'] = 'inventoryLabKurt.json'
+        pod['outOfBandAddressList'] = ['1.2.3.4', '5.6.7.8']
         podOne = Pod('testPod', **pod)
         self.session.add(podOne)
         self.session.commit()

@@ -45,6 +45,7 @@ class Pod(ManagedElement, Base):
     leafAS = Column(Integer)
     topologyType = Column(String(100))
     inventory = Column(String(100))
+    outOfBandAddressList = Column(String(512))  # comma separated values 
     spineJunosImage = Column(String(126))
     leafJunosImage = Column(String(126))
     allocatedInterConnectBlock = Column(String(32))
@@ -78,6 +79,10 @@ class Pod(ManagedElement, Base):
             self.leafAS = int(kwargs.get('leafAS'))
         self.topologyType = kwargs.get('topologyType')
         self.inventory = kwargs.get('inventory')
+        addressList = kwargs.get('outOfBandAddressList')
+        if addressList is not None:
+            self.outOfBandAddressList = ','.join(addressList)
+            kwargs.pop('outOfBandAddressList')
         self.spineJunosImage = kwargs.get('spineJunosImage')
         self.leafJunosImage = kwargs.get('leafJunosImage')
         super(Pod, self).__init__(**kwargs)

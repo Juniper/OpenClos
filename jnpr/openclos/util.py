@@ -109,6 +109,9 @@ def expandPortName(portName):
 def isPlatformUbuntu():
     return 'ubuntu' in platform.platform().lower()
 
+def isPlatformCentos():
+    return 'centos' in platform.platform().lower()
+
 def isPlatformWindows():
     return 'windows' in platform.platform().lower()
 
