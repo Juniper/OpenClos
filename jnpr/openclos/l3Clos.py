@@ -351,7 +351,14 @@ class L3ClosMediation():
         loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
         loopbackIpWithNoCidr = loopbackIfl.ipaddress.split('/')[0]
         
-        return routingOptionStanza.render(routerId=loopbackIpWithNoCidr, asn=str(device.asn))
+        oobNetworks = device.pod.outOfBandAddressList
+        if oobNetworks is not None:
+            oobNetworkList = oobNetworks.split(',')
+        else:
+            oobNetworkList = []
+        gateway = util.loadClosDefinition()['ztp']['dhcpOptionRoute']
+        
+        return routingOptionStanza.render(routerId=loopbackIpWithNoCidr, asn=str(device.asn), oobNetworks=oobNetworkList, gateway=gateway)
 
     def createProtocols(self, device):
         template = self.templateEnv.get_template('protocolBgpLldp.txt')

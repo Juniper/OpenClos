@@ -41,13 +41,15 @@ class ZtpServer():
         # Not needed as of now
         pass
     
+    ''' TODO: for 2.0, Not needed as of now
     def createSingleDhcpConfFile(self):
         pods = self.dao.getAll(Pod)
 
         if len(pods) > 0:
             confWriter = DhcpConfWriter(self.conf, pods[0], self.dao)
             confWriter.writeSingle(self.generateSingleDhcpConf())
-
+    '''
+   
     def generateSingleDhcpConf(self):
         if util.isPlatformUbuntu():
             ztp = self.populateDhcpGlobalSettings()
@@ -61,13 +63,18 @@ class ZtpServer():
         confWriter.write(self.generatePodSpecificDhcpConf(pod.name))
 
     def generatePodSpecificDhcpConf(self, podName):
+        ztp = self.populateDhcpGlobalSettings()
         if util.isPlatformUbuntu():
-            ztp = self.populateDhcpGlobalSettings()
             dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
-            conf = dhcpTemplate.render(ztp = self.populateDhcpDeviceSpecificSetting(podName, ztp))
-            logger.debug('dhcpd.conf\n%s' % (conf))
-            return conf
-        
+            ztp = self.populateDhcpDeviceSpecificSetting(podName, ztp)
+        elif True or util.isPlatformCentos():
+            dhcpTemplate = self.templateEnv.get_template('dhcp.conf.centos')
+            ztp = self.populateDhcpDeviceSpecificSetting(podName, ztp)
+            
+        conf = dhcpTemplate.render(ztp = ztp)
+        logger.debug('dhcpd.conf\n%s' % (conf))
+        return conf
+
     def populateDhcpGlobalSettings(self):
         ztp = {}
         ztpGlobalSettings = util.loadClosDefinition()['ztp']
@@ -126,4 +133,4 @@ if __name__ == '__main__':
     ztpServer = ZtpServer()
     ztpServer.createPodSpecificDhcpConfFile('labLeafSpine')
     ztpServer.createPodSpecificDhcpConfFile('anotherPod')
-    ztpServer.createSingleDhcpConfFile()
+    #ztpServer.createSingleDhcpConfFile()
