@@ -27,15 +27,19 @@ class ResourceAllocationReport:
         
     def getPods(self):
         podObject = self.dao.getAll(Pod)
-        pods = {'id':[], 'name':[], 'spineDeviceType':[], 'spineCount':[],'leafDeviceType':[],'leafCount':[],'topologyType':[]}
+        pods = []
+        
         for i in range(len(podObject)):
-            pods['id'].append(podObject[i].id)
-            pods['name'].append(podObject[i].name)
-            pods['spineDeviceType'].append(podObject[i].spineDeviceType)
-            pods['spineCount'].append(podObject[i].spineCount)
-            pods['leafDeviceType'].append(podObject[i].leafDeviceType)
-            pods['leafCount'].append(podObject[i].leafCount)
-            pods['topologyType'].append(podObject[i].topologyType)  
+            pod = {}      
+            pod['id'] = podObject[i].id
+            pod['name'] = podObject[i].name
+            pod['spineDeviceType'] = podObject[i].spineDeviceType
+            pod['spineCount'] = podObject[i].spineCount
+            pod['leafDeviceType'] = podObject[i].leafDeviceType
+            pod['leafCount'] = podObject[i].leafCount
+            pod['topologyType'] = podObject[i].topologyType        
+            pods.append(pod)
+            
         return pods
     
     def getPod(self, podName):
