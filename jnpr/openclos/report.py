@@ -24,7 +24,24 @@ class ResourceAllocationReport:
         else:
             self.conf = conf
         self.dao = Dao(self.conf)
-
+        
+    def getPods(self):
+        podObject = self.dao.getAll(Pod)
+        pods = []
+        
+        for i in range(len(podObject)):
+            pod = {}      
+            pod['id'] = podObject[i].id
+            pod['name'] = podObject[i].name
+            pod['spineDeviceType'] = podObject[i].spineDeviceType
+            pod['spineCount'] = podObject[i].spineCount
+            pod['leafDeviceType'] = podObject[i].leafDeviceType
+            pod['leafCount'] = podObject[i].leafCount
+            pod['topologyType'] = podObject[i].topologyType        
+            pods.append(pod)
+            
+        return pods
+    
     def getPod(self, podName):
         try:
             return self.dao.getUniqueObjectByName(Pod, podName)
@@ -75,6 +92,7 @@ class ResourceAllocationReport:
 
 if __name__ == '__main__':
     report = ResourceAllocationReport()
+    print report.getPods();
     print report.getInterconnectAllocation('labLeafSpine')
     print report.getLoopbackAllocation('labLeafSpine')
     print report.getIrbAllocation('labLeafSpine')
