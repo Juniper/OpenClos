@@ -64,14 +64,16 @@ class ZtpServer():
 
     def generatePodSpecificDhcpConf(self, podName):
         ztp = self.populateDhcpGlobalSettings()
+        conf = None
         if util.isPlatformUbuntu():
             dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
             ztp = self.populateDhcpDeviceSpecificSetting(podName, ztp)
+            conf = dhcpTemplate.render(ztp = ztp)
         elif util.isPlatformCentos():
             dhcpTemplate = self.templateEnv.get_template('dhcp.conf.centos')
             ztp = self.populateDhcpDeviceSpecificSetting(podName, ztp)
+            conf = dhcpTemplate.render(ztp = ztp)
             
-        conf = dhcpTemplate.render(ztp = ztp)
         logger.debug('dhcpd.conf\n%s' % (conf))
         return conf
 
