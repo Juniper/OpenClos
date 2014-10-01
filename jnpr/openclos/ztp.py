@@ -67,7 +67,7 @@ class ZtpServer():
         if util.isPlatformUbuntu():
             dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
             ztp = self.populateDhcpDeviceSpecificSetting(podName, ztp)
-        elif True or util.isPlatformCentos():
+        elif util.isPlatformCentos():
             dhcpTemplate = self.templateEnv.get_template('dhcp.conf.centos')
             ztp = self.populateDhcpDeviceSpecificSetting(podName, ztp)
             
@@ -122,10 +122,11 @@ class ZtpServer():
             else:
                 image = None
                 logger.error('Pod: %s, Device: %s with unknown role: %s' % (pod.name, device.name, device.role))
-                
+            
+            deviceMgmtIp = str(IPNetwork(device.managementIp).ip)
             ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
             'configUrl': 'pods/' + pod.name + '/devices/' + device.name + '/config',
-            'imageUrl': image})
+            'imageUrl': image, 'mgmtIp': deviceMgmtIp})
                 
         return ztp
 
