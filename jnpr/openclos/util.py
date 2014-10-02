@@ -133,6 +133,7 @@ def isPlatformWindows():
 def backupDatabase(conf):
     if conf is not None and 'dbUrl' in conf:
         dbFileName = conf['dbUrl'][len('sqlite:///'):]
-        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        backupDbFileName = dbFileName + '.' + timestamp
-        shutil.copyfile(dbFileName, backupDbFileName)
+        if dbFileName != '':
+            timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+            backupDbFileName = dbFileName + '.' + timestamp
+            shutil.copyfile(dbFileName, backupDbFileName)
