@@ -33,7 +33,8 @@ class RestServer():
         if any(conf) == False:
             self.conf = util.loadConfig()
             logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
-
+            global webServerRoot
+            webServerRoot = self.conf['outputDir']
         else:
             self.conf = conf
         self.dao = Dao(self.conf)

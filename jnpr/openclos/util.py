@@ -23,6 +23,8 @@ def loadConfig(confFile = 'openclos.yaml'):
         conf = yaml.load(confStream)
         if conf is not None and 'dbUrl' in conf:
             conf['dbUrl'] = fixSqlliteDbUrlForRelativePath(conf['dbUrl'])
+        if conf is not None and 'outputDir' in conf:
+            conf['outputDir'] = fixOutputDirForRelativePath(conf['outputDir'])
         
     except (OSError, IOError) as e:
         print "File error:", e
@@ -34,6 +36,14 @@ def loadConfig(confFile = 'openclos.yaml'):
     finally:
         pass
     return conf
+
+def fixOutputDirForRelativePath(outputDir):
+    # /absolute-path/out
+    # relative-path/out
+    if (os.path.abspath(outputDir) != outputDir):
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), outputDir)
+    else:
+        return outputDir
 
 def fixSqlliteDbUrlForRelativePath(dbUrl):
     # sqlite:////absolute-path/sqllite3.db
