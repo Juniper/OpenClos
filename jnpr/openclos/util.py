@@ -8,8 +8,8 @@ import re
 import os
 import yaml
 import platform
-import sys
-from subprocess import Popen, PIPE
+import datetime
+import shutil
 
 #__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
@@ -21,6 +21,8 @@ def loadConfig(confFile = 'openclos.yaml'):
     try:
         confStream = open(os.path.join(configLocation, confFile), 'r')
         conf = yaml.load(confStream)
+        if conf is not None and 'dbUrl' in conf:
+            conf['dbUrl'] = fixSqlliteDbUrlForRelativePath(conf['dbUrl'])
         
     except (OSError, IOError) as e:
         print "File error:", e
@@ -32,6 +34,19 @@ def loadConfig(confFile = 'openclos.yaml'):
     finally:
         pass
     return conf
+
+def fixSqlliteDbUrlForRelativePath(dbUrl):
+    # sqlite:////absolute-path/sqllite3.db
+    # sqlite:///relative-path/sqllite3.db
+    match = re.match(r"sqlite:(\/+)(.*)\/(.*)", dbUrl)
+    if match is not None:
+        isRelative = (len(match.group(1)) == 3)
+        if isRelative:
+            relativeDir = match.group(2)
+            absoluteDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), relativeDir)
+            dbUrl = 'sqlite:///' + absoluteDir + os.path.sep + match.group(3)
+
+        return dbUrl
 
 def loadClosDefinition(closDefination = os.path.join(configLocation, 'closTemplate.yaml')):
     '''
@@ -116,19 +131,8 @@ def isPlatformWindows():
     return 'windows' in platform.platform().lower()
 
 def backupDatabase(conf):
-    # it is possible that we are not configured to backup
-    # specific for unix only
-    
-    if not isPlatformWindows() and 'dbUrl' in conf and 'script' in conf and 'database' in conf['script'] and 'backup' in conf['script']['database']:
-        # populate list of arguments
-        args = [conf['script']['database']['backup'], conf['dbUrl']]
-
-        # run script
-        p = Popen(args, stdout=PIPE)
-        # let user see output of the script
-        for line in iter(p.stdout.readline, ''):
-            print line
-            sys.stdout.flush()    
-        
-        p.stdout.close()
-        p.wait()
+    if conf is not None and 'dbUrl' in conf:
+        dbFileName = conf['dbUrl'][len('sqlite:///'):]
+        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        backupDbFileName = dbFileName + '.' + timestamp
+        shutil.copyfile(dbFileName, backupDbFileName)

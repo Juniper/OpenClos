@@ -10,9 +10,11 @@ dist
 
 # Database files
 *.db
+*.db.*-*
 
 # Generated output (config/report)
 jnpr/openclos/out/
+out
 
 # Eclipse files
 .project

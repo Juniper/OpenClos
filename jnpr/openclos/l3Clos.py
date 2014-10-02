@@ -305,7 +305,7 @@ class L3ClosMediation():
             configWriter.write(device, config)
             
     def createBaseConfig(self, device):
-        with open(os.path.join(junosTemplateLocation, 'baseTemplate.txt'), 'r') as f:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), junosTemplateLocation, 'baseTemplate.txt'), 'r') as f:
             baseTemplate = f.read()
             f.close()
             return baseTemplate

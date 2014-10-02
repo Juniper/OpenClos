@@ -72,6 +72,15 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual('xe-0/0/1', portNames[0])
         self.assertEqual('xe-0/0/10', portNames[9])        
 
+    def testFixSqlliteDbUrlForRelativePath(self):
+        dbUrl = fixSqlliteDbUrlForRelativePath('sqlite:////absolute-path/sqllite3.db')
+        self.assertEqual(5, dbUrl.count('/'))
+        dbUrl = fixSqlliteDbUrlForRelativePath('sqlite:///relative-path/sqllite3.db')
+        if isPlatformWindows():
+            self.assertTrue("C:\\" in dbUrl)
+        else:
+            self.assertTrue(dbUrl.count('/') > 4)
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
