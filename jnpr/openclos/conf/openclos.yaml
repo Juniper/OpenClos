@@ -51,9 +51,9 @@ DOT :
    ranksep : 5 equally
 
 # HttpServer for REST and ZTP.
-# If no IP address is provided, it would bind to 'localhost'
 # To make ZTP work the port has to be 80. IpAddr specified here
-# is used to populate dhcpd.conf fot ZTP.      
+# is used to populate dhcpd.conf fot ZTP. If no address is provided
+# REST will start at localhost, but ZTP process would not work
 httpServer :
     ipAddr : 
     port : 80
