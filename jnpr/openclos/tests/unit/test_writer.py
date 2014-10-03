@@ -22,13 +22,8 @@ from flexmock import flexmock
 class TestWriterBase(unittest.TestCase):
 
     def setUp(self):
-        ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree('./conf', ignore_errors=True)
-        ''' Copies 'conf' folder under test dir, to perform tests'''
-        shutil.copytree(configLocation, './conf')
-        
         self.conf = {}
-        self.conf['outputDir'] = 'out/'
+        self.conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
         self.conf['dbUrl'] = 'sqlite:///'
         self.conf['DOT'] = {'ranksep' : '5 equally', 'colors': ['red', 'green', 'blue']}
         self.conf['deviceFamily'] = {
@@ -45,8 +40,6 @@ class TestWriterBase(unittest.TestCase):
         shutil.rmtree(self.conf['outputDir'], ignore_errors=True)
 
     def tearDown(self):
-        ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree('./conf', ignore_errors=True)
         ''' Deletes 'out' folder under test dir'''
         shutil.rmtree(self.conf['outputDir'], ignore_errors=True)
         

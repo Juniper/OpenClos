@@ -17,13 +17,9 @@ from jnpr.openclos.util import configLocation
 
 class TestL3Clos(unittest.TestCase):
     def setUp(self):
-        ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree('./conf', ignore_errors=True)
-        ''' Copies 'conf' folder under test dir, to perform tests'''
-        shutil.copytree(configLocation, './conf')
-        
         '''Creates Dao with in-memory DB'''
         self.conf = {}
+        self.conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
         self.conf['dbUrl'] = 'sqlite:///'
         self.conf['logLevel'] = { 
                 'fabric' : 'INFO',
@@ -44,10 +40,8 @@ class TestL3Clos(unittest.TestCase):
         }
     
     def tearDown(self):
-        ''' Deletes 'conf' folder under test dir'''
-        shutil.rmtree('./conf', ignore_errors=True)
         ''' Deletes 'out' folder under test dir'''
-        shutil.rmtree('out', ignore_errors=True)
+        shutil.rmtree(self.conf['outputDir'], ignore_errors=True)
 
     def testLoadClosDefinition(self):
         l3ClosMediation = L3ClosMediation(self.conf)
