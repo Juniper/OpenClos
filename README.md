@@ -31,6 +31,7 @@ Install
 
 
 **Install in development mode**  
+
     curl -L -u '<username>:<password>' -o OpenClos.zip https://github.com/Juniper/OpenClos/archive/<branch or tag>.zip     
     unzip OpenClos.zip  
     cd OpenClos-xyz  
