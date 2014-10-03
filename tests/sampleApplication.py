@@ -11,18 +11,21 @@ import os
 
 installedDhcpConf = "/etc/dhcp/dhcpd.conf"
 
-# OpenClos generated dhcpd.conf file path. It is usally located at 
+# OpenClos generated dhcpd.conf file path. It is usually located at
 # <OpenClos install dir>/jnpr/openclos/out/<pod name>/dhcpd.conf
+# example for ubuntu - /usr/local/lib/python2.7/dist-packages/jnpr/openclos/out/<pod name>/dhcpd.conf
+# example for centos - /usr/lib/python2.6/site-packages/jnpr/openclos/out/<pod name>/dhcpd.conf
 generatedDhcpConf= "/home/regress/OpenClos-R1.0.dev1/jnpr/openclos/out/anotherPod/dhcpd.conf"
-
 
 class sampleApplication:
     '''
     Sample Application for creating Layer-3 IP Fabric
+    The script should be run with sudo privilege
+    It installs dhcp server and run http server on port 80.
     '''
     def createConfigFilesForDevices(self):
         '''
-         create configuration for each leaf and spine in IP Fabric
+         Create configuration for each leaf and spine in IP Fabric
         '''
         l3ClosMediation = L3ClosMediation()
         pods = l3ClosMediation.loadClosDefinition()
@@ -30,8 +33,9 @@ class sampleApplication:
 
     def setupZTP(self):
         '''
-        setup Zero Touch Provisioning
-        generate DHCP config file and restart DHCP server with new dhcp configuration
+        Setup Zero Touch Provisioning
+        Generate DHCP config file 
+        Install and restart DHCP server with new dhcp configuration
         '''
         ztpServer = ZtpServer()
         ztpServer.createPodSpecificDhcpConfFile('anotherPod')
@@ -48,7 +52,7 @@ class sampleApplication:
 
     def startHTTPserverForZTPFileTransferProtocol(self):
         '''
-        start HTTP server to serve as filetransfer mechanism for ZTP/DHCP process
+        start HTTP server to serve as file-transfer mechanism for ZTP/DHCP process
         '''
         restServer = RestServer()
         restServer.initRest()
