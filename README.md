@@ -31,10 +31,10 @@ Install
 
 
 **Install in development mode**  
-    curl -L -u '<username>:<password>' -o OpenClos.zip https://github.com/Juniper/OpenClos/archive/<branch or tag>.zip 
-    unzip OpenClos.zip
-    cd OpenClos-xyz
-    sudo python setup.py develop
+    curl -L -u '<username>:<password>' -o OpenClos.zip https://github.com/Juniper/OpenClos/archive/<branch or tag>.zip     
+    unzip OpenClos.zip  
+    cd OpenClos-xyz  
+    sudo python setup.py develop  
 
 
 Configuration
@@ -44,15 +44,15 @@ Copy desired junos image file to OpenClos-xyz/jnpr/openclos/conf/ztp/
 example - OpenClos-R1.0.dev1/jnpr/openclos/conf/ztp/jinstall-qfx-5-13.2X51-D20.2-domestic-signed.tgz
 
 **junos template**  
-Update management interface name in junosTemplates/mgmt_interface.txt
-The detault management interface name in template is 'vme'. Please change it to 'em0' if needed. 
+Update management interface name in junosTemplates/mgmt_interface.txt  
+The detault management interface name in template is 'vme'. Please change it to 'em0' if needed.   
 
-**Global configuration openclos.yaml** 
-If intend to perform ZTP process, please update REST ipaddress with the server's external ip address.
-example - ipAddr : 192.168.48.201
+**Global configuration openclos.yaml**   
+If intend to perform ZTP process, please update REST ipaddress with the server's external ip address.  
+example - ipAddr : 192.168.48.201  
 
-**Pod specific configuration closTemplate.yaml**  
-please make sure to update following settings as per the deployment environment
+**Pod specific configuration closTemplate.yaml**      
+please make sure to update following settings as per the deployment environment  
 
 * junosImage : jinstall-qfx-5-13.2X51-D20.2-domestic-signed.tgz
 * dhcpSubnet : 192.168.48.128/25
