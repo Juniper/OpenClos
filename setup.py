@@ -58,7 +58,7 @@ setup(
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=find_packages(exclude=['docs', '*.unit', '*.unit.*']),
+    packages=find_packages(),
 
     # List run-time dependencies here.  These will be installed by pip when your
     # project is installed. For an analysis of "install_requires" vs pip's
@@ -70,7 +70,7 @@ setup(
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     package_data={
-        'jnpr.openclos': ['conf/*.yaml', 'conf/*.json', 'conf/junosTemplates/*', 'conf/cablingPlanTemplates/*', 'conf/ztp/*', 'data/.dat', 'script/*'],
+        'jnpr.openclos': ['conf/*.yaml', 'conf/*.json', 'conf/junosTemplates/*', 'conf/cablingPlanTemplates/*', 'conf/ztp/*', 'data/.dat', 'script/*', 'tests/*.py', 'tests/unit/*.py'],
         '': ['./*.txt'],
     },
 

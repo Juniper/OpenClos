@@ -67,4 +67,10 @@ please make sure to update following settings as per the deployment environment
 
 Run
 ---
-Please refer to tests/sampleApplication.py
+Please refer to /path/to/OpenClos/jnpr/openclos/tests/sampleApplication.py
+
+Run tests
+---
+
+    cd /path/to/OpenClos/jnpr/openclos/tests
+    nosetests --exe --with-coverage --cover-package=jnpr.openclos --cover-erase
