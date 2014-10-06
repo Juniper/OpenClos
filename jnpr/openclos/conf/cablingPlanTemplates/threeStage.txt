@@ -1,0 +1,11 @@
+{
+    "links" : [
+        {% for spine in spines %} 
+            {% set spine_loop = loop %}
+            {% for leaf in leaves %}
+                { "s_name" : "{{ spine }}", "s_port" : "{{ spinePorts[loop.index0] }}", "l_name" : "{{ leaf }}", "l_port" : "{{ leafPorts[spine_loop.index0] }}" }
+                {% if not spine_loop.last or not loop.last %} , {% endif %}
+            {% endfor %} 
+        {% endfor %}
+    ]
+}

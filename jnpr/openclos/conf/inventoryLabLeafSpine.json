@@ -1,0 +1,15 @@
+{   "spines" : [
+       { "name" : "spine-01", "mac_address" : "aa:bb:cc:dd:ee:f1", "mgmt_ip" : "172.32.32.201/24" },
+       { "name" : "spine-02", "mac_address" : "aa:bb:cc:dd:ee:f2", "mgmt_ip" : "172.32.32.202/24" },
+       { "name" : "spine-03", "mac_address" : "aa:bb:cc:dd:ee:f3", "mgmt_ip" : "172.32.32.203/24" },
+       { "name" : "spine-04", "mac_address" : "aa:bb:cc:dd:ee:f4", "mgmt_ip" : "172.32.32.204/24" }
+    ],
+    "leafs" : [
+       { "name" : "leaf-01", "mac_address" : "aa:bb:cc:dd:ee:e1", "mgmt_ip" : "172.32.32.101/24" },
+       { "name" : "leaf-02", "mac_address" : "aa:bb:cc:dd:ee:e2", "mgmt_ip" : "172.32.32.102/24" },
+       { "name" : "leaf-03", "mac_address" : "aa:bb:cc:dd:ee:e3", "mgmt_ip" : "172.32.32.103/24" },
+       { "name" : "leaf-04", "mac_address" : "aa:bb:cc:dd:ee:e4", "mgmt_ip" : "172.32.32.104/24" },
+       { "name" : "leaf-05", "mac_address" : "aa:bb:cc:dd:ee:e5", "mgmt_ip" : "172.32.32.105/24" },
+       { "name" : "leaf-06", "mac_address" : "aa:bb:cc:dd:ee:e6", "mgmt_ip" : "172.32.32.106/24" }
+    ]
+}

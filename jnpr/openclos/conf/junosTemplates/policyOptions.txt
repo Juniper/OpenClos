@@ -1,0 +1,47 @@
+replace:
+policy-options {
+    policy-statement PFE-LB {
+        then {
+            load-balance per-packet;
+        }
+    }
+    policy-statement bgp-clos-in {
+        term loopbacks {
+            from {
+                route-filter {{subnet['lo0_in']}} orlonger;
+            }
+            then accept;
+        }
+        term server-L3-gw {
+            from {
+                route-filter {{subnet['irb_in']}} orlonger;
+            }
+            then accept;
+        }
+        term reject {
+            then reject;
+        }
+    }
+    policy-statement bgp-clos-out {
+        term loopback {
+            from {
+                protocol direct;
+                route-filter {{subnet['lo0_out']}} orlonger;
+            }
+            then {
+                next-hop self;
+                accept;
+            }
+        }
+        term server-L3-gw {
+            from {
+                protocol direct;
+                route-filter {{subnet['irb_out']}} orlonger;
+            }
+            then {
+                next-hop self;
+                accept;
+            }
+        }
+    }
+}
