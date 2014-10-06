@@ -10,6 +10,20 @@ dist
 
 # Database files
 *.db
+*.db.*-*
 
 # Generated output (config/report)
 jnpr/openclos/out/
+out
+
+# Eclipse files
+.project
+.pydevproject
+
+#test and coverage files
+.coverage
+coverage.xml
+nosetests.xml
+
+#DOT files
+*.dot

@@ -1,0 +1,65 @@
+ztp:
+    # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+    # if not placed under this dir, the file would not be accessible from http server
+    # and ZTP process will be broken, can be overridden at each pod for Spine/Leaf
+    junosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
+    dhcpSubnet : 10.0.2.0/24
+    # This is the Gateway address for any out-of-band network including 
+    # management network, this will get configured using static route
+    dhcpOptionRoute : 10.0.2.254
+    dhcpOptionRangeStart :
+    dhcpOptionRangeEnd :
+    
+pods:
+    # pod name or pod identifier
+    labLeafSpine:
+        spineCount : 4
+        # possible options for leafDeviceType are QFX5100-24Q
+        spineDeviceType : QFX5100-24Q
+        leafCount : 6
+        # possible options for leafDeviceType are QFX5100-96S, QFX5100-48S
+        leafDeviceType : QFX5100-48S
+        hostOrVmCountPerLeaf : 254
+        interConnectPrefix : 192.168.0.0
+        vlanPrefix : 172.16.0.0
+        loopbackPrefix : 10.10.0.0
+        spineAS : 100
+        leafAS : 200
+        # possible options for topologyType are threeStage, fiveStageRealEstate, fiveStagePerformance
+        topologyType : threeStage
+        inventory : inventoryLabLeafSpine.json
+        # List of out of band networks, example - management network
+        # outOfBandAddressList: 
+        #     - 1.2.3.4/32
+        #     - 1.2.3.9/32
+        
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+        # if not placed under this dir, the file would not be accessible from http server
+        # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
+        spineJunosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
+        leafJunosImage : jinstall-qfx-5-flex-13.2X51-D21.2-domestic-signed.tgz
+    anotherPod:
+        spineCount : 2
+        # possible options for leafDeviceType are QFX5100-24Q
+        spineDeviceType : QFX5100-24Q
+        leafCount : 4
+        # possible options for leafDeviceType are QFX5100-96S, QFX5100-48S
+        leafDeviceType : QFX5100-48S
+        hostOrVmCountPerLeaf : 254
+        interConnectPrefix : 192.169.0.0
+        vlanPrefix : 172.17.0.0
+        loopbackPrefix : 10.11.0.0
+        spineAS : 300
+        leafAS : 400
+        # possible options for topologyType are threeStage, fiveStageRealEstate, fiveStagePerformance
+        topologyType : threeStage
+        inventory : inventoryAnotherPod.json
+        # List of out of band networks, example - management network
+        outOfBandAddressList: 
+            - 10.94.185.18/32
+            - 10.94.185.19/32
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+        # if not placed under this dir, the file would not be accessible from http server
+        # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
+        spineJunosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
+        leafJunosImage : jinstall-qfx-5-flex-13.2X51-D21.2-domestic-signed.tgz

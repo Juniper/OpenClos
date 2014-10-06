@@ -1,0 +1,65 @@
+# Generated file/configuration location
+# default value 'out' relative to current dir 
+# can take absolute path as '/tmp/out/'
+outputDir : out
+
+# Sqllite3 database URL
+# for relative file location ./data/sqllite3.db, url is sqlite:///data/sqllite3.db
+# absolute file location /tmp/sqllite3.db, url is sqlite:////tmp/sqllite3.db
+dbUrl : sqlite:///data/sqllite3.db
+
+# Logging level
+# possible values: DEBUG, INFO, WARNING, ERROR, CRITICAL
+logLevel : 
+    fabric : INFO
+    report : INFO
+    ztp : INFO
+    rest : INFO
+    writer : INFO
+
+# debug SQL and ORM
+# "true" will enable logging all SQL statements to underlying DB
+debugSql : false
+    
+# Device family and port names
+# QFX5100-24Q ports could be [0-32] with two four-port expansion modules
+# unlike 48S or 96S for 24Q there is no specific uplink/downlink
+deviceFamily :
+    QFX5100-24Q :
+        uplinkPorts : 
+        downlinkPorts : 
+        ports : 'et-0/0/[0-23]' 
+    QFX5100-48S :
+        uplinkPorts : 'et-0/0/[48-53]' 
+        downlinkPorts : 'xe-0/0/[0-47]'
+        ports :  
+    QFX5100-96S :
+        uplinkPorts : 'et-0/0/[96-103]' 
+        downlinkPorts : 'xe-0/0/[0-95]'
+        ports :  
+
+# List of colors used in the DOT file to represent interconnects 
+DOT :
+   colors :
+       - blue
+       - green
+       - violet
+       - brown
+       - aquamarine
+       - pink
+       - cadetblue
+   ranksep : 5 equally
+
+# HttpServer for REST and ZTP.
+# To make ZTP work the port has to be 80. IpAddr specified here
+# is used to populate dhcpd.conf fot ZTP. If no address is provided
+# REST will start at localhost, but ZTP process would not work
+httpServer :
+    ipAddr : 
+    port : 80
+
+# various scripts
+# Note for release 1.0, the backup database script is engine specific
+script : 
+    database: 
+        backup : script/backup_sqlite.sh
