@@ -3,10 +3,21 @@
 # can take absolute path as '/tmp/out/'
 outputDir : out
 
-# Sqllite3 database URL
+# Database URL
+# Please NOTE dbUrl is used by sqlite only. For all other databases, please see
+# MySQL parameters below as an example.
+
+# sqlite parameters
 # for relative file location ./data/sqllite3.db, url is sqlite:///data/sqllite3.db
 # absolute file location /tmp/sqllite3.db, url is sqlite:////tmp/sqllite3.db
 dbUrl : sqlite:///data/sqllite3.db
+
+# MySQL  parameters
+#dbDialect : mysql
+#dbHost : localhost
+#dbUser : root
+#dbPassword : password
+#dbName : openclos
 
 # Logging level
 # possible values: DEBUG, INFO, WARNING, ERROR, CRITICAL
