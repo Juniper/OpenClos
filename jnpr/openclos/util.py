@@ -21,10 +21,16 @@ def loadConfig(confFile = 'openclos.yaml'):
     try:
         confStream = open(os.path.join(configLocation, confFile), 'r')
         conf = yaml.load(confStream)
-        if conf is not None and 'dbUrl' in conf:
-            conf['dbUrl'] = fixSqlliteDbUrlForRelativePath(conf['dbUrl'])
-        if conf is not None and 'outputDir' in conf:
-            conf['outputDir'] = fixOutputDirForRelativePath(conf['outputDir'])
+        if conf is not None:
+            if 'dbUrl' in conf:
+                if 'dbDialect' in conf:
+                    print "Warning: dbUrl and dbDialect both exist. dbDialect ignored"
+                # dbUrl is used by sqlite only
+                conf['dbUrl'] = fixSqlliteDbUrlForRelativePath(conf['dbUrl'])
+            elif 'dbDialect' in conf:
+                conf['dbUrl'] = conf['dbDialect'] + '://' + conf['dbUser'] + ':' + conf['dbPassword'] + '@' + conf['dbHost'] + '/' + conf['dbName'] 
+            if 'outputDir' in conf:
+                conf['outputDir'] = fixOutputDirForRelativePath(conf['outputDir'])
         
     except (OSError, IOError) as e:
         print "File error:", e
@@ -56,7 +62,7 @@ def fixSqlliteDbUrlForRelativePath(dbUrl):
             absoluteDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), relativeDir)
             dbUrl = 'sqlite:///' + absoluteDir + os.path.sep + match.group(3)
 
-        return dbUrl
+    return dbUrl
 
 def loadClosDefinition(closDefination = os.path.join(configLocation, 'closTemplate.yaml')):
     '''
@@ -142,8 +148,10 @@ def isPlatformWindows():
 
 def backupDatabase(conf):
     if conf is not None and 'dbUrl' in conf:
-        dbFileName = conf['dbUrl'][len('sqlite:///'):]
-        if dbFileName != '':
-            timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-            backupDbFileName = dbFileName + '.' + timestamp
-            shutil.copyfile(dbFileName, backupDbFileName)
+        match = re.match(r"sqlite:\/\/\/(.*)", conf['dbUrl'])
+        if match is not None:
+            dbFileName = match.group(1)
+            if dbFileName != '':
+                timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+                backupDbFileName = dbFileName + '.' + timestamp
+                shutil.copyfile(dbFileName, backupDbFileName)
