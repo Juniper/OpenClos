@@ -16,14 +16,17 @@ logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 
 class ResourceAllocationReport:
-    def __init__(self, conf = {}):
+    def __init__(self, conf = {}, dao = None):
         if any(conf) == False:
             self.conf = util.loadConfig()
             logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
 
         else:
             self.conf = conf
-        self.dao = Dao(self.conf)
+        if dao is None:
+            self.dao = Dao(self.conf)
+        else:
+            self.dao = dao
         
     def getPods(self):
         podObject = self.dao.getAll(Pod)

@@ -9,9 +9,13 @@ import logging
 import bottle
 from sqlalchemy.orm import exc
 
+import copy
+import json
 import util
 from model import Pod, Device
 from dao import Dao
+from bottle import request
+from report import ResourceAllocationReport
 
 moduleName = 'rest'
 logging.basicConfig()
@@ -60,7 +64,8 @@ class RestServer():
 
     def addRoutes(self, baseUrl):
         self.indexLinks = []
-        bottle.route('/', 'GET', self.getIndex)
+        bottle.route('/openclos', 'GET', self.getIndex)
+        bottle.route('/openclos/ip-fabrics', 'GET', self.getIPFabrics)
         bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/pods/<podName>/devices/<deviceName>/config', 'GET', self.getDeviceConfig)
         # TODO: the resource lookup should hierarchical
@@ -87,6 +92,32 @@ class RestServer():
              }
 
         return jsonBody
+    
+    def getReport(self):
+        report = ResourceAllocationReport(self.conf, self.dao)
+        return report
+    
+    def getIPFabrics(self):
+        url = request.url
+        #print strUri
+        ipFabrics = {}
+        listOfIpFbarics = []
+        ipFabrics['uri'] = url
+        report = self.getReport()
+        IpFbarics = report.getPods()
+        for i in range(len(IpFbarics)):
+            ipFabric = {}
+            ipFabric['uri'] = url +'/'+ IpFbarics[i]['id']
+            ipFabric['id'] = IpFbarics[i]['id']
+            ipFabric['name'] = IpFbarics[i]['name']
+            ipFabric['spineDeviceType'] = IpFbarics[i]['spineDeviceType']
+            ipFabric['spineCount'] = IpFbarics[i]['spineCount']
+            ipFabric['leafDeviceType'] = IpFbarics[i]['leafDeviceType']
+            ipFabric['leafCount'] = IpFbarics[i]['leafCount']
+            listOfIpFbarics.append(ipFabric)
+        ipFabrics['ipFabric'] =  listOfIpFbarics
+        ipFabrics['total'] = len(listOfIpFbarics)
+        return ipFabrics 
     
     def getDeviceConfig(self, podName, deviceName):
 

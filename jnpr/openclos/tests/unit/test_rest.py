@@ -43,10 +43,21 @@ class TestRest(unittest.TestCase):
         restServer.initRest()
         restServerTestApp = TestApp(restServer.app)
 
-        response = restServerTestApp.get('/')
+        response = restServerTestApp.get('/openclos')
         self.assertEqual(200, response.status_int)
         self.assertEqual('http://localhost:8080', response.json['href'])
         self.assertEqual(0, len(response.json['links']))
+        
+    def testGetIpFabricsNoPod(self):
+        restServer = RestServer(self.conf)
+        restServer.initRest()
+        restServerTestApp = TestApp(restServer.app)
+
+        response = restServerTestApp.get('/openclos/ip-fabrics')
+        self.assertEqual(200, response.status_int)
+        self.assertEqual(0, len(response.json['ipFabric']))
+        
+
 
     def setupRestWithTwoDevices(self):
         from test_model import createDevice
@@ -56,15 +67,23 @@ class TestRest(unittest.TestCase):
         device2 = createDevice(session, "test2")
         restServer.initRest()
         return TestApp(restServer.app)
+    
+    def testGetIpFabrics(self):
+        restServerTestApp = self.setupRestWithTwoDevices()
+                
+        response = restServerTestApp.get('/openclos/ip-fabrics')
+        self.assertEqual(200, response.status_int) 
+        self.assertEqual(2, len(response.json['ipFabric']))
         
     def testGetIndex(self):
         restServerTestApp = self.setupRestWithTwoDevices()
 
-        response = restServerTestApp.get('/')
+        response = restServerTestApp.get('/openclos')
         self.assertEqual(200, response.status_int)
         self.assertEqual('http://localhost:8080', response.json['href'])
         self.assertEqual(2, len(response.json['links']))
-
+        
+    
     def testGetConfigNoDevice(self):
         restServerTestApp = self.setupRestWithTwoDevices()
 
