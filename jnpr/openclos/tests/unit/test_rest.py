@@ -55,16 +55,16 @@ class TestRest(unittest.TestCase):
     
         response = restServerTestApp.get('/openclos/ip-fabrics')
         self.assertEqual(200, response.status_int)
-        self.assertEqual(0, len(response.json['ipFabric']))
+        self.assertEqual(0, len(response.json['ipFabrics']['ipFabric']))
     
     def testGetIpFabrics(self):
         restServerTestApp = self.setupRestWithTwoDevices()
                 
         response = restServerTestApp.get('/openclos/ip-fabrics')
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(2, len(response.json['ipFabric']))
-        self.assertEqual("http://localhost:80/openclos/ip-fabrics/"+self.device1.pod_id, response.json['ipFabric'][0]['uri'])
-        self.assertEqual("http://localhost:80/openclos/ip-fabrics/"+self.device2.pod_id, response.json['ipFabric'][1]['uri']) 
+        self.assertEqual(2, len(response.json['ipFabrics']['ipFabric']))
+        self.assertEqual("http://localhost:80/openclos/ip-fabrics/"+self.device1.pod_id, response.json['ipFabrics']['ipFabric'][0]['uri'])
+        self.assertEqual("http://localhost:80/openclos/ip-fabrics/"+self.device2.pod_id, response.json['ipFabrics']['ipFabric'][1]['uri']) 
 
     def setupRestWithTwoDevices(self):
         from test_model import createDevice
