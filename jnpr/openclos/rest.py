@@ -9,8 +9,6 @@ import logging
 import bottle
 from sqlalchemy.orm import exc
 
-import copy
-import json
 import util
 from model import Pod, Device
 from dao import Dao
@@ -65,9 +63,11 @@ class RestServer():
     def addRoutes(self, baseUrl):
         self.indexLinks = []
         bottle.route('/openclos', 'GET', self.getIndex)
-        bottle.route('/openclos/ip-fabrics', 'GET', self.getIPFabrics)
+        bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
         bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/pods/<podName>/devices/<deviceName>/config', 'GET', self.getDeviceConfig)
+        bottle.route('openclos/ip-fabrics/<ipFabricId>/cabling-plan','GET', self.getCablingPlan) 
+
         # TODO: the resource lookup should hierarchical
         # /pods/*
         # /pods/{podName}/devices/*
@@ -97,27 +97,35 @@ class RestServer():
         report = ResourceAllocationReport(self.conf, self.dao)
         return report
     
-    def getIPFabrics(self):
+    def getIpFabrics(self):
         url = request.url
-        #print strUri
         ipFabrics = {}
+        ipFabricsData = {}
         listOfIpFbarics = []
         ipFabrics['uri'] = url
         report = self.getReport()
-        IpFbarics = report.getPods()
-        for i in range(len(IpFbarics)):
+        IpFabrics = report.getPods()
+        logger.debug("count of ipFabrics: %d", len(IpFabrics))
+        if not IpFabrics :   
+            logger.debug("There are no ipFabrics in the system ")
+        
+        for i in range(len(IpFabrics)):
             ipFabric = {}
-            ipFabric['uri'] = url +'/'+ IpFbarics[i]['id']
-            ipFabric['id'] = IpFbarics[i]['id']
-            ipFabric['name'] = IpFbarics[i]['name']
-            ipFabric['spineDeviceType'] = IpFbarics[i]['spineDeviceType']
-            ipFabric['spineCount'] = IpFbarics[i]['spineCount']
-            ipFabric['leafDeviceType'] = IpFbarics[i]['leafDeviceType']
-            ipFabric['leafCount'] = IpFbarics[i]['leafCount']
+            ipFabric['uri'] = url +'/'+ IpFabrics[i]['id']
+            ipFabric['id'] = IpFabrics[i]['id']
+            ipFabric['name'] = IpFabrics[i]['name']
+            ipFabric['spineDeviceType'] = IpFabrics[i]['spineDeviceType']
+            ipFabric['spineCount'] = IpFabrics[i]['spineCount']
+            ipFabric['leafDeviceType'] = IpFabrics[i]['leafDeviceType']
+            ipFabric['leafCount'] = IpFabrics[i]['leafCount']
             listOfIpFbarics.append(ipFabric)
-        ipFabrics['ipFabric'] =  listOfIpFbarics
-        ipFabrics['total'] = len(listOfIpFbarics)
-        return ipFabrics 
+        ipFabricsData['ipFabric'] =  listOfIpFbarics
+        ipFabricsData['total'] = len(listOfIpFbarics)
+        ipFabrics['ipFabrics'] = ipFabricsData
+        return ipFabrics
+    
+    def getCablingPlan(self,ipFabricId):
+        print "test"
     
     def getDeviceConfig(self, podName, deviceName):
 
