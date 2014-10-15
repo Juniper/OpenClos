@@ -158,7 +158,7 @@ class RestServer():
                 fileName = os.path.join(ipFabricName, "cablingPlan.json")
                 logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
             else:
-                fileName = os.path.join(ipFabricName, 'CablingPlan.dot')
+                fileName = os.path.join(ipFabricName, 'cablingPlan.dot')
                 logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
             logger.debug('Cabling file name: %s' % (fileName))                
 
