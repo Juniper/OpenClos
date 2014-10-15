@@ -7,11 +7,14 @@ Created on Sep 2, 2014
 import os
 import logging
 import bottle
-from sqlalchemy.orm import exc
+from sqlalchemy.orm import exc, Session
+import json
 
 import util
 from model import Pod, Device
 from dao import Dao
+from bottle import request
+from report import ResourceAllocationReport
 
 moduleName = 'rest'
 logging.basicConfig()
@@ -60,9 +63,12 @@ class RestServer():
 
     def addRoutes(self, baseUrl):
         self.indexLinks = []
-        bottle.route('/', 'GET', self.getIndex)
+        bottle.route('/openclos', 'GET', self.getIndex)
+        bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
         bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/pods/<podName>/devices/<deviceName>/config', 'GET', self.getDeviceConfig)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
+
         # TODO: the resource lookup should hierarchical
         # /pods/*
         # /pods/{podName}/devices/*
@@ -87,6 +93,57 @@ class RestServer():
              }
 
         return jsonBody
+    
+    def getReport(self):
+        report = ResourceAllocationReport(self.conf, self.dao)
+        return report
+    
+    def getIpFabrics(self):
+        url = request.url
+        ipFabricsData = {}
+        listOfIpFbarics = []
+        report = self.getReport()
+        IpFabrics = report.getPods()
+        logger.debug("count of ipFabrics: %d", len(IpFabrics))
+        if not IpFabrics :   
+            logger.debug("There are no ipFabrics in the system ")
+        
+        for i in range(len(IpFabrics)):
+            ipFabric = {}
+            ipFabric['uri'] = url +'/'+ IpFabrics[i]['id']
+            ipFabric['id'] = IpFabrics[i]['id']
+            ipFabric['name'] = IpFabrics[i]['name']
+            ipFabric['spineDeviceType'] = IpFabrics[i]['spineDeviceType']
+            ipFabric['spineCount'] = IpFabrics[i]['spineCount']
+            ipFabric['leafDeviceType'] = IpFabrics[i]['leafDeviceType']
+            ipFabric['leafCount'] = IpFabrics[i]['leafCount']
+            listOfIpFbarics.append(ipFabric)
+        ipFabricsData['ipFabric'] =  listOfIpFbarics
+        ipFabricsData['total'] = len(listOfIpFbarics)
+        ipFabricsData['uri'] = url 
+        return {'ipFabrics' : ipFabricsData}
+    
+    def getIpFabric(self, ipFabricId):
+        tmp = bottle.request.url
+        report = ResourceAllocationReport(dao = self.dao)
+        ipFabric = report.getIpFabric(ipFabricId)
+        if ipFabric is not None:
+            devices = ipFabric.devices
+
+            session = Session.object_session(ipFabric)
+            session.expunge(ipFabric)
+            ipFabric.__dict__.pop('_sa_instance_state')
+            ipFabric.__dict__.pop('devices')
+            ipFabric.__dict__.pop('spineJunosImage')
+            ipFabric.__dict__.pop('leafJunosImage')
+            ipFabric.__dict__['devices'] = {'uri': bottle.request.url + '/devices', 'total':len(devices)}
+            ipFabric.__dict__['cablingPlan'] = {'uri': bottle.request.url + '/cabling-plan'}
+            logger.debug('getIpFabric: %s' % (ipFabricId))
+            #return json.dumps(ipFabric.__dict__)
+            return {'ipFabric': ipFabric.__dict__}
+        else:
+            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
     
     def getDeviceConfig(self, podName, deviceName):
 

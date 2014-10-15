@@ -55,6 +55,15 @@ class Dao:
         finally:
             #self.Session.remove()
             pass
+    
+    def getObjectById(self, objectType, id):
+        session = self.Session()
+        try:
+            return session.query(objectType).filter_by(id = id).one()
+        finally:
+            #self.Session.remove()
+            pass
+
 
     def getUniqueObjectByName(self, objectType, name):
         session = self.Session()

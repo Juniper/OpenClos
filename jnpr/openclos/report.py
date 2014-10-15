@@ -16,14 +16,17 @@ logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 
 class ResourceAllocationReport:
-    def __init__(self, conf = {}):
+    def __init__(self, conf = {}, dao = None):
         if any(conf) == False:
             self.conf = util.loadConfig()
             logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
 
         else:
             self.conf = conf
-        self.dao = Dao(self.conf)
+        if dao is None:
+            self.dao = Dao(self.conf)
+        else:
+            self.dao = dao
         
     def getPods(self):
         podObject = self.dao.getAll(Pod)
@@ -46,7 +49,13 @@ class ResourceAllocationReport:
         try:
             return self.dao.getUniqueObjectByName(Pod, podName)
         except (exc.NoResultFound) as e:
-            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message)) 
+            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message))
+            
+    def getIpFabric(self, ipFabricId):
+        try:
+            return self.dao.getObjectById(Pod, ipFabricId)
+        except (exc.NoResultFound) as e:
+            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s" % (ipFabricId, e.message)) 
             
     def getInterconnectAllocation(self, podName):
         pod = self.getPod(podName)
