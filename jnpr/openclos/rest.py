@@ -7,7 +7,8 @@ Created on Sep 2, 2014
 import os
 import logging
 import bottle
-from sqlalchemy.orm import exc
+from sqlalchemy.orm import exc, Session
+import json
 
 import util
 from model import Pod, Device
@@ -66,7 +67,9 @@ class RestServer():
         bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
         bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/pods/<podName>/devices/<deviceName>/config', 'GET', self.getDeviceConfig)
-        bottle.route('openclos/ip-fabrics/<ipFabricId>/cabling-plan','GET', self.getCablingPlan) 
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
+        bottle.route('openclos/ip-fabrics/<ipFabricId>/cabling-plan','GET', self.getCablingPlan)
+         
 
         # TODO: the resource lookup should hierarchical
         # /pods/*
@@ -99,10 +102,8 @@ class RestServer():
     
     def getIpFabrics(self):
         url = request.url
-        ipFabrics = {}
         ipFabricsData = {}
         listOfIpFbarics = []
-        ipFabrics['uri'] = url
         report = self.getReport()
         IpFabrics = report.getPods()
         logger.debug("count of ipFabrics: %d", len(IpFabrics))
@@ -121,11 +122,30 @@ class RestServer():
             listOfIpFbarics.append(ipFabric)
         ipFabricsData['ipFabric'] =  listOfIpFbarics
         ipFabricsData['total'] = len(listOfIpFbarics)
-        ipFabrics['ipFabrics'] = ipFabricsData
-        return ipFabrics
+        ipFabricsData['uri'] = url 
+        return {'ipFabrics' : ipFabricsData}
     
-    def getCablingPlan(self,ipFabricId):
-        print "test"
+    def getIpFabric(self, ipFabricId):
+        tmp = bottle.request.url
+        report = ResourceAllocationReport(dao = self.dao)
+        ipFabric = report.getIpFabric(ipFabricId)
+        if ipFabric is not None:
+            devices = ipFabric.devices
+
+            session = Session.object_session(ipFabric)
+            session.expunge(ipFabric)
+            ipFabric.__dict__.pop('_sa_instance_state')
+            ipFabric.__dict__.pop('devices')
+            ipFabric.__dict__.pop('spineJunosImage')
+            ipFabric.__dict__.pop('leafJunosImage')
+            ipFabric.__dict__['devices'] = {'uri': bottle.request.url + '/devices', 'total':len(devices)}
+            ipFabric.__dict__['cablingPlan'] = {'uri': bottle.request.url + '/cabling-plan'}
+            logger.debug('getIpFabric: %s' % (ipFabricId))
+            #return json.dumps(ipFabric.__dict__)
+            return {'ipFabric': ipFabric.__dict__}
+        else:
+            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
     
     def getDeviceConfig(self, podName, deviceName):
 

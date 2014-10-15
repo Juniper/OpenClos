@@ -49,7 +49,13 @@ class ResourceAllocationReport:
         try:
             return self.dao.getUniqueObjectByName(Pod, podName)
         except (exc.NoResultFound) as e:
-            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message)) 
+            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message))
+            
+    def getIpFabric(self, ipFabricId):
+        try:
+            return self.dao.getObjectById(Pod, ipFabricId)
+        except (exc.NoResultFound) as e:
+            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s" % (ipFabricId, e.message)) 
             
     def getInterconnectAllocation(self, podName):
         pod = self.getPod(podName)

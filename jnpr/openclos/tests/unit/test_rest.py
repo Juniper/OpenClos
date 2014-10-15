@@ -9,6 +9,8 @@ import shutil
 from webtest import TestApp, AppError
 
 from jnpr.openclos.rest import RestServer, webServerRoot, junosImageRoot
+from jnpr.openclos.model import Pod
+from jnpr.openclos.report import ResourceAllocationReport
 
 configLocation = webServerRoot
 imageLocation = junosImageRoot
@@ -63,8 +65,8 @@ class TestRest(unittest.TestCase):
         response = restServerTestApp.get('/openclos/ip-fabrics')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(2, len(response.json['ipFabrics']['ipFabric']))
-        self.assertEqual("http://localhost:80/openclos/ip-fabrics/"+self.device1.pod_id, response.json['ipFabrics']['ipFabric'][0]['uri'])
-        self.assertEqual("http://localhost:80/openclos/ip-fabrics/"+self.device2.pod_id, response.json['ipFabrics']['ipFabric'][1]['uri']) 
+        self.assertTrue("/openclos/ip-fabrics/"+self.device1.pod_id in response.json['ipFabrics']['ipFabric'][0]['uri'])
+        self.assertTrue("/openclos/ip-fabrics/"+self.device2.pod_id in response.json['ipFabrics']['ipFabric'][1]['uri']) 
 
     def setupRestWithTwoDevices(self):
         from test_model import createDevice
@@ -125,6 +127,32 @@ class TestRest(unittest.TestCase):
         response = restServerTestApp.get('/efgh.tgz')
         self.assertEqual(200, response.status_int)
         os.remove(os.path.join(imageLocation, 'efgh.tgz'))
+        
+    def testGetgetIpFabric(self):
+        from test_model import createPod
+        restServer = RestServer(self.conf)
+        session = restServer.dao.Session()
+        ipFabric1 = createPod("test1", session)
+        ipFabric2 = createPod("test2", session)
+        restServer.initRest()
+        restServerTestApp = TestApp(restServer.app)
+
+        response = restServerTestApp.get('/openclos/ip-fabrics/' + ipFabric1.id)
+        self.assertEqual(200, response.status_int)
+        self.assertEqual(ipFabric1.name, response.json['ipFabric']['name'])
+        self.assertEqual(ipFabric1.leafDeviceType, response.json['ipFabric']['leafDeviceType'])
+        self.assertTrue('/openclos/ip-fabrics/' + ipFabric1.id + '/cabling-plan' in response.json['ipFabric']['cablingPlan']['uri'])
+        self.assertTrue('/openclos/ip-fabrics/' + ipFabric1.id + '/devices' in response.json['ipFabric']['devices']['uri'])
+
+    def testGetgetNonExistingIpFabric(self):
+        restServer = RestServer(self.conf)
+        restServer.initRest()
+        restServerTestApp = TestApp(restServer.app)
+
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.get('/openclos/ip-fabrics/' + 'nonExisting')
+        self.assertTrue('404 Not Found' in e.exception.message)
+
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
