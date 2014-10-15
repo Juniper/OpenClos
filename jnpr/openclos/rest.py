@@ -68,8 +68,6 @@ class RestServer():
         bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/pods/<podName>/devices/<deviceName>/config', 'GET', self.getDeviceConfig)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
-        bottle.route('openclos/ip-fabrics/<ipFabricId>/cabling-plan','GET', self.getCablingPlan)
-         
 
         # TODO: the resource lookup should hierarchical
         # /pods/*
