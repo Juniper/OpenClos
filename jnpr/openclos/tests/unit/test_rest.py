@@ -76,6 +76,15 @@ class TestRest(unittest.TestCase):
         self.device2 = createDevice(session, "test2")
         restServer.initRest()
         return TestApp(restServer.app)
+    
+    def setupRestWithTwoPods(self):
+        from test_model import createPod
+        restServer = RestServer(self.conf)
+        session = restServer.dao.Session()
+        self.ipFabric1 = createPod("test1", session)
+        self.ipFabric2 = createPod("test2", session)
+        restServer.initRest()
+        return TestApp(restServer.app)
            
     def testGetIndex(self):
         restServerTestApp = self.setupRestWithTwoDevices()
@@ -129,20 +138,14 @@ class TestRest(unittest.TestCase):
         os.remove(os.path.join(imageLocation, 'efgh.tgz'))
         
     def testGetgetIpFabric(self):
-        from test_model import createPod
-        restServer = RestServer(self.conf)
-        session = restServer.dao.Session()
-        ipFabric1 = createPod("test1", session)
-        ipFabric2 = createPod("test2", session)
-        restServer.initRest()
-        restServerTestApp = TestApp(restServer.app)
+        restServerTestApp = self.setupRestWithTwoPods()
 
-        response = restServerTestApp.get('/openclos/ip-fabrics/' + ipFabric1.id)
+        response = restServerTestApp.get('/openclos/ip-fabrics/' + self.ipFabric1.id)
         self.assertEqual(200, response.status_int)
-        self.assertEqual(ipFabric1.name, response.json['ipFabric']['name'])
-        self.assertEqual(ipFabric1.leafDeviceType, response.json['ipFabric']['leafDeviceType'])
-        self.assertTrue('/openclos/ip-fabrics/' + ipFabric1.id + '/cabling-plan' in response.json['ipFabric']['cablingPlan']['uri'])
-        self.assertTrue('/openclos/ip-fabrics/' + ipFabric1.id + '/devices' in response.json['ipFabric']['devices']['uri'])
+        self.assertEqual(self.ipFabric1.name, response.json['ipFabric']['name'])
+        self.assertEqual(self.ipFabric1.leafDeviceType, response.json['ipFabric']['leafDeviceType'])
+        self.assertTrue('/openclos/ip-fabrics/' + self.ipFabric1.id + '/cabling-plan' in response.json['ipFabric']['cablingPlan']['uri'])
+        self.assertTrue('/openclos/ip-fabrics/' + self.ipFabric1.id + '/devices' in response.json['ipFabric']['devices']['uri'])
 
     def testGetgetNonExistingIpFabric(self):
         restServer = RestServer(self.conf)
@@ -152,6 +155,13 @@ class TestRest(unittest.TestCase):
         with self.assertRaises(AppError) as e:
             restServerTestApp.get('/openclos/ip-fabrics/' + 'nonExisting')
         self.assertTrue('404 Not Found' in e.exception.message)
+        
+    def testGetNonExistingCablingPlan(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.get('/openclos/ip-fabrics/'+self.ipFabric1.id+'/cabling-plan',{'Accept':'application/json'})
+        self.assertTrue('404 Not Found' in e.exception.message)
+        
 
         
 if __name__ == "__main__":

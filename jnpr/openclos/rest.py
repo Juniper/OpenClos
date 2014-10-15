@@ -68,6 +68,7 @@ class RestServer():
         bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/pods/<podName>/devices/<deviceName>/config', 'GET', self.getDeviceConfig)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
 
         # TODO: the resource lookup should hierarchical
         # /pods/*
@@ -145,6 +146,31 @@ class RestServer():
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
     
+    def getCablingPlan(self, ipFabricId):
+        report = self.getReport()
+        ipFabric = report.getIpFabric(ipFabricId)
+        logger.debug('Fabric name: %s' % (ipFabric.name))
+        header =  request.get_header('Accept')
+        logger.debug('Accept header: %s' % (header))
+        if ipFabric is not None:
+            ipFabricName = ipFabric.name
+            if header == 'application/json':
+                fileName = os.path.join(ipFabricName, "cablingPlan.json")
+                logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
+            else:
+                fileName = os.path.join(ipFabricName, 'CablingPlan.dot')
+                logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
+            logger.debug('Cabling file name: %s' % (fileName))                
+
+            cablingPlan = bottle.static_file(fileName, root=webServerRoot)
+            if isinstance(cablingPlan, bottle.HTTPError):
+                logger.debug("Pod exists but no CablingPlan found. Pod name: '%s" % (ipFabricName))
+                raise bottle.HTTPError(404, "Pod exists but no CablingPlan found. Pod name: '%s " % (ipFabricName))
+            return cablingPlan
+        else:
+            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+        
     def getDeviceConfig(self, podName, deviceName):
 
         if not self.isDeviceExists(podName, deviceName):
