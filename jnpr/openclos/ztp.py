@@ -127,7 +127,7 @@ class ZtpServer():
             
             deviceMgmtIp = str(IPNetwork(device.managementIp).ip)
             ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
-            'configUrl': 'pods/' + pod.name + '/devices/' + device.name + '/config',
+            'configUrl': '/openclos/ip-fabrics/' + pod.id + '/devices/' + device.id + '/config',
             'imageUrl': image, 'mgmtIp': deviceMgmtIp})
                 
         return ztp
