@@ -69,6 +69,7 @@ class RestServer():
         bottle.route('/pods/<podName>/devices/<deviceName>/config', 'GET', self.getDeviceConfig)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices', 'GET', self.getDevices)
 
         # TODO: the resource lookup should hierarchical
         # /pods/*
@@ -126,11 +127,12 @@ class RestServer():
     
     def getIpFabric(self, ipFabricId):
         tmp = bottle.request.url
-        report = ResourceAllocationReport(dao = self.dao)
+        report = self.getReport()
         ipFabric = report.getIpFabric(ipFabricId)
         if ipFabric is not None:
             devices = ipFabric.devices
-
+            
+            #Detaching the object from session
             session = Session.object_session(ipFabric)
             session.expunge(ipFabric)
             ipFabric.__dict__.pop('_sa_instance_state')
@@ -141,6 +143,7 @@ class RestServer():
             ipFabric.__dict__['cablingPlan'] = {'uri': bottle.request.url + '/cabling-plan'}
             logger.debug('getIpFabric: %s' % (ipFabricId))
             #return json.dumps(ipFabric.__dict__)
+         
             return {'ipFabric': ipFabric.__dict__}
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
@@ -170,6 +173,34 @@ class RestServer():
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+        
+    def getDevices(self, ipFabricId):
+        devices = {}
+        listOfDevices = []
+        report = self.getReport()
+        ipFabric = report.getIpFabric(ipFabricId)
+        if ipFabric is not None:
+            #devicesObject = ipFabric.devices
+            
+            session = Session.object_session(ipFabric)
+            for device in ipFabric.devices:
+                session.expunge(device)
+                device.__dict__.pop('_sa_instance_state')
+                device.__dict__.pop('username')
+                device.__dict__.pop('family')
+                device.__dict__.pop('asn')
+                device.__dict__.pop('pwd')
+                device.__dict__.pop('pod_id')
+                device.__dict__['uri'] = bottle.request.url + '/' +device.id
+                listOfDevices.append(device.__dict__)
+            devices['device'] = listOfDevices
+            devices['uri'] = bottle.request.url
+            devices['total'] = len(ipFabric.devices)
+            return {'devices' : devices}
+        else:
+            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+
         
     def getDeviceConfig(self, podName, deviceName):
 
