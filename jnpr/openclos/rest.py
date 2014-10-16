@@ -8,8 +8,6 @@ import os
 import logging
 import bottle
 from sqlalchemy.orm import exc, Session
-import json
-
 import util
 from model import Pod, Device
 from dao import Dao
@@ -66,10 +64,11 @@ class RestServer():
         bottle.route('/openclos', 'GET', self.getIndex)
         bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
         bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
-        bottle.route('/pods/<podName>/devices/<deviceName>/config', 'GET', self.getDeviceConfig)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices/<deviceId>/config', 'GET', self.getDeviceConfig)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices', 'GET', self.getDevices)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices/<deviceId>', 'GET', self.getDevice)
 
         # TODO: the resource lookup should hierarchical
         # /pods/*
@@ -82,7 +81,7 @@ class RestServer():
         for pod in pods:
             for device in pod.devices:
                 self.indexLinks.append(ResourceLink(self.baseUrl, 
-                    '/pods/%s/devices/%s/config' % (pod.name, device.name)))
+                    '/openclos/ip-fabrics/%s/devices/%s/config' % (pod.id, device.id)))
     
     def getIndex(self):
         jsonLinks = []
@@ -101,6 +100,7 @@ class RestServer():
         return report
     
     def getIpFabrics(self):
+        
         url = request.url
         ipFabricsData = {}
         listOfIpFbarics = []
@@ -126,6 +126,7 @@ class RestServer():
         return {'ipFabrics' : ipFabricsData}
     
     def getIpFabric(self, ipFabricId):
+        
         tmp = bottle.request.url
         report = self.getReport()
         ipFabric = report.getIpFabric(ipFabricId)
@@ -136,7 +137,6 @@ class RestServer():
             session = Session.object_session(ipFabric)
             session.expunge(ipFabric)
             ipFabric.__dict__.pop('_sa_instance_state')
-            ipFabric.__dict__.pop('devices')
             ipFabric.__dict__.pop('spineJunosImage')
             ipFabric.__dict__.pop('leafJunosImage')
             ipFabric.__dict__['devices'] = {'uri': bottle.request.url + '/devices', 'total':len(devices)}
@@ -150,6 +150,7 @@ class RestServer():
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
     
     def getCablingPlan(self, ipFabricId):
+        
         report = self.getReport()
         ipFabric = report.getIpFabric(ipFabricId)
         logger.debug('Fabric name: %s' % (ipFabric.name))
@@ -175,6 +176,7 @@ class RestServer():
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
         
     def getDevices(self, ipFabricId):
+        
         devices = {}
         listOfDevices = []
         report = self.getReport()
@@ -200,29 +202,57 @@ class RestServer():
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
-
         
-    def getDeviceConfig(self, podName, deviceName):
-
-        if not self.isDeviceExists(podName, deviceName):
-            raise bottle.HTTPError(404, "No device found with pod name: '%s', device name: '%s'" % (podName, deviceName))
+    def getDevice(self, ipFabricId, deviceId):
         
-        fileName = os.path.join(podName, deviceName+'.conf')
+        device = self.isDeviceExists(ipFabricId, deviceId)
+        #ipFabricUri is constructed from url
+        url = bottle.request.url
+        uri = url.split("/")
+        uri.pop()
+        uri.pop()
+        ipFbaricUri = "/".join(uri)
+               
+        if device is not None:
+            
+            session = Session.object_session(device)
+            session.expunge(device)
+            device.__dict__.pop('_sa_instance_state')
+            device.__dict__.pop('pod_id')
+            device.__dict__['uri'] = bottle.request.url
+            device.__dict__['pod'] = {'uri': ipFbaricUri }
+         
+            return {'device': device.__dict__}
+        else:
+            logger.debug("device with id: %s not found" % (deviceId))
+            raise bottle.HTTPError(404, "device with id: %s not found" % (deviceId))  
+        
+         
+    def getDeviceConfig(self, ipFabricId, deviceId):
+        
+        device = self.isDeviceExists(ipFabricId, deviceId)
+        pod = device.pod
+        
+        if device is None:
+            raise bottle.HTTPError(404, "No device found with ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
+        
+        fileName = os.path.join(pod.name, device.name+'.conf')
         logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
 
         config = bottle.static_file(fileName, root=webServerRoot)
         if isinstance(config, bottle.HTTPError):
-            logger.debug("Device exists but no config found. Pod name: '%s', device name: '%s'" % (podName, deviceName))
-            raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. Pod name: '%s', device name: '%s'" % (podName, deviceName))
+            logger.debug("Device exists but no config found. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
+            raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
         return config
+    
 
-    def isDeviceExists(self, podName, deviceName):
+    def isDeviceExists(self, ipFabricId, deviceId):
         try:
-            self.dao.Session.query(Device).join(Pod).filter(Device.name == deviceName).filter(Pod.name == podName).one()
-            return True
+            device = self.dao.Session.query(Device).join(Pod).filter(Device.id == deviceId).filter(Pod.id == ipFabricId).one()
+            return device
         except (exc.NoResultFound):
-            logger.debug("No device found with pod name: '%s', device name: '%s'" % (podName, deviceName))
-            return False
+            logger.debug("No device found with IpFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
+            raise bottle.HTTPError(404, "No device found with ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
 
     def getJunosImage(self, junosImageName):
 

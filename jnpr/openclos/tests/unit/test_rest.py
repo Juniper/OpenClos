@@ -83,7 +83,23 @@ class TestRest(unittest.TestCase):
         response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['devices']['device']))
-        self.assertTrue("/openclos/ip-fabrics/"+podId+"/devices/"+self.device1.id in response.json['devices']['device'][0]['uri'])  
+        self.assertTrue("/openclos/ip-fabrics/"+podId+"/devices/"+self.device1.id in response.json['devices']['device'][0]['uri'])
+    
+    def testGetDeviceNonExistingDevice(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+    
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.get('/openclos/ip-fabrics/' +self.ipFabric1.id+'/devices/'+'nonExisting')
+        self.assertTrue('404 Not Found' in e.exception.message)
+    
+    def testGetDevice(self):
+        restServerTestApp = self.setupRestWithTwoDevices()
+        self.podId =  self.device1.pod_id
+        response = restServerTestApp.get('/openclos/ip-fabrics/'+self.podId+'/devices/'+self.device1.id)
+        self.assertEqual(200, response.status_int)         
+        self.assertEqual(self.device1.name, response.json['device']['name'])
+        self.assertEqual(self.device1.family, response.json['device']['family'])
+        self.assertTrue('/openclos/ip-fabrics/' + self.podId in response.json['device']['pod']['uri']) 
     
     def setupRestWithTwoDevices(self):
         from test_model import createDevice
@@ -116,7 +132,7 @@ class TestRest(unittest.TestCase):
         restServerTestApp = self.setupRestWithTwoDevices()
 
         with self.assertRaises(AppError) as e:
-            restServerTestApp.get('/pods/test1/devices/unknown/config')
+            restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices/'+'nonExisting'+'/config')
         self.assertTrue('404 Not Found' in e.exception.message)
         self.assertTrue('No device found' in e.exception.message)
 
@@ -124,7 +140,7 @@ class TestRest(unittest.TestCase):
         restServerTestApp = self.setupRestWithTwoDevices()
 
         with self.assertRaises(AppError) as e:
-            restServerTestApp.get('/pods/test1/devices/test1/config')
+            restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices/'+self.device1.id+'/config')
         self.assertTrue('404 Not Found' in e.exception.message)
         self.assertTrue('Device exists but no config found' in e.exception.message)
 
@@ -135,7 +151,7 @@ class TestRest(unittest.TestCase):
             os.makedirs(podDir)
 
         open(os.path.join(podDir, 'test1.conf'), "a") 
-        response = restServerTestApp.get('/pods/test1/devices/test1/config')
+        response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices/'+self.device1.id+'/config')
         self.assertEqual(200, response.status_int)
 
     def testGetJunosImage404(self):
