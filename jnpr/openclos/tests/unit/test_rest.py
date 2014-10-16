@@ -66,8 +66,25 @@ class TestRest(unittest.TestCase):
         self.assertEqual(200, response.status_int) 
         self.assertEqual(2, len(response.json['ipFabrics']['ipFabric']))
         self.assertTrue("/openclos/ip-fabrics/"+self.device1.pod_id in response.json['ipFabrics']['ipFabric'][0]['uri'])
-        self.assertTrue("/openclos/ip-fabrics/"+self.device2.pod_id in response.json['ipFabrics']['ipFabric'][1]['uri']) 
-
+        self.assertTrue("/openclos/ip-fabrics/"+self.device2.pod_id in response.json['ipFabrics']['ipFabric'][1]['uri'])
+        
+    def testGetDevicesNonExistingIpFabric(self):
+        restServer = RestServer(self.conf)
+        restServer.initRest()
+        restServerTestApp = TestApp(restServer.app)
+    
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.get('/openclos/ip-fabrics/' + 'nonExisting'+'/devices')
+        self.assertTrue('404 Not Found' in e.exception.message)
+    
+    def testGetDevices(self):
+        restServerTestApp = self.setupRestWithTwoDevices()
+        podId = self.device1.pod_id
+        response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices')
+        self.assertEqual(200, response.status_int) 
+        self.assertEqual(1, len(response.json['devices']['device']))
+        self.assertTrue("/openclos/ip-fabrics/"+podId+"/devices/"+self.device1.id in response.json['devices']['device'][0]['uri'])  
+    
     def setupRestWithTwoDevices(self):
         from test_model import createDevice
         restServer = RestServer(self.conf)
