@@ -55,68 +55,55 @@ class L3ClosMediation():
         finally:
             pass
        
-    def isRecreateFabric(self, podInDb, podDict):
+    def createPod(self, podName, podDict):
         '''
-        If any device type/family, ASN range or IP block changed, that would require 
-        re-generation of the fabric, causing new set of IP and ASN assignment per device
+        Create a new POD
         '''
-        if (podInDb.spineDeviceType != podDict['spineDeviceType'] or \
-            podInDb.leafDeviceType != podDict['leafDeviceType'] or \
-            podInDb.interConnectPrefix != podDict['interConnectPrefix'] or \
-            podInDb.vlanPrefix != podDict['vlanPrefix'] or \
-            podInDb.loopbackPrefix != podDict['loopbackPrefix'] or \
-            podInDb.spineAS != podDict['spineAS'] or \
-            podInDb.leafAS != podDict['leafAS']): 
-            return True
-        return False
+        pod = Pod(podName, **podDict)
+        pod.validate()
+        self.dao.createObjects([pod])
+        logger.info("Pod created (id='%s', name='%s')" % (pod.id, podName)) 
+        return pod
         
-    def processFabric(self, podName, pod, reCreateFabric = False):
-        # REVISIT use of reCreateFabric
-        try:
-            podInDb = self.dao.getUniqueObjectByName(Pod, podName)
-        except (exc.NoResultFound) as e:
-            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message)) 
+    def updatePod(self, podId, podName, podDict):
+        '''
+        Modify an existing POD. As a sanity check, if we don't find the POD
+        by UUID, a ValueException is thrown
+        '''
+        if podId is not None: 
+            try:
+                pod = self.dao.getObjectById(Pod, podId)
+            except (exc.NoResultFound) as e:
+                raise ValueError("Pod not found (id='%s', name='%s')" % (podId, podName)) 
+            else:
+                pod.update(podId, podName, **podDict)
+                self.dao.updateObjects([pod])
+                logger.info("Pod updated (id='%s', name='%s')" % (podId, podName)) 
         else:
-            logger.debug("Deleted existing pod name: '%s'" % (podName))     
-            self.dao.deleteObject(podInDb)
-            
-        podInDb = Pod(podName, **pod)
-        podInDb.validate()
-        self.dao.createObjects([podInDb])
-        logger.info("Created pod name: '%s'" % (podName))     
-        self.processTopology(podName, reCreateFabric)
-
-        # backup current database
-        util.backupDatabase(self.conf)
-           
-        return podInDb
-    
-    def processTopology(self, podName, reCreateFabric = False):
-        '''
-        Finds Pod object by name and process topology
-        It also creates the output folders for pod
-        '''
-        try:
-            pod = self.dao.getUniqueObjectByName(Pod, podName)
-        except (exc.NoResultFound) as e:
-            raise ValueError("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message))
-        except (exc.MultipleResultsFound) as e:
-            raise ValueError("Multiple Pods found with pod name: '%s', exc.MultipleResultsFound: %s" % (podName, e.message))
- 
+            raise ValueError("Pod object doesn't have an id (name='%s')" % (podName)) 
+        
+        # in normal use case, creating devices will be done here
         if pod.inventory is not None:
-            # topology handling is divided into 3 steps:
-            # 1. load inventory
-            # 2. create cabling plan 
-            # 3. create configuration files
-
-            # 1. load inventory
             json_inventory = open(os.path.join(util.configLocation, pod.inventory))
             inventory = json.load(json_inventory)
             json_inventory.close()    
             self.createSpineIFDs(pod, inventory['spines'])
             self.createLeafIFDs(pod, inventory['leafs'])
-
-            # 2. create cabling plan in JSON format
+            
+        return pod
+    
+    def processPod(self, podId, podName):
+        '''
+        Finds Pod object by name and process topology
+        It also creates the output folders for pod
+        '''
+        if podId is not None: 
+            try:
+                pod = self.dao.getObjectById(Pod, podId)
+            except (exc.NoResultFound) as e:
+                raise ValueError("Pod not found (id='%s', name='%s')" % (podId, podName)) 
+ 
+            # create cabling plan in JSON format
             cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
             cablingPlanJSON = cablingPlanWriter.writeJSON()
             self.createLinkBetweenIFDs(pod, cablingPlanJSON['links'])
@@ -125,11 +112,14 @@ class L3ClosMediation():
             
             # 3. allocate resource and create configuration files
             self.allocateResource(pod)
-            self.generateConfig(pod);
-            
+            self.generateConfig(pod)
+
+            # backup current database
+            util.backupDatabase(self.conf)
+
             return True
         else:
-            raise ValueError("No topology found for pod name: '%s'", (podName))
+            raise ValueError("Pod object doesn't have an id (name='%s')" % (podName)) 
 
     def createSpineIFDs(self, pod, spines):
         devices = []
@@ -400,9 +390,17 @@ class L3ClosMediation():
         else:
             return ''
         
-if __name__ == '__main__':
+if __name__ == '__main__': 
     l3ClosMediation = L3ClosMediation()
     pods = l3ClosMediation.loadClosDefinition()
-    l3ClosMediation.processFabric('labLeafSpine', pods['labLeafSpine'], reCreateFabric = True)
-    l3ClosMediation.processFabric('anotherPod', pods['anotherPod'], reCreateFabric = True)
+
+    pod = l3ClosMediation.createPod('labLeafSpine', pods['labLeafSpine'])
+    # caller will pass the id when calling updatePod/processPod function 
+    pod = l3ClosMediation.updatePod(pod.id, 'labLeafSpine', pods['labLeafSpine'])
+    l3ClosMediation.processPod(pod.id, 'labLeafSpine')
+
+    pod = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
+    # caller will pass the id when calling updatePod/processPod function 
+    pod = l3ClosMediation.updatePod(pod.id, 'anotherPod', pods['anotherPod'])
+    l3ClosMediation.processPod(pod.id, 'anotherPod')
 
