@@ -8,7 +8,7 @@ import os
 import logging
 import bottle
 from sqlalchemy.orm import exc, Session
-import json
+#import json
 
 import util
 from model import Pod, Device
@@ -68,7 +68,21 @@ class RestServer():
         bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/pods/<podName>/devices/<deviceName>/config', 'GET', self.getDeviceConfig)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
-
+        # POST APIs
+        # POST /openclos/ip-fabrics
+        bottle.route('/openclos/ip-fabrics', 'POST', self.createIpFabric)
+        # POST /openclos/ip-fabrics/{ipFabricId}/cabling-plan
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'POST', self.createCablingPlan)
+        # POST POST /openclos/ip-fabrics/{ipFabricId}/device-configuration
+        bottle.route('/openclos/ip-fabrics/{ipFabricId}/device-configuration', 'POST', self.deviceConfiguration)
+        # POST /openclos/ip-fabrics/{ipFabricId}/ztp-configuration
+        bottle.route('/openclos/ip-fabrics/{ipFabricId}/ztp-configuration', 'POST', self.ztpConfiguration)
+        # PUT /openclos/ip-fabrics/{ipFabricId}
+        bottle.route('/openclos/ip-fabrics/<ipFabricd>', 'PUT', self.reconfigIpFabric)
+        # PUT /openclos/conf/
+        bottle.route('/openclos/conf/', 'PUT', self.setOpenClosConfigParams)
+        # DELETE /openclos/ip-fabrics/
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'DELETE', self.deleteIpFabric)
         # TODO: the resource lookup should hierarchical
         # /pods/*
         # /pods/{podName}/devices/*
@@ -124,7 +138,7 @@ class RestServer():
         return {'ipFabrics' : ipFabricsData}
     
     def getIpFabric(self, ipFabricId):
-        tmp = bottle.request.url
+#        tmp = bottle.request.url
         report = ResourceAllocationReport(dao = self.dao)
         ipFabric = report.getIpFabric(ipFabricId)
         if ipFabric is not None:
@@ -178,6 +192,111 @@ class RestServer():
             raise bottle.HTTPError(404, "Junos image file not found. name: '%s'" % (junosImageName))
         return config
         
+        
+    def createIpFabric(self):  
+        try:
+            pod = request.json['ipFabric']
+            if pod is not None:
+                devices = pod.get('devices')
+            else:
+                raise bottle.HTTPError(404, "Invalid value in POST body.")
+        except ValueError:
+            raise bottle.HTTPError(404, "POST body can not be empty.")
+        
+        ipFabric = {}
+        ipFabric['name'] = pod.get('name')
+        ipFabric['fabricDeviceType'] = pod.get('fabricDeviceType')
+        ipFabric['fabricDeviceCount'] = pod.get('fabricDeviceCount')
+        ipFabric['spineCount'] = pod.get('spineCount')
+        ipFabric['spineDeviceType'] = pod.get('spineDeviceType')
+        ipFabric['leafCount'] = pod.get('leafCount')
+        ipFabric['leafDeviceType'] = pod.get('leafDeviceType')
+        ipFabric['interConnectPrefix'] = pod.get('interConnectPrefix')
+        ipFabric['vlanPrefix'] = pod.get('vlanPrefix')
+        ipFabric['loopbackPrefix'] = pod.get('loopbackPrefix')
+        ipFabric['spineAS'] = pod.get('spineAS')
+        ipFabric['leafAS'] = pod.get('leafAS')
+        ipFabric['topologyType'] = pod.get('topologyType')
+        ipFabric['outOfBandAddressList'] = pod.get('outOfBandAddressList')
+        ipFabric['spineJunosImage'] = pod.get('spineJunosImage')
+        ipFabric['leafJunosImage'] = pod.get('leafJunosImage')
+        
+        fabricDevices = {}
+        fabricDevices['name'] = devices.get('name')
+        fabricDevices['mac_address'] = devices.get('mac_address')
+        fabricDevices['role'] = devices.get('role')
+        fabricDevices['username'] = devices.get('username')
+        fabricDevices['password'] = devices.get('password')
+
+        # Passing ipFabric and fabricDevices to the API provided by Yun. Once the fabric is created, get it from DB and return
+        # fabricId = configureFabric(ipFabric, devices)
+        # fabric = getIpFabric(fabricId)
+        # return fabric
+        return bottle.HTTPResponse(status=200)
+    
+    def createCablingPlan(self):
+        return bottle.HTTPResponse(status=200)
+
+    def deviceConfiguration(self):
+        return bottle.HTTPResponse(status=200)
+    
+    def ztpConfiguration(self):
+        return bottle.HTTPResponse(status=200)
+    
+    def reconfigIpFabric(self, fabricId):
+        try:
+            inPod = request.json['ipFabric']
+            if inPod is not None:
+                devices = inPod.get('devices')
+            else:
+                raise bottle.HTTPError(404, "Invalid value in POST body.")
+        except ValueError:
+            raise bottle.HTTPError(404, "POST body can not be empty.")
+        
+        ipFabric = {}
+        ipFabric['name'] = inPod.get('name')
+        ipFabric['fabricDeviceType'] = inPod.get('fabricDeviceType')
+        ipFabric['fabricDeviceCount'] = inPod.get('fabricDeviceCount')
+        ipFabric['spineCount'] = inPod.get('spineCount')
+        ipFabric['spineDeviceType'] = inPod.get('spineDeviceType')
+        ipFabric['leafCount'] = inPod.get('leafCount')
+        ipFabric['leafDeviceType'] = inPod.get('leafDeviceType')
+        ipFabric['interConnectPrefix'] = inPod.get('interConnectPrefix')
+        ipFabric['vlanPrefix'] = inPod.get('vlanPrefix')
+        ipFabric['loopbackPrefix'] = inPod.get('loopbackPrefix')
+        ipFabric['spineAS'] = inPod.get('spineAS')
+        ipFabric['leafAS'] = inPod.get('leafAS')
+        ipFabric['topologyType'] = inPod.get('topologyType')
+        ipFabric['outOfBandAddressList'] = inPod.get('outOfBandAddressList')
+        
+        fabricDevices = {}
+        fabricDevices['name'] = devices.get('name')
+        fabricDevices['mac_address'] = devices.get('mac_address')
+        fabricDevices['role'] = devices.get('role')
+        fabricDevices['username'] = devices.get('username')
+        fabricDevices['password'] = devices.get('password')
+        
+        # Pass the ipFabric and fabricDevices dictionaries to config/update API, then return
+        return bottle.HTTPResponse(status=200)
+
+    def setOpenClosConfigParams(self):
+        return bottle.HTTPResponse(status=200)
+    
+    def setNdConfigParams(self):
+        return bottle.HTTPResponse(status=200)
+
+    def deleteIpFabric(self, ipFabricId):
+        report = ResourceAllocationReport(dao = self.dao)
+        ipFabric = report.getIpFabric(ipFabricId)
+        if ipFabric is not None:
+            report.dao.deleteObject(ipFabric)
+            logger.debug("IpFabric with id: %s deleted" % (ipFabricId))
+        else:
+            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+        return bottle.HTTPResponse(status=200)
+
+
 if __name__ == '__main__':
     restServer = RestServer()
     restServer.initRest()
