@@ -95,7 +95,7 @@ class TestL3Clos(unittest.TestCase):
         l3ClosMediation = flexmock(l3ClosMediation)
         l3ClosMediation.should_receive('createSpineIFDs').once()
         l3ClosMediation.should_receive('createLeafIFDs').once()
-        l3ClosMediation.should_receive('createLinkBetweenIFDs').once()
+        l3ClosMediation.should_receive('createLinkBetweenIfds').once()
         l3ClosMediation.should_receive('allocateResource').once()
 
         self.assertEqual(True, l3ClosMediation.processTopology('pod1'))
@@ -209,7 +209,7 @@ class TestL3Clos(unittest.TestCase):
         { "s_name" : "spine-02", "s_port" : "et-0/0/1", "l_name" : "leaf-02", "l_port" : "et-0/0/49" }]
         '''
         linkString = u'[{ "s_name" : "spine-01", "s_port" : "et-0/0/0", "l_name" : "leaf-01", "l_port" : "et-0/0/48" }, { "s_name" : "spine-01", "s_port" : "et-0/0/1", "l_name" : "leaf-02", "l_port" : "et-0/0/48" }, { "s_name" : "spine-02", "s_port" : "et-0/0/0", "l_name" : "leaf-01", "l_port" : "et-0/0/49" }, { "s_name" : "spine-02", "s_port" : "et-0/0/1", "l_name" : "leaf-02", "l_port" : "et-0/0/49" }]'
-        l3ClosMediation.createLinkBetweenIFDs(pod, json.loads(linkString))
+        l3ClosMediation.createLinkBetweenIfds(pod)
 
         # force close current session and get new session to make sure merge and flush took place properly
         podId = pod.id
@@ -265,7 +265,7 @@ class TestL3Clos(unittest.TestCase):
     def createPodSpineLeafLink(self, l3ClosMediation):
         pod = self.createPodSpineLeaf(l3ClosMediation)
         linkString = u'[{ "s_name" : "spine-01", "s_port" : "et-0/0/0", "l_name" : "leaf-01", "l_port" : "et-0/0/48" }, { "s_name" : "spine-01", "s_port" : "et-0/0/1", "l_name" : "leaf-02", "l_port" : "et-0/0/48" }, { "s_name" : "spine-02", "s_port" : "et-0/0/0", "l_name" : "leaf-01", "l_port" : "et-0/0/49" }, { "s_name" : "spine-02", "s_port" : "et-0/0/1", "l_name" : "leaf-02", "l_port" : "et-0/0/49" }]'
-        l3ClosMediation.createLinkBetweenIFDs(pod, json.loads(linkString))
+        l3ClosMediation.createLinkBetweenIfds(pod)
         return pod
         
     def testAllocateInterconnect(self):

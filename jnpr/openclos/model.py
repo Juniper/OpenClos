@@ -183,7 +183,11 @@ class Device(ManagedElement, Base):
 class Interface(ManagedElement, Base):
     __tablename__ = 'interface'
     id = Column(String(60), primary_key=True)
+    # getting list of interface order by name returns 
+    # et-0/0/0, et-0/0/1, et-0/0/11, et/0/0/12, to fix this sequencing
+    # adding order_number, so that the list would be et-0/0/0, et-0/0/1, et-0/0/2, et/0/0/3
     name = Column(String(100))
+    name_order_num = Column(Integer)
     type = Column(String(100))
     device_id = Column(String(60), ForeignKey('device.id'), nullable = False)
     device = relationship("Device",backref=backref('interfaces', order_by=name, cascade='all, delete, delete-orphan'))
@@ -201,6 +205,8 @@ class Interface(ManagedElement, Base):
         self.id = str(uuid.uuid4())
         self.name = name
         self.device = device
+        if name.split('/')[-1].isdigit():
+            self.name_order_num = int(name.split('/')[-1])
         
 class InterfaceLogical(Interface):
     __tablename__ = 'IFL'
