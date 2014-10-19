@@ -5,11 +5,9 @@ Created on Aug 14, 2014
 '''
 import pydot
 import os
-import json
 import logging
 from jinja2 import Environment, PackageLoader
 from model import InterfaceDefinition
-import util
 
 cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
 
@@ -73,7 +71,7 @@ class CablingPlanWriter(WriterBase):
     def __init__(self, conf, pod, dao):
         WriterBase.__init__(self, conf, pod, dao)
         self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', cablingPlanTemplateLocation))
-        self.templateEnv.trim_blocks = True
+        #self.templateEnv.trim_blocks = True
         self.templateEnv.lstrip_blocks = True
         # load cabling plan template
         self.template = self.templateEnv.get_template(self.pod.topologyType + '.txt')
@@ -83,46 +81,37 @@ class CablingPlanWriter(WriterBase):
 
     def writeJSON(self):
         if self.pod.topologyType == 'threeStage':
-            return self.writeJSONThreeStage()
+            return self.writeJsonThreeStage()
         elif self.pod.topologyType == 'fiveStageRealEstate':
             return self.writeJSONFiveStageRealEstate()
         elif self.pod.topologyType == 'fiveStagePerformance':
             return self.writeJSONFiveStagePerformance()
             
-    def writeJSONThreeStage(self):
-        deviceDict = {}
-        deviceDict['leaves'] = []
-        deviceDict['spines'] = []
+    def writeJsonThreeStage(self):
+        devices = []
+        links = []
         for device in self.pod.devices:
-            if (device.role == 'leaf'):
-                deviceDict['leaves'].append(device.name)
-            elif (device.role == 'spine'):
-                deviceDict['spines'].append(device.name)
-                
-        spinePortNames = util.getPortNamesForDeviceFamily(self.pod.spineDeviceType, self.conf['deviceFamily'])
-        leafPortNames = util.getPortNamesForDeviceFamily(self.pod.leafDeviceType, self.conf['deviceFamily'])
+            devices.append({'id': device.id, 'name': device.name, 'role': device.role})
+            if device.role == 'leaf':
+                leafPeerPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
+                .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
+                for port in leafPeerPorts:
+                    leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
+                    spinePeerPort = port.peer
+                    spineInterconnectIp = spinePeerPort.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
+                    links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
+                                  'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp})
         
-        # rendering cabling plan requires 4 parameters:
-        # 1. list of spines
-        # 2. list of spine ports (Note spine does not have any uplink/downlink marked, it is just ports)
-        # 3. list of leaves
-        # 4. list of leaf ports (Note leaf uses uplink to connect to spine)
-        cablingPlanJSON = self.template.render(spines=deviceDict['spines'], 
-                spinePorts=spinePortNames['ports'], 
-                leaves=deviceDict['leaves'], 
-                leafPorts=leafPortNames['uplinkPorts'])
+        cablingPlanJSON = self.template.render(devices = devices, links = links)
 
         path = os.path.join(self.outputDir, 'cablingPlan.json')
         logger.info('Writing cabling plan: %s' % (path))
         with open(path, 'w') as f:
                 f.write(cablingPlanJSON)
 
-        # load cabling plan
-        return json.loads(cablingPlanJSON)
-               
     def writeJSONFiveStageRealEstate(self):
         pass
-        
+
     def writeJSONFiveStagePerformance(self):
         pass
         
