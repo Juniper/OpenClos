@@ -77,3 +77,11 @@ class TestDao(unittest.TestCase):
         self.assertEqual(0, len(dao.getAll(Pod)))
         self.assertEqual(0, len(dao.getAll(Device)))
         self.assertEqual(0, len(dao.getAll(Interface)))
+        
+    def testGetObjectById(self):
+        from test_model import createPod
+        #self.conf['debugSql'] = True
+        dao = Dao(self.conf)
+        session = dao.Session()
+        pod = createPod("test", session)
+

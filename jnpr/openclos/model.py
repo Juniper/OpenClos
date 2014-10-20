@@ -162,7 +162,7 @@ class Device(ManagedElement, Base):
     managementIp = Column(String(32))
     family = Column(String(100))
     asn = Column(Integer)
-    pod_id = Column(Integer, ForeignKey('pod.id'), nullable = False)
+    pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
         
     def __init__(self, name, family, username, pwd, role, mac, mgmtIp, pod):
@@ -180,16 +180,20 @@ class Device(ManagedElement, Base):
         self.pod = pod
      
                
-class Interface(Base):
+class Interface(ManagedElement, Base):
     __tablename__ = 'interface'
     id = Column(String(60), primary_key=True)
+    # getting list of interface order by name returns 
+    # et-0/0/0, et-0/0/1, et-0/0/11, et/0/0/12, to fix this sequencing
+    # adding order_number, so that the list would be et-0/0/0, et-0/0/1, et-0/0/2, et/0/0/3
     name = Column(String(100))
+    name_order_num = Column(Integer)
     type = Column(String(100))
-    device_id = Column(Integer, ForeignKey('device.id'), nullable = False)
+    device_id = Column(String(60), ForeignKey('device.id'), nullable = False)
     device = relationship("Device",backref=backref('interfaces', order_by=name, cascade='all, delete, delete-orphan'))
-    peer_id = Column(Integer, ForeignKey('interface.id'))
+    peer_id = Column(String(60), ForeignKey('interface.id'))
     peer = relationship('Interface', foreign_keys=[peer_id], uselist=False, post_update=True, )
-    layer_below_id = Column(Integer, ForeignKey('interface.id'))
+    layer_below_id = Column(String(60), ForeignKey('interface.id'))
     layerAboves = relationship('Interface', foreign_keys=[layer_below_id])
 
     __mapper_args__ = {
@@ -201,6 +205,8 @@ class Interface(Base):
         self.id = str(uuid.uuid4())
         self.name = name
         self.device = device
+        if name.split('/')[-1].isdigit():
+            self.name_order_num = int(name.split('/')[-1])
         
 class InterfaceLogical(Interface):
     __tablename__ = 'IFL'
