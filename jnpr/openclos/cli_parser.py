@@ -130,7 +130,7 @@ class CLIUtil:
     def suffix_macro_to_cmd ( self, macro_list, cmd ):
         ret_cmd = []
         for macro in macro_list:
-            ret_cmd.append ( normalize_command ( cmd + "_" + macro ) )
+            ret_cmd.append ( self.normalize_command ( cmd + "_" + macro ) )
         return ret_cmd
 
 #------------------------------------------------------------------------------
@@ -153,7 +153,7 @@ class CLIUtil:
     def add_enter_instruction ( self, result_list ):
         if ( len ( result_list ) ):
             string = result_list [ 0 ]
-            if ( string_has_enter ( string ) == 1 ):
+            if ( self.string_has_enter ( string ) == 1 ):
                 return 0
 
         result_list.insert ( 0, " <enter>         Execute the current command" )
@@ -305,7 +305,7 @@ class CLIUtil:
                 else:
                     print "    Macro not implemented"
             if ( cmd.cmd_handle != "" ):
-                fn_handle = get_implementor_handle ( CLIImplementor (), 
+                fn_handle = self.get_implementor_handle ( CLIImplementor (), 
                                                      cmd.cmd_handle )
                 if ( fn_handle != 0 ):
                     fn_handle ()
