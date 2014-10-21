@@ -28,13 +28,13 @@ For creating a new command:
 
 # Standard python libraries
 import cmd
-import readline
 import threading
 import re
 import os
 
 # Python frameworks required for openclos
 import yaml
+import readline
 
 # openclos classes
 import util
@@ -82,7 +82,7 @@ class CLIShell ( cmd.Cmd ):
                                      results,
                                      line )
             else:
-                print "execute command " + line
+                self.cli_util.validate_command_and_execute ( line )
 
         # Case 3: Incomplete command. Provide possible matches
         else:
@@ -135,13 +135,13 @@ class CLIShell ( cmd.Cmd ):
             result = result [ hypen_index: ]
 
         return result
-        
 
 #------------------------------------------------------------------------------
     def cli_command_complete ( self, current_line ):
         results = self.cli_util.get_match ( current_line )
         if ( len ( results ) == 1 ):
             if ( re.search ( "<", results [ 0 ] ) == None ):
+                # word complete case
                 results [ 0 ] = results [ 0 ]
                 # GNU readline gets very confused with hypenated tokens
                 # Compensate for any hypens in the command line
@@ -149,20 +149,35 @@ class CLIShell ( cmd.Cmd ):
                 # and tab-complete behavior might not be proper
                 match_object = re.search ( "-", results [ 0 ] )
                 if ( match_object != None ):
-                   results [ 0 ] = self.handle_hypenation ( results [ 0 ], 
+                   results [ 0 ] = self.handle_hypenation ( results [ 0 ],
                                                              current_line,
                                                      match_object.end () )
                 results [ 0 ] = results [ 0 ] + " "
                 return results
             else:
-                results.insert ( 0, "." )
-                return results
+                # A single possible match. Optimize to return as word complete
+                # But <enter> cases need not be handled
+                # First remove any extra spaces we may encounter at start
+                match_object = re.search ( "[a-z|A-Z|0-9|<]", results [ 0 ] )
+                if ( match_object != None ):
+                    results [ 0 ] = results [ 0 ] [ (match_object.end () - 1): ]
+                match_object = re.search ( "<enter>", results [ 0 ] )
+                if ( match_object == None ):
+                    match_object = re.search ( " ", results [ 0 ] )
+                    if ( match_object != None ):
+                        results [ 0 ] = results [ 0 ] [ :match_object.end () ]
+                        match_object = re.search ( "-", results [ 0 ] )
+                        if ( match_object != None ):
+                            results [ 0 ] = self.handle_hypenation ( results [0], current_line, match_object.end () )
+                    return results
+                else:
+                    results.insert ( 0, "." )
+                    return results
         elif ( len ( results ) > 1 ):
             results.insert ( 0, "." )
             return results
         else:
             return [ "No match found", "." ]
-            
 
 #------------------------------------------------------------------------------
     def completenames(self, text, *ignored):

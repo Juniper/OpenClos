@@ -13,10 +13,11 @@ create:
                     Desc: Create device configuration for a pre-defined pod
                     Macro: show_pods
                     Handle: handle_create_device_config
-        ztp:
+        ztp-config:
             Args:
-                config:
-                    Desc: Enter configuration of ZTP server
+                pod:
+                    Desc: Create ZTP configuration for a pre-defined pod
+                    Macro: show_pods
                     Handle: handle_create_ztp_config
 update:
     Access: WRITE
