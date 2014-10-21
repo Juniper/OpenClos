@@ -106,8 +106,10 @@ class L3ClosMediation():
         if pod.inventory is not None:
             # topology handling is divided into 3 steps:
             # 1. load inventory
-            # 2. create cabling plan 
-            # 3. create configuration files
+            # 2. create inter-connect
+            # 3. allocate resource
+            # 4. create cabling plan 
+            # 5. create configuration files
 
             # 1. load inventory
             json_inventory = open(os.path.join(util.configLocation, pod.inventory))
@@ -116,15 +118,19 @@ class L3ClosMediation():
             self.createSpineIFDs(pod, inventory['spines'])
             self.createLeafIFDs(pod, inventory['leafs'])
 
-            # 2. create cabling plan in JSON format
+            # 2. Create inter-connect
+            self.createLinkBetweenIfds(pod)
+            
+            # 3. allocate resource, ip-blocks, ASN
+            self.allocateResource(pod)
+
+            # 4. create cabling plan in JSON format
             cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
-            cablingPlanJSON = cablingPlanWriter.writeJSON()
-            self.createLinkBetweenIFDs(pod, cablingPlanJSON['links'])
-            # create cabling plan in DOT format
+            cablingPlanWriter.writeJSON()
+            # 4. create cabling plan in DOT format
             cablingPlanWriter.writeDOT()
             
-            # 3. allocate resource and create configuration files
-            self.allocateResource(pod)
+            # 5. create configuration files
             self.generateConfig(pod);
             
             return True
@@ -168,23 +174,31 @@ class L3ClosMediation():
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
 
-    def createLinkBetweenIFDs(self, pod, links):
-        # Caching all interfaces by deviceName...interfaceName for easier lookup
-        interfaces = {}
-        modifiedObjects = []
+    def createLinkBetweenIfds(self, pod):
+        leaves = []
+        spines = []
         for device in pod.devices:
-            for interface in device.interfaces:
-                name = device.name + '...' + interface.name
-                interfaces[name] = interface
-
-        for link in links:
-            spineIntf = interfaces[link['s_name'] + '...' + link['s_port']]
-            leafIntf = interfaces[link['l_name'] + '...' + link['l_port']]
-            # hack to add relation from both sides as on ORM it is oneway one-to-one relation
-            spineIntf.peer = leafIntf
-            leafIntf.peer = spineIntf
-            modifiedObjects.append(spineIntf)
-            modifiedObjects.append(leafIntf)
+            if (device.role == 'leaf'):
+                leafUplinkPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.name_order_num).all()
+                leaves.append({'leaf': device, 'leafUplinkPorts': leafUplinkPorts})
+            elif (device.role == 'spine'):
+                spinePorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).order_by(InterfaceDefinition.name_order_num).all()
+                spines.append({'spine': device, 'ports': spinePorts})
+        
+        leafIndex = 0
+        spineIndex = 0
+        modifiedObjects = []
+        for leaf in leaves:
+            for spine in spines:
+                spinePort = spine['ports'][spineIndex]
+                leafPort = leaf['leafUplinkPorts'][leafIndex]
+                spinePort.peer = leafPort
+                leafPort.peer = spinePort
+                modifiedObjects.append(spinePort)
+                modifiedObjects.append(leafPort)
+                leafIndex += 1
+            leafIndex = 0
+            spineIndex += 1
         self.dao.updateObjects(modifiedObjects)
         
     def getLeafSpineFromPod(self, pod):
@@ -262,7 +276,7 @@ class L3ClosMediation():
         spines[0].pod.allocatedInterConnectBlock = str(interconnectBlock.cidr)
 
         for spine in spines:
-            ifdsHasPeer = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == spine.id).filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name).all()
+            ifdsHasPeer = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == spine.id).filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
             for spineIfdHasPeer in ifdsHasPeer:
                 subnet =  interconnectSubnets.pop(0)
                 ips = list(subnet)
@@ -332,7 +346,7 @@ class L3ClosMediation():
             config += serverInterfaceStanza.render()
 
         # Interconnect interfaces
-        deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name).all()
+        deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name_order_num).all()
         for interconnectIfd in deviceInterconnectIfds:
             peerDevice = interconnectIfd.peer.device
             interconnectIfl = interconnectIfd.layerAboves[0]
@@ -364,7 +378,7 @@ class L3ClosMediation():
         template = self.templateEnv.get_template('protocolBgpLldp.txt')
 
         neighborList = []
-        deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name).all()
+        deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name_order_num).all()
         for ifd in deviceInterconnectIfds:
             peerIfd = ifd.peer
             peerDevice = peerIfd.device

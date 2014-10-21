@@ -1,0 +1,37 @@
+create:
+    Access: WRITE
+    Args:
+        cabling-plan:
+            Args:
+                pod:
+                    Desc: Create cabling plan for a pre-defined pod
+                    Macro: show_pods
+                    Handle: handle_create_cabling_plan
+        device-config:
+            Args:
+                pod:
+                    Desc: Create device configuration for a pre-defined pod
+                    Macro: show_pods
+                    Handle: handle_create_device_config
+        ztp:
+            Args:
+                config:
+                    Desc: Enter configuration of ZTP server
+                    Handle: handle_create_ztp_config
+update:
+    Access: WRITE
+    Args:
+        password:
+            Desc: Update password for all devices in all pods
+            Handle: handle_update_password
+run:
+    Access: READ-WRITE
+    Args:
+        reports:
+            Desc: Generate reports
+            Handle: handle_run_reports
+        REST:
+            Args:
+                server:
+                    Desc: Run REST server process
+                    Handle: handle_run_rest_server

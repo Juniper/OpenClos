@@ -221,11 +221,11 @@ class TestInterface(TestOrm):
     
     def testConstructorPass(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        self.assertTrue(Interface('testintf', deviceOne))
+        self.assertTrue(Interface('et-0/0/0', deviceOne))
                         
     def testOrm(self):       
         deviceOne = createDevice(self.session, 'testdevice')
-        IF = Interface('testintf', deviceOne)
+        IF = Interface('et-0/0/0', deviceOne)
         self.session.add(IF)
         self.session.commit()
         
@@ -242,13 +242,13 @@ class TestInterface(TestOrm):
         # create device
         #create interface
         deviceOne = createDevice(self.session, 'testdevice')
-        IFLone = Interface('testintf', deviceOne )
+        IFLone = Interface('et-0/0/0', deviceOne )
         self.session.add(IFLone)
              
         deviceTwo = createDevice(self.session, 'testdevice')
-        IFLtwo = Interface('testintf', deviceTwo)
+        IFLtwo = Interface('et-0/0/0', deviceTwo)
         self.session.add(IFLtwo)
-        IFLthree = Interface('testintf', deviceTwo)
+        IFLthree = Interface('et-0/0/1', deviceTwo)
         self.session.add(IFLthree)
         self.session.commit()
         
@@ -269,11 +269,11 @@ class TestInterface(TestOrm):
     def testRelationInterfacePeer(self):
         
         deviceOne = createDevice(self.session, 'testdevice')
-        IFLone = Interface('testintf', deviceOne)
+        IFLone = Interface('et-0/0/0', deviceOne)
         self.session.add(IFLone)
         
         deviceTwo = createDevice(self.session, 'testdevice')
-        IFLtwo = Interface('testintf', deviceTwo )
+        IFLtwo = Interface('et-0/0/0', deviceTwo )
         self.session.add(IFLtwo)
         
         IFLone.peer = IFLtwo
@@ -291,15 +291,15 @@ class TestInterfaceLogical(TestOrm):
     
     def testConstructorPass(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        self.assertTrue(InterfaceLogical('testIntf', deviceOne) is not None)
-        self.assertTrue(InterfaceLogical('testIntf', deviceOne, '1.2.3.4') is not None)
-        self.assertTrue(InterfaceLogical('testIntf', deviceOne, '1.2.3.4', 9000) is not None)
+        self.assertTrue(InterfaceLogical('et-0/0/0', deviceOne) is not None)
+        self.assertTrue(InterfaceLogical('et-0/0/1', deviceOne, '1.2.3.4') is not None)
+        self.assertTrue(InterfaceLogical('et-0/0/2', deviceOne, '1.2.3.4', 9000) is not None)
 
 
     def testOrm(self):
         
         deviceOne = createDevice(self.session, 'testdevice')
-        IFL = InterfaceLogical('testIntf', deviceOne, '1.2.3.4', 9000)
+        IFL = InterfaceLogical('et-0/0/0', deviceOne, '1.2.3.4', 9000)
         self.session.add(IFL)
         self.session.commit()
 
@@ -317,12 +317,12 @@ class TestInterfaceDefinition(TestOrm):
     
     def testConstructorPass(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        self.assertTrue(InterfaceDefinition('testIntf', deviceOne, 'downlink') is not None)
-        self.assertTrue(InterfaceDefinition('testIntf', deviceOne, 9000) is not None)
+        self.assertTrue(InterfaceDefinition('et-0/0/0', deviceOne, 'downlink') is not None)
+        self.assertTrue(InterfaceDefinition('et-0/0/1', deviceOne, 9000) is not None)
         
     def testOrm(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        IFD = InterfaceDefinition('testIntfdef', deviceOne, 9000)
+        IFD = InterfaceDefinition('et-0/0/0', deviceOne, 9000)
         self.session.add(IFD)
         self.session.commit()
         
@@ -335,5 +335,25 @@ class TestInterfaceDefinition(TestOrm):
         self.session.commit()
         self.assertEqual(0, self.session.query(InterfaceDefinition).count())
          
+    def testQueryOrderBy(self):
+        deviceOne = createDevice(self.session, 'testdevice')
+        IFDs = [InterfaceDefinition('et-0/0/0', deviceOne, 9000), InterfaceDefinition('et-0/0/1', deviceOne, 9000), 
+                InterfaceDefinition('et-0/0/2', deviceOne, 9000), InterfaceDefinition('et-0/0/3', deviceOne, 9000), 
+                InterfaceDefinition('et-0/0/10', deviceOne, 9000), InterfaceDefinition('et-0/0/11', deviceOne, 9000),
+                InterfaceDefinition('et-0/0/12', deviceOne, 9000), InterfaceDefinition('et-0/0/13', deviceOne, 9000)]
+        self.session.add_all(IFDs)
+        self.session.commit()
+        
+        fetchedIfds = self.session.query(InterfaceDefinition).order_by(InterfaceDefinition.name_order_num).all()
+        self.assertEqual('et-0/0/0', fetchedIfds[0].name)
+        self.assertEqual('et-0/0/1', fetchedIfds[1].name)
+        self.assertEqual('et-0/0/2', fetchedIfds[2].name)
+        self.assertEqual('et-0/0/3', fetchedIfds[3].name)
+        self.assertEqual('et-0/0/10', fetchedIfds[4].name)
+        self.assertEqual('et-0/0/11', fetchedIfds[5].name)
+        self.assertEqual('et-0/0/12', fetchedIfds[6].name)
+        self.assertEqual('et-0/0/13', fetchedIfds[7].name)
+        
+
 if __name__ == '__main__':
     unittest.main()

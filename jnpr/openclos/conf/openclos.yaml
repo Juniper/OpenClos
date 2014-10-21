@@ -74,3 +74,17 @@ httpServer :
 script : 
     database: 
         backup : script/backup_sqlite.sh
+
+# CLI configuration
+cli:
+    # This is the text that would appear at each prompt
+    prompt_text: "openclos"
+    # prompt_style follows prompt_text and these together make the command-
+    #              prompt of the CLI
+    #              The cli code will add <space> after the prompt_style
+    prompt_style: "#"
+    # header is the text that appears when CLI is invoked, and CLI prompt-
+    #        is issued
+    header: "Welcome to openclos - by Juniper Networks"
+    # on_exit is the message that would appear when CLI session is terminated
+    on_exit: "goodbye"
