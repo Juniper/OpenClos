@@ -8,11 +8,11 @@ import os
 import logging
 import bottle
 from sqlalchemy.orm import exc, Session
+import uuid
 
 import util
 from model import Pod, Device
 from dao import Dao
-from bottle import request
 from report import ResourceAllocationReport
 
 moduleName = 'rest'
@@ -63,7 +63,8 @@ class RestServer():
     def addRoutes(self, baseUrl):
         self.indexLinks = []
 
-        # POST APIs
+        # GET APIs
+        bottle.route('/', 'GET', self.getIndex)
         bottle.route('/openclos', 'GET', self.getIndex)
         bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
         bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
@@ -87,19 +88,20 @@ class RestServer():
         self.createLinkForConfigs()
 
     def createLinkForConfigs(self):
-        pods = self.dao.getAll(Pod)
-        for pod in pods:
-            for device in pod.devices:
-                self.indexLinks.append(ResourceLink(self.baseUrl, 
-                    '/openclos/ip-fabrics/%s/devices/%s/config' % (pod.id, device.id)))
+        # index page should show all top level URLs
+        # users whould be able to drill down through navigation
+        self.indexLinks.append(ResourceLink(self.baseUrl, '/openclos/ip-fabrics'))
     
     def getIndex(self):
+        if 'openclos' not in bottle.request.url:
+            bottle.redirect(bottle.request.url + 'openclos')
+
         jsonLinks = []
         for link in self.indexLinks:
             jsonLinks.append({'link': link.toDict()})
 
         jsonBody = \
-            {'href': self.baseUrl,
+            {'href': bottle.request.url,
              'links': jsonLinks
              }
 
@@ -111,7 +113,7 @@ class RestServer():
     
     def getIpFabrics(self):
         
-        url = request.url
+        url = bottle.request.url
         ipFabricsData = {}
         listOfIpFbarics = []
         report = self.getReport()
@@ -163,7 +165,7 @@ class RestServer():
         report = self.getReport()
         ipFabric = report.getIpFabric(ipFabricId)
         logger.debug('Fabric name: %s' % (ipFabric.name))
-        header =  request.get_header('Accept')
+        header =  bottle.request.get_header('Accept')
         logger.debug('Accept header: %s' % (header))
         if ipFabric is not None:
             ipFabricName = ipFabric.name
@@ -230,6 +232,7 @@ class RestServer():
             device.__dict__.pop('pod_id')
             device.__dict__['uri'] = bottle.request.url
             device.__dict__['pod'] = {'uri': ipFbaricUri }
+            device.__dict__['config'] = {'uri': bottle.request.url + '/config' }
          
             return {'device': device.__dict__}
         else:
@@ -277,7 +280,7 @@ class RestServer():
         
     def createIpFabric(self):  
         try:
-            pod = request.json['ipFabric']
+            pod = bottle.request.json['ipFabric']
             if pod is not None:
                 devices = pod.get('devices')
             else:
@@ -286,6 +289,8 @@ class RestServer():
             raise bottle.HTTPError(404, "POST body can not be empty.")
         
         ipFabric = {}
+        ipFabric['id'] = str(uuid.uuid4())
+        ipFabric['uri'] = bottle.request.url +'/'+ ipFabric['id']
         ipFabric['name'] = pod.get('name')
         ipFabric['fabricDeviceType'] = pod.get('fabricDeviceType')
         ipFabric['fabricDeviceCount'] = pod.get('fabricDeviceCount')
@@ -329,7 +334,7 @@ class RestServer():
     
     def reconfigIpFabric(self, ipFabricId):
         try:
-            inPod = request.json['ipFabric']
+            inPod = bottle.request.json['ipFabric']
             if inPod is not None:
                 devices = inPod.get('devices')
             else:
@@ -338,7 +343,8 @@ class RestServer():
             raise bottle.HTTPError(404, "POST body can not be empty.")
         
         ipFabric = {}
-        ipFabric['id'] = inPod.get('id')
+        ipFabric['id'] = ipFabricId
+        ipFabric['uri'] = bottle.request.url
         ipFabric['name'] = inPod.get('name')
         ipFabric['fabricDeviceType'] = inPod.get('fabricDeviceType')
         ipFabric['fabricDeviceCount'] = inPod.get('fabricDeviceCount')
