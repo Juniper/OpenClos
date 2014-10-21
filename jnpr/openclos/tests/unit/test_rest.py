@@ -47,8 +47,7 @@ class TestRest(unittest.TestCase):
 
         response = restServerTestApp.get('/openclos')
         self.assertEqual(200, response.status_int)
-        self.assertEqual('http://localhost:8080', response.json['href'])
-        self.assertEqual(0, len(response.json['links']))
+        self.assertEqual(1, len(response.json['links']))
         
     def testGetIpFabricsNoPod(self):
         restServer = RestServer(self.conf)
@@ -122,10 +121,8 @@ class TestRest(unittest.TestCase):
     def testGetIndex(self):
         restServerTestApp = self.setupRestWithTwoDevices()
 
-        response = restServerTestApp.get('/openclos')
-        self.assertEqual(200, response.status_int)
-        self.assertEqual('http://localhost:8080', response.json['href'])
-        self.assertEqual(2, len(response.json['links']))
+        response = restServerTestApp.get('/')
+        self.assertEqual(302, response.status_int)
         
     
     def testGetConfigNoDevice(self):
