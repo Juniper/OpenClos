@@ -14,8 +14,7 @@ protocols {
                 session-mode single-hop;
             }
             multipath multiple-as;
-            {% for neighbor in neighbors %}
-            neighbor {{neighbor['peer_ip']}} {
+            {% for neighbor in neighbors %}neighbor {{neighbor['peer_ip']}} {
                 peer-as {{neighbor['peer_asn']}};
             }
             {% endfor %}        
