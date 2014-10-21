@@ -189,7 +189,49 @@ class TestRest(unittest.TestCase):
     def testGetNonExistingCablingPlan(self):
         restServerTestApp = self.setupRestWithTwoPods()
         with self.assertRaises(AppError) as e:
-            restServerTestApp.get('/openclos/ip-fabrics/'+self.ipFabric1.id+'/cabling-plan',{'Accept':'application/json'})
+            restServerTestApp.get('/openclos/ip-fabrics/'+self.ipFabric1.id+'/cabling-plan',headers = {'Accept':'application/json'})
+        self.assertTrue('404 Not Found' in e.exception.message)
+    
+    def testGetCablingPlanJson(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+        cablingPlanLocation = os.path.join(configLocation, self.ipFabric1.name)
+        if not os.path.exists(os.path.join(cablingPlanLocation)):
+            os.makedirs((os.path.join(cablingPlanLocation)))
+        ls = open(os.path.join(cablingPlanLocation, 'cablingPlan.json'), "a+")
+       
+        response = restServerTestApp.get('/openclos/ip-fabrics/'+self.ipFabric1.id+'/cabling-plan',headers = {'Accept':'application/json'})
+        self.assertEqual(200, response.status_int)
+        ls.close()
+        shutil.rmtree(cablingPlanLocation, ignore_errors=True)
+        
+    def testGetCablingPlanDot(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+        cablingPlanLocation = os.path.join(configLocation, self.ipFabric1.name)
+        if not os.path.exists(os.path.join(cablingPlanLocation)):
+            os.makedirs((os.path.join(cablingPlanLocation)))
+        ls = open(os.path.join(cablingPlanLocation, 'cablingPlan.dot'), "a+")
+       
+        response = restServerTestApp.get('/openclos/ip-fabrics/'+self.ipFabric1.id+'/cabling-plan',headers = {'Accept':'application/dot'})
+        self.assertEqual(200, response.status_int)
+        ls.close()
+        shutil.rmtree(cablingPlanLocation, ignore_errors=True)
+        
+    def testGetZtpConfig(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+        ztpConfigLocation = os.path.join(configLocation, self.ipFabric1.name)
+        if not os.path.exists(os.path.join(ztpConfigLocation)):
+            os.makedirs((os.path.join(ztpConfigLocation)))
+        ls = open(os.path.join(ztpConfigLocation, 'dhcpd.conf'), "a+")
+       
+        response = restServerTestApp.get('/openclos/ip-fabrics/'+self.ipFabric1.id+'/ztp-configuration')
+        self.assertEqual(200, response.status_int)
+        ls.close()
+        shutil.rmtree(ztpConfigLocation, ignore_errors=True)
+        
+    def testGetNonExistingZtpConfig(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.get('/openclos/ip-fabrics/'+self.ipFabric1.id+'/ztp-configuration')
         self.assertTrue('404 Not Found' in e.exception.message)
         
 
