@@ -130,7 +130,7 @@ class CLIUtil:
     def suffix_macro_to_cmd ( self, macro_list, cmd ):
         ret_cmd = []
         for macro in macro_list:
-            ret_cmd.append ( normalize_command ( cmd + "_" + macro ) )
+            ret_cmd.append ( self.normalize_command ( cmd + "_" + macro ) )
         return ret_cmd
 
 #------------------------------------------------------------------------------
@@ -153,7 +153,7 @@ class CLIUtil:
     def add_enter_instruction ( self, result_list ):
         if ( len ( result_list ) ):
             string = result_list [ 0 ]
-            if ( string_has_enter ( string ) == 1 ):
+            if ( self.string_has_enter ( string ) == 1 ):
                 return 0
 
         result_list.insert ( 0, " <enter>         Execute the current command" )
@@ -169,8 +169,7 @@ class CLIUtil:
                 if ( re.match ( needle, haystack ) ):
                     ret_list.append ( haystack )
             else:
-                # TODO handle error
-                print "Error condition where needle is bigger than haystack"
+                print ""
 
 #------------------------------------------------------------------------------
     def option_exists ( self, consider_option, ret_list ):
@@ -283,6 +282,42 @@ class CLIUtil:
 
         return ret_list
 
+#------------------------------------------------------------------------------
+    def chomp ( self, token ):
+        match_object = re.search ( "[a-z|A-Z|0-9]", token )
+        if ( match_object != None ):
+            token = token [ ( match_object.end () - 1): ]
+
+        token = token [ ::-1 ]
+        match_object = re.search ( "[a-z|A-Z|0-9]", token )
+        if ( match_object != None ):
+            token = token [ ( match_object.end () - 1): ]
+
+        token = token [ ::-1 ]
+
+        return token
+
+#------------------------------------------------------------------------------
+    def validate_command_and_execute ( self, full_cmd_context ):
+        # We will do the validation again in case this function is called
+        # outside the CLI context
+        for command in self.cmd_graph:
+            match_object = re.match ( command, 
+                           self.normalize_command ( full_cmd_context ) )
+            if ( match_object != None ):
+                # Okay - we found a match. Get macros if included
+                command_args = ""
+                # TODO - different impl here for multiple args support
+                if ( len ( full_cmd_context ) > len ( command ) ):
+                    command_args = self.chomp ( full_cmd_context [ match_object.end (): ] )
+                    
+                # Invoke the handler
+                cmd_handle = self.get_implementor_handle ( CLIImplementor (),
+                                      self.cmd_graph [ command ].cmd_handle )
+                if ( cmd_handle != 0 ):
+                    return cmd_handle ( command_args )
+                else:
+                    print self.cmd_graph [ command ].cmd_handle + " not implemented"
 
 #------------------------------------------------------------------------------
     def print_results ( self, result_list ):
@@ -305,7 +340,7 @@ class CLIUtil:
                 else:
                     print "    Macro not implemented"
             if ( cmd.cmd_handle != "" ):
-                fn_handle = get_implementor_handle ( CLIImplementor (), 
+                fn_handle = self.get_implementor_handle ( CLIImplementor (), 
                                                      cmd.cmd_handle )
                 if ( fn_handle != 0 ):
                     fn_handle ()
