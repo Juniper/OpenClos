@@ -167,7 +167,7 @@ class RestServer():
         report = self.getReport()
         ipFabric = report.getIpFabric(ipFabricId)
         logger.debug('Fabric name: %s' % (ipFabric.name))
-        header =  bottle.request.get_header('accept')
+        header =  bottle.request.get_header('Accept')
         logger.debug('Accept header: %s' % (header))
         if ipFabric is not None:
             ipFabricName = ipFabric.name
