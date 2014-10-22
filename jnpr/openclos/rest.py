@@ -73,6 +73,8 @@ class RestServer():
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices', 'GET', self.getDevices)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices/<deviceId>', 'GET', self.getDevice)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration','GET', self.getZtpConfig)
+
 
         # POST/PUT APIs
         bottle.route('/openclos/ip-fabrics', 'POST', self.createIpFabric)
@@ -256,6 +258,25 @@ class RestServer():
             logger.debug("Device exists but no config found. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
             raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
         return config
+    
+    def getZtpConfig(self, ipFabricId):
+        
+        report = self.getReport()
+        ipFabric = report.getIpFabric(ipFabricId)
+        logger.debug('Fabric name: %s' % (ipFabric.name))
+        if ipFabric is not None:
+            ipFabricName = ipFabric.name
+            fileName = os.path.join(ipFabricName, "dhcpd.conf")
+            logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))         
+            ztpConf = bottle.static_file(fileName, root=webServerRoot)
+            logger.debug('Cabling file name: %s' % (fileName))
+            if isinstance(ztpConf, bottle.HTTPError):
+                logger.debug("Pod exists but no ztp Config found. Pod name: '%s" % (ipFabricName))
+                raise bottle.HTTPError(404, "Pod exists but no ztp Config found. Pod name: '%s " % (ipFabricName))
+            return ztpConf
+        else:
+            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
     
 
     def isDeviceExists(self, ipFabricId, deviceId):
