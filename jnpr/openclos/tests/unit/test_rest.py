@@ -9,8 +9,6 @@ import shutil
 from webtest import TestApp, AppError
 
 from jnpr.openclos.rest import RestServer, webServerRoot, junosImageRoot
-from jnpr.openclos.model import Pod
-from jnpr.openclos.report import ResourceAllocationReport
 
 configLocation = webServerRoot
 imageLocation = junosImageRoot
@@ -143,13 +141,41 @@ class TestRest(unittest.TestCase):
 
     def testGetConfig(self):
         restServerTestApp = self.setupRestWithTwoDevices()
-        podDir = os.path.join(configLocation, 'test1')
+        podDir = os.path.join(configLocation, self.device1.pod_id+'-test1')
         if not os.path.exists(podDir):
             os.makedirs(podDir)
 
-        open(os.path.join(podDir, 'test1.conf'), "a") 
+        open(os.path.join(podDir, self.device1.id+'-test1.conf'), "a") 
         response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices/'+self.device1.id+'/config')
         self.assertEqual(200, response.status_int)
+
+    def testGetDeviceConfigsInZip(self):
+        restServerTestApp = self.setupRestWithTwoDevices()
+        podDir = os.path.join(configLocation, self.device1.pod_id+'-test1')
+        if not os.path.exists(podDir):
+            os.makedirs(podDir)
+
+        open(os.path.join(podDir, self.device1.id+'-test1.conf'), "a") 
+        response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/device-configuration')
+        self.assertEqual(200, response.status_int)
+        self.assertEqual('application/zip', response.headers.get('Content-Type'))
+        
+        import StringIO
+        import zipfile
+        buff = StringIO.StringIO(response.body)
+        archive = zipfile.ZipFile(buff, "r")
+        self.assertEqual(1, len(archive.namelist()))
+
+    def testGetDeviceConfigsInZipUnknownIpFabric(self):
+        restServerTestApp = self.setupRestWithTwoDevices()
+        podDir = os.path.join(configLocation, self.device1.pod_id+'-test1')
+        if not os.path.exists(podDir):
+            os.makedirs(podDir)
+
+        open(os.path.join(podDir, self.device1.id+'-test1.conf'), "a") 
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.get('/openclos/ip-fabrics/UNOKNOWN/device-configuration')
+        self.assertTrue('404 Not Found' in e.exception.message)
 
     def testGetJunosImage404(self):
         restServerTestApp = self.setupRestWithTwoDevices()
@@ -194,7 +220,7 @@ class TestRest(unittest.TestCase):
     
     def testGetCablingPlanJson(self):
         restServerTestApp = self.setupRestWithTwoPods()
-        cablingPlanLocation = os.path.join(configLocation, self.ipFabric1.name)
+        cablingPlanLocation = os.path.join(configLocation, self.ipFabric1.id+'-'+self.ipFabric1.name)
         if not os.path.exists(os.path.join(cablingPlanLocation)):
             os.makedirs((os.path.join(cablingPlanLocation)))
         ls = open(os.path.join(cablingPlanLocation, 'cablingPlan.json'), "a+")
@@ -206,7 +232,7 @@ class TestRest(unittest.TestCase):
         
     def testGetCablingPlanDot(self):
         restServerTestApp = self.setupRestWithTwoPods()
-        cablingPlanLocation = os.path.join(configLocation, self.ipFabric1.name)
+        cablingPlanLocation = os.path.join(configLocation, self.ipFabric1.id+'-'+self.ipFabric1.name)
         if not os.path.exists(os.path.join(cablingPlanLocation)):
             os.makedirs((os.path.join(cablingPlanLocation)))
         ls = open(os.path.join(cablingPlanLocation, 'cablingPlan.dot'), "a+")
@@ -218,7 +244,7 @@ class TestRest(unittest.TestCase):
         
     def testGetZtpConfig(self):
         restServerTestApp = self.setupRestWithTwoPods()
-        ztpConfigLocation = os.path.join(configLocation, self.ipFabric1.name)
+        ztpConfigLocation = os.path.join(configLocation, self.ipFabric1.id+'-'+self.ipFabric1.name)
         if not os.path.exists(os.path.join(ztpConfigLocation)):
             os.makedirs((os.path.join(ztpConfigLocation)))
         ls = open(os.path.join(ztpConfigLocation, 'dhcpd.conf'), "a+")
