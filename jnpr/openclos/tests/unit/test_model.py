@@ -126,12 +126,6 @@ class TestPod(TestOrm):
         error = ve.exception.message
         self.assertEqual(2, error.count(','), 'Number of bad Ip address format field is not correct')
 
-    def testValidateEnum(self):
-        with self.assertRaises(ValueError) :
-            Pod.validateEnum('Pod.TopologyTypeEnum', 'abcd', Pod.TopologyTypeEnum)
-        with self.assertRaises(ValueError) :
-            Pod.validateEnum('Pod.TopologyTypeEnum', ['abcd'], Pod.TopologyTypeEnum)
-
     def testConstructorPass(self):
         pod = {}
         pod['spineCount'] = '3'

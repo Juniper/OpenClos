@@ -6,7 +6,7 @@ Created on Jul 8, 2014
 '''
 import uuid
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum
 from sqlalchemy.orm import relationship, backref
 from netaddr import IPAddress, AddrFormatError
 Base = declarative_base()
@@ -43,8 +43,7 @@ class Pod(ManagedElement, Base):
     loopbackPrefix = Column(String(32))
     spineAS = Column(Integer)
     leafAS = Column(Integer)
-    topologyType = Column(String(100))
-    inventory = Column(String(100))
+    topologyType = Column(Enum('threeStage', 'fiveStageRealEstate', 'fiveStagePerformance'))
     outOfBandAddressList = Column(String(512))  # comma separated values 
     spineJunosImage = Column(String(126))
     leafJunosImage = Column(String(126))
@@ -53,48 +52,67 @@ class Pod(ManagedElement, Base):
     allocatedLoopbackBlock = Column(String(32))
     allocatedSpineAS = Column(Integer)
     allocatefLeafAS = Column(Integer)
-    
+    inventoryData = Column(String(2048))
+    state = Column(Enum('unknown', 'created', 'updated', 'cablingDone', 'deviceConfigDone', 'ztpConfigDone', 'deployed', 'L2Verified', 'L3Verified'))
 
-    TopologyTypeEnum = ['threeStage', 'fiveStageRealEstate', 'fiveStagePerformance']
-  
     def __init__(self, name, **kwargs):
         '''
         Creates a Pod object from dict, if following fields are missing, it throws ValueError
         interConnectPrefix, vlanPrefix, loopbackPrefix, spineAS, leafAS
         '''
-        self.id = str(uuid.uuid4())
-        self.name = name
-                   
-        self.spineCount = kwargs.get('spineCount')
-        self.spineDeviceType = kwargs.get('spineDeviceType')
-        self.leafCount = kwargs.get('leafCount')
-        self.leafDeviceType = kwargs.get('spineDeviceType')
-        self.hostOrVmCountPerLeaf = kwargs.get('hostOrVmCountPerLeaf')
-        self.interConnectPrefix = kwargs.get('interConnectPrefix')
-        self.vlanPrefix = kwargs.get('vlanPrefix')
-        self.loopbackPrefix = kwargs.get('loopbackPrefix')
-        if kwargs.has_key('spineAS'):
-            self.spineAS = int(kwargs.get('spineAS'))
-        if kwargs.has_key('leafAS'):
-            self.leafAS = int(kwargs.get('leafAS'))
-        self.topologyType = kwargs.get('topologyType')
-        self.inventory = kwargs.get('inventory')
-        addressList = kwargs.get('outOfBandAddressList')
-        if addressList is not None:
-            self.outOfBandAddressList = ','.join(addressList)
-            kwargs.pop('outOfBandAddressList')
-        self.spineJunosImage = kwargs.get('spineJunosImage')
-        self.leafJunosImage = kwargs.get('leafJunosImage')
         super(Pod, self).__init__(**kwargs)
-
-    def update(self, **kwargs):
+        self.update(None, name, **kwargs)
+        
+    def update(self, id, name, **kwargs):
         '''
         Updates a Pod ORM object from dict, it updates only following fields.
         spineCount, leafCount
         '''
-        self.spineCount = kwargs.get('spineCount')
-        self.leafCount = kwargs.get('leafCount')
+        if id is not None:
+            self.id = id
+        elif kwargs.has_key('id'):
+            self.id = kwargs.get('id')
+        else:
+            self.id = str(uuid.uuid4())
         
+        if name is not None:
+            self.name = name
+        elif kwargs.has_key('name'):
+            self.name = kwargs.get('name')
+        
+        if kwargs.has_key('spineCount'):
+            self.spineCount = kwargs.get('spineCount')
+        if kwargs.has_key('spineDeviceType'):
+            self.spineDeviceType = kwargs.get('spineDeviceType')
+        if kwargs.has_key('leafCount'):
+            self.leafCount = kwargs.get('leafCount')
+        if kwargs.has_key('leafDeviceType'):
+            self.leafDeviceType = kwargs.get('leafDeviceType')
+        if kwargs.has_key('hostOrVmCountPerLeaf'):
+            self.hostOrVmCountPerLeaf = kwargs.get('hostOrVmCountPerLeaf')
+        if kwargs.has_key('interConnectPrefix'):
+            self.interConnectPrefix = kwargs.get('interConnectPrefix')
+        if kwargs.has_key('vlanPrefix'):
+            self.vlanPrefix = kwargs.get('vlanPrefix')
+        if kwargs.has_key('loopbackPrefix'):
+            self.loopbackPrefix = kwargs.get('loopbackPrefix')
+        if kwargs.has_key('spineAS'):
+            self.spineAS = int(kwargs.get('spineAS'))
+        if kwargs.has_key('leafAS'):
+            self.leafAS = int(kwargs.get('leafAS'))
+        if kwargs.has_key('topologyType'):
+            self.topologyType = kwargs.get('topologyType')
+        if kwargs.has_key('outOfBandAddressList'):
+            addressList = kwargs.get('outOfBandAddressList')
+            self.outOfBandAddressList = ','.join(addressList)
+            kwargs.pop('outOfBandAddressList')
+        if kwargs.has_key('spineJunosImage'):
+            self.spineJunosImage = kwargs.get('spineJunosImage')
+        if kwargs.has_key('leafJunosImage'):
+            self.leafJunosImage = kwargs.get('leafJunosImage')
+        
+        if self.state is None:
+            self.state = 'unknown'
 
     '''
     Additional validations - 
@@ -102,8 +120,8 @@ class Pod(ManagedElement, Base):
     2. Add range check
     '''        
     def validate(self):
-            self.validateRequiredFields()
-            self.validateIPaddr()  
+        self.validateRequiredFields()
+        self.validateIPaddr()  
     
     def validateRequiredFields(self):
         
@@ -185,7 +203,7 @@ class Interface(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     # getting list of interface order by name returns 
     # et-0/0/0, et-0/0/1, et-0/0/11, et/0/0/12, to fix this sequencing
-    # adding order_number, so that the list would be et-0/0/0, et-0/0/1, et-0/0/2, et/0/0/3
+    # adding order_number, so that the list would be et-0/0/0, et-0/0/1, et-0/0/2, et/0/0/3    
     name = Column(String(100))
     name_order_num = Column(Integer)
     type = Column(String(100))
