@@ -39,6 +39,16 @@ class Dao:
             #self.Session.remove()
             pass
 
+    def deleteObjects(self, objects):
+        session = self.Session()
+        try:
+            for obj in objects:
+                session.delete(obj)
+            session.commit()
+        finally:
+            #self.Session.remove()
+            pass
+
     def updateObjects(self, objects):
         session = self.Session()
         try:
@@ -80,4 +90,3 @@ class Dao:
         finally:
             #self.Session.remove()
             pass
-
