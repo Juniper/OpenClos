@@ -9,11 +9,13 @@ import os
 import json
 import math
 import logging
+import zlib
+import base64
 
 from netaddr import IPNetwork
 from sqlalchemy.orm import exc
 
-from model import Pod, Device, InterfaceLogical, InterfaceDefinition
+from model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition
 from dao import Dao
 import util
 from writer import ConfigWriter, CablingPlanWriter
@@ -55,68 +57,93 @@ class L3ClosMediation():
         finally:
             pass
        
-    def isRecreateFabric(self, podInDb, podDict):
+    def createPod(self, podName, podDict, inventoryDict = None):
         '''
-        If any device type/family, ASN range or IP block changed, that would require 
-        re-generation of the fabric, causing new set of IP and ASN assignment per device
+        Create a new POD
         '''
-        if (podInDb.spineDeviceType != podDict['spineDeviceType'] or \
-            podInDb.leafDeviceType != podDict['leafDeviceType'] or \
-            podInDb.interConnectPrefix != podDict['interConnectPrefix'] or \
-            podInDb.vlanPrefix != podDict['vlanPrefix'] or \
-            podInDb.loopbackPrefix != podDict['loopbackPrefix'] or \
-            podInDb.spineAS != podDict['spineAS'] or \
-            podInDb.leafAS != podDict['leafAS']): 
-            return True
-        return False
+        pod = Pod(podName, **podDict)
+        #pod.validate()
+        self.dao.createObjects([pod])
+        logger.info("Pod[id='%s', name='%s']: created" % (pod.id, podName)) 
+        # update status
+        pod.state = 'created'
+        self.dao.updateObjects([pod])
+
+        # shortcut for updating in createPod
+        # this use case is typical in script invocation but not in ND REST invocation
+        self.updatePodData(pod, podDict, inventoryDict)
         
-    def processFabric(self, podName, pod, reCreateFabric = False):
-        # REVISIT use of reCreateFabric
-        try:
-            podInDb = self.dao.getUniqueObjectByName(Pod, podName)
-        except (exc.NoResultFound) as e:
-            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message)) 
-        else:
-            logger.debug("Deleted existing pod name: '%s'" % (podName))     
-            self.dao.deleteObject(podInDb)
+        return pod
+
+    def updatePodData(self, pod, podDict, inventoryDict):
+        if podDict is None and inventoryDict is None:
+            return 
             
-        podInDb = Pod(podName, **pod)
-        podInDb.validate()
-        self.dao.createObjects([podInDb])
-        logger.info("Created pod name: '%s'" % (podName))     
-        self.processTopology(podName, reCreateFabric)
+        dirty = False
+        # inventoryDict is the typical use case for ND REST invocation
+        # podDict['inventory'] is the typical use case for script invocation
+        inventoryData = None
+        if inventoryDict is not None:
+            inventoryData = inventoryDict
+        elif 'inventory' in podDict and podDict['inventory'] is not None:
+            json_inventory = open(os.path.join(util.configLocation, podDict['inventory']))
+            inventoryData = json.load(json_inventory)
+            json_inventory.close()
 
-        # backup current database
-        util.backupDatabase(self.conf)
-           
-        return podInDb
-    
-    def processTopology(self, podName, reCreateFabric = False):
-        '''
-        Finds Pod object by name and process topology
-        It also creates the output folders for pod
-        '''
-        try:
-            pod = self.dao.getUniqueObjectByName(Pod, podName)
-        except (exc.NoResultFound) as e:
-            raise ValueError("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message))
-        except (exc.MultipleResultsFound) as e:
-            raise ValueError("Multiple Pods found with pod name: '%s', exc.MultipleResultsFound: %s" % (podName, e.message))
- 
-        if pod.inventory is not None:
-            # topology handling is divided into 3 steps:
-            # 1. load inventory
-            # 2. create inter-connect
-            # 3. allocate resource
-            # 4. create cabling plan 
-            # 5. create configuration files
-
-            # 1. load inventory
-            json_inventory = open(os.path.join(util.configLocation, pod.inventory))
-            inventory = json.load(json_inventory)
-            json_inventory.close()    
-            self.createSpineIFDs(pod, inventory['spines'])
-            self.createLeafIFDs(pod, inventory['leafs'])
+        # get current inventory stored in database
+        # Note if user does not provide inventory, don't consider it is dirty
+        if inventoryData is not None:
+            # user provides an inventory. now check the inventory we already have in database
+            if pod.inventoryData is not None:
+                inventoryDataInDb = json.loads(zlib.decompress(base64.b64decode(pod.inventoryData)))
+                if inventoryData != inventoryDataInDb:
+                    dirty = True
+                    logger.info("Pod[id='%s', name='%s']: inventory changed" % (pod.id, pod.name))
+                else:
+                    logger.info("Pod[id='%s', name='%s']: inventory not changed" % (pod.id, pod.name))
+            else:
+                dirty = True
+                logger.info("Pod[id='%s', name='%s']: inventory changed" % (pod.id, pod.name))
+                
+        if 'spineDeviceType' in podDict and pod.spineDeviceType != podDict['spineDeviceType']:
+            dirty = True
+            logger.info("Pod[id='%s', name='%s']: spineDeviceType changed" % (pod.id, pod.name))
+            
+        if 'leafDeviceType' in podDict and pod.leafDeviceType != podDict['leafDeviceType']:
+            dirty = True
+            logger.info("Pod[id='%s', name='%s']: leafDeviceType changed" % (pod.id, pod.name))
+            
+        if 'interConnectPrefix' in podDict and pod.interConnectPrefix != podDict['interConnectPrefix']:
+            dirty = True
+            logger.info("Pod[id='%s', name='%s']: interConnectPrefix changed" % (pod.id, pod.name))
+            
+        if 'vlanPrefix' in podDict and pod.vlanPrefix != podDict['vlanPrefix']:
+            dirty = True
+            logger.info("Pod[id='%s', name='%s']: vlanPrefix changed" % (pod.id, pod.name))
+            
+        if 'loopbackPrefix' in podDict and pod.loopbackPrefix != podDict['loopbackPrefix']:
+            dirty = True
+            logger.info("Pod[id='%s', name='%s']: loopbackPrefix changed" % (pod.id, pod.name))
+            
+        if 'spineAS' in podDict and pod.spineAS != podDict['spineAS']:
+            dirty = True
+            logger.info("Pod[id='%s', name='%s']: spineAS changed" % (pod.id, pod.name))
+            
+        if 'leafAS' in podDict and pod.leafAS != podDict['leafAS']:
+            dirty = True
+            logger.info("Pod[id='%s', name='%s']: leafAS changed" % (pod.id, pod.name))
+            
+        if dirty == True:
+            # update pod itself
+            pod.update(pod.id, pod.name, **podDict)
+            pod.inventoryData = base64.b64encode(zlib.compress(json.dumps(inventoryData)))
+            
+            # clear existing inventory because user wants to rebuild inventory
+            self.dao.deleteObjects(pod.devices)
+            
+            # 1. Build inventory
+            self.createSpineIFDs(pod, inventoryData['spines'])
+            self.createLeafIFDs(pod, inventoryData['leafs'])
 
             # 2. Create inter-connect
             self.createLinkBetweenIfds(pod)
@@ -124,19 +151,103 @@ class L3ClosMediation():
             # 3. allocate resource, ip-blocks, ASN
             self.allocateResource(pod)
 
-            # 4. create cabling plan in JSON format
-            cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
-            cablingPlanWriter.writeJSON()
-            # 4. create cabling plan in DOT format
-            cablingPlanWriter.writeDOT()
-            
-            # 5. create configuration files
-            self.generateConfig(pod);
-            
-            return True
-        else:
-            raise ValueError("No topology found for pod name: '%s'", (podName))
+            # update status
+            pod.state = 'updated'
+            self.dao.updateObjects([pod])
 
+            # TODO move the backup operation to CLI 
+            # backup current database
+            util.backupDatabase(self.conf)
+
+    def updatePod(self, podId, podDict, inventoryDict = None):
+        '''
+        Modify an existing POD. As a sanity check, if we don't find the POD
+        by UUID, a ValueException is thrown
+        '''
+        if podId is not None: 
+            try:
+                pod = self.dao.getObjectById(Pod, podId)
+            except (exc.NoResultFound) as e:
+                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+            else:
+                # update other fields
+                self.updatePodData(pod, podDict, inventoryDict)
+                logger.info("Pod[id='%s', name='%s']: updated" % (pod.id, pod.name)) 
+        else:
+            raise ValueError("Pod id can't be None")
+            
+        return pod
+    
+    def deletePod(self, podId):
+        '''
+        Delete an existing POD. As a sanity check, if we don't find the POD
+        by UUID, a ValueException is thrown
+        '''
+        if podId is not None: 
+            try:
+                pod = self.dao.getObjectById(Pod, podId)
+            except (exc.NoResultFound) as e:
+                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+            else:
+                logger.info("Pod[id='%s', name='%s']: deleted" % (pod.id, pod.name)) 
+                self.dao.deleteObject(pod)
+        else:
+            raise ValueError("Pod id can't be None")
+
+    def createCablingPlan(self, podId):
+        '''
+        Finds Pod object by id and create cabling plan
+        It also creates the output folders for pod
+        '''
+        if podId is not None: 
+            try:
+                pod = self.dao.getObjectById(Pod, podId)
+            except (exc.NoResultFound) as e:
+                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+ 
+            if len(pod.devices) > 0:
+                cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
+                # create cabling plan in JSON format
+                cablingPlanWriter.writeJSON()
+                # create cabling plan in DOT format
+                cablingPlanWriter.writeDOT()
+                
+                # update status
+                pod.state = 'cablingDone'
+                self.dao.updateObjects([pod])
+    
+                return True
+            else:
+                raise ValueError("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
+            
+        else:
+            raise ValueError("Pod id can't be None") 
+            
+    def createDeviceConfig(self, podId):
+        '''
+        Finds Pod object by id and create device configurations
+        It also creates the output folders for pod
+        '''
+        if podId is not None:
+            try:
+                pod = self.dao.getObjectById(Pod, podId)
+            except (exc.NoResultFound) as e:
+                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+ 
+            if len(pod.devices) > 0:
+                # create configuration files
+                self.generateConfig(pod)
+
+                # update status
+                pod.state = 'deviceConfigDone'
+                self.dao.updateObjects([pod])
+        
+                return True
+            else:
+                raise ValueError("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
+        else:
+            raise ValueError("Pod id can't be None") 
+            
     def createSpineIFDs(self, pod, spines):
         devices = []
         interfaces = []
@@ -417,6 +528,11 @@ class L3ClosMediation():
 if __name__ == '__main__':
     l3ClosMediation = L3ClosMediation()
     pods = l3ClosMediation.loadClosDefinition()
-    l3ClosMediation.processFabric('labLeafSpine', pods['labLeafSpine'], reCreateFabric = True)
-    l3ClosMediation.processFabric('anotherPod', pods['anotherPod'], reCreateFabric = True)
 
+    pod1 = l3ClosMediation.createPod('labLeafSpine', pods['labLeafSpine'])
+    l3ClosMediation.createCablingPlan(pod1.id)
+    l3ClosMediation.createDeviceConfig(pod1.id)
+
+    pod2 = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
+    l3ClosMediation.createCablingPlan(pod2.id)
+    l3ClosMediation.createDeviceConfig(pod2.id)
