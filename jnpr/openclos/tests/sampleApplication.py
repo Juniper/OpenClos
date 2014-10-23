@@ -29,7 +29,9 @@ class sampleApplication:
         '''
         l3ClosMediation = L3ClosMediation()
         pods = l3ClosMediation.loadClosDefinition()
-        pod = l3ClosMediation.processFabric('anotherPod', pods['anotherPod'], reCreateFabric = True)
+        pod = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
+        l3ClosMediation.createCablingPlan(pod.id)
+        l3ClosMediation.createDeviceConfig(pod.id)
         global generatedDhcpConf
         generatedDhcpConf = generatedDhcpConf.replace('<pod id>', pod.id)
         generatedDhcpConf = generatedDhcpConf.replace('<pod name>', pod.name)
