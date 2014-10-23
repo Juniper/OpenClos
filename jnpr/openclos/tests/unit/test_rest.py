@@ -148,6 +148,8 @@ class TestRest(unittest.TestCase):
         open(os.path.join(podDir, self.device1.id+'-test1.conf'), "a") 
         response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices/'+self.device1.id+'/config')
         self.assertEqual(200, response.status_int)
+        shutil.rmtree(podDir, ignore_errors=True)
+
 
     def testGetDeviceConfigsInZip(self):
         restServerTestApp = self.setupRestWithTwoDevices()
@@ -165,6 +167,7 @@ class TestRest(unittest.TestCase):
         buff = StringIO.StringIO(response.body)
         archive = zipfile.ZipFile(buff, "r")
         self.assertEqual(1, len(archive.namelist()))
+        shutil.rmtree(podDir, ignore_errors=True)
 
     def testGetDeviceConfigsInZipUnknownIpFabric(self):
         restServerTestApp = self.setupRestWithTwoDevices()
@@ -176,6 +179,7 @@ class TestRest(unittest.TestCase):
         with self.assertRaises(AppError) as e:
             restServerTestApp.get('/openclos/ip-fabrics/UNOKNOWN/device-configuration')
         self.assertTrue('404 Not Found' in e.exception.message)
+        shutil.rmtree(podDir, ignore_errors=True)
 
     def testGetJunosImage404(self):
         restServerTestApp = self.setupRestWithTwoDevices()
