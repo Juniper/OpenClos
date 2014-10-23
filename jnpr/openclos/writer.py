@@ -32,9 +32,9 @@ class WriterBase():
         # resolve output directory
         if 'outputDir' in conf:
             outputPath = conf['outputDir']
-            self.outputDir = os.path.join(outputPath, pod.name)
+            self.outputDir = os.path.join(outputPath, pod.id+'-'+pod.name)
         else:
-            self.outputDir = os.path.join('out', pod.name)
+            self.outputDir = os.path.join('out', pod.id+'-'+pod.name)
         if not os.path.exists(self.outputDir):
             os.makedirs(self.outputDir)
 
@@ -43,8 +43,9 @@ class ConfigWriter(WriterBase):
         WriterBase.__init__(self, conf, pod, dao)
         
     def write(self, device, config):
-        logger.info('Writing config for device: %s' % (device.name))
-        with open(os.path.join(self.outputDir, device.name + '.conf'), 'w') as f:
+        fileName = device.id + '-' + device.name
+        logger.info('Writing config for device: %s' % (fileName))
+        with open(os.path.join(self.outputDir, fileName + '.conf'), 'w') as f:
                 f.write(config)
 
 class DhcpConfWriter(WriterBase):

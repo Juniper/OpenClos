@@ -12,10 +12,10 @@ import os
 installedDhcpConf = "/etc/dhcp/dhcpd.conf"
 
 # OpenClos generated dhcpd.conf file path. It is usually located at
-# <OpenClos install dir>/jnpr/openclos/out/<pod name>/dhcpd.conf
-# example for ubuntu - /usr/local/lib/python2.7/dist-packages/jnpr/openclos/out/<pod name>/dhcpd.conf
-# example for centos - /usr/lib/python2.6/site-packages/jnpr/openclos/out/<pod name>/dhcpd.conf
-generatedDhcpConf= "/home/regress/OpenClos-R1.0.dev1/jnpr/openclos/out/anotherPod/dhcpd.conf"
+# <OpenClos install dir>/jnpr/openclos/out/<pod id>-<pod name>/dhcpd.conf
+# example for ubuntu - /usr/local/lib/python2.7/dist-packages/jnpr/openclos/out/<pod id>-<pod name>/dhcpd.conf
+# example for centos - /usr/lib/python2.6/site-packages/jnpr/openclos/out/<pod id>-<pod name>/dhcpd.conf
+generatedDhcpConf = "/home/regress/OpenClos-R1.0.dev1/jnpr/openclos/out/<pod id>-<pod name>/dhcpd.conf"
 
 class sampleApplication:
     '''
@@ -29,7 +29,12 @@ class sampleApplication:
         '''
         l3ClosMediation = L3ClosMediation()
         pods = l3ClosMediation.loadClosDefinition()
-        l3ClosMediation.processFabric('anotherPod', pods['anotherPod'], reCreateFabric = True)
+        pod = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
+        l3ClosMediation.createCablingPlan(pod.id)
+        l3ClosMediation.createDeviceConfig(pod.id)
+        global generatedDhcpConf
+        generatedDhcpConf = generatedDhcpConf.replace('<pod id>', pod.id)
+        generatedDhcpConf = generatedDhcpConf.replace('<pod name>', pod.name)
 
     def setupZTP(self):
         '''
@@ -39,6 +44,7 @@ class sampleApplication:
         '''
         ztpServer = ZtpServer()
         ztpServer.createPodSpecificDhcpConfFile('anotherPod')
+        print generatedDhcpConf
 
         if jnpr.openclos.util.isPlatformUbuntu():
             os.system('sudo apt-get -y install isc-dhcp-server')

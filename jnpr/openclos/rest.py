@@ -9,6 +9,8 @@ import logging
 import bottle
 from sqlalchemy.orm import exc, Session
 import uuid
+import StringIO
+import zipfile
 
 import util
 from model import Pod, Device
@@ -68,13 +70,13 @@ class RestServer():
         bottle.route('/openclos', 'GET', self.getIndex)
         bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
         bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices/<deviceId>/config', 'GET', self.getDeviceConfig)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration','GET', self.getZtpConfig)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'GET', self.getDeviceConfigsInZip)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices', 'GET', self.getDevices)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices/<deviceId>', 'GET', self.getDevice)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration','GET', self.getZtpConfig)
-
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices/<deviceId>/config', 'GET', self.getDeviceConfig)
 
         # POST/PUT APIs
         bottle.route('/openclos/ip-fabrics', 'POST', self.createIpFabric)
@@ -152,8 +154,12 @@ class RestServer():
             ipFabric.__dict__.pop('_sa_instance_state')
             ipFabric.__dict__.pop('spineJunosImage')
             ipFabric.__dict__.pop('leafJunosImage')
+            ipFabric.__dict__.pop('inventoryData')
             ipFabric.__dict__['devices'] = {'uri': bottle.request.url + '/devices', 'total':len(devices)}
             ipFabric.__dict__['cablingPlan'] = {'uri': bottle.request.url + '/cabling-plan'}
+            ipFabric.__dict__['deviceConfiguration'] = {'uri': bottle.request.url + '/device-configuration'}
+            ipFabric.__dict__['ztpConfiguration'] = {'uri': bottle.request.url + '/ztp-configuration'}
+
             logger.debug('getIpFabric: %s' % (ipFabricId))
             #return json.dumps(ipFabric.__dict__)
          
@@ -164,30 +170,63 @@ class RestServer():
     
     def getCablingPlan(self, ipFabricId):
         
-        report = self.getReport()
-        ipFabric = report.getIpFabric(ipFabricId)
-        logger.debug('Fabric name: %s' % (ipFabric.name))
         header =  bottle.request.get_header('Accept')
         logger.debug('Accept header: %s' % (header))
+
+        report = self.getReport()
+        ipFabric = report.getIpFabric(ipFabricId)
         if ipFabric is not None:
-            ipFabricName = ipFabric.name
+            logger.debug('IpFabric name: %s' % (ipFabric.name))
+            ipFabricFolder = ipFabric.id + '-' + ipFabric.name
             if header == 'application/json':
-                fileName = os.path.join(ipFabricName, "cablingPlan.json")
+                fileName = os.path.join(ipFabricFolder, "cablingPlan.json")
                 logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
             else:
-                fileName = os.path.join(ipFabricName, 'cablingPlan.dot')
+                fileName = os.path.join(ipFabricFolder, 'cablingPlan.dot')
                 logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
             logger.debug('Cabling file name: %s' % (fileName))                
 
             cablingPlan = bottle.static_file(fileName, root=webServerRoot)
             if isinstance(cablingPlan, bottle.HTTPError):
-                logger.debug("Pod exists but no CablingPlan found. Pod name: '%s" % (ipFabricName))
-                raise bottle.HTTPError(404, "Pod exists but no CablingPlan found. Pod name: '%s " % (ipFabricName))
+                logger.debug("IpFabric exists but no CablingPlan found. IpFabric: '%s" % (ipFabricFolder))
+                raise bottle.HTTPError(404, "IpFabric exists but no CablingPlan found. IpFabric: '%s " % (ipFabricFolder))
             return cablingPlan
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+
+    def getDeviceConfigsInZip(self, ipFabricId):
+        ipFabric = self.getReport().getIpFabric(ipFabricId)
+        if ipFabric is None:
+            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
         
+        logger.debug('IpFabric name: %s' % (ipFabric.name))
+        ipFabricFolderName = ipFabric.id + '-' + ipFabric.name
+        ipFabricFolderWithPath = os.path.join(webServerRoot, ipFabricFolderName)
+        if os.path.exists(ipFabricFolderWithPath):
+            bottle.response.headers['Content-Type'] = 'application/zip'
+            return self.createZipArchive(ipFabric, ipFabricFolderWithPath)
+        else:
+            raise bottle.HTTPError(404, "IpFabric exists but no folder with configs. ipFabricFolderWithPath: '%s " % (ipFabricFolderWithPath))
+
+    def createZipArchive(self, ipFabric, ipFabricFolder):
+
+        buff = StringIO.StringIO()
+        zipArchive = zipfile.ZipFile(buff, mode='w')
+
+        for device in ipFabric.devices:
+            fileName = device.id + '-' + device.name + '.conf'
+            fileNameWithPath = os.path.join(ipFabricFolder, device.id + '-' + device.name + '.conf')
+            logger.debug('fileName: %s, exists: %s' % (fileNameWithPath, os.path.exists(os.path.join(webServerRoot, fileNameWithPath))))
+            with open (fileNameWithPath, "r") as confFile:
+                config = confFile.read()
+            zipArchive.writestr(fileName, config)
+        
+        zipArchive.close()
+        logger.debug('zip file content:\n' + str(zipArchive.namelist()))
+        return buff.getvalue()
+
     def getDevices(self, ipFabricId):
         
         devices = {}
@@ -250,7 +289,7 @@ class RestServer():
         if device is None:
             raise bottle.HTTPError(404, "No device found with ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
         
-        fileName = os.path.join(pod.name, device.name+'.conf')
+        fileName = os.path.join(pod.id+'-'+pod.name, device.id + '-' + device.name + '.conf')
         logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
 
         config = bottle.static_file(fileName, root=webServerRoot)
@@ -263,16 +302,16 @@ class RestServer():
         
         report = self.getReport()
         ipFabric = report.getIpFabric(ipFabricId)
-        logger.debug('Fabric name: %s' % (ipFabric.name))
         if ipFabric is not None:
-            ipFabricName = ipFabric.name
-            fileName = os.path.join(ipFabricName, "dhcpd.conf")
+            logger.debug('Fabric name: %s' % (ipFabric.name))
+            
+            ipFabricFolder = ipFabric.id + '-' + ipFabric.name
+            fileName = os.path.join(ipFabricFolder, "dhcpd.conf")
             logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))         
             ztpConf = bottle.static_file(fileName, root=webServerRoot)
-            logger.debug('Cabling file name: %s' % (fileName))
             if isinstance(ztpConf, bottle.HTTPError):
-                logger.debug("Pod exists but no ztp Config found. Pod name: '%s" % (ipFabricName))
-                raise bottle.HTTPError(404, "Pod exists but no ztp Config found. Pod name: '%s " % (ipFabricName))
+                logger.debug("Pod exists but no ztp Config found. Pod name: '%s" % (ipFabric.name))
+                raise bottle.HTTPError(404, "Pod exists but no ztp Config found. Pod name: '%s " % (ipFabric.name))
             return ztpConf
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
