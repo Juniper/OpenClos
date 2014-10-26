@@ -19,7 +19,9 @@ import yaml
 # openclos classes
 import util
 from l3Clos import L3ClosMediation
-import ztp
+from model import Pod
+from ztp import ZtpServer
+import dao
 import rest
 
 
@@ -28,7 +30,7 @@ import rest
 class CLIImplementor:
 
     def show_pods ( self, *args ):
-        ret_list = [ '.' ]
+        ret_list = []
         pods_yaml_file = os.path.join ( util.configLocation,
                                         'closTemplate.yaml' )
         pods_file_stream = open ( pods_yaml_file, 'r' )
@@ -44,19 +46,33 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def handle_create_cabling_plan ( self, pod_name ):
         l3ClosMediation = L3ClosMediation ()
+        pod_objects = l3ClosMediation.dao.getAll ( Pod )
+        for pod in pod_objects:
+            if ( pod.name == pod_name ):
+                l3ClosMediation.createCablingPlan ( pod.id )
+                return None
+
+        # No Pods found
         pods = l3ClosMediation.loadClosDefinition()
-        l3ClosMediation.processFabric ( pod_name , 
-                                        pods [ pod_name ], 
-                                        reCreateFabric = True)
+        new_pod = l3ClosMediation.createPod ( pod_name,
+                                              pods [ pod_name ] )
+        l3ClosMediation.createCablingPlan ( new_pod.id )
         
 
 #------------------------------------------------------------------------------
     def handle_create_device_config ( self, pod_name ):
         l3ClosMediation = L3ClosMediation ()
+        pod_objects = l3ClosMediation.dao.getAll ( Pod )
+        for pod in pod_objects:
+            if ( pod.name == pod_name ):
+                l3ClosMediation.createDeviceConfig ( pod.id )
+                return None
+
+        # No Pods found
         pods = l3ClosMediation.loadClosDefinition()
-        l3ClosMediation.processFabric ( pod_name , 
-                                        pods [ pod_name ], 
-                                        reCreateFabric = True)
+        new_pod = l3ClosMediation.createPod ( pod_name,
+                                              pods [ pod_name ] )
+        l3ClosMediation.createDeviceConfig ( new_pod.id )
 
 #------------------------------------------------------------------------------
     def handle_create_ztp_config ( self, pod_name ):
@@ -65,12 +81,12 @@ class CLIImplementor:
         installedDhcpConf = "/etc/dhcp/dhcpd.conf"
         generatedDhcpConf = "/home/regress/OpenClos-R1.0.dev1/jnpr/openclos/out/anotherPod/dhcpd.conf"
 
-        if jnpr.openclos.util.isPlatformUbuntu():
+        if util.isPlatformUbuntu():
             os.system('sudo apt-get -y install isc-dhcp-server')
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
             os.system("/etc/init.d/isc-dhcp-server restart")
 
-        elif jnpr.openclos.util.isPlatformCentos():
+        elif util.isPlatformCentos():
             os.system('yum -y install dhcp')
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
             os.system("/etc/rc.d/init.d/dhcpd restart")

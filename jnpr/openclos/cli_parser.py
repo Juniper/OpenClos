@@ -1,5 +1,5 @@
 #------------------------------------------------------------------------------
-#                            cli.py
+#                            cli_parser.py
 #------------------------------------------------------------------------------
 '''
 @author : rgiyer
@@ -139,8 +139,9 @@ class CLIUtil:
         return fn_macro ()
 
 #------------------------------------------------------------------------------
-    def include_macro ( self, macro_list, dest_list ):
-        dest_list.extend ( macro_list )
+    def include_macro ( self, macro_list, ret_list ):
+        for item in macro_list:
+            ret_list.append ( item )
 
 #------------------------------------------------------------------------------
     def string_has_enter ( self, string ):
