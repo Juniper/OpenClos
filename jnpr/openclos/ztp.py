@@ -123,7 +123,7 @@ class ZtpServer():
                 image = pod.leafJunosImage
             else:
                 image = None
-                logger.error('Pod: %s, Device: %s with unknown role: %s' % (pod.id, pod.name, device.name, device.role))
+                logger.error('PodId: %s, Pod: %s, Device: %s with unknown role: %s' % (pod.id, pod.name, device.name, device.role))
             
             deviceMgmtIp = str(IPNetwork(device.managementIp).ip)
             ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
