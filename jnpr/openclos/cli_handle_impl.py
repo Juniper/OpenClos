@@ -12,6 +12,7 @@ Command context from the openclos CLI will invoke one or more functions (or hand
 
 # Standard python libraries
 import os
+import re
 
 # Python frameworks required for openclos
 import yaml
@@ -29,50 +30,91 @@ import rest
 #------------------------------------------------------------------------------
 class CLIImplementor:
 
-    def show_pods ( self, *args ):
+    def create_pods ( self, pod_definition_file ):
         ret_list = []
         pods_yaml_file = os.path.join ( util.configLocation,
-                                        'closTemplate.yaml' )
-        pods_file_stream = open ( pods_yaml_file, 'r' )
-        pods_template = yaml.load ( pods_file_stream )
-        pods_definition = {}
-        if ( pods_template.has_key ( "pods" ) ):
-            pods_definition = pods_template [ "pods" ]
-            for pods in pods_definition:
-                ret_list.append ( pods )
+                                        pod_definition_file )
+
+        try:
+            pods_file_stream = open ( pods_yaml_file, 'r' )
+            pods_template = yaml.load ( pods_file_stream )
+            pods_definition = {}
+            if ( pods_template.has_key ( "pods" ) ):
+                pods_definition = pods_template [ "pods" ]
+                l3ClosMediation = L3ClosMediation ()
+                for pod in pods_definition:
+                    l3ClosMediation.createPod ( pod, pods_definition [ pod ] )
+            else:
+                print "Could not find pods definition in " + pods_yaml_file
+        except IOError as e:
+            print "Could not open " + pods_yaml_file
+            print e.strerror
+
+        except ImportError:
+            print "Could not load " + pods_yaml_file
+
+        finally:
+            pass
+
+
+#------------------------------------------------------------------------------
+    def handle_create_pods_from_file ( self, pod_definition_file, *args ):
+        if ( len ( pod_definition_file ) > 0 ):
+            self.create_pods ( pod_definition_file )
+        else:
+            print "Please provide a valid file YAML file containing POD definitions"
+
+#------------------------------------------------------------------------------
+    def handle_create_pods ( self, *args ):
+        self.create_pods ( "closTemplate.yaml" )
+
+#------------------------------------------------------------------------------
+    def handle_show_pods ( self, *args ):
+        for item in self.list_all_pods_from_db ( "add_help" ):
+            print item
+
+#------------------------------------------------------------------------------
+    def list_all_pods_from_db ( self, add_help=None, *args ):
+        ret_list = []
+        l3ClosMediation = L3ClosMediation ()
+        pod_objects = l3ClosMediation.dao.getAll ( Pod )
+        for pod in pod_objects:
+            pod_str = pod.id
+            if ( add_help != None ):
+                pod_str = pod_str + "        <UUID of Pod [" + pod.name + "]>"
+            ret_list.append ( pod_str )
+
+        if ( len ( ret_list ) == 0 ):
+            ret_list.insert ( 0, "Error:" )
+            ret_list.append ( "No POD definitions found in the database" )
+        return ret_list
+
+#------------------------------------------------------------------------------
+    def list_all_yaml_files ( self, *args ):
+        ret_list = []
+        util.loadConfig ()
+        for conf_file in os.listdir ( util.configLocation ):
+            if ( os.path.isfile ( os.path.join ( util.configLocation, conf_file ) ) ):
+                m = re.search ( ".yaml", conf_file )
+                if ( m != None ):
+                    ret_list.append ( conf_file )
+
+        if ( len ( ret_list ) == 0 ):
+            ret_list.insert ( 0, "Error:" )
+            ret_list.append ( "No yaml files found at <[" + util.configLocation + "]>" )
 
         return ret_list
 
 #------------------------------------------------------------------------------
-    def handle_create_cabling_plan ( self, pod_name ):
+    def handle_create_cabling_plan ( self, pod_id ):
         l3ClosMediation = L3ClosMediation ()
-        pod_objects = l3ClosMediation.dao.getAll ( Pod )
-        for pod in pod_objects:
-            if ( pod.name == pod_name ):
-                l3ClosMediation.createCablingPlan ( pod.id )
-                return None
-
-        # No Pods found
-        pods = l3ClosMediation.loadClosDefinition()
-        new_pod = l3ClosMediation.createPod ( pod_name,
-                                              pods [ pod_name ] )
-        l3ClosMediation.createCablingPlan ( new_pod.id )
+        l3ClosMediation.createCablingPlan ( pod_id )
         
 
 #------------------------------------------------------------------------------
-    def handle_create_device_config ( self, pod_name ):
+    def handle_create_device_config ( self, pod_id ):
         l3ClosMediation = L3ClosMediation ()
-        pod_objects = l3ClosMediation.dao.getAll ( Pod )
-        for pod in pod_objects:
-            if ( pod.name == pod_name ):
-                l3ClosMediation.createDeviceConfig ( pod.id )
-                return None
-
-        # No Pods found
-        pods = l3ClosMediation.loadClosDefinition()
-        new_pod = l3ClosMediation.createPod ( pod_name,
-                                              pods [ pod_name ] )
-        l3ClosMediation.createDeviceConfig ( new_pod.id )
+        l3ClosMediation.createDeviceConfig ( pod_id )
 
 #------------------------------------------------------------------------------
     def handle_create_ztp_config ( self, pod_name ):

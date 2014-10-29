@@ -214,7 +214,7 @@ class CLIShell ( cmd.Cmd ):
         # Case 2: Valid command provided, or enter pressed half-way
         elif ( len ( results ) == 1 ):
             if ( self.cli_util.string_has_enter ( results [ 0 ] ) == 0 ):
-                self.print_options ( "Command incomplete. Possible matches",
+                self.print_options ( "Command incomplete. Possible options",
                                      results,
                                      line )
             else:
@@ -226,11 +226,22 @@ class CLIShell ( cmd.Cmd ):
                 #     print type ( e )
                 #     print e
 
-        # Case 3: Incomplete command. Provide possible matches
+        # Case 3: More than one possible option. 
+        #         Execute command if <enter> is available as first entry
+        #         else Provide possible matches
         else:
-            self.print_options ( "Command incomplete. Possible options",
-                                 results,
-                                 line )
+            if ( self.cli_util.string_has_enter ( results [ 0 ] ) == 0 ):
+                self.print_options ( "Command incomplete. Possible options",
+                                     results,
+                                     line )
+            else:
+                # TODO - uncomment exception once testing is done
+                # try:
+                self.cli_util.validate_command_and_execute ( line )
+                # except Exception as e:
+                #     print "Encountered an exception of type:"
+                #     print type ( e )
+                #     print e
 
         return None
 
@@ -303,8 +314,8 @@ class CLIShell ( cmd.Cmd ):
                 match_object = re.search ( "[a-z|A-Z|0-9|<]", results [ 0 ] )
                 if ( match_object != None ):
                     results [ 0 ] = results [ 0 ] [ (match_object.end () - 1): ]
-                match_object = re.search ( "<enter>", results [ 0 ] )
-                if ( match_object == None ):
+                #match_object = re.search ( "<enter>", results [ 0 ] )
+                if ( self.cli_util.string_has_enter ( results [ 0 ] ) == 0 ):
                     match_object = re.search ( " ", results [ 0 ] )
                     if ( match_object != None ):
                         results [ 0 ] = results [ 0 ] [ :match_object.end () ]
@@ -313,13 +324,13 @@ class CLIShell ( cmd.Cmd ):
                             results [ 0 ] = self.handle_hypenation ( results [0], current_line, match_object.end () )
                     return results
                 else:
-                    results.insert ( 0, "." )
+                    results.insert ( 0, "" )
                     return results
         elif ( len ( results ) > 1 ):
-            results.insert ( 0, "." )
+            results.insert ( 0, "" )
             return results
         else:
-            return [ "No match found", "." ]
+            return [ "No match found", "" ]
 
 #------------------------------------------------------------------------------
     def completenames(self, text, *ignored):

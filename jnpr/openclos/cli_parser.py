@@ -134,9 +134,9 @@ class CLIUtil:
         return ret_cmd
 
 #------------------------------------------------------------------------------
-    def get_macro_list ( self, class_instance, macro_txt ):
+    def get_macro_list ( self, class_instance, macro_txt, add_help=None ):
         fn_macro = self.get_implementor_handle ( class_instance, macro_txt )
-        return fn_macro ()
+        return fn_macro ( add_help )
 
 #------------------------------------------------------------------------------
     def include_macro ( self, macro_list, ret_list ):
@@ -145,7 +145,7 @@ class CLIUtil:
 
 #------------------------------------------------------------------------------
     def string_has_enter ( self, string ):
-        if ( re.match ( " <enter>", string ) != None ):
+        if ( re.search ( "<enter>", string ) != None ):
             return 1
         else:
             return 0
@@ -157,7 +157,7 @@ class CLIUtil:
             if ( self.string_has_enter ( string ) == 1 ):
                 return 0
 
-        result_list.insert ( 0, " <enter>         Execute the current command" )
+        result_list.insert ( 0, " <enter>" + " " * self.get_indentation ( "<enter" ) + "Execute the current command" )
         
 
 #------------------------------------------------------------------------------
@@ -252,7 +252,7 @@ class CLIUtil:
                 # check if we have a match
                 if ( re.match ( needle, haystack ) != None ):
                     if ( cmd_helper.cmd_macro != "" ):
-                        self.include_macro ( self.get_macro_list ( CLIImplementor (), cmd_helper.cmd_macro ), ret_list )
+                        self.include_macro ( self.get_macro_list ( CLIImplementor (), cmd_helper.cmd_macro, "add help" ), ret_list )
                     else:
                         self.add_enter_instruction ( ret_list )
 
@@ -264,9 +264,11 @@ class CLIUtil:
                     cmd_macro = needle [ match_object.end (): ]
                     if ( cmd_macro [ 0 ] == "_" and len ( cmd_macro ) > 1 ):
                         cmd_macro = cmd_macro [ 1: ]
-                    cmd_macro_list = self.get_macro_list ( CLIImplementor (),
-                                                      cmd_helper.cmd_macro )
-                    self.match_macro ( cmd_macro_list, cmd_macro, ret_list )
+
+                    if ( cmd_helper.cmd_macro != "" ):
+                        cmd_macro_list = self.get_macro_list ( CLIImplementor(),
+                                                          cmd_helper.cmd_macro )
+                        self.match_macro ( cmd_macro_list, cmd_macro, ret_list )
 
             # Case 3: Part command is provided
             elif ( len_needle < len_haystack ):
@@ -302,6 +304,10 @@ class CLIUtil:
     def validate_command_and_execute ( self, full_cmd_context ):
         # We will do the validation again in case this function is called
         # outside the CLI context
+        best_cmd_match = ""
+        best_cmd_args  = ""
+        best_cmd_handle = None
+
         for command in self.cmd_graph:
             match_object = re.match ( command, 
                            self.normalize_command ( full_cmd_context ) )
@@ -311,14 +317,15 @@ class CLIUtil:
                 # TODO - different impl here for multiple args support
                 if ( len ( full_cmd_context ) > len ( command ) ):
                     command_args = self.chomp ( full_cmd_context [ match_object.end (): ] )
-                    
-                # Invoke the handler
-                cmd_handle = self.get_implementor_handle ( CLIImplementor (),
-                                      self.cmd_graph [ command ].cmd_handle )
-                if ( cmd_handle != 0 ):
-                    return cmd_handle ( command_args )
-                else:
-                    print self.cmd_graph [ command ].cmd_handle + " not implemented"
+                if ( len ( best_cmd_match ) < len ( command ) ):
+                    best_cmd_match = command
+                    best_cmd_args  = command_args
+                    best_cmd_handle = self.get_implementor_handle ( CLIImplementor (), self.cmd_graph [ command ].cmd_handle )
+
+        if ( best_cmd_handle != 0 ):
+            return best_cmd_handle ( best_cmd_args )
+        else:
+            print self.cmd_graph [ best_cmd_match ].cmd_handle + " not implemented"
 
 #------------------------------------------------------------------------------
     def print_results ( self, result_list ):
@@ -359,22 +366,25 @@ cli_util = CLIUtil ()
     
 
 match_options = [ "create cabling",
-                  "create cabling-plan",
-                  "create cabling-",
-                  "create cabling",
-                  "create cabling-plan pod",
-                  "create cabling-plan pod pod_2",
-                  "create",
-                  "create dev",
-                  "create device-config",
-                  "create device-config p",
-                  "create device-config pod",
-                  "create device-config pod pod_1",
-                  "run",
-                  "update password",
-                  "run r",
-                  "run RE",
-                  "create cab",
+#                  "create cabling-plan",
+#                  "create cabling-",
+#                  "create cabling",
+#                  "create cabling-plan pod",
+#                  "create cabling-plan pod pod_2",
+#                  "create",
+#                  "create dev",
+#                  "create device-config",
+#                  "create device-config p",
+#                  "create device-config pod",
+#                  "create device-config pod pod_1",
+#                  "run",
+#                  "update password",
+#                  "run r",
+#                  "run RE",
+#                  "create cab",
+                  "create pods",
+                  "create pods from",
+                  "create pods from-file",
                   "" ]
 
 if __name__ == '__main__':
