@@ -69,7 +69,7 @@ class RestServer():
         bottle.route('/', 'GET', self.getIndex)
         bottle.route('/openclos', 'GET', self.getIndex)
         bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
-        bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
+        bottle.route('/openclos/images/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration','GET', self.getZtpConfig)
@@ -152,8 +152,6 @@ class RestServer():
             session = Session.object_session(ipFabric)
             session.expunge(ipFabric)
             ipFabric.__dict__.pop('_sa_instance_state')
-            ipFabric.__dict__.pop('spineJunosImage')
-            ipFabric.__dict__.pop('leafJunosImage')
             ipFabric.__dict__.pop('inventoryData')
             ipFabric.__dict__['devices'] = {'uri': bottle.request.url + '/devices', 'total':len(devices)}
             ipFabric.__dict__['cablingPlan'] = {'uri': bottle.request.url + '/cabling-plan'}
