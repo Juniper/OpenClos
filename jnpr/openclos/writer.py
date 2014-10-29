@@ -32,9 +32,9 @@ class WriterBase():
         # resolve output directory
         if 'outputDir' in conf:
             outputPath = conf['outputDir']
-            self.outputDir = os.path.join(outputPath, pod.name)
+            self.outputDir = os.path.join(outputPath, pod.id+'-'+pod.name)
         else:
-            self.outputDir = os.path.join('out', pod.name)
+            self.outputDir = os.path.join('out', pod.id+'-'+pod.name)
         if not os.path.exists(self.outputDir):
             os.makedirs(self.outputDir)
 
@@ -43,8 +43,9 @@ class ConfigWriter(WriterBase):
         WriterBase.__init__(self, conf, pod, dao)
         
     def write(self, device, config):
-        logger.info('Writing config for device: %s' % (device.name))
-        with open(os.path.join(self.outputDir, device.name + '.conf'), 'w') as f:
+        fileName = device.id + '-' + device.name
+        logger.info('Writing config for device: %s' % (fileName))
+        with open(os.path.join(self.outputDir, fileName + '.conf'), 'w') as f:
                 f.write(config)
 
 class DhcpConfWriter(WriterBase):
@@ -91,7 +92,7 @@ class CablingPlanWriter(WriterBase):
         devices = []
         links = []
         for device in self.pod.devices:
-            devices.append({'id': device.id, 'name': device.name, 'role': device.role})
+            devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role})
             if device.role == 'leaf':
                 leafPeerPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
                 .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
@@ -162,19 +163,19 @@ class CablingPlanWriter(WriterBase):
             if type(ifd) is InterfaceDefinition: 
                 if ifd.role == 'uplink':
                     if ifd.peer is not None:
-                        label += '<'+ifd.id+'>'+ ifd.name+'|'
+                        label += '<'+ifd.id+'>'+ ifd.name+"\<" + ifd.layerAboves[0].ipaddress +"\>"+'|'
                     
         if label.endswith('|'):
             label = label[:-1]
-            label += '}|{' + device.name + '}|{'
+            label += '}|{' + device.name + "\{" +device.family + "\}" + '}|{'
         else:
-            label += device.name + '}|{'
+            label += device.name + "\{" +device.family + "\}" + '}|{'
             
         for ifd in device.interfaces:
             if type(ifd) is InterfaceDefinition:
                 if ifd.role == 'downlink':
                     if ifd.peer is not None:
-                        label += '<'+ifd.id+'>'+ ifd.name+'|'
+                        label += '<'+ifd.id+'>'+ ifd.name+ "\<" + ifd.layerAboves[0].ipaddress +"\>"+'|'
                     
         if label.endswith('|'):
             label = label[:-1]

@@ -1,7 +1,7 @@
 {
 'cablingPlan': {
   'devices': [
-    {% for device in devices %}    {'id': '{{ device['id'] }}', 'name': '{{ device['name'] }}', 'role':'{{ device['role'] }}'}{% if not loop.last %},
+    {% for device in devices %}    {'id': '{{ device['id'] }}', 'name': '{{ device['name'] }}', 'family': '{{ device['family'] }}', 'role':'{{ device['role'] }}'}{% if not loop.last %},
     {% endif %}{% endfor %}
   ],
   'links': [
