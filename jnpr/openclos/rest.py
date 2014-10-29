@@ -446,8 +446,8 @@ class RestServer():
             logger.debug("IpFabric with id: %s deleted" % (ipFabricId))
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
-            raise bottle.HTTPError(204, "IpFabric with id: %s not found" % (ipFabricId))
-        return bottle.HTTPResponse(status=200)
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+        return bottle.HTTPResponse(status=204)
 
 
 if __name__ == '__main__':

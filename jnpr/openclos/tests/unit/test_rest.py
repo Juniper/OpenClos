@@ -110,9 +110,9 @@ class TestRest(unittest.TestCase):
     def setupRestWithTwoPods(self):
         from test_model import createPod
         restServer = RestServer(self.conf)
-        self.session = restServer.dao.Session()
-        self.ipFabric1 = createPod("test1", self.session)
-        self.ipFabric2 = createPod("test2", self.session)
+        session = restServer.dao.Session()
+        self.ipFabric1 = createPod("test1", session)
+        self.ipFabric2 = createPod("test2", session)
         restServer.initRest()
         return TestApp(restServer.app)
            
@@ -265,22 +265,24 @@ class TestRest(unittest.TestCase):
         self.assertTrue('404 Not Found' in e.exception.message)
         
     def testdeleteIpFabric(self):
-        from jnpr.openclos.model import Pod
-        
         restServerTestApp = self.setupRestWithTwoPods()
         
         response = restServerTestApp.delete('/openclos/ip-fabrics/'+self.ipFabric1.id)
-        self.assertEqual(200, response.status_int)
-        self.assertEqual(1,self.session.query(Pod).count())
+        print response.status_int
+        self.assertEqual(204, response.status_int)
+        response = restServerTestApp.get('/openclos/ip-fabrics')
+        self.assertEqual(1, response.json['ipFabrics']['total'])
+        
     
     
     def testDeleteNonExistingIpFabric(self):
         restServer = RestServer(self.conf)
         restServer.initRest()
         restServerTestApp = TestApp(restServer.app)
- 
-        response = restServerTestApp.delete('/openclos/ip-fabrics/' + 'nonExisting')
-        self.assertEqual(204, response.status_int)
+        
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.delete('/openclos/ip-fabrics/' + 'nonExisting')
+        self.assertTrue('404 Not Found', e.exception.message)
         
          
 
