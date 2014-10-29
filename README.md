@@ -122,9 +122,8 @@ Run tests
 
 Output
 ------
-All generated configurations (device configuration and ZTP configuration) are located at "out/<podId>-<podName>". 
+All generated configurations (device configuration and ZTP configuration) are located at "out/PODID-PODNAME"
 
-Ubuntu standard install - "/usr/local/lib/python2.7/dist-packages/jnpr/openclos/out/<podId>-<podName>"
-Centos standard install - "/usr/lib/python2.6/site-packages/jnpr/openclos/out/<podId>-<podName>"
-
-Any platform, development install - "<openclos install folder>/out/<podId>-<podName>"
+* Ubuntu standard install - "/usr/local/lib/python2.7/dist-packages/jnpr/openclos/out/PODID-PODNAME"
+* Centos standard install - "/usr/lib/python2.6/site-packages/jnpr/openclos/out/PODID-PODNAME"
+* Any platform, development install - "<openclos install folder>/out/PODID-PODNAME"
