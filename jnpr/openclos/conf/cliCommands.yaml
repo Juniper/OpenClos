@@ -1,29 +1,37 @@
 create:
     Access: WRITE
     Args:
+        pods:
+            Desc: Export POD definitions to the database
+            Handle: handle_create_pods
+            Args:
+                from-file:
+                    Desc: Export POD definitions from a file to the database
+                    Macro: list_all_yaml_files
+                    Handle: handle_create_pods_from_file
         cabling-plan:
             Args:
                 pod:
-                    Desc: Create cabling plan for a pre-defined pod
-                    Macro: show_pods
+                    Desc: Create cabling plan for a pre-defined POD
+                    Macro: list_all_pods_from_db
                     Handle: handle_create_cabling_plan
         device-config:
             Args:
                 pod:
-                    Desc: Create device configuration for a pre-defined pod
-                    Macro: show_pods
+                    Desc: Create device configuration for a pre-defined POD
+                    Macro: list_all_pods_from_db
                     Handle: handle_create_device_config
         ztp-config:
             Args:
                 pod:
-                    Desc: Create ZTP configuration for a pre-defined pod
-                    Macro: show_pods
+                    Desc: Create ZTP configuration for a pre-defined POD
+                    Macro: list_all_pods_from_db
                     Handle: handle_create_ztp_config
 update:
     Access: WRITE
     Args:
         password:
-            Desc: Update password for all devices in all pods
+            Desc: Update password for all devices in all PODs
             Handle: handle_update_password
 run:
     Access: READ-WRITE
@@ -36,3 +44,10 @@ run:
                 server:
                     Desc: Run REST server process
                     Handle: handle_run_rest_server
+
+show:
+    Access: READ-ONLY
+    Args:
+        pods:
+            Desc: Show all Pods defined in the database
+            Handle: handle_show_pods
