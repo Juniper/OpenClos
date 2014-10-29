@@ -56,22 +56,22 @@ class ZtpServer():
             dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
             return dhcpTemplate.render(ztp = self.populateDhcpDeviceSpecificSettingForAllPods(ztp))
 
-    def createPodSpecificDhcpConfFile(self, podName):
-        pod = self.dao.getUniqueObjectByName(Pod, podName)
+    def createPodSpecificDhcpConfFile(self, podId):
+        pod = self.dao.getObjectById(Pod, podId)
 
         confWriter = DhcpConfWriter(self.conf, pod, self.dao)
-        confWriter.write(self.generatePodSpecificDhcpConf(pod.name))
+        confWriter.write(self.generatePodSpecificDhcpConf(pod.id))
 
-    def generatePodSpecificDhcpConf(self, podName):
+    def generatePodSpecificDhcpConf(self, podId):
         ztp = self.populateDhcpGlobalSettings()
         conf = None
         if util.isPlatformUbuntu():
             dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
-            ztp = self.populateDhcpDeviceSpecificSetting(podName, ztp)
+            ztp = self.populateDhcpDeviceSpecificSetting(podId, ztp)
             conf = dhcpTemplate.render(ztp = ztp)
         elif util.isPlatformCentos():
             dhcpTemplate = self.templateEnv.get_template('dhcp.conf.centos')
-            ztp = self.populateDhcpDeviceSpecificSetting(podName, ztp)
+            ztp = self.populateDhcpDeviceSpecificSetting(podId, ztp)
             conf = dhcpTemplate.render(ztp = ztp)
             
         logger.debug('dhcpd.conf\n%s' % (conf))
@@ -107,15 +107,15 @@ class ZtpServer():
     def populateDhcpDeviceSpecificSettingForAllPods(self, ztp = {}):
         pods = self.dao.getAll(Pod)
         for pod in pods:
-            ztp = self.populateDhcpDeviceSpecificSetting(pod.name, ztp)
+            ztp = self.populateDhcpDeviceSpecificSetting(pod.id, ztp)
         return ztp
 
-    def populateDhcpDeviceSpecificSetting(self, podName, ztp = {}):
+    def populateDhcpDeviceSpecificSetting(self, podId, ztp = {}):
         
         if ztp.get('devices') is None:
             ztp['devices'] = []
         
-        pod = self.dao.getUniqueObjectByName(Pod, podName)
+        pod = self.dao.getObjectById(Pod, podId)
         for device in pod.devices:
             if device.role == 'spine':
                 image = pod.spineJunosImage
@@ -123,7 +123,7 @@ class ZtpServer():
                 image = pod.leafJunosImage
             else:
                 image = None
-                logger.error('Pod: %s, Device: %s with unknown role: %s' % (pod.name, device.name, device.role))
+                logger.error('PodId: %s, Pod: %s, Device: %s with unknown role: %s' % (pod.id, pod.name, device.name, device.role))
             
             deviceMgmtIp = str(IPNetwork(device.managementIp).ip)
             ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
@@ -134,6 +134,6 @@ class ZtpServer():
 
 if __name__ == '__main__':
     ztpServer = ZtpServer()
-    ztpServer.createPodSpecificDhcpConfFile('labLeafSpine')
-    ztpServer.createPodSpecificDhcpConfFile('anotherPod')
+    pods = ztpServer.dao.getAll(Pod)
+    ztpServer.createPodSpecificDhcpConfFile(pods[0].id)
     #ztpServer.createSingleDhcpConfFile()

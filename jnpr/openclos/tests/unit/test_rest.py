@@ -185,7 +185,7 @@ class TestRest(unittest.TestCase):
         restServerTestApp = self.setupRestWithTwoDevices()
 
         with self.assertRaises(AppError) as e:
-            restServerTestApp.get('/abcd.tgz')
+            restServerTestApp.get('/openclos/images/abcd.tgz')
         self.assertTrue('404 Not Found' in e.exception.message)
 
     def testGetJunosImage(self):
@@ -193,7 +193,7 @@ class TestRest(unittest.TestCase):
 
         open(os.path.join(imageLocation, 'efgh.tgz'), "a") 
         
-        response = restServerTestApp.get('/efgh.tgz')
+        response = restServerTestApp.get('/openclos/images/efgh.tgz')
         self.assertEqual(200, response.status_int)
         os.remove(os.path.join(imageLocation, 'efgh.tgz'))
         
@@ -264,6 +264,27 @@ class TestRest(unittest.TestCase):
             restServerTestApp.get('/openclos/ip-fabrics/'+self.ipFabric1.id+'/ztp-configuration')
         self.assertTrue('404 Not Found' in e.exception.message)
         
+    def testdeleteIpFabric(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+        
+        response = restServerTestApp.delete('/openclos/ip-fabrics/'+self.ipFabric1.id)
+        print response.status_int
+        self.assertEqual(204, response.status_int)
+        response = restServerTestApp.get('/openclos/ip-fabrics')
+        self.assertEqual(1, response.json['ipFabrics']['total'])
+        
+    
+    
+    def testDeleteNonExistingIpFabric(self):
+        restServer = RestServer(self.conf)
+        restServer.initRest()
+        restServerTestApp = TestApp(restServer.app)
+        
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.delete('/openclos/ip-fabrics/' + 'nonExisting')
+        self.assertTrue('404 Not Found', e.exception.message)
+        
+         
 
         
 if __name__ == "__main__":

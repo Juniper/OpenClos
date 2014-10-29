@@ -69,7 +69,7 @@ class RestServer():
         bottle.route('/', 'GET', self.getIndex)
         bottle.route('/openclos', 'GET', self.getIndex)
         bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
-        bottle.route('/<junosImageName>', 'GET', self.getJunosImage)
+        bottle.route('/openclos/images/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration','GET', self.getZtpConfig)
@@ -152,8 +152,6 @@ class RestServer():
             session = Session.object_session(ipFabric)
             session.expunge(ipFabric)
             ipFabric.__dict__.pop('_sa_instance_state')
-            ipFabric.__dict__.pop('spineJunosImage')
-            ipFabric.__dict__.pop('leafJunosImage')
             ipFabric.__dict__.pop('inventoryData')
             ipFabric.__dict__['devices'] = {'uri': bottle.request.url + '/devices', 'total':len(devices)}
             ipFabric.__dict__['cablingPlan'] = {'uri': bottle.request.url + '/cabling-plan'}
@@ -448,8 +446,8 @@ class RestServer():
             logger.debug("IpFabric with id: %s deleted" % (ipFabricId))
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
-            raise bottle.HTTPError(204, "IpFabric with id: %s not found" % (ipFabricId))
-        return bottle.HTTPResponse(status=200)
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+        return bottle.HTTPResponse(status=204)
 
 
 if __name__ == '__main__':
