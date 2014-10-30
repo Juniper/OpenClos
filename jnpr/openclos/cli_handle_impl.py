@@ -13,6 +13,7 @@ Command context from the openclos CLI will invoke one or more functions (or hand
 # Standard python libraries
 import os
 import re
+import collections
 
 # Python frameworks required for openclos
 import yaml
@@ -30,6 +31,44 @@ import rest
 #------------------------------------------------------------------------------
 class CLIImplementor:
 
+    pod_indentation = 8
+    pod_attr_dict = collections.OrderedDict ()
+
+#------------------------------------------------------------------------------
+    def add_attr_to_pod_struct ( self, attr, attr_desc ):
+        self.pod_attr_dict [ attr ] = attr_desc
+        desc_len = len ( attr_desc )
+        if ( self.pod_indentation < desc_len ):
+            self.pod_indentation = desc_len 
+
+#------------------------------------------------------------------------------
+    def init_pod_attr ( self ):
+        self.add_attr_to_pod_struct ( 'name', 'POD Name' )
+        self.add_attr_to_pod_struct ( 'spineCount', 'Spine Count' )
+        self.add_attr_to_pod_struct ( 'spineDeviceType', 'Spine Device Type' )
+        self.add_attr_to_pod_struct ( 'leafCount', 'Leaf Count' )
+        self.add_attr_to_pod_struct ( 'leafDeviceType', 'Leaf Device Type' )
+        self.add_attr_to_pod_struct ( 'hostOrVmCountPerLeaf', 'Host / VM Count Per Leaf' )
+        self.add_attr_to_pod_struct ( 'interConnectPrefix', 'Inter-Connect Prefix' )
+        self.add_attr_to_pod_struct ( 'vlanPrefix', 'VLAN Prefix' )
+        self.add_attr_to_pod_struct ( 'loopbackPrefix', 'Loopback Prefix' )
+        self.add_attr_to_pod_struct ( 'spineAS', 'Spine Autonomous Number' )
+        self.add_attr_to_pod_struct ( 'leafAS', 'Leaf Automnomous Number' )
+        self.add_attr_to_pod_struct ( 'topologyType', 'Topology Type' )
+        self.add_attr_to_pod_struct ( 'outOfBandAddressList', 'Out-of-Band Address List' )
+        self.add_attr_to_pod_struct ( 'spineJunosImage', 'Spine Junos Image' )
+        self.add_attr_to_pod_struct ( 'leafJunosImage', 'Leaf Junos Image' )
+        self.add_attr_to_pod_struct ( 'allocatedInterConnectBlock', 'Allocated Inter-Connect Block' )
+        self.add_attr_to_pod_struct ( 'allocatedIrbBlock', 'Allocated IRB Block' )
+        self.add_attr_to_pod_struct ( 'allocatedLoopbackBlock', 'Allocated Loopback Block' )
+        self.add_attr_to_pod_struct ( 'allocatedSpineAS', 'Allocated Spine Autonomous Number' )
+        self.add_attr_to_pod_struct ( 'allocatedLeafAS', 'Allocated Leaf Autonomous Number' )
+        self.add_attr_to_pod_struct ( 'state', 'POD State' )
+
+        self.rl_indent = "\t" + " " * ( self.pod_indentation + 4 )
+
+
+#------------------------------------------------------------------------------
     def create_pods ( self, pod_definition_file ):
         ret_list = []
         pods_yaml_file = os.path.join ( util.configLocation,
@@ -69,9 +108,44 @@ class CLIImplementor:
         self.create_pods ( "closTemplate.yaml" )
 
 #------------------------------------------------------------------------------
-    def handle_show_pods ( self, *args ):
+    def handle_show_pods_terse ( self, *args ):
         for item in self.list_all_pods_from_db ( "add_help" ):
             print item
+
+#------------------------------------------------------------------------------
+    def show_pod_detail ( self, pod_object ):
+        self.init_pod_attr ()
+        for attr in self.pod_attr_dict:
+            try:
+                value = getattr ( pod_object, attr )
+                pod_desc = self.pod_attr_dict [ attr ]
+                desc_indentation = self.pod_indentation + 2 - len ( pod_desc )
+                pod_desc = pod_desc + " " * desc_indentation
+                if ( attr != "name" ):
+                    pod_desc = "\t" + pod_desc + ": "
+                else:
+                    pod_desc = "POD "
+                str_value = str ( value )
+                str_value.replace ( ',',self.rl_indent )
+                print pod_desc + str_value
+            except AttributeError:
+                pass
+    
+
+#------------------------------------------------------------------------------
+    def handle_show_pod_detail ( self, pod_id, *args ):
+        l3ClosMediation = L3ClosMediation ()
+        pod_object = l3ClosMediation.dao.getObjectById ( Pod, pod_id )
+        self.show_pod_detail ( pod_object )
+
+#------------------------------------------------------------------------------
+    def handle_show_all_pods_detail ( self, *args ):
+        print "---------------------------------------------------------------"
+        l3ClosMediation = L3ClosMediation ()
+        pod_objects = l3ClosMediation.dao.getAll ( Pod )
+        for pod in pod_objects:
+            self.show_pod_detail ( pod )
+            print "---------------------------------------------------------------"
 
 #------------------------------------------------------------------------------
     def list_all_pods_from_db ( self, add_help=None, *args ):

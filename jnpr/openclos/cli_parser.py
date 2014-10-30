@@ -91,14 +91,21 @@ class CLIUtil:
             # Get command handler
             if cmd_data.has_key ( "Handle" ):
                 cmd_handle = cmd_data [ "Handle" ]
+            elif ( cmd_handle != "" ):
+                cmd_handle = ""
 
             # Get command macro
             if cmd_data.has_key ( "Macro" ):
                 cmd_macro = cmd_data [ "Macro" ]
+            elif ( cmd_macro != "" ):
+                cmd_macro = ""
+                
 
             # Get command description
             if cmd_data.has_key ( "Desc" ):
                 cmd_desc = cmd_data [ "Desc" ]
+            elif ( cmd_desc != "" ):
+                cmd_desc = ""
 
             # Parse the arguments
             if cmd_data.has_key ( "Args" ):
@@ -167,7 +174,7 @@ class CLIUtil:
                 if ( re.match ( needle, haystack ) != None ):
                     self.add_enter_instruction ( ret_list )
             elif ( len ( needle ) < len ( haystack ) ):
-                if ( re.match ( needle, haystack ) ):
+                if ( re.match ( needle, haystack ) != None ):
                     ret_list.append ( haystack )
             else:
                 print ""

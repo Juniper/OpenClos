@@ -11,19 +11,19 @@ create:
                     Handle: handle_create_pods_from_file
         cabling-plan:
             Args:
-                pod:
+                for-pod:
                     Desc: Create cabling plan for a pre-defined POD
                     Macro: list_all_pods_from_db
                     Handle: handle_create_cabling_plan
         device-config:
             Args:
-                pod:
+                for-pod:
                     Desc: Create device configuration for a pre-defined POD
                     Macro: list_all_pods_from_db
                     Handle: handle_create_device_config
         ztp-config:
             Args:
-                pod:
+                for-pod:
                     Desc: Create ZTP configuration for a pre-defined POD
                     Macro: list_all_pods_from_db
                     Handle: handle_create_ztp_config
@@ -31,14 +31,20 @@ update:
     Access: WRITE
     Args:
         password:
-            Desc: Update password for all devices in all PODs
-            Handle: handle_update_password
+            Args:
+                for-pod:
+                    Desc: Update password for all devices in all PODs
+                    Macro: list_all_pods_from_db
+                    Handle: handle_update_password
 run:
     Access: READ-WRITE
     Args:
         reports:
-            Desc: Generate reports
-            Handle: handle_run_reports
+            Args:
+                for-pod:
+                    Desc: Generate reports
+                    Macro: list_all_pods_from_db
+                    Handle: handle_run_reports
         REST:
             Args:
                 server:
@@ -49,5 +55,15 @@ show:
     Access: READ-ONLY
     Args:
         pods:
-            Desc: Show all Pods defined in the database
-            Handle: handle_show_pods
+            Args:
+                terse:
+                    Desc: Show all PODs defined in the database in brief
+                    Handle: handle_show_pods_terse
+                detail:
+                    Desc: Show specific POD defined in the database in detail
+                    Macro: list_all_pods_from_db
+                    Handle: handle_show_pod_detail
+                    Args:
+                        all:
+                            Desc: Show all PODs defined in the database in detail
+                            Handle: handle_show_all_pods_detail
