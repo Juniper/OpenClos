@@ -67,7 +67,7 @@ DOT :
 # REST will start at localhost, but ZTP process would not work
 httpServer :
     ipAddr : 
-    port : 8080
+    port : 80
 
 # various scripts
 # Note for release 1.0, the backup database script is engine specific
