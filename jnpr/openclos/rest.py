@@ -384,7 +384,7 @@ class RestServer():
         fabricDevices = self.getDevDictFromDict(inPod)
         # Pass the ipFabric and fabricDevices dictionaries to config/update API, then return
         l3ClosMediation.updatePod(ipFabricId, ipFabric, fabricDevices)
-        return {'ipFabric': ResourceAllocationReport(dao = self.dao).getIpFabric(ipFabric['id']).__dict__}
+        return self.getIpFabric(ipFabricId)
     
     def setOpenClosConfigParams(self):
         return bottle.HTTPResponse(status=200)
