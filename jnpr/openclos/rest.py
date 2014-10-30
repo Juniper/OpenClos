@@ -8,7 +8,6 @@ import os
 import logging
 import bottle
 from sqlalchemy.orm import exc, Session
-import uuid
 import StringIO
 import zipfile
 
@@ -17,6 +16,7 @@ from model import Pod, Device
 from dao import Dao
 from report import ResourceAllocationReport
 from l3Clos import L3ClosMediation
+from ztp import ZtpServer
 
 moduleName = 'rest'
 logging.basicConfig()
@@ -81,8 +81,8 @@ class RestServer():
 
         # POST/PUT APIs
         bottle.route('/openclos/ip-fabrics', 'POST', self.createIpFabric)
-        bottle.route('/openclos/ip-fabrics/<podId>/cabling-plan', 'POST', self.createCablingPlan)
-        bottle.route('/openclos/ip-fabrics/<podId>/device-configuration', 'POST', self.createDeviceConfiguration)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'POST', self.createCablingPlan)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'POST', self.createDeviceConfiguration)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration', 'POST', self.createZtpConfiguration)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'PUT', self.reconfigIpFabric)
         bottle.route('/openclos/conf/', 'PUT', self.setOpenClosConfigParams)
@@ -341,27 +341,31 @@ class RestServer():
         try:
             pod = bottle.request.json['ipFabric']
             if pod is None:
-                raise bottle.HTTPError(404, "Invalid value in POST body.")
+                raise bottle.HTTPError(400, "Invalid value in POST body.")
         except ValueError:
-            raise bottle.HTTPError(404, "POST body can not be empty.")
+            raise bottle.HTTPError(400, "POST body can not be empty.")
 
         ipFabric = self.getPodFromDict(pod)
-        ipFabric['id'] = str(uuid.uuid4())
-        ipFabric['uri'] = bottle.request.url +'/'+ ipFabric['id']
         fabricDevices = self.getDevDictFromDict(pod)
-        fabricId =  l3ClosMediation.createPod(ipFabric['name'], ipFabric, fabricDevices).id        
-        return {'ipFabric': ResourceAllocationReport(dao = self.dao).getIpFabric(fabricId).__dict__}
+        fabricId =  l3ClosMediation.createPod(ipFabric['name'], ipFabric, fabricDevices).id
+        return self.getIpFabrics(fabricId)
         
-    def createCablingPlan(self, podId):
-        if L3ClosMediation(self.conf).createCablingPlan(podId) is True:
-            return bottle.HTTPResponse(status=200)
+    def createCablingPlan(self, ipFabricId):
+        try:
+            if L3ClosMediation(self.conf).createCablingPlan(ipFabricId) is True:
+                return bottle.HTTPResponse(status=200)
+        except ValueError:
+            raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
 
-    def createDeviceConfiguration(self, podId):
-        if L3ClosMediation(self.conf).createDeviceConfig(podId) is True:
-            return bottle.HTTPResponse(status=200)
-    
-    def createZtpConfiguration(self):
-        # Underline code is not available.
+    def createDeviceConfiguration(self, ipFabricId):
+        try:
+            if L3ClosMediation(self.conf).createDeviceConfig(ipFabricId) is True:
+                return bottle.HTTPResponse(status=200)
+        except ValueError:
+            raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
+            
+    def createZtpConfiguration(self, ipFabric):
+        ZtpServer.createPodSpecificDhcpConfFile(self, ipFabric)
         return bottle.HTTPResponse(status=200)
     
     def reconfigIpFabric(self, ipFabricId):
@@ -408,7 +412,7 @@ class RestServer():
         '''
         if podDict is None:
             logger.debug("Invalid empty podDict")
-            raise bottle.HTTPError(404, "Invalid value in POST/PUT body.")
+            raise bottle.HTTPError(400, "Invalid value in POST/PUT body.")
         ipFabric['name'] = podDict.get('name')
         ipFabric['fabricDeviceType'] = podDict.get('fabricDeviceType')
         ipFabric['fabricDeviceCount'] = podDict.get('fabricDeviceCount')
@@ -433,7 +437,7 @@ class RestServer():
         if podDict is not None:
             devices = podDict.get('devices')
         else:
-            raise bottle.HTTPError(404, "Invalid value in POST body.")
+            raise bottle.HTTPError(400, "Invalid value in POST body.")
 
         fabricDevices = {}
         spines = []
@@ -450,7 +454,7 @@ class RestServer():
             elif temp['role'] == 'leaf':
                 leaves.append(temp)
             else:
-                raise bottle.HTTPError(204, "Unexpected role value in device inventory list")
+                raise bottle.HTTPError(422, "Unexpected role value in device inventory list")
             fabricDevices['spines'] = spines
             fabricDevices['leafs'] = leaves
 
