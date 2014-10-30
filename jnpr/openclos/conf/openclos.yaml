@@ -27,6 +27,8 @@ logLevel :
     ztp : INFO
     rest : INFO
     writer : INFO
+    devicePlugin : INFO
+
 
 # debug SQL and ORM
 # "true" will enable logging all SQL statements to underlying DB

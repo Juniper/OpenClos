@@ -88,9 +88,12 @@ def getPortNamesForDeviceFamily(deviceFamily, conf):
     For some device family (QFX5100-24Q) there is no specific uplink/downlink, 
     for those it is just a list in the dict.
     
-    Keyword arguments:
-    deviceFamily -- example QFX5100-24Q
-    conf -- device family configuration in dict format, example in openclos.yaml
+    :param str: deviceFamily -- example QFX5100-24Q
+    :param dict: conf -- device family configuration in dict format, example in openclos.yaml
+    :returns dict: portNames
+        uplinkPorts: 
+        downlinkPorts:
+        ports: list of ports that are not tagged, example QFX5100-24Q 
     '''
 
     if conf is None:
