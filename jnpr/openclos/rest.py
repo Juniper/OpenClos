@@ -8,7 +8,6 @@ import os
 import logging
 import bottle
 from sqlalchemy.orm import exc, Session
-import uuid
 import StringIO
 import zipfile
 
@@ -16,6 +15,8 @@ import util
 from model import Pod, Device
 from dao import Dao
 from report import ResourceAllocationReport
+from l3Clos import L3ClosMediation
+from ztp import ZtpServer
 
 moduleName = 'rest'
 logging.basicConfig()
@@ -336,100 +337,54 @@ class RestServer():
         
         
     def createIpFabric(self):  
+        l3ClosMediation = L3ClosMediation(self.conf)
         try:
             pod = bottle.request.json['ipFabric']
-            if pod is not None:
-                devices = pod.get('devices')
-            else:
-                raise bottle.HTTPError(404, "Invalid value in POST body.")
+            if pod is None:
+                raise bottle.HTTPError(400, "Invalid value in POST body.")
         except ValueError:
-            raise bottle.HTTPError(404, "POST body can not be empty.")
-        
-        ipFabric = {}
-        ipFabric['id'] = str(uuid.uuid4())
-        ipFabric['uri'] = bottle.request.url +'/'+ ipFabric['id']
-        ipFabric['name'] = pod.get('name')
-        ipFabric['fabricDeviceType'] = pod.get('fabricDeviceType')
-        ipFabric['fabricDeviceCount'] = pod.get('fabricDeviceCount')
-        ipFabric['spineCount'] = pod.get('spineCount')
-        ipFabric['spineDeviceType'] = pod.get('spineDeviceType')
-        ipFabric['leafCount'] = pod.get('leafCount')
-        ipFabric['leafDeviceType'] = pod.get('leafDeviceType')
-        ipFabric['interConnectPrefix'] = pod.get('interConnectPrefix')
-        ipFabric['vlanPrefix'] = pod.get('vlanPrefix')
-        ipFabric['loopbackPrefix'] = pod.get('loopbackPrefix')
-        ipFabric['spineAS'] = pod.get('spineAS')
-        ipFabric['leafAS'] = pod.get('leafAS')
-        ipFabric['topologyType'] = pod.get('topologyType')
-        ipFabric['outOfBandAddressList'] = pod.get('outOfBandAddressList')
-        ipFabric['spineJunosImage'] = pod.get('spineJunosImage')
-        ipFabric['leafJunosImage'] = pod.get('leafJunosImage')
-        
-        fabricDevices = []
-        for device in devices:
-            temp = {}
-            temp['name'] = device.get('name')
-            temp['mac_address'] = device.get('mac_address')
-            temp['role'] = device.get('role')
-            temp['username'] = device.get('username')
-            temp['password'] = device.get('username')
-            fabricDevices.append(temp)
-        # Passing ipFabric and fabricDevices to the API provided by Yun. Once the fabric is created, get it from DB and return
-        # fabricId = configureFabric(ipFabric, devices)  
-        # return {'ipFabric': ResourceAllocationReport(dao = self.dao).getIpFabric(fabricId).__dict__}
-        ipFabric['devices'] = fabricDevices
-        return {'ipFabric':ipFabric}
+            raise bottle.HTTPError(400, "POST body can not be empty.")
+
+        ipFabric = self.getPodFromDict(pod)
+        fabricDevices = self.getDevDictFromDict(pod)
+        fabricId =  l3ClosMediation.createPod(ipFabric['name'], ipFabric, fabricDevices).id
+        return self.getIpFabrics(fabricId)
         
     def createCablingPlan(self, ipFabricId):
-        return bottle.HTTPResponse(status=200)
+        try:
+            if L3ClosMediation(self.conf).createCablingPlan(ipFabricId) is True:
+                return bottle.HTTPResponse(status=200)
+        except ValueError:
+            raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
 
-    def createDeviceConfiguration(self):
-        return bottle.HTTPResponse(status=200)
-    
-    def createZtpConfiguration(self):
+    def createDeviceConfiguration(self, ipFabricId):
+        try:
+            if L3ClosMediation(self.conf).createDeviceConfig(ipFabricId) is True:
+                return bottle.HTTPResponse(status=200)
+        except ValueError:
+            raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
+            
+    def createZtpConfiguration(self, ipFabric):
+        ZtpServer.createPodSpecificDhcpConfFile(self, ipFabric)
         return bottle.HTTPResponse(status=200)
     
     def reconfigIpFabric(self, ipFabricId):
+        l3ClosMediation = L3ClosMediation(self.conf)
+
         try:
             inPod = bottle.request.json['ipFabric']
-            if inPod is not None:
-                devices = inPod.get('devices')
-            else:
+            if inPod is None:
                 raise bottle.HTTPError(404, "Invalid value in POST body.")
         except ValueError:
             raise bottle.HTTPError(404, "POST body can not be empty.")
-        
-        ipFabric = {}
+
+        ipFabric = self.getPodFromDict(inPod)
         ipFabric['id'] = ipFabricId
         ipFabric['uri'] = bottle.request.url
-        ipFabric['name'] = inPod.get('name')
-        ipFabric['fabricDeviceType'] = inPod.get('fabricDeviceType')
-        ipFabric['fabricDeviceCount'] = inPod.get('fabricDeviceCount')
-        ipFabric['spineCount'] = inPod.get('spineCount')
-        ipFabric['spineDeviceType'] = inPod.get('spineDeviceType')
-        ipFabric['leafCount'] = inPod.get('leafCount')
-        ipFabric['leafDeviceType'] = inPod.get('leafDeviceType')
-        ipFabric['interConnectPrefix'] = inPod.get('interConnectPrefix')
-        ipFabric['vlanPrefix'] = inPod.get('vlanPrefix')
-        ipFabric['loopbackPrefix'] = inPod.get('loopbackPrefix')
-        ipFabric['spineAS'] = inPod.get('spineAS')
-        ipFabric['leafAS'] = inPod.get('leafAS')
-        ipFabric['topologyType'] = inPod.get('topologyType')
-        ipFabric['outOfBandAddressList'] = inPod.get('outOfBandAddressList')
-        
-        fabricDevices = []
-        for device in devices:
-            temp = {}
-            temp['name'] = device.get('name')
-            temp['mac_address'] = device.get('mac_address')
-            temp['role'] = device.get('role')
-            temp['username'] = device.get('username')
-            temp['password'] = device.get('username')
-            fabricDevices.append(temp)
+        fabricDevices = self.getDevDictFromDict(inPod)
         # Pass the ipFabric and fabricDevices dictionaries to config/update API, then return
-        # return {'ipFabric': ResourceAllocationReport(dao = self.dao).getIpFabric(ipFabric['id']).__dict__}
-        ipFabric['devices'] = fabricDevices
-        return {'ipFabric':ipFabric}
+        l3ClosMediation.updatePod(ipFabricId, ipFabric, fabricDevices)
+        return {'ipFabric': ResourceAllocationReport(dao = self.dao).getIpFabric(ipFabric['id']).__dict__}
     
     def setOpenClosConfigParams(self):
         return bottle.HTTPResponse(status=200)
@@ -448,6 +403,62 @@ class RestServer():
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
         return bottle.HTTPResponse(status=204)
 
+    def getPodFromDict(self, podDict):
+        ipFabric = {}
+        '''
+        # Need to revisit later on to make thing works as below.
+        podDict.pop('devices')
+        ipFabric = Pod(**inPod)
+        '''
+        if podDict is None:
+            logger.debug("Invalid empty podDict")
+            raise bottle.HTTPError(400, "Invalid value in POST/PUT body.")
+        ipFabric['name'] = podDict.get('name')
+        ipFabric['fabricDeviceType'] = podDict.get('fabricDeviceType')
+        ipFabric['fabricDeviceCount'] = podDict.get('fabricDeviceCount')
+        ipFabric['spineCount'] = podDict.get('spineCount')
+        ipFabric['spineDeviceType'] = podDict.get('spineDeviceType')
+        ipFabric['leafCount'] = podDict.get('leafCount')
+        ipFabric['leafDeviceType'] = podDict.get('leafDeviceType')
+        ipFabric['interConnectPrefix'] = podDict.get('interConnectPrefix')
+        ipFabric['vlanPrefix'] = podDict.get('vlanPrefix')
+        ipFabric['loopbackPrefix'] = podDict.get('loopbackPrefix')
+        ipFabric['spineAS'] = podDict.get('spineAS')
+        ipFabric['leafAS'] = podDict.get('leafAS')
+        ipFabric['topologyType'] = podDict.get('topologyType')
+        ipFabric['outOfBandAddressList'] = podDict.get('outOfBandAddressList')
+        ipFabric['managementPrefix'] = podDict.get('managementPrefix')
+        ipFabric['description'] = podDict.get('description')
+
+        return ipFabric
+
+
+    def getDevDictFromDict(self, podDict):
+        if podDict is not None:
+            devices = podDict.get('devices')
+        else:
+            raise bottle.HTTPError(400, "Invalid value in POST body.")
+
+        fabricDevices = {}
+        spines = []
+        leaves = []
+        for device in devices:
+            temp = {}
+            temp['name'] = device.get('name')
+            temp['macAddress'] = device.get('macAddress')
+            temp['role'] = device.get('role')
+            temp['username'] = device.get('username')
+            temp['password'] = device.get('username')
+            if temp['role'] == 'spine':
+                spines.append(temp)
+            elif temp['role'] == 'leaf':
+                leaves.append(temp)
+            else:
+                raise bottle.HTTPError(422, "Unexpected role value in device inventory list")
+            fabricDevices['spines'] = spines
+            fabricDevices['leafs'] = leaves
+
+        return fabricDevices
 
 if __name__ == '__main__':
     restServer = RestServer()
