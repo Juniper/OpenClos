@@ -264,7 +264,8 @@ class CLIShell ( cmd.Cmd ):
 
 #------------------------------------------------------------------------------
     def do_help ( self, *args ):
-        for cmds in self.cli_util.get_all_cmds ():
+        print " "
+        for cmds in sorted ( self.cli_util.get_all_cmds () ):
             print cmds
 
 #------------------------------------------------------------------------------
