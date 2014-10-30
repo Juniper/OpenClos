@@ -1,6 +1,6 @@
 OpenCLOS
 ========
-OpneCLOS is a python library to automate Layer-3 IP Fabric design, deploy and maintainance. It performs following to create the IP Fabric.
+OpneCLOS is a python library to automate Layer-3 IP Fabric design, deploy and maintenance. It performs following to create the IP Fabric.
 
 * **Interface Assignments**
   * IP addressing
@@ -27,7 +27,7 @@ Install
 -------
 
     curl -L -u '<username>:<password>' -o OpenClos.zip https://github.com/Juniper/OpenClos/archive/<branch or tag>.zip
-    sudo pip install OpenClos.zip
+    sudo pip install OpenClos.zip --egg
 
 
 **Install in development mode**  
@@ -36,6 +36,39 @@ Install
     unzip OpenClos.zip  
     cd OpenClos-xyz  
     sudo python setup.py develop  
+
+**Centos install issues**  
+
+* Error: Unable to execute gcc: No such file or directory
+* Error: bin/sh: xslt-config: command not found, make sure the development packages of libxml2 and libxslt are installed
+* Error:  #error Python headers needed to compile C extensions, please install development version of Python
+
+For all above errors install following packages and re-try installing openclos  
+  
+    sudo yum install -y python-devel libxml2-devel libxslt-devel gcc openssl
+
+* Error: error_name, '.'.join(version), '.'.join(min_version))), TypeError: sequence item 0: expected string, int found
+
+Centos 5.7, install lxml 3.4 causes problem, manually install lxml 3.3.6 followed by openclos
+    sudo pip install lxml==3.3.6 --egg
+    
+    
+**Ubunu install issues**  
+
+* Error: fatal error: pyconfig.h: No such file or directory
+* Error: bin/sh: xslt-config: command not found, make sure the development packages of libxml2 and libxslt are installed
+
+For all above errors install following packages and re-try installing openclos  
+  
+    sudo apt-get install -y python-dev libxml2-dev libxslt-dev
+
+
+**Windows install issues**  
+
+* Error: "Unable to find vcvarsall.bat"
+  
+One of the Openclos dependent module uses PyCrypto, if installation gives error use platform specific pre-built PyCrypto 
+available from the following site - http://www.voidspace.org.uk/python/modules.shtml#pycrypto 
 
 
 Configuration
@@ -69,8 +102,28 @@ Run
 ---
 Please refer to /path/to/OpenClos/jnpr/openclos/tests/sampleApplication.py
 
+**Runtime issues**
+
+* Error: ImportError: No module named openclos.model
+* Error: ImportError: No module named openclos.l3Clos
+* Error: ImportError: No module named openclos.rest
+  
+openclos and dependent module junos-eznc both uses same namespace 'jnpr'. If junos-eznc was already installed with pip, 
+uninstall (pip uninstall junos-eznc) then install openclos (pip install OpenClos.zip --egg). Make sure 
+to use '--egg' flag to avoid 'flat' install, which causes import error.
+
+
 Run tests
----
+---------
 
     cd /path/to/OpenClos/jnpr/openclos/tests
     nosetests --exe --with-coverage --cover-package=jnpr.openclos --cover-erase
+
+
+Output
+------
+All generated configurations (device configuration and ZTP configuration) are located at "out/PODID-PODNAME"
+
+* Ubuntu standard install - "/usr/local/lib/python2.7/dist-packages/jnpr/openclos/out/PODID-PODNAME"
+* Centos standard install - "/usr/lib/python2.6/site-packages/jnpr/openclos/out/PODID-PODNAME"
+* Any platform, development install - "<openclos install folder>/out/PODID-PODNAME"
