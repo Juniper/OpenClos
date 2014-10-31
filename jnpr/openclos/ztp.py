@@ -13,6 +13,8 @@ import util
 from model import Pod
 from dao import Dao
 from writer import DhcpConfWriter
+from sqlalchemy.orm import exc
+
 
 moduleName = 'ztp'
 logging.basicConfig()
@@ -57,10 +59,16 @@ class ZtpServer():
             return dhcpTemplate.render(ztp = self.populateDhcpDeviceSpecificSettingForAllPods(ztp))
 
     def createPodSpecificDhcpConfFile(self, podId):
-        pod = self.dao.getObjectById(Pod, podId)
+        if podId is not None:
+            try:
+                pod = self.dao.getObjectById(Pod, podId)
+            except (exc.NoResultFound) as e:
+                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+            confWriter = DhcpConfWriter(self.conf, pod, self.dao)
+            confWriter.write(self.generatePodSpecificDhcpConf(pod.id))
+        else:
+            raise ValueError("Pod id can't be None")
 
-        confWriter = DhcpConfWriter(self.conf, pod, self.dao)
-        confWriter.write(self.generatePodSpecificDhcpConf(pod.id))
 
     def generatePodSpecificDhcpConf(self, podId):
         ztp = self.populateDhcpGlobalSettings()

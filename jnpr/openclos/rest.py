@@ -364,27 +364,33 @@ class RestServer():
         except ValueError:
             raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
             
-    def createZtpConfiguration(self, ipFabric):
-        ZtpServer.createPodSpecificDhcpConfFile(self, ipFabric)
-        return bottle.HTTPResponse(status=200)
-    
+    def createZtpConfiguration(self, ipFabricId):
+        try:
+            ZtpServer.createPodSpecificDhcpConfFile(self, ipFabricId)
+        except ValueError:
+            raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
+
     def reconfigIpFabric(self, ipFabricId):
         l3ClosMediation = L3ClosMediation(self.conf)
 
         try:
             inPod = bottle.request.json['ipFabric']
             if inPod is None:
-                raise bottle.HTTPError(404, "Invalid value in POST body.")
+                raise bottle.HTTPError(400, "Invalid value in POST body.")
         except ValueError:
-            raise bottle.HTTPError(404, "POST body can not be empty.")
+            raise bottle.HTTPError(400, "POST body can not be empty.")
 
         ipFabric = self.getPodFromDict(inPod)
-        ipFabric['id'] = ipFabricId
-        ipFabric['uri'] = bottle.request.url
+        #ipFabric['id'] = ipFabricId
+        #ipFabric['uri'] = bottle.request.url
         fabricDevices = self.getDevDictFromDict(inPod)
         # Pass the ipFabric and fabricDevices dictionaries to config/update API, then return
-        l3ClosMediation.updatePod(ipFabricId, ipFabric, fabricDevices)
-        return self.getIpFabric(ipFabricId)
+        try:
+            l3ClosMediation.updatePod(ipFabricId, ipFabric, fabricDevices)
+            return self.getIpFabric(ipFabricId)
+        except ValueError:
+            raise bottle.HTTPError(400, "Invalid value in PUT body.")
+
     
     def setOpenClosConfigParams(self):
         return bottle.HTTPResponse(status=200)
@@ -454,7 +460,7 @@ class RestServer():
             elif temp['role'] == 'leaf':
                 leaves.append(temp)
             else:
-                raise bottle.HTTPError(422, "Unexpected role value in device inventory list")
+                raise bottle.HTTPError(400, "Unexpected role value in device inventory list")
             fabricDevices['spines'] = spines
             fabricDevices['leafs'] = leaves
 
