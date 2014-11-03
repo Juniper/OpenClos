@@ -45,7 +45,7 @@ class TestRest(unittest.TestCase):
 
         response = restServerTestApp.get('/openclos')
         self.assertEqual(200, response.status_int)
-        self.assertEqual(1, len(response.json['links']))
+        self.assertEqual(2, len(response.json['links']))
         
     def testGetIpFabricsNoPod(self):
         restServer = RestServer(self.conf)
@@ -270,7 +270,7 @@ class TestRest(unittest.TestCase):
         restServer.initRest()
         restServerTestApp = TestApp(restServer.app)
         
-        response = restServerTestApp.get('/openclos/conf/')
+        response = restServerTestApp.get('/openclos/conf')
         self.assertEqual(200, response.status_int)
         self.assertEqual(80, response.json['OpenClosConf']['httpServer']['port'])
         self.assertEqual(155, response.json['OpenClosConf']['snmpTrap']['port'])       

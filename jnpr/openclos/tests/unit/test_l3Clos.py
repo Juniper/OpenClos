@@ -69,8 +69,8 @@ class TestL3Clos(unittest.TestCase):
         
         pod = self.createPodWithoutInventory(l3ClosMediation)
         podDict = {"spineAS": 101}
-        inventoryDict = {"spines" : [{ "name" : "spine-11", "mac_address" : "aa:bb:cc:dd:ee:b1", "mgmt_ip" : "172.32.32.201/24" }], \
-                         "leafs" : [{ "name" : "leaf-11", "mac_address" : "aa:bb:cc:dd:ee:a1", "mgmt_ip" : "172.32.32.101/24" }]}
+        inventoryDict = {"spines" : [{ "name" : "spine-11", "macAddress" : "aa:bb:cc:dd:ee:b1", "managementIp" : "172.32.32.201/24" }], \
+                         "leafs" : [{ "name" : "leaf-11", "macAddress" : "aa:bb:cc:dd:ee:a1", "managementIp" : "172.32.32.101/24" }]}
         l3ClosMediation.updatePod(pod.id, podDict, inventoryDict)
 
         self.assertEqual(2, session.query(Device).count())
@@ -115,7 +115,7 @@ class TestL3Clos(unittest.TestCase):
         dao = l3ClosMediation.dao
         pod = self.createPodWithoutInventory(l3ClosMediation)
 
-        spineString = u'[{ "name" : "spine-01", "mac_address" : "aa:bb:cc:dd:ee:f1", "mgmt_ip" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "spine-02", "mac_address" : "aa:bb:cc:dd:ee:f2", "mgmt_ip" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
+        spineString = u'[{ "name" : "spine-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "managementIp" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "spine-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "managementIp" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
         l3ClosMediation.createSpineIFDs(pod, json.loads(spineString))
 
         self.assertEqual(2, len(dao.getAll(Device)))
@@ -133,7 +133,7 @@ class TestL3Clos(unittest.TestCase):
         dao = l3ClosMediation.dao
         pod = self.createPodWithoutInventory(l3ClosMediation)
 
-        leafString = u'[{ "name" : "leaf-01", "mac_address" : "aa:bb:cc:dd:ee:f1", "mgmt_ip" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "leaf-02", "mac_address" : "aa:bb:cc:dd:ee:f2", "mgmt_ip" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
+        leafString = u'[{ "name" : "leaf-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "managementIp" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "leaf-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "managementIp" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
         l3ClosMediation.createLeafIFDs(pod, json.loads(leafString))
 
         self.assertEqual(2, len(dao.getAll(Device)))
@@ -148,9 +148,9 @@ class TestL3Clos(unittest.TestCase):
         self.conf['deviceFamily'] = {}
 
         pod = self.createPodWithoutInventory(l3ClosMediation)
-        spineString = u'[{ "name" : "spine-01", "mac_address" : "aa:bb:cc:dd:ee:f1", "mgmt_ip" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "spine-02", "mac_address" : "aa:bb:cc:dd:ee:f2", "mgmt_ip" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
+        spineString = u'[{ "name" : "spine-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "managementIp" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "spine-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "managementIp" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
         l3ClosMediation.createSpineIFDs(pod, json.loads(spineString))
-        leafString = u'[{ "name" : "leaf-01", "mac_address" : "aa:bb:cc:dd:ee:f1", "mgmt_ip" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "leaf-02", "mac_address" : "aa:bb:cc:dd:ee:f2", "mgmt_ip" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
+        leafString = u'[{ "name" : "leaf-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "managementIp" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "leaf-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "managementIp" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
         l3ClosMediation.createLeafIFDs(pod, json.loads(leafString))
         return pod
     
