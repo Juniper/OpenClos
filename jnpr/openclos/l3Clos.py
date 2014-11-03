@@ -158,6 +158,10 @@ class L3ClosMediation():
             # TODO move the backup operation to CLI 
             # backup current database
             util.backupDatabase(self.conf)
+        else:
+            # update pod itself
+            pod.update(pod.id, podDict.pop('name'), **podDict)
+            self.dao.updateObjects([pod])
 
     def updatePod(self, podId, podDict, inventoryDict = None):
         '''
@@ -254,7 +258,8 @@ class L3ClosMediation():
         for spine in spines:
             user = spine.get('user')
             password = spine.get('pass')
-            device = Device(spine['name'], pod.spineDeviceType, user, password, 'spine', spine['mac_address'], spine['mgmt_ip'], pod)
+            managementIp = spine.get('managementIp')
+            device = Device(spine['name'], pod.spineDeviceType, user, password, 'spine', spine['macAddress'], managementIp, pod)
             devices.append(device)
             
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
@@ -270,7 +275,8 @@ class L3ClosMediation():
         for leaf in leafs:
             user = leaf.get('user')
             password = leaf.get('pass')
-            device = Device(leaf['name'], pod.leafDeviceType, user, password, 'leaf', leaf['mac_address'], leaf['mgmt_ip'], pod)
+            managementIp= leaf.get('managementIp')
+            device = Device(leaf['name'], pod.leafDeviceType, user, password, 'leaf', leaf['macAddress'], managementIp, pod)
             devices.append(device)
 
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])

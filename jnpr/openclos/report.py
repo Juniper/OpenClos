@@ -8,25 +8,29 @@ from sqlalchemy.orm import exc
 
 import util
 from dao import Dao
-from model import Pod
+from model import Pod, InterfaceDefinition
 
 moduleName = 'report'
 logging.basicConfig()
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 
-class ResourceAllocationReport:
+class Report(object):
     def __init__(self, conf = {}, dao = None):
         if any(conf) == False:
             self.conf = util.loadConfig()
             logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
-
         else:
             self.conf = conf
+
         if dao is None:
             self.dao = Dao(self.conf)
         else:
             self.dao = dao
+    
+class ResourceAllocationReport(Report):
+    def __init__(self, conf = {}, dao = None):
+        super(ResourceAllocationReport, self).__init__(conf, dao)
         
     def getPods(self):
         podObject = self.dao.getAll(Pod)
@@ -98,6 +102,58 @@ class ResourceAllocationReport:
         asnAllocation['leafAllocatedStart'] = pod.leafAS
         asnAllocation['leafAllocatedEnd'] = pod.allocatefLeafAS
         return asnAllocation
+
+class L2Report(Report):
+    def __init__(self, conf = {}, dao = None):
+        super(L2Report, self).__init__(conf, dao)
+        
+    def generateReport(self, podId):
+        pod = self.getIpFabric(podId)
+        if pod is None: return
+        
+        for device in pod.devices:
+            if device.role == 'leaf':
+                pass
+                # TODO: add thread and process each leaf
+                
+    def updateIfdLldpStatusForUplinks(self, lldpData, device):
+        '''
+        :param dict lldpData:
+            deivce1: local device (on which lldp was run)
+            port1: local interface (on device1)
+            device2: remote device
+            port2: remote interface
+        '''
+        uplinkPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
+            filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.name_order_num).all()
+
+        uplinkPortsDict = {}
+        for port in uplinkPorts:
+            uplinkPortsDict[port.name] = port
+        
+        modifiedObjects = []
+        for link in lldpData:
+            uplinkPort = uplinkPortsDict.get(link['port1'])
+            if uplinkPort is None:
+                continue
+            
+            peerPort = uplinkPort.peer
+            if peerPort is not None and peerPort.name == link['port2'] and peerPort.device.name == link['device2']:
+                uplinkPort.lldpStatus = 'good'
+                peerPort.lldpStatus = 'good'
+                modifiedObjects.append(uplinkPort)
+                modifiedObjects.append(peerPort)
+            else:
+                uplinkPort.lldpStatus = 'bad'
+                modifiedObjects.append(uplinkPort)
+        
+        self.dao.updateObjects(modifiedObjects)
+
+    
+class L3Report(Report):
+    def __init__(self, conf = {}, dao = None):
+        super(L3Report, self).__init__(conf, dao)
+    
 
 if __name__ == '__main__':
     report = ResourceAllocationReport()

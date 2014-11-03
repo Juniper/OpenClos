@@ -6,7 +6,7 @@ Created on Jul 8, 2014
 '''
 import uuid
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum
 from sqlalchemy.orm import relationship, backref
 from netaddr import IPAddress, AddrFormatError
 Base = declarative_base()
@@ -33,6 +33,7 @@ class Pod(ManagedElement, Base):
     __tablename__ = 'pod'
     id = Column(String(60), primary_key=True)
     name = Column(String(100))
+    description = Column(String(256))
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
     leafCount = Column(Integer)
@@ -80,6 +81,8 @@ class Pod(ManagedElement, Base):
         elif kwargs.has_key('name'):
             self.name = kwargs.get('name')
         
+        if kwargs.has_key('description'):
+            self.description = kwargs.get('description')
         if kwargs.has_key('spineCount'):
             self.spineCount = kwargs.get('spineCount')
         if kwargs.has_key('spineDeviceType'):
@@ -251,14 +254,13 @@ class InterfaceDefinition(Interface):
     id = Column(String(60), ForeignKey('interface.id' ), primary_key=True)
     role = Column(String(60))
     mtu = Column(Integer)
+    lldpStatus = Column(Enum('good', 'bad')) 
         
     __mapper_args__ = {
         'polymorphic_identity':'physical',
     }
 
     def __init__(self, name, device, role, mtu=0):
-        
         super(InterfaceDefinition, self).__init__(name, device)
         self.mtu = mtu
         self.role = role
-        
