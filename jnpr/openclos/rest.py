@@ -244,7 +244,7 @@ class RestServer():
                 device.__dict__.pop('_sa_instance_state')
                 device.__dict__.pop('username')
                 device.__dict__.pop('asn')
-                device.__dict__.pop('pwd')
+                device.__dict__.pop('password')
                 device.__dict__.pop('pod_id')
                 device.__dict__['uri'] = bottle.request.url + '/' +device.id
                 listOfDevices.append(device.__dict__)

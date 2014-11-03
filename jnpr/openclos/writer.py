@@ -76,23 +76,25 @@ class CablingPlanWriter(WriterBase):
         self.templateEnv.lstrip_blocks = True
         # load cabling plan template
         self.template = self.templateEnv.get_template(self.pod.topologyType + '.txt')
+        # load L2Report template
+        self.l2ReportTemplate = self.templateEnv.get_template(self.pod.topologyType + 'L2Report.json')
         # validity check
         if 'deviceFamily' not in self.conf:
             raise ValueError("No deviceFamily found in configuration file")
 
     def writeJSON(self):
         if self.pod.topologyType == 'threeStage':
-            return self.writeJsonThreeStage()
+            return self.writeThreeStageCablingJson()
         elif self.pod.topologyType == 'fiveStageRealEstate':
             return self.writeJSONFiveStageRealEstate()
         elif self.pod.topologyType == 'fiveStagePerformance':
             return self.writeJSONFiveStagePerformance()
-            
-    def writeJsonThreeStage(self):
+
+    def getDataFor3StageCablingPlan(self):            
         devices = []
         links = []
         for device in self.pod.devices:
-            devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role})
+            devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.status, 'reason': device.statusReason})
             if device.role == 'leaf':
                 leafPeerPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
                 .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
@@ -101,14 +103,42 @@ class CablingPlanWriter(WriterBase):
                     spinePeerPort = port.peer
                     spineInterconnectIp = spinePeerPort.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
                     links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
-                                  'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp})
-        
-        cablingPlanJSON = self.template.render(devices = devices, links = links)
+                                  'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
+
+        return {'devices': devices, 'links': links}
+    
+    def getThreeStageCablingJson(self):
+        '''
+        This method will be called by REST layer
+        :returns str:cablingPlan in json format.
+        '''
+        data = self.getDataFor3StageCablingPlan()
+        cablingPlanJson = self.template.render(devices = data['devices'], links = data['links'])
+        return cablingPlanJson
+    
+    def writeThreeStageCablingJson(self):
+        cablingPlanJson = self.getThreeStageCablingJson()
 
         path = os.path.join(self.outputDir, 'cablingPlan.json')
         logger.info('Writing cabling plan: %s' % (path))
         with open(path, 'w') as f:
-                f.write(cablingPlanJSON)
+                f.write(cablingPlanJson)
+
+    def getThreeStageL2ReportJson(self):
+        '''
+        This method will be called by REST layer
+        :returns str: l2Report in json format.
+        '''
+        data = self.getDataFor3StageCablingPlan()
+        l2ReportJson = self.l2ReportTemplate.render(devices = data['devices'], links = data['links'])
+        return l2ReportJson
+    
+    def writeL2ReportJson(self):
+        l2ReportJson = self.getThreeStageL2ReportJson()
+        path = os.path.join(self.outputDir, 'l2Report.json')
+        logger.info('Writing L2Report: %s' % (path))
+        with open(path, 'w') as f:
+                f.write(l2ReportJson)
 
     def writeJSONFiveStageRealEstate(self):
         pass

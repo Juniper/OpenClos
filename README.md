@@ -27,7 +27,7 @@ Install
 -------
 
     curl -L -u '<username>:<password>' -o OpenClos.zip https://github.com/Juniper/OpenClos/archive/<branch or tag>.zip
-    sudo pip install OpenClos.zip --egg
+    sudo pip install --egg OpenClos.zip
 
 
 **Install in development mode**  
@@ -35,7 +35,7 @@ Install
     curl -L -u '<username>:<password>' -o OpenClos.zip https://github.com/Juniper/OpenClos/archive/<branch or tag>.zip     
     unzip OpenClos.zip  
     cd OpenClos-xyz  
-    sudo python setup.py develop  
+    sudo pip install --egg -e .  
 
 **Centos install issues**  
 
@@ -68,7 +68,7 @@ For all above errors install following packages and re-try installing openclos
 * Error: "Unable to find vcvarsall.bat"
   
 One of the Openclos dependent module uses PyCrypto, if installation gives error use platform specific pre-built PyCrypto 
-available from the following site - http://www.voidspace.org.uk/python/modules.shtml#pycrypto 
+from - http://www.voidspace.org.uk/python/modules.shtml#pycrypto, then install openclos again.
 
 
 Configuration

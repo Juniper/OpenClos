@@ -6,7 +6,7 @@ Created on Jul 8, 2014
 '''
 import uuid
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum
 from sqlalchemy.orm import relationship, backref
 from netaddr import IPAddress, AddrFormatError
 Base = declarative_base()
@@ -177,16 +177,18 @@ class Device(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     name = Column(String(100))
     username = Column(String(100))
-    pwd = Column(String(100))
+    password = Column(String(100))
     role = Column(String(32))
     macAddress = Column(String(32))
     managementIp = Column(String(32))
     family = Column(String(100))
     asn = Column(Integer)
+    status = Column(Enum('unknown', 'good', 'bad'))
+    statusReason = Column(String(256)) # will be populated only when status is 'bad'
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
         
-    def __init__(self, name, family, username, pwd, role, mac, mgmtIp, pod):
+    def __init__(self, name, family, username, password, role, mac, mgmtIp, pod):
         '''
         Creates Device object.
         '''
@@ -194,12 +196,13 @@ class Device(ManagedElement, Base):
         self.name = name
         self.family = family
         self.username = username
-        self.pwd = pwd
+        self.password = password
         self.role = role
         self.macAddress = mac
         self.managementIp = mgmtIp
         self.pod = pod
-     
+        self.status = 'unknown'
+        self.statusReason = ''
                
 class Interface(ManagedElement, Base):
     __tablename__ = 'interface'
@@ -254,7 +257,7 @@ class InterfaceDefinition(Interface):
     id = Column(String(60), ForeignKey('interface.id' ), primary_key=True)
     role = Column(String(60))
     mtu = Column(Integer)
-    lldpStatus = Column(Enum('good', 'bad')) 
+    lldpStatus = Column(Enum('unknown', 'good', 'bad')) 
         
     __mapper_args__ = {
         'polymorphic_identity':'physical',
@@ -264,3 +267,4 @@ class InterfaceDefinition(Interface):
         super(InterfaceDefinition, self).__init__(name, device)
         self.mtu = mtu
         self.role = role
+        self.lldpStatus = 'unknown'
