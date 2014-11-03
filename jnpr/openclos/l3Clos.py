@@ -160,7 +160,10 @@ class L3ClosMediation():
             util.backupDatabase(self.conf)
         else:
             # update pod itself
-            pod.update(pod.id, podDict.pop('name'), **podDict)
+            name =  podDict.get('name')
+            if name is not None:
+                podDict.pop('name')
+            pod.update(pod.id, name, **podDict)
             self.dao.updateObjects([pod])
 
     def updatePod(self, podId, podDict, inventoryDict = None):
