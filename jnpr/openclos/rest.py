@@ -69,7 +69,7 @@ class RestServer():
         # GET APIs
         bottle.route('/', 'GET', self.getIndex)
         bottle.route('/openclos', 'GET', self.getIndex)
-        bottle.route('/openclos/conf/', 'GET', self.getOpenClosConfigParams)
+        bottle.route('/openclos/conf', 'GET', self.getOpenClosConfigParams)
         bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
         bottle.route('/openclos/images/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
@@ -97,6 +97,7 @@ class RestServer():
         # index page should show all top level URLs
         # users whould be able to drill down through navigation
         self.indexLinks.append(ResourceLink(self.baseUrl, '/openclos/ip-fabrics'))
+        self.indexLinks.append(ResourceLink(self.baseUrl, '/openclos/conf'))
     
     def getIndex(self):
         if 'openclos' not in bottle.request.url:
@@ -155,6 +156,7 @@ class RestServer():
             session.expunge(ipFabric)
             ipFabric.__dict__.pop('_sa_instance_state')
             ipFabric.__dict__.pop('inventoryData')
+            ipFabric.__dict__['uri'] = bottle.request.url
             ipFabric.__dict__['devices'] = {'uri': bottle.request.url + '/devices', 'total':len(devices)}
             ipFabric.__dict__['cablingPlan'] = {'uri': bottle.request.url + '/cabling-plan'}
             ipFabric.__dict__['deviceConfiguration'] = {'uri': bottle.request.url + '/device-configuration'}
@@ -383,9 +385,12 @@ class RestServer():
             raise bottle.HTTPError(400, "POST body can not be empty.")
 
         ipFabric = self.getPodFromDict(pod)
+        ipFabricName = ipFabric.pop('name')
         fabricDevices = self.getDevDictFromDict(pod)
-        fabricId =  l3ClosMediation.createPod(ipFabric['name'], ipFabric, fabricDevices).id
-        return self.getIpFabrics(fabricId)
+        fabricId =  l3ClosMediation.createPod(ipFabricName, ipFabric, fabricDevices).id
+        ipFabric = self.getIpFabric(fabricId)
+        ipFabric['ipFabric']['uri'] = bottle.request.url + '/' + fabricId
+        return ipFabric
         
     def createCablingPlan(self, ipFabricId):
         try:
@@ -471,6 +476,7 @@ class RestServer():
         ipFabric['topologyType'] = podDict.get('topologyType')
         ipFabric['outOfBandAddressList'] = podDict.get('outOfBandAddressList')
         ipFabric['managementPrefix'] = podDict.get('managementPrefix')
+        ipFabric['hostOrVmCountPerLeaf'] = podDict.get('hostOrVmCountPerLeaf')
         ipFabric['description'] = podDict.get('description')
 
         return ipFabric

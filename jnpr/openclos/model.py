@@ -33,6 +33,7 @@ class Pod(ManagedElement, Base):
     __tablename__ = 'pod'
     id = Column(String(60), primary_key=True)
     name = Column(String(100))
+    description = Column(String(256))
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
     leafCount = Column(Integer)
@@ -80,6 +81,8 @@ class Pod(ManagedElement, Base):
         elif kwargs.has_key('name'):
             self.name = kwargs.get('name')
         
+        if kwargs.has_key('description'):
+            self.description = kwargs.get('description')
         if kwargs.has_key('spineCount'):
             self.spineCount = kwargs.get('spineCount')
         if kwargs.has_key('spineDeviceType'):
