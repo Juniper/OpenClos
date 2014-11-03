@@ -69,6 +69,7 @@ class RestServer():
         # GET APIs
         bottle.route('/', 'GET', self.getIndex)
         bottle.route('/openclos', 'GET', self.getIndex)
+        bottle.route('/openclos/conf/', 'GET', self.getOpenClosConfigParams)
         bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
         bottle.route('/openclos/images/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
@@ -325,7 +326,7 @@ class RestServer():
             raise bottle.HTTPError(404, "No device found with ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
 
     def getJunosImage(self, junosImageName):
-
+           
         fileName = os.path.join(junosImageRoot, junosImageName)
         logger.debug('junosImageRoot: %s, image: %s, exists: %s' % (junosImageRoot, junosImageName, os.path.exists(fileName)))
 
@@ -334,8 +335,44 @@ class RestServer():
             logger.debug("Junos image file found. name: '%s'" % (junosImageName))
             raise bottle.HTTPError(404, "Junos image file not found. name: '%s'" % (junosImageName))
         return config
+    
+    def getOpenClosConfigParams(self):
         
-        
+        supportedDevices = []
+        for device in self.conf['deviceFamily']:
+            port = util.getPortNamesForDeviceFamily(device, self.conf['deviceFamily'])
+            deviceDetail = {}
+            if len(port['uplinkPorts']) > 0:
+                deviceDetail['family'] = device
+                deviceDetail['uplinkStart'] = port['uplinkPorts'][0]
+                deviceDetail['uplinkEnd'] = port['uplinkPorts'][len(port['uplinkPorts'])-1]
+                deviceDetail['role'] = 'leaf'
+                
+            if len(port['downlinkPorts']) > 0:
+                deviceDetail['downlinkStart'] = port['uplinkPorts'][0]
+                deviceDetail['downlinkEnd'] = port['uplinkPorts'][len(port['uplinkPorts'])-1]
+                deviceDetail['role'] = 'leaf'
+              
+            if len(port['uplinkPorts'] and port['downlinkPorts'] ) == 0:
+                if  device == 'QFX5100-24Q':
+                    deviceDetail['role'] = 'spine'
+                    deviceDetail['family'] = device
+                    deviceDetail['downlinkStart'] = port['ports'][0]
+                    deviceDetail['downlinkEnd'] = port['ports'][len(port['ports'])-1]
+                    deviceDetail['uplinkStart'] = ''
+                    deviceDetail['uplinkEnd'] = ''
+                
+            supportedDevices.append(deviceDetail)
+            
+        confValues = {}
+        confValues.update({'dbUrl': self.conf['dbUrl']})
+        confValues.update({'supportedDevices' : supportedDevices })
+        confValues.update({'dotColors': self.conf['DOT']['colors'] })
+        confValues.update({'httpServer' : self.conf['httpServer']})
+        confValues.update({'snmpTrap' : self.conf['snmpTrap']})
+
+        return {'OpenClosConf' : confValues }
+                    
     def createIpFabric(self):  
         l3ClosMediation = L3ClosMediation(self.conf)
         try:
