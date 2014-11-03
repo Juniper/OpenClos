@@ -353,7 +353,7 @@ class RestServer():
                 deviceDetail['downlinkEnd'] = port['uplinkPorts'][len(port['uplinkPorts'])-1]
                 deviceDetail['role'] = 'leaf'
               
-            if len(port['uplinkPorts'] and port['downlinkPorts'] ) == 0:
+            if len(port['uplinkPorts'])==0 and len(port['downlinkPorts']) == 0:
                 if  device == 'QFX5100-24Q':
                     deviceDetail['role'] = 'spine'
                     deviceDetail['family'] = device

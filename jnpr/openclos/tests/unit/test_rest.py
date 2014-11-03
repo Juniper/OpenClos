@@ -271,7 +271,6 @@ class TestRest(unittest.TestCase):
         restServerTestApp = TestApp(restServer.app)
         
         response = restServerTestApp.get('/openclos/conf/')
-        print response.status_int
         self.assertEqual(200, response.status_int)
         self.assertEqual(80, response.json['OpenClosConf']['httpServer']['port'])
         self.assertEqual(155, response.json['OpenClosConf']['snmpTrap']['port'])       
