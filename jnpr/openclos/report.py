@@ -111,23 +111,34 @@ class ResourceAllocationReport(Report):
 class L2Report(Report):
     def __init__(self, conf = {}, dao = None):
         super(L2Report, self).__init__(conf, dao)
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = 5)
-        self.futureList = []
         
-    def generateReport(self, podId):
+        if self.conf.get('report') and self.conf['report'].get('threadCount'):
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self.conf['report']['threadCount'])
+        else:
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = 10)
+        
+    def generateReport(self, podId, cachedData = True, writeToFile = False):
         pod = self.getIpFabric(podId)
-        if pod is None: return
+        if pod is None: 
+            logger.error('No pod found for podId: %s' % (podId))
+            raise ValueError('No pod found for podId: %s' % (podId)) 
         
-        for device in pod.devices:
-            if device.role == 'leaf':
-                self.futureList.append(self.executor.submit(self.collectAndProcessLldpData, device))
-        
-        logger.info('Submitted processing all devices')
-        concurrent.futures.wait(self.futureList)
-        logger.info('Done processing all devices')
-        self.executor.shutdown()
+        if not cachedData:
+            futureList = []
+            for device in pod.devices:
+                if device.role == 'leaf':
+                    futureList.append(self.executor.submit(self.collectAndProcessLldpData, device))
+            
+            logger.info('Submitted processing all devices')
+            concurrent.futures.wait(futureList)
+            logger.info('Done processing all devices')
+        else:
+            logger.info('Generating L2Report from cached data')
         cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
-        cablingPlanWriter.writeL2ReportJson()
+        if writeToFile:
+            return cablingPlanWriter.writeThreeStageL2ReportJson()
+        else:
+            return cablingPlanWriter.getThreeStageL2ReportJson()
 
 
     
@@ -203,4 +214,4 @@ if __name__ == '__main__':
     l2Report = L2Report()
     pod = l2Report.getPod('anotherPod')
     if pod is not None:
-        l2Report.generateReport(pod.id)
+        l2Report.generateReport(pod.id, True)
