@@ -15,7 +15,7 @@ import base64
 from netaddr import IPNetwork
 from sqlalchemy.orm import exc
 
-from model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition
+from model import Pod, Device, InterfaceLogical, InterfaceDefinition
 from dao import Dao
 import util
 from writer import ConfigWriter, CablingPlanWriter
@@ -174,7 +174,7 @@ class L3ClosMediation():
         if podId is not None: 
             try:
                 pod = self.dao.getObjectById(Pod, podId)
-            except (exc.NoResultFound) as e:
+            except (exc.NoResultFound):
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
             else:
                 # update other fields
@@ -193,7 +193,7 @@ class L3ClosMediation():
         if podId is not None: 
             try:
                 pod = self.dao.getObjectById(Pod, podId)
-            except (exc.NoResultFound) as e:
+            except (exc.NoResultFound):
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
             else:
                 logger.info("Pod[id='%s', name='%s']: deleted" % (pod.id, pod.name)) 
@@ -209,7 +209,7 @@ class L3ClosMediation():
         if podId is not None: 
             try:
                 pod = self.dao.getObjectById(Pod, podId)
-            except (exc.NoResultFound) as e:
+            except (exc.NoResultFound):
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
  
             if len(pod.devices) > 0:
@@ -238,7 +238,7 @@ class L3ClosMediation():
         if podId is not None:
             try:
                 pod = self.dao.getObjectById(Pod, podId)
-            except (exc.NoResultFound) as e:
+            except (exc.NoResultFound):
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
  
             if len(pod.devices) > 0:
@@ -259,10 +259,11 @@ class L3ClosMediation():
         devices = []
         interfaces = []
         for spine in spines:
-            user = spine.get('user')
-            password = spine.get('pass')
+            username = spine.get('username')
+            password = spine.get('password')
             managementIp = spine.get('managementIp')
-            device = Device(spine['name'], pod.spineDeviceType, user, password, 'spine', spine['macAddress'], managementIp, pod)
+            macAddress = spine.get('macAddress')
+            device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, managementIp, pod)
             devices.append(device)
             
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
@@ -276,10 +277,11 @@ class L3ClosMediation():
         devices = []
         interfaces = []
         for leaf in leafs:
-            user = leaf.get('user')
-            password = leaf.get('pass')
+            username = leaf.get('username')
+            password = leaf.get('password')
             managementIp= leaf.get('managementIp')
-            device = Device(leaf['name'], pod.leafDeviceType, user, password, 'leaf', leaf['macAddress'], managementIp, pod)
+            macAddress = leaf.get('macAddress')
+            device = Device(leaf['name'], pod.leafDeviceType, username, password, 'leaf', macAddress, managementIp, pod)
             devices.append(device)
 
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])

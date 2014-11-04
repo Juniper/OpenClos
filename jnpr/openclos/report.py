@@ -5,10 +5,15 @@ Created on Sep 5, 2014
 '''
 import logging
 from sqlalchemy.orm import exc
+import concurrent.futures
+import traceback
 
 import util
 from dao import Dao
 from model import Pod, InterfaceDefinition
+from devicePlugin import Netconf
+from writer import CablingPlanWriter
+from exception import DeviceError
 
 moduleName = 'report'
 logging.basicConfig()
@@ -27,7 +32,19 @@ class Report(object):
             self.dao = Dao(self.conf)
         else:
             self.dao = dao
-    
+
+    def getPod(self, podName):
+        try:
+            return self.dao.getUniqueObjectByName(Pod, podName)
+        except (exc.NoResultFound) as e:
+            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message))
+
+    def getIpFabric(self, ipFabricId):
+        try:
+            return self.dao.getObjectById(Pod, ipFabricId)
+        except (exc.NoResultFound) as e:
+            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s" % (ipFabricId, e.message)) 
+            
 class ResourceAllocationReport(Report):
     def __init__(self, conf = {}, dao = None):
         super(ResourceAllocationReport, self).__init__(conf, dao)
@@ -49,18 +66,6 @@ class ResourceAllocationReport(Report):
             
         return pods
     
-    def getPod(self, podName):
-        try:
-            return self.dao.getUniqueObjectByName(Pod, podName)
-        except (exc.NoResultFound) as e:
-            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message))
-            
-    def getIpFabric(self, ipFabricId):
-        try:
-            return self.dao.getObjectById(Pod, ipFabricId)
-        except (exc.NoResultFound) as e:
-            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s" % (ipFabricId, e.message)) 
-            
     def getInterconnectAllocation(self, podName):
         pod = self.getPod(podName)
         if pod is None: return {}
@@ -106,6 +111,8 @@ class ResourceAllocationReport(Report):
 class L2Report(Report):
     def __init__(self, conf = {}, dao = None):
         super(L2Report, self).__init__(conf, dao)
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = 5)
+        self.futureList = []
         
     def generateReport(self, podId):
         pod = self.getIpFabric(podId)
@@ -113,9 +120,39 @@ class L2Report(Report):
         
         for device in pod.devices:
             if device.role == 'leaf':
-                pass
-                # TODO: add thread and process each leaf
-                
+                self.futureList.append(self.executor.submit(self.collectAndProcessLldpData, device))
+        
+        logger.info('Submitted processing all devices')
+        concurrent.futures.wait(self.futureList)
+        logger.info('Done processing all devices')
+        self.executor.shutdown()
+        cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
+        cablingPlanWriter.writeL2ReportJson()
+
+
+    
+    def collectAndProcessLldpData(self, device):
+        deviceIp = device.managementIp.split('/')[0]
+        deviceLog = 'device id: %s, name: %s, ip: %s' % (device.id, device.name, deviceIp)
+        try:
+            lldpData = Netconf(self.conf).collectLldpFromDevice({'ip': deviceIp, 
+                'username': device.username, 'password': device.password})
+            logger.debug('Collected LLDP data for %s' % (deviceLog))
+            self.updateDeviceStatus(device, None)
+            self.updateIfdLldpStatusForUplinks(lldpData, device)
+        except DeviceError as exc:
+            logger.error('Collect LLDP data failed for %s, %s' % (deviceLog, exc))
+            logger.debug('StackTrace: %s' % (traceback.format_exc()))
+            self.updateDeviceStatus(device, exc)
+    
+    def updateDeviceStatus(self, device, error):
+        if error is None:
+            device.status = 'good'
+        else:
+            device.status = 'bad'
+            device.statusReason = str(error.cause)
+        self.dao.updateObjects([device])
+        
     def updateIfdLldpStatusForUplinks(self, lldpData, device):
         '''
         :param dict lldpData:
@@ -162,3 +199,8 @@ if __name__ == '__main__':
     print report.getLoopbackAllocation('labLeafSpine')
     print report.getIrbAllocation('labLeafSpine')
     print report.getAsnAllocation('labLeafSpine')
+
+    l2Report = L2Report()
+    pod = l2Report.getPod('anotherPod')
+    if pod is not None:
+        l2Report.generateReport(pod.id)

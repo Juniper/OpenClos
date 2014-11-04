@@ -46,7 +46,7 @@ pods:
         spineDeviceType : QFX5100-24Q
         leafCount : 4
         # possible options for leafDeviceType are QFX5100-96S, QFX5100-48S
-        leafDeviceType : QFX5100-48S
+        leafDeviceType : QFX5100-96S
         hostOrVmCountPerLeaf : 254
         interConnectPrefix : 192.169.0.0
         vlanPrefix : 172.17.0.0

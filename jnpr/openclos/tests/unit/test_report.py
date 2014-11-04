@@ -64,22 +64,23 @@ class TestL2Report(unittest.TestCase):
         
         self.session.commit()
 
-        self.report.updateIfdLldpStatusForUplinks([{'device1': '', 'port1': 'et-0/0/48', 'device2': 'spine', 'port2': 'et-0/0/0'},
-                                                   {'device1': '', 'port1': 'et-0/0/49', 'device2': 'spine', 'port2': 'et-0/0/1'},
-                                                   {'device1': '', 'port1': 'et-0/0/50', 'device2': 'spine-unknown', 'port2': 'et-0/0/0'}, # bad connection 
-                                                   {'device1': '', 'port1': 'xe-0/0/0', 'device2': 'server', 'port2': 'eth0'},
-                                                   {'device1': '', 'port1': 'xe-0/0/1', 'device2': 'server', 'port2': 'eth1'},
-                                                ], leaf)
+        self.report.updateIfdLldpStatusForUplinks([
+           {'device1': '', 'port1': 'et-0/0/48', 'device2': 'spine', 'port2': 'et-0/0/0'},
+           {'device1': '', 'port1': 'et-0/0/49', 'device2': 'spine', 'port2': 'et-0/0/1'},
+           {'device1': '', 'port1': 'et-0/0/50', 'device2': 'spine-unknown', 'port2': 'et-0/0/0'}, # bad connection 
+           {'device1': '', 'port1': 'xe-0/0/0', 'device2': 'server', 'port2': 'eth0'},
+           {'device1': '', 'port1': 'xe-0/0/1', 'device2': 'server', 'port2': 'eth1'},
+        ], leaf)
         
         self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[0].id).one().lldpStatus)
         self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[1].id).one().lldpStatus)
-        self.assertIsNone(self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[2].id).one().lldpStatus)
-        self.assertIsNone(self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[3].id).one().lldpStatus)
+        self.assertEqual('unknown', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[2].id).one().lldpStatus)
+        self.assertEqual('unknown', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[3].id).one().lldpStatus)
 
         self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().lldpStatus)
         self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().lldpStatus)
         self.assertEqual('bad', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().lldpStatus)
-        self.assertIsNone(self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().lldpStatus)
+        self.assertEqual('unknown', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().lldpStatus)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
