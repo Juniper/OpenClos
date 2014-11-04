@@ -19,6 +19,7 @@ moduleName = 'report'
 logging.basicConfig()
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
+maxThreads = 10
 
 class Report(object):
     def __init__(self, conf = {}, dao = None):
@@ -115,7 +116,7 @@ class L2Report(Report):
         if self.conf.get('report') and self.conf['report'].get('threadCount'):
             self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self.conf['report']['threadCount'])
         else:
-            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = 10)
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = maxThreads)
         
     def generateReport(self, podId, cachedData = True, writeToFile = False):
         pod = self.getIpFabric(podId)
