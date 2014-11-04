@@ -14,7 +14,7 @@ import zipfile
 import util
 from model import Pod, Device
 from dao import Dao
-from report import ResourceAllocationReport
+from report import ResourceAllocationReport, L2Report
 from l3Clos import L3ClosMediation
 from ztp import ZtpServer
 
@@ -54,6 +54,10 @@ class RestServer():
         else:
             self.port = 8080
         self.baseUrl = 'http://%s:%d' % (self.host, self.port)
+
+        self.report = ResourceAllocationReport(self.conf, self.dao)
+        self.l2Report = L2Report(self.conf, self.dao)
+
         
     def initRest(self):
         self.addRoutes(self.baseUrl)
@@ -76,6 +80,8 @@ class RestServer():
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration','GET', self.getZtpConfig)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'GET', self.getDeviceConfigsInZip)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/l2-report', 'GET', self.getL2Report)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/l3-report', 'GET', self.getL3Report)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices', 'GET', self.getDevices)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices/<deviceId>', 'GET', self.getDevice)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices/<deviceId>/config', 'GET', self.getDeviceConfig)
@@ -114,17 +120,12 @@ class RestServer():
 
         return jsonBody
     
-    def getReport(self):
-        report = ResourceAllocationReport(self.conf, self.dao)
-        return report
-    
     def getIpFabrics(self):
         
         url = bottle.request.url
         ipFabricsData = {}
         listOfIpFbarics = []
-        report = self.getReport()
-        IpFabrics = report.getPods()
+        IpFabrics = self.report.getPods()
         logger.debug("count of ipFabrics: %d", len(IpFabrics))
         if not IpFabrics :   
             logger.debug("There are no ipFabrics in the system ")
@@ -145,9 +146,7 @@ class RestServer():
         return {'ipFabrics' : ipFabricsData}
     
     def getIpFabric(self, ipFabricId):
-        report = ResourceAllocationReport(dao = self.dao)
-        
-        ipFabric = report.getIpFabric(ipFabricId)
+        ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
             devices = ipFabric.devices
             
@@ -161,6 +160,8 @@ class RestServer():
             ipFabric.__dict__['cablingPlan'] = {'uri': bottle.request.url + '/cabling-plan'}
             ipFabric.__dict__['deviceConfiguration'] = {'uri': bottle.request.url + '/device-configuration'}
             ipFabric.__dict__['ztpConfiguration'] = {'uri': bottle.request.url + '/ztp-configuration'}
+            ipFabric.__dict__['l2Report'] = {'uri': bottle.request.url + '/l2-report'}
+            ipFabric.__dict__['l3Report'] = {'uri': bottle.request.url + '/l3-report'}
 
             logger.debug('getIpFabric: %s' % (ipFabricId))
             #return json.dumps(ipFabric.__dict__)
@@ -175,8 +176,7 @@ class RestServer():
         header =  bottle.request.get_header('Accept')
         logger.debug('Accept header: %s' % (header))
 
-        report = self.getReport()
-        ipFabric = report.getIpFabric(ipFabricId)
+        ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
             logger.debug('IpFabric name: %s' % (ipFabric.name))
             ipFabricFolder = ipFabric.id + '-' + ipFabric.name
@@ -198,7 +198,7 @@ class RestServer():
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
 
     def getDeviceConfigsInZip(self, ipFabricId):
-        ipFabric = self.getReport().getIpFabric(ipFabricId)
+        ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is None:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
@@ -233,8 +233,7 @@ class RestServer():
         
         devices = {}
         listOfDevices = []
-        report = self.getReport()
-        ipFabric = report.getIpFabric(ipFabricId)
+        ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
             #devicesObject = ipFabric.devices
             
@@ -301,8 +300,7 @@ class RestServer():
     
     def getZtpConfig(self, ipFabricId):
         
-        report = self.getReport()
-        ipFabric = report.getIpFabric(ipFabricId)
+        ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
             logger.debug('Fabric name: %s' % (ipFabric.name))
             
@@ -437,14 +435,10 @@ class RestServer():
     def setOpenClosConfigParams(self):
         return bottle.HTTPResponse(status=200)
     
-    def setNdConfigParams(self):
-        return bottle.HTTPResponse(status=200)
-
     def deleteIpFabric(self, ipFabricId):
-        report = ResourceAllocationReport(dao = self.dao)
-        ipFabric = report.getIpFabric(ipFabricId)
+        ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
-            report.dao.deleteObject(ipFabric)
+            self.report.dao.deleteObject(ipFabric)
             logger.debug("IpFabric with id: %s deleted" % (ipFabricId))
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
@@ -508,6 +502,39 @@ class RestServer():
             fabricDevices['leafs'] = leaves
 
         return fabricDevices
+
+    def getL2Report(self, ipFabricId):
+        try:
+            cached = bottle.request.query.get('cached', True)
+            bottle.response.headers['Content-Type'] = 'application/json'
+            return self.l2Report.generateReport(ipFabricId, cached)
+
+        except ValueError:
+            raise bottle.HTTPError(404, "Fabric with id: %s not found" % (ipFabricId))
+    
+    def getL3Report(self, ipFabricId):
+        try:
+            #TODO: process and return real data from L3Report 
+            return {"l3Report": {
+              "devices": [
+                {"id": "3eddfee0-b381-46ac-8bc0-931f023b55c2", "name": "clos-leaf-01", "family": "QFX5100-96S", "role":"leaf", "status":"bad", "statusReason":"ConnectAuthError(192.168.48.218)"},
+                {"id": "ffa7c8dd-47a5-48e8-9090-716b056e49af", "name": "clos-leaf-02", "family": "QFX5100-96S", "role":"leaf", "status":"good", "statusReason":""},
+                {"id": "c407aabf-6553-4608-95fe-f6885b72732a", "name": "clos-leaf-03", "family": "QFX5100-96S", "role":"leaf", "status":"bad", "statusReason":"ConnectUnknownHostError(192.168.48.999)"},
+                {"id": "138d1d9d-0984-4e96-ab64-eca1bb86e45d", "name": "clos-spine-01", "family": "QFX5100-24Q", "role":"spine", "status":"unknown", "statusReason":""},
+                {"id": "82bfe693-9d80-44c1-994d-2c48b7cda785", "name": "clos-spine-02", "family": "QFX5100-24Q", "role":"spine", "status":"unknown", "statusReason":""}
+              ],
+              "peers": [
+                { "device1": "clos-leaf-01", "asn1": "400", "ip1":"192.169.0.1/31", "device2": "clos-spine-01", "asn2": "300", "ip2":"192.169.0.0/31", "status":"unknown", "routes": ""},
+                { "device1": "clos-leaf-01", "asn1": "400", "ip1":"192.169.0.7/31", "device2": "clos-spine-02", "asn2": "301", "ip2":"192.169.0.6/31", "status":"unknown", "routes": ""},
+                { "device1": "clos-leaf-02", "asn1": "401", "ip1":"192.169.0.3/31", "device2": "clos-spine-01", "asn2": "300", "ip2":"192.169.0.2/31", "status":"good", "routes": "8/10/10/2"},
+                { "device1": "clos-leaf-02", "asn1": "401", "ip1":"192.169.0.9/31", "device2": "clos-spine-02", "asn2": "301", "ip2":"192.169.0.8/31", "status":"good", "routes": "8/10/10/2"},
+                { "device1": "clos-leaf-03", "asn1": "402", "ip1":"192.169.0.5/31", "device2": "clos-spine-01", "asn2": "300", "ip2":"192.169.0.4/31", "status":"unknown", "routes": ""},
+                { "device1": "clos-leaf-03", "asn1": "402", "ip1":"192.169.0.11/31", "device2": "clos-spine-02", "asn2": "301", "ip2":"192.169.0.10/31", "status":"bad", "routes": ""}
+              ]
+            }}
+        except ValueError:
+            raise bottle.HTTPError(404, "Fabric with id: %s not found" % (ipFabricId))
+
 
 if __name__ == '__main__':
     restServer = RestServer()

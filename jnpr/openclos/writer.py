@@ -133,12 +133,13 @@ class CablingPlanWriter(WriterBase):
         l2ReportJson = self.l2ReportTemplate.render(devices = data['devices'], links = data['links'])
         return l2ReportJson
     
-    def writeL2ReportJson(self):
+    def writeThreeStageL2ReportJson(self):
         l2ReportJson = self.getThreeStageL2ReportJson()
         path = os.path.join(self.outputDir, 'l2Report.json')
         logger.info('Writing L2Report: %s' % (path))
         with open(path, 'w') as f:
                 f.write(l2ReportJson)
+        return l2ReportJson
 
     def writeJSONFiveStageRealEstate(self):
         pass

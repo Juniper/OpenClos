@@ -70,7 +70,11 @@ DOT :
 httpServer :
     ipAddr : 
     port : 80
-    
+
+# Number of threads used to communicate with devices
+report :
+    threadCount : 10
+         
 #snmp trap 
 snmpTrap :
    targets : ['5.6.7.8']   
