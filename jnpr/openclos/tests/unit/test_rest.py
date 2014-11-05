@@ -133,7 +133,7 @@ class TestRest(unittest.TestCase):
 
     def testGetConfigNoConfigFile(self):
         restServerTestApp = self.setupRestWithTwoDevices()
-
+       
         with self.assertRaises(AppError) as e:
             restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices/'+self.device1.id+'/config')
         self.assertTrue('404 Not Found' in e.exception.message)
@@ -141,23 +141,23 @@ class TestRest(unittest.TestCase):
 
     def testGetConfig(self):
         restServerTestApp = self.setupRestWithTwoDevices()
-        podDir = os.path.join(configLocation, self.device1.pod_id+'-test1')
-        if not os.path.exists(podDir):
-            os.makedirs(podDir)
-
-        open(os.path.join(podDir, self.device1.id+'-test1.conf'), "a") 
+        
+        self.device1.config = "testconfig"
         response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices/'+self.device1.id+'/config')
         self.assertEqual(200, response.status_int)
-        shutil.rmtree(podDir, ignore_errors=True)
 
-
+    def testGetNoDeviceConfigsInZip(self):
+        restServerTestApp = self.setupRestWithTwoDevices()
+ 
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/device-configuration')
+        self.assertTrue('404 Not Found' in e.exception.message)
+        self.assertTrue('Device exists but no config found' in e.exception.message)
+        
     def testGetDeviceConfigsInZip(self):
         restServerTestApp = self.setupRestWithTwoDevices()
-        podDir = os.path.join(configLocation, self.device1.pod_id+'-test1')
-        if not os.path.exists(podDir):
-            os.makedirs(podDir)
 
-        open(os.path.join(podDir, self.device1.id+'-test1.conf'), "a") 
+        self.device1.config = "testconfig"
         response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/device-configuration')
         self.assertEqual(200, response.status_int)
         self.assertEqual('application/zip', response.headers.get('Content-Type'))
@@ -167,7 +167,6 @@ class TestRest(unittest.TestCase):
         buff = StringIO.StringIO(response.body)
         archive = zipfile.ZipFile(buff, "r")
         self.assertEqual(1, len(archive.namelist()))
-        shutil.rmtree(podDir, ignore_errors=True)
 
     def testGetDeviceConfigsInZipUnknownIpFabric(self):
         restServerTestApp = self.setupRestWithTwoDevices()

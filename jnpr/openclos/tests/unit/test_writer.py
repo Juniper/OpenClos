@@ -48,9 +48,9 @@ class TestConfigWriter(TestWriterBase):
     def testWrite(self):
         pod = createPod('pod1', self.dao.Session())
         device = Device('test_device', "",'admin', 'admin',  'spine', "", "", pod)
-        configWriter = ConfigWriter(self.conf, pod, self.dao)
-        configWriter.write(device, "dummy config")
-        self.assertTrue(os.path.exists(os.path.join(configWriter.outputDir, device.id+'-test_device.conf')))
+        device.config = "dummy config"
+        self.assertIsNotNone(device.config)
+        self.assertTrue("dummy config", device.config)
 
 class TestCablingPlanWriter(TestWriterBase):
     
