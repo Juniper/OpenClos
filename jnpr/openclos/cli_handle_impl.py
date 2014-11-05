@@ -44,6 +44,7 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def init_pod_attr ( self ):
         self.add_attr_to_pod_struct ( 'name', 'POD Name' )
+        self.add_attr_to_pod_struct ( 'id', 'UUID' )
         self.add_attr_to_pod_struct ( 'spineCount', 'Spine Count' )
         self.add_attr_to_pod_struct ( 'spineDeviceType', 'Spine Device Type' )
         self.add_attr_to_pod_struct ( 'leafCount', 'Leaf Count' )

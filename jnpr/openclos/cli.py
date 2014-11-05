@@ -66,6 +66,23 @@ class ReadlineWrapper:
             readline.set_completer ( comp_func )
 
 #------------------------------------------------------------------------------
+    def set_completion_display_matches_hook ( self, function ):
+        if util.isPlatformWindows ():
+            import pyreadline
+            Readline ().set_completion_display_matches_hook ( function )
+        else:
+            import readline
+            readline.set_completion_display_matches_hook ( function )
+
+#------------------------------------------------------------------------------
+    def redisplay ( self ):
+        if util.isPlatformWindows ():
+            import pyreadline
+            Readline ().redisplay ()
+        else:
+            import readline
+            readline.redisplay ()
+#------------------------------------------------------------------------------
     def parse_and_bind ( self, complete_key ):
         if util.isPlatformWindows ():
             import pyreadline
@@ -124,6 +141,7 @@ class CLIShell ( cmd.Cmd ):
             try:
                 self.old_completer = self.rl.get_completer()
                 self.rl.set_completer ( self.complete )
+                self.rl.set_completion_display_matches_hook ( self.post_complete)
                 self.rl.parse_and_bind ( self.completekey+": complete" )
             except ImportError:
                 pass
@@ -160,6 +178,18 @@ class CLIShell ( cmd.Cmd ):
                     self.rl.set_completer ( self.old_completer )
                 except ImportError:
                     pass
+
+#------------------------------------------------------------------------------
+    def post_complete ( self, substitution, matches, longest_match_length ):
+        curr_line = self.rl.get_line_buffer ()
+        print ""
+        for item in matches:
+            if ( item != "" and item [ 0 ] != " " ):
+                item = " " + item
+            print item
+        self.stdout.write ( self.prompt + curr_line )
+        self.stdout.flush ()
+        self.rl.redisplay ()
 
 #------------------------------------------------------------------------------
     def complete ( self, text, state ):
@@ -209,7 +239,9 @@ class CLIShell ( cmd.Cmd ):
 
         # Case 1: Invalid command. Print error
         if ( len ( results ) == 0 ):
-            print "\nCommand not recognized\n"
+            print "\nCommand not recognized"
+            print "type \'help\' at prompt to view all supported commands"
+            print "press <tab> to auto-complete or view context-specific possible options\n"
 
         # Case 2: Valid command provided, or enter pressed half-way
         elif ( len ( results ) == 1 ):
@@ -267,6 +299,13 @@ class CLIShell ( cmd.Cmd ):
         print " "
         for cmds in sorted ( self.cli_util.get_all_cmds () ):
             print cmds
+
+#------------------------------------------------------------------------------
+    def do_clear ( self, *args ):
+        if util.isPlatformWindows ():
+            os.system ( 'cls' )
+        else:
+            os.system ( 'clear' )
 
 #------------------------------------------------------------------------------
     def emptyline(self):
@@ -364,7 +403,7 @@ class CLIShellWrapper:
                                          self.cli_prompt_style,
                                          self.cli_header,
                                          self.cli_on_exit )
-        cli_shell.cmdloop ( "\n\n\t\t" + self.cli_header + "\t\t" )
+        cli_shell.cmdloop ( "\n\n\t\t" + self.cli_header + "\n\n\t" + "   Tip: press <TAB> key anytime for help and auto-complete" )
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
