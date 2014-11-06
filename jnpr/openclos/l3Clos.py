@@ -142,8 +142,11 @@ class L3ClosMediation():
             self.dao.deleteObjects(pod.devices)
             
             # 1. Build inventory
-            self.createSpineIFDs(pod, inventoryData['spines'])
-            self.createLeafIFDs(pod, inventoryData['leafs'])
+            spineCount = len(inventoryData['spines'])
+            leafCount = len(inventoryData['leafs'])
+            mgmtIps = util.getMgmtIps(pod.managementPrefix, spineCount + leafCount)
+            self.createSpineIFDs(pod, inventoryData['spines'], mgmtIps[:spineCount])
+            self.createLeafIFDs(pod, inventoryData['leafs'], mgmtIps[spineCount:])
 
             # 2. Create inter-connect
             self.createLinkBetweenIfds(pod)
@@ -255,13 +258,12 @@ class L3ClosMediation():
         else:
             raise ValueError("Pod id can't be None") 
             
-    def createSpineIFDs(self, pod, spines):
+    def createSpineIFDs(self, pod, spines, mgmtIps):
         devices = []
         interfaces = []
-        for spine in spines:
+        for spine, managementIp in zip(spines, mgmtIps):
             username = spine.get('username')
             password = spine.get('password')
-            managementIp = spine.get('managementIp')
             macAddress = spine.get('macAddress')
             device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, managementIp, pod)
             devices.append(device)
@@ -273,13 +275,12 @@ class L3ClosMediation():
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
 
-    def createLeafIFDs(self, pod, leafs):
+    def createLeafIFDs(self, pod, leafs, mgmtIps):
         devices = []
         interfaces = []
-        for leaf in leafs:
+        for leaf, managementIp in zip(leafs, mgmtIps):
             username = leaf.get('username')
             password = leaf.get('password')
-            managementIp= leaf.get('managementIp')
             macAddress = leaf.get('macAddress')
             device = Device(leaf['name'], pod.leafDeviceType, username, password, 'leaf', macAddress, managementIp, pod)
             devices.append(device)
