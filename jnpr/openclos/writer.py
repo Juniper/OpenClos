@@ -42,9 +42,17 @@ class ConfigWriter(WriterBase):
     def __init__(self, conf, pod, dao):
         WriterBase.__init__(self, conf, pod, dao)
         
-    def write(self, device, config):
-        logger.info('Writing config for device: %s' % (device.id))
+    def write(self, device, config, writeConfigInFile):
+        deviceName = device.id + '-' + device.name
         device.config = config
+        logger.info('Writing config for device: %s' % (deviceName))
+        logger.debug('Writing config for device in DB: %s' % (deviceName))
+        
+        if writeConfigInFile is True:
+            fileName = device.id + '-' + device.name
+            logger.debug('Writing config for device in File: %s' % (fileName))
+            with open(os.path.join(self.outputDir, fileName + '.conf'), 'w') as f:
+                f.write(config)
 
 class DhcpConfWriter(WriterBase):
     def __init__(self, conf, pod, dao):

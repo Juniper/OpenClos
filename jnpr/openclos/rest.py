@@ -218,10 +218,6 @@ class RestServer():
         zipArchive = zipfile.ZipFile(buff, mode='w')
         for device in ipFabric.devices:
             fileName = device.id + '-' + device.name + '.conf'
-
-            if device.config is None:
-                logger.debug("Device exists but no config found. ipFabricId: '%s', deviceId: '%s'" % (ipFabric.id, device.id))
-                raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. ipFabricId: '%s', deviceId: '%s'" % (ipFabric.id, device.id))
             zipArchive.writestr(fileName, device.config)
         
         zipArchive.close()

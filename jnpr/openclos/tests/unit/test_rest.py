@@ -145,14 +145,6 @@ class TestRest(unittest.TestCase):
         self.device1.config = "testconfig"
         response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices/'+self.device1.id+'/config')
         self.assertEqual(200, response.status_int)
-
-    def testGetNoDeviceConfigsInZip(self):
-        restServerTestApp = self.setupRestWithTwoDevices()
- 
-        with self.assertRaises(AppError) as e:
-            restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/device-configuration')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('Device exists but no config found' in e.exception.message)
         
     def testGetDeviceConfigsInZip(self):
         restServerTestApp = self.setupRestWithTwoDevices()
