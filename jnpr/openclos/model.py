@@ -175,7 +175,7 @@ class Pod(ManagedElement, Base):
         except AddrFormatError:
                 error += 'loopbackPrefix'
         try:
-            IPAddress(self.managementPrefix)  
+            IPNetwork(self.managementPrefix)  
         except AddrFormatError:
                 error += 'managementPrefix'
         if error != '':

@@ -144,9 +144,13 @@ class L3ClosMediation():
             # 1. Build inventory
             spineCount = len(inventoryData['spines'])
             leafCount = len(inventoryData['leafs'])
-            mgmtIps = util.getMgmtIps(pod.managementPrefix, spineCount + leafCount)
-            self.createSpineIFDs(pod, inventoryData['spines'], mgmtIps[:spineCount])
-            self.createLeafIFDs(pod, inventoryData['leafs'], mgmtIps[spineCount:])
+            managementIps = util.getMgmtIps(pod.managementPrefix, spineCount + leafCount)
+            for spine, managementIp in zip(inventoryData['spines'], managementIps[:spineCount]):
+                spine['managementIp'] = managementIp
+            for leaf, managementIp in zip(inventoryData['leafs'], managementIps[spineCount:]):
+                leaf['managementIp'] = managementIp
+            self.createSpineIFDs(pod, inventoryData['spines'])
+            self.createLeafIFDs(pod, inventoryData['leafs'])
 
             # 2. Create inter-connect
             self.createLinkBetweenIfds(pod)
@@ -258,13 +262,14 @@ class L3ClosMediation():
         else:
             raise ValueError("Pod id can't be None") 
             
-    def createSpineIFDs(self, pod, spines, mgmtIps):
+    def createSpineIFDs(self, pod, spines):
         devices = []
         interfaces = []
-        for spine, managementIp in zip(spines, mgmtIps):
+        for spine in spines:
             username = spine.get('username')
             password = spine.get('password')
             macAddress = spine.get('macAddress')
+            managementIp = spine.get('managementIp')
             device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, managementIp, pod)
             devices.append(device)
             
@@ -275,13 +280,14 @@ class L3ClosMediation():
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
 
-    def createLeafIFDs(self, pod, leafs, mgmtIps):
+    def createLeafIFDs(self, pod, leafs):
         devices = []
         interfaces = []
-        for leaf, managementIp in zip(leafs, mgmtIps):
+        for leaf in leafs:
             username = leaf.get('username')
             password = leaf.get('password')
             macAddress = leaf.get('macAddress')
+            managementIp = leaf.get('managementIp')
             device = Device(leaf['name'], pod.leafDeviceType, username, password, 'leaf', macAddress, managementIp, pod)
             devices.append(device)
 
