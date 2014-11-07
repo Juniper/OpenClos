@@ -36,7 +36,7 @@ debugSql : false
 
 #device configuration will be stored by default in DB
 #"file" will allow device configuration to store in DB and File
-writeConfigInFile : 'false'
+writeConfigInFile : false
 
     
 # Device family and port names

@@ -217,7 +217,7 @@ class RestServer():
         buff = StringIO.StringIO()
         zipArchive = zipfile.ZipFile(buff, mode='w')
         for device in ipFabric.devices:
-            fileName = device.id + '-' + device.name + '.conf'
+            fileName = device.id + '__' + device.name + '.conf'
             zipArchive.writestr(fileName, device.config)
         
         zipArchive.close()

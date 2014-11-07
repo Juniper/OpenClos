@@ -242,11 +242,7 @@ class L3ClosMediation():
         Finds Pod object by id and create device configurations
         It also creates the output folders for pod
         '''
-        writeConfigInFileStr = self.conf['writeConfigInFile']
-        if writeConfigInFileStr == 'true':  
-            writeConfigInFile = True
-        else:
-            writeConfigInFile = False
+        writeConfigInFile = self.conf.get('writeConfigInFile', False)
             
         if podId is not None:
             try:
@@ -442,8 +438,13 @@ class L3ClosMediation():
 
         self.dao.updateObjects(devices)
         
-    def generateConfig(self, pod, writeConfigInFile):
-        configWriter = ConfigWriter(self.conf, pod, self.dao)
+    def generateConfig(self, pod, writeConfigInFile = False):
+        
+        if writeConfigInFile:
+            configWriter = ConfigWriter(self.conf, pod, self.dao)
+        
+        modifiedObjects = []
+
         for device in pod.devices:
             config = self.createBaseConfig(device)
             config += self.createInterfaces(device)
@@ -451,8 +452,14 @@ class L3ClosMediation():
             config += self.createProtocols(device)
             config += self.createPolicyOption(device)
             config += self.createVlan(device)
-            configWriter.write(device, config, writeConfigInFile )
+            device.config = config
+            modifiedObjects.append(device)
+            logger.debug('Generated config for device id: %s, name: %s, storing in DB' % (device.id, device.name))
+            
+            if writeConfigInFile:
+                configWriter.write(device)
 
+        self.dao.updateObjects(modifiedObjects)
             
     def createBaseConfig(self, device):
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), junosTemplateLocation, 'baseTemplate.txt'), 'r') as f:
