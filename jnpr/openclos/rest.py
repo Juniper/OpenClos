@@ -88,9 +88,9 @@ class RestServer():
 
         # POST/PUT APIs
         bottle.route('/openclos/ip-fabrics', 'POST', self.createIpFabric)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'POST', self.createCablingPlan)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'POST', self.createDeviceConfiguration)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration', 'POST', self.createZtpConfiguration)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'PUT', self.createCablingPlan)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'PUT', self.createDeviceConfiguration)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration', 'PUT', self.createZtpConfiguration)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'PUT', self.reconfigIpFabric)
         bottle.route('/openclos/conf/', 'PUT', self.setOpenClosConfigParams)
 
