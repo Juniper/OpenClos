@@ -377,9 +377,10 @@ class RestServer():
         ipFabricName = ipFabric.pop('name')
         fabricDevices = self.getDevDictFromDict(pod)
         fabricId =  l3ClosMediation.createPod(ipFabricName, ipFabric, fabricDevices).id
-        ipFabric = self.getIpFabric(fabricId)
-        ipFabric['ipFabric']['uri'] = bottle.request.url + '/' + fabricId
-        return ipFabric
+        url = bottle.request.url + '/' + fabricId
+        bottle.response.set_header('Location', url)
+        bottle.response.status = 201
+        return bottle.response
         
     def createCablingPlan(self, ipFabricId):
         try:
