@@ -142,6 +142,13 @@ class L3ClosMediation():
             self.dao.deleteObjects(pod.devices)
             
             # 1. Build inventory
+            spineCount = len(inventoryData['spines'])
+            leafCount = len(inventoryData['leafs'])
+            managementIps = util.getMgmtIps(pod.managementPrefix, spineCount + leafCount)
+            for spine, managementIp in zip(inventoryData['spines'], managementIps[:spineCount]):
+                spine['managementIp'] = managementIp
+            for leaf, managementIp in zip(inventoryData['leafs'], managementIps[spineCount:]):
+                leaf['managementIp'] = managementIp
             self.createSpineIFDs(pod, inventoryData['spines'])
             self.createLeafIFDs(pod, inventoryData['leafs'])
 
@@ -235,6 +242,8 @@ class L3ClosMediation():
         Finds Pod object by id and create device configurations
         It also creates the output folders for pod
         '''
+        writeConfigInFile = self.conf.get('writeConfigInFile', False)
+            
         if podId is not None:
             try:
                 pod = self.dao.getObjectById(Pod, podId)
@@ -243,7 +252,7 @@ class L3ClosMediation():
  
             if len(pod.devices) > 0:
                 # create configuration files
-                self.generateConfig(pod)
+                self.generateConfig(pod, writeConfigInFile)
 
                 # update status
                 pod.state = 'deviceConfigDone'
@@ -261,8 +270,8 @@ class L3ClosMediation():
         for spine in spines:
             username = spine.get('username')
             password = spine.get('password')
-            managementIp = spine.get('managementIp')
             macAddress = spine.get('macAddress')
+            managementIp = spine.get('managementIp')
             device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, managementIp, pod)
             devices.append(device)
             
@@ -279,8 +288,8 @@ class L3ClosMediation():
         for leaf in leafs:
             username = leaf.get('username')
             password = leaf.get('password')
-            managementIp= leaf.get('managementIp')
             macAddress = leaf.get('macAddress')
+            managementIp = leaf.get('managementIp')
             device = Device(leaf['name'], pod.leafDeviceType, username, password, 'leaf', macAddress, managementIp, pod)
             devices.append(device)
 
@@ -429,8 +438,13 @@ class L3ClosMediation():
 
         self.dao.updateObjects(devices)
         
-    def generateConfig(self, pod):
-        configWriter = ConfigWriter(self.conf, pod, self.dao)
+    def generateConfig(self, pod, writeConfigInFile = False):
+        
+        if writeConfigInFile:
+            configWriter = ConfigWriter(self.conf, pod, self.dao)
+        
+        modifiedObjects = []
+
         for device in pod.devices:
             config = self.createBaseConfig(device)
             config += self.createInterfaces(device)
@@ -438,7 +452,14 @@ class L3ClosMediation():
             config += self.createProtocols(device)
             config += self.createPolicyOption(device)
             config += self.createVlan(device)
-            configWriter.write(device, config)
+            device.config = config
+            modifiedObjects.append(device)
+            logger.debug('Generated config for device id: %s, name: %s, storing in DB' % (device.id, device.name))
+            
+            if writeConfigInFile:
+                configWriter.write(device)
+
+        self.dao.updateObjects(modifiedObjects)
             
     def createBaseConfig(self, device):
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), junosTemplateLocation, 'baseTemplate.txt'), 'r') as f:

@@ -21,6 +21,7 @@ class TestL3Clos(unittest.TestCase):
         self.conf = {}
         self.conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
         self.conf['dbUrl'] = 'sqlite:///'
+        self.conf['writeConfigInFile'] = 'false'
         self.conf['logLevel'] = { 
                 'fabric' : 'INFO',
                 'reporting' : 'INFO',
@@ -97,12 +98,12 @@ class TestL3Clos(unittest.TestCase):
             l3ClosMediation.createCablingPlan(pod.id)
         
     def createPodWithoutInventory(self, l3ClosMediation):
-        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24"}
         pod = l3ClosMediation.createPod('pod1', podDict)
         return pod
         
     def createPod(self, l3ClosMediation):
-        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "inventory" : "inventoryLabLeafSpine.json"}
+        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24", "inventory" : "inventoryLabLeafSpine.json"}
         pod = l3ClosMediation.createPod('pod1', podDict)
         return pod
 

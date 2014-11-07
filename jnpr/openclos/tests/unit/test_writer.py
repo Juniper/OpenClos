@@ -45,13 +45,14 @@ class TestWriterBase(unittest.TestCase):
         
 class TestConfigWriter(TestWriterBase):
 
-    def testWrite(self):
+    def testWriteConfigInFile(self):
         pod = createPod('pod1', self.dao.Session())
-        device = Device('test_device', "",'admin', 'admin',  'spine', "", "", pod)
+        device = Device('test_device', "",'admin', 'admin', 'spine', "", "", pod)
+        device.config = "dummy config"
         configWriter = ConfigWriter(self.conf, pod, self.dao)
-        configWriter.write(device, "dummy config")
-        self.assertTrue(os.path.exists(os.path.join(configWriter.outputDir, device.id+'-test_device.conf')))
-
+        configWriter.write(device)
+        self.assertTrue(os.path.exists(os.path.join(configWriter.outputDir, device.id+'__test_device.conf')))
+        
 class TestCablingPlanWriter(TestWriterBase):
     
     def testInitWithTemplate(self):

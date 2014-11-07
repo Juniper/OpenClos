@@ -6,9 +6,9 @@ Created on Jul 8, 2014
 '''
 import uuid
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum, BLOB
 from sqlalchemy.orm import relationship, backref
-from netaddr import IPAddress, AddrFormatError
+from netaddr import IPAddress, IPNetwork, AddrFormatError
 Base = declarative_base()
 
 class ManagedElement(object):
@@ -42,6 +42,7 @@ class Pod(ManagedElement, Base):
     interConnectPrefix = Column(String(32))
     vlanPrefix = Column(String(32))
     loopbackPrefix = Column(String(32))
+    managementPrefix = Column(String(32))
     spineAS = Column(Integer)
     leafAS = Column(Integer)
     topologyType = Column(Enum('threeStage', 'fiveStageRealEstate', 'fiveStagePerformance'))
@@ -99,6 +100,8 @@ class Pod(ManagedElement, Base):
             self.vlanPrefix = kwargs.get('vlanPrefix')
         if kwargs.has_key('loopbackPrefix'):
             self.loopbackPrefix = kwargs.get('loopbackPrefix')
+        if kwargs.has_key('managementPrefix'):
+            self.managementPrefix = kwargs.get('managementPrefix')
         if kwargs.has_key('spineAS'):
             self.spineAS = int(kwargs.get('spineAS'))
         if kwargs.has_key('leafAS'):
@@ -145,6 +148,8 @@ class Pod(ManagedElement, Base):
             error += 'vlanPrefix, '
         if self.loopbackPrefix is None:
             error += 'loopbackPrefix, '
+        if self.managementPrefix is None:
+            error += 'managementPrefix, '
         if self.spineAS is None:
             error += 'spineAS,'
         if self.leafAS is None:
@@ -169,6 +174,10 @@ class Pod(ManagedElement, Base):
             IPAddress(self.loopbackPrefix)  
         except AddrFormatError:
                 error += 'loopbackPrefix'
+        try:
+            IPNetwork(self.managementPrefix)  
+        except AddrFormatError:
+                error += 'managementPrefix'
         if error != '':
             raise ValueError('invalid IP format: ' + error)
         
@@ -185,6 +194,7 @@ class Device(ManagedElement, Base):
     asn = Column(Integer)
     status = Column(Enum('unknown', 'good', 'bad'))
     statusReason = Column(String(256)) # will be populated only when status is 'bad'
+    config = Column(BLOB)
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
         

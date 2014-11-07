@@ -88,9 +88,9 @@ class RestServer():
 
         # POST/PUT APIs
         bottle.route('/openclos/ip-fabrics', 'POST', self.createIpFabric)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'POST', self.createCablingPlan)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'POST', self.createDeviceConfiguration)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration', 'POST', self.createZtpConfiguration)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'PUT', self.createCablingPlan)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'PUT', self.createDeviceConfiguration)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration', 'PUT', self.createZtpConfiguration)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'PUT', self.reconfigIpFabric)
         bottle.route('/openclos/conf/', 'PUT', self.setOpenClosConfigParams)
 
@@ -204,26 +204,21 @@ class RestServer():
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
         
         logger.debug('IpFabric name: %s' % (ipFabric.name))
-        ipFabricFolderName = ipFabric.id + '-' + ipFabric.name
-        ipFabricFolderWithPath = os.path.join(webServerRoot, ipFabricFolderName)
-        if os.path.exists(ipFabricFolderWithPath):
-            bottle.response.headers['Content-Type'] = 'application/zip'
-            return self.createZipArchive(ipFabric, ipFabricFolderWithPath)
-        else:
-            raise bottle.HTTPError(404, "IpFabric exists but no folder with configs. ipFabricFolderWithPath: '%s " % (ipFabricFolderWithPath))
 
-    def createZipArchive(self, ipFabric, ipFabricFolder):
+        zippedConfigFiles = self.createZipArchive(ipFabric)
+        if zippedConfigFiles is not None:
+            bottle.response.headers['Content-Type'] = 'application/zip'
+            return zippedConfigFiles
+        else:
+            raise bottle.HTTPError(404, "IpFabric exists but no configs for devices.'%s " % (ipFabric.name))
+
+    def createZipArchive(self, ipFabric):
 
         buff = StringIO.StringIO()
         zipArchive = zipfile.ZipFile(buff, mode='w')
-
         for device in ipFabric.devices:
-            fileName = device.id + '-' + device.name + '.conf'
-            fileNameWithPath = os.path.join(ipFabricFolder, device.id + '-' + device.name + '.conf')
-            logger.debug('fileName: %s, exists: %s' % (fileNameWithPath, os.path.exists(os.path.join(webServerRoot, fileNameWithPath))))
-            with open (fileNameWithPath, "r") as confFile:
-                config = confFile.read()
-            zipArchive.writestr(fileName, config)
+            fileName = device.id + '__' + device.name + '.conf'
+            zipArchive.writestr(fileName, device.config)
         
         zipArchive.close()
         logger.debug('zip file content:\n' + str(zipArchive.namelist()))
@@ -245,6 +240,7 @@ class RestServer():
                 device.__dict__.pop('asn')
                 device.__dict__.pop('password')
                 device.__dict__.pop('pod_id')
+                device.__dict__.pop('config')
                 device.__dict__['uri'] = bottle.request.url + '/' +device.id
                 listOfDevices.append(device.__dict__)
             devices['device'] = listOfDevices
@@ -284,16 +280,11 @@ class RestServer():
     def getDeviceConfig(self, ipFabricId, deviceId):
         
         device = self.isDeviceExists(ipFabricId, deviceId)
-        pod = device.pod
-        
         if device is None:
             raise bottle.HTTPError(404, "No device found with ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
-        
-        fileName = os.path.join(pod.id+'-'+pod.name, device.id + '-' + device.name + '.conf')
-        logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
 
-        config = bottle.static_file(fileName, root=webServerRoot)
-        if isinstance(config, bottle.HTTPError):
+        config = device.config
+        if config is None:
             logger.debug("Device exists but no config found. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
             raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
         return config

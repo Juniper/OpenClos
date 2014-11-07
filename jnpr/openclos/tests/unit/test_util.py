@@ -80,6 +80,11 @@ class TestFunctions(unittest.TestCase):
             self.assertTrue("C:\\" in dbUrl)
         else:
             self.assertTrue(dbUrl.count('/') > 4)
+            
+    def testGetMgmtIps(self):
+        mgmtIpList = ["1.2.3.1/24", "1.2.3.2/24", "1.2.3.3/24", "1.2.3.4/24", "1.2.3.5/24", "1.2.3.6/24"] 
+        mgmtIps = getMgmtIps("1.2.3.1/24", 6)
+        self.assertEqual(mgmtIpList, mgmtIps)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

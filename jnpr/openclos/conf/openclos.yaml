@@ -33,6 +33,11 @@ logLevel :
 # debug SQL and ORM
 # "true" will enable logging all SQL statements to underlying DB
 debugSql : false
+
+#device configuration will be stored by default in DB
+#"file" will allow device configuration to store in DB and File
+writeConfigInFile : false
+
     
 # Device family and port names
 # QFX5100-24Q ports could be [0-32] with two four-port expansion modules
