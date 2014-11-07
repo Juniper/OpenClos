@@ -21,6 +21,7 @@ class TestL3Clos(unittest.TestCase):
         self.conf = {}
         self.conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
         self.conf['dbUrl'] = 'sqlite:///'
+        self.conf['writeConfigInFile'] = 'false'
         self.conf['logLevel'] = { 
                 'fabric' : 'INFO',
                 'reporting' : 'INFO',

@@ -6,7 +6,7 @@ Created on Jul 8, 2014
 '''
 import uuid
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum, BLOB
 from sqlalchemy.orm import relationship, backref
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 Base = declarative_base()
@@ -194,6 +194,7 @@ class Device(ManagedElement, Base):
     asn = Column(Integer)
     status = Column(Enum('unknown', 'good', 'bad'))
     statusReason = Column(String(256)) # will be populated only when status is 'bad'
+    config = Column(BLOB)
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
         
