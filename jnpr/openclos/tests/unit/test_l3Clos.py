@@ -31,10 +31,10 @@ class TestL3Clos(unittest.TestCase):
         }
         self.conf['DOT'] = {'ranksep' : '5 equally', 'colors': ['red', 'green', 'blue']}
         self.conf['deviceFamily'] = {
-            "QFX5100-24Q": {
+            "qfx5100-24q-2p": {
                 "ports": 'et-0/0/[0-23]'
             },
-            "QFX5100-48S": {
+            "qfx5100-48s-6q": {
                 "uplinkPorts": 'et-0/0/[48-53]', 
                 "downlinkPorts": 'xe-0/0/[0-47]'
             }
@@ -78,7 +78,7 @@ class TestL3Clos(unittest.TestCase):
         self.assertEqual(101, pod.spineAS)
 
     def testUpdatePodInvalidId(self):
-        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
+        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
         l3ClosMediation = L3ClosMediation(self.conf)
         
         with self.assertRaises(ValueError) as ve:
@@ -98,12 +98,12 @@ class TestL3Clos(unittest.TestCase):
             l3ClosMediation.createCablingPlan(pod.id)
         
     def createPodWithoutInventory(self, l3ClosMediation):
-        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24"}
+        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24"}
         pod = l3ClosMediation.createPod('pod1', podDict)
         return pod
         
     def createPod(self, l3ClosMediation):
-        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "QFX5100-48S", "spineAS": 100, "spineDeviceType": "QFX5100-24Q", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24", "inventory" : "inventoryLabLeafSpine.json"}
+        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24", "inventory" : "inventoryLabLeafSpine.json"}
         pod = l3ClosMediation.createPod('pod1', podDict)
         return pod
 
@@ -247,7 +247,7 @@ class TestL3Clos(unittest.TestCase):
         
     def testCreatePolicyOptionSpine(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        device = Device("test", "QFX5100-24Q", "user", "pwd", "spine", "mac", "mgmtIp", self.createPod(l3ClosMediation))
+        device = Device("test", "qfx5100-24q-2p", "user", "pwd", "spine", "mac", "mgmtIp", self.createPod(l3ClosMediation))
         device.pod.allocatedIrbBlock = '10.0.0.0/28'
         device.pod.allocatedLoopbackBlock = '11.0.0.0/28'
         configlet = l3ClosMediation.createPolicyOption(device)
@@ -259,7 +259,7 @@ class TestL3Clos(unittest.TestCase):
 
     def testCreatePolicyOptionLeaf(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mac", "mgmtIp", self.createPod(l3ClosMediation))
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", self.createPod(l3ClosMediation))
         device.pod.allocatedIrbBlock = '10.0.0.0/28'
         device.pod.allocatedLoopbackBlock = '11.0.0.0/28'        
         flexmock(l3ClosMediation.dao.Session).should_receive('query.join.filter.filter.one').and_return(InterfaceLogical("test", device, '12.0.0.0/28'))
@@ -273,14 +273,14 @@ class TestL3Clos(unittest.TestCase):
     def testInitWithTemplate(self):
         from jinja2 import TemplateNotFound
         l3ClosMediation = L3ClosMediation(self.conf)
-        self.assertIsNotNone(l3ClosMediation.templateEnv.get_template('protocolBgpLldp.txt'))
+        self.assertIsNotNone(l3ClosMediation.templateEnv.get_template('protocolBgp.txt'))
         with self.assertRaises(TemplateNotFound) as e:
             l3ClosMediation.templateEnv.get_template('unknown-template')
         self.assertTrue('unknown-template' in e.exception.message)
 
     def testcreateSnmpTrapAndEventNoTrapConf(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mac", "mgmtIp", None)
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
         
         configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
         self.assertEqual('', configlet)
@@ -290,7 +290,7 @@ class TestL3Clos(unittest.TestCase):
                                  'openclos_trap_group': {'port': 10162, 'target': '1.2.3.4'}}
         l3ClosMediation = L3ClosMediation(self.conf)
         
-        device = Device("test", "QFX5100-48S", "user", "pwd", "spine", "mac", "mgmtIp", None)
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "spine", "mac", "mgmtIp", None)
         configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
 
         self.assertEqual('', configlet)
@@ -300,7 +300,7 @@ class TestL3Clos(unittest.TestCase):
                                  'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
         l3ClosMediation = L3ClosMediation(self.conf)
         
-        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mac", "mgmtIp", None)
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
         configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
         
         self.assertTrue('' != configlet)
@@ -314,7 +314,7 @@ class TestL3Clos(unittest.TestCase):
         self.conf['deploymentMode'] = {'ndIntegrated': True}
         l3ClosMediation = L3ClosMediation(self.conf)
         
-        device = Device("test", "QFX5100-48S", "user", "pwd", "spine", "mac", "mgmtIp", None)
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "spine", "mac", "mgmtIp", None)
         configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
 
         self.assertTrue('' != configlet)
@@ -328,13 +328,14 @@ class TestL3Clos(unittest.TestCase):
         self.conf['deploymentMode'] = {'ndIntegrated': True}
         l3ClosMediation = L3ClosMediation(self.conf)
         
-        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mac", "mgmtIp", None)
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
         configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
 
         self.assertTrue('' != configlet)
         self.assertTrue('event-options' in configlet)
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-        print configlet
+
+        
 if __name__ == '__main__':
     unittest.main()

@@ -17,9 +17,9 @@ from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, Interfac
 def createPod(name, session):  
     pod = {}
     pod['spineCount'] = '3'
-    pod['spineDeviceType'] = 'QFX5100-24Q'
+    pod['spineDeviceType'] = 'qfx-5100-24q-2p'
     pod['leafCount'] = '5'
-    pod['leafDeviceType'] = 'QFX5100-48S'
+    pod['leafDeviceType'] = 'qfx-5100-48s-6q'
     pod['interConnectPrefix'] = '1.2.0.0'
     pod['vlanPrefix'] = '1.3.0.0'
     pod['loopbackPrefix'] = '1.4.0.0'
@@ -83,9 +83,9 @@ class TestPod(TestOrm):
     def testPodValidateSuccess(self):
         pod = {}
         pod['spineCount'] = '3'
-        pod['spineDeviceType'] = 'QFX5100-24Q'
+        pod['spineDeviceType'] = 'qfx-5100-24q-2p'
         pod['leafCount'] = '5'
-        pod['leafDeviceType'] = 'QFX5100-48S'
+        pod['leafDeviceType'] = 'qfx-5100-48s-6q'
         pod['hostOrVmCountPerLeaf'] = 100
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
@@ -132,9 +132,9 @@ class TestPod(TestOrm):
     def testConstructorPass(self):
         pod = {}
         pod['spineCount'] = '3'
-        pod['spineDeviceType'] = 'QFX5100-24Q'
+        pod['spineDeviceType'] = 'qfx-5100-24q-2p'
         pod['leafCount'] = '5'
-        pod['leafDeviceType'] = 'QFX5100-48S'
+        pod['leafDeviceType'] = 'qfx-5100-48s-6q'
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
@@ -149,9 +149,9 @@ class TestPod(TestOrm):
     def testOrm(self):
         pod = {}
         pod['spineCount'] = '3'
-        pod['spineDeviceType'] = 'QFX5100-24Q'
+        pod['spineDeviceType'] = 'qfx-5100-24q-2p'
         pod['leafCount'] = '5'
-        pod['leafDeviceType'] = 'QFX5100-48S'
+        pod['leafDeviceType'] = 'qfx-5100-48s-6q'
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
@@ -175,11 +175,11 @@ class TestPod(TestOrm):
 class TestDevice(TestOrm):
     def testConstructorPass(self):
         podOne = createPod('testpod', self.session)
-        self.assertTrue(Device('testdevice', 'QFX5100-48S', 'admin', 'admin', "spine", "", "", podOne) is not None)    
+        self.assertTrue(Device('testdevice', 'qfx-5100-48s-6q', 'admin', 'admin', "spine", "", "", podOne) is not None)    
 
     def testOrm(self):
         podOne = createPod('testpod', self.session)
-        device = Device('testdevice', 'QFX5100-48S', 'admin', 'admin', "spine", "", "", podOne)
+        device = Device('testdevice', 'qfx-5100-48s-6q', 'admin', 'admin', "spine", "", "", podOne)
         self.session.add(device)
         self.session.commit()  
         fetched = self.session.query(Device).one()
@@ -192,13 +192,13 @@ class TestDevice(TestOrm):
         
     def testRelationPodDevice(self):
         podOne = createPod('testpodOne', self.session)
-        deviceOne = Device('testDeviceOne', 'QFX5100-48S', 'admin', 'admin',  "spine", "", "", podOne)
+        deviceOne = Device('testDeviceOne', 'qfx-5100-48s-6q', 'admin', 'admin',  "spine", "", "", podOne)
         self.session.add(deviceOne)
            
         podTwo = createPod('testpodTwo', self.session)
-        deviceTwo = Device('testDeviceOne', 'QFX5100-48S', 'admin', 'admin',  "spine", "", "", podTwo)
+        deviceTwo = Device('testDeviceOne', 'qfx-5100-48s-6q', 'admin', 'admin',  "spine", "", "", podTwo)
         self.session.add(deviceTwo)
-        deviceThree = Device('testDeviceOne', 'QFX5100-48S', 'admin', 'admin',  "spine", "", "", podTwo)
+        deviceThree = Device('testDeviceOne', 'qfx-5100-48s-6q', 'admin', 'admin',  "spine", "", "", podTwo)
         self.session.add(deviceThree)
         self.session.commit()
 

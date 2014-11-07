@@ -51,18 +51,18 @@ writeConfigInFile : false
 
     
 # Device family and port names
-# QFX5100-24Q ports could be [0-32] with two four-port expansion modules
-# unlike 48S or 96S for 24Q there is no specific uplink/downlink
+# qfx5100-24q-2p ports could be [0-32] with two four-port expansion modules
+# unlike 48s or 96s for 24Q there is no specific uplink/downlink
 deviceFamily :
-    QFX5100-24Q :
+    qfx5100-24q-2p :
         uplinkPorts : 
         downlinkPorts : 
         ports : 'et-0/0/[0-23]' 
-    QFX5100-48S :
+    qfx5100-48s-6q :
         uplinkPorts : 'et-0/0/[48-53]' 
         downlinkPorts : 'xe-0/0/[0-47]'
         ports :  
-    QFX5100-96S :
+    qfx5100-96s-8q :
         uplinkPorts : 'et-0/0/[96-103]' 
         downlinkPorts : 'xe-0/0/[0-95]'
         ports :  

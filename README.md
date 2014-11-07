@@ -92,9 +92,9 @@ please make sure to update following settings as per the deployment environment
 * dhcpSubnet : 192.168.48.128/25
 * dhcpOptionRoute : 192.168.48.254
 * spineCount : 4
-* spineDeviceType : QFX5100-24Q
+* spineDeviceType : qfx5100-24q-2p
 * leafCount : 6
-* leafDeviceType : QFX5100-48S
+* leafDeviceType : qfx5100-48s-6q
 * outOfBandAddressList: 
 
 

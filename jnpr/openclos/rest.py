@@ -345,7 +345,7 @@ class RestServer():
                 deviceDetail['role'] = 'leaf'
               
             if len(port['uplinkPorts'])==0 and len(port['downlinkPorts']) == 0:
-                if  device == 'QFX5100-24Q':
+                if  device == 'qfx5100-24q-2p':
                     deviceDetail['role'] = 'spine'
                     deviceDetail['family'] = device
                     deviceDetail['downlinkStart'] = port['ports'][0]
@@ -509,11 +509,11 @@ class RestServer():
             #TODO: process and return real data from L3Report 
             return {"l3Report": {
               "devices": [
-                {"id": "3eddfee0-b381-46ac-8bc0-931f023b55c2", "name": "clos-leaf-01", "family": "QFX5100-96S", "role":"leaf", "status":"bad", "statusReason":"ConnectAuthError(192.168.48.218)"},
-                {"id": "ffa7c8dd-47a5-48e8-9090-716b056e49af", "name": "clos-leaf-02", "family": "QFX5100-96S", "role":"leaf", "status":"good", "statusReason":""},
-                {"id": "c407aabf-6553-4608-95fe-f6885b72732a", "name": "clos-leaf-03", "family": "QFX5100-96S", "role":"leaf", "status":"bad", "statusReason":"ConnectUnknownHostError(192.168.48.999)"},
-                {"id": "138d1d9d-0984-4e96-ab64-eca1bb86e45d", "name": "clos-spine-01", "family": "QFX5100-24Q", "role":"spine", "status":"unknown", "statusReason":""},
-                {"id": "82bfe693-9d80-44c1-994d-2c48b7cda785", "name": "clos-spine-02", "family": "QFX5100-24Q", "role":"spine", "status":"unknown", "statusReason":""}
+                {"id": "3eddfee0-b381-46ac-8bc0-931f023b55c2", "name": "clos-leaf-01", "family": "qfx5100-96s-8q", "role":"leaf", "status":"bad", "statusReason":"ConnectAuthError(192.168.48.218)"},
+                {"id": "ffa7c8dd-47a5-48e8-9090-716b056e49af", "name": "clos-leaf-02", "family": "qfx5100-96s-8q", "role":"leaf", "status":"good", "statusReason":""},
+                {"id": "c407aabf-6553-4608-95fe-f6885b72732a", "name": "clos-leaf-03", "family": "qfx5100-96s-8q", "role":"leaf", "status":"bad", "statusReason":"ConnectUnknownHostError(192.168.48.999)"},
+                {"id": "138d1d9d-0984-4e96-ab64-eca1bb86e45d", "name": "clos-spine-01", "family": "qfx5100-24q-2p", "role":"spine", "status":"unknown", "statusReason":""},
+                {"id": "82bfe693-9d80-44c1-994d-2c48b7cda785", "name": "clos-spine-02", "family": "qfx5100-24q-2p", "role":"spine", "status":"unknown", "statusReason":""}
               ],
               "peers": [
                 { "device1": "clos-leaf-01", "asn1": "400", "ip1":"192.169.0.1/31", "device2": "clos-spine-01", "asn2": "300", "ip2":"192.169.0.0/31", "status":"unknown", "routes": ""},

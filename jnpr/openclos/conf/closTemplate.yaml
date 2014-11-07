@@ -15,11 +15,11 @@ pods:
     # pod name or pod identifier
     labLeafSpine:
         spineCount : 4
-        # possible options for leafDeviceType are QFX5100-24Q
-        spineDeviceType : QFX5100-24Q
+        # possible options for leafDeviceType are qfx5100-24q-2p
+        spineDeviceType : qfx5100-24q-2p
         leafCount : 6
-        # possible options for leafDeviceType are QFX5100-96S, QFX5100-48S
-        leafDeviceType : QFX5100-48S
+        # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
+        leafDeviceType : qfx5100-48s-6q
         hostOrVmCountPerLeaf : 254
         interConnectPrefix : 192.168.0.0
         vlanPrefix : 172.16.0.0
@@ -43,11 +43,11 @@ pods:
         leafJunosImage : jinstall-qfx-5-flex-13.2X51-D21.2-domestic-signed.tgz
     anotherPod:
         spineCount : 2
-        # possible options for leafDeviceType are QFX5100-24Q
-        spineDeviceType : QFX5100-24Q
+        # possible options for leafDeviceType are qfx5100-24q-2p
+        spineDeviceType : qfx5100-24q-2p
         leafCount : 4
-        # possible options for leafDeviceType are QFX5100-96S, QFX5100-48S
-        leafDeviceType : QFX5100-96S
+        # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
+        leafDeviceType : qfx5100-96s-8q
         hostOrVmCountPerLeaf : 254
         interConnectPrefix : 192.169.0.0
         vlanPrefix : 172.17.0.0

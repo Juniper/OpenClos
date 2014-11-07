@@ -20,8 +20,4 @@ protocols {
             {% endfor %}        
         }
     }
-    replace:
-    lldp {
-        interface all;
-    }
 }

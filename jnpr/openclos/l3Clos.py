@@ -449,8 +449,10 @@ class L3ClosMediation():
             config = self.createBaseConfig(device)
             config += self.createInterfaces(device)
             config += self.createRoutingOption(device)
-            config += self.createProtocols(device)
+            config += self.createProtocolBgp(device)
+            config += self.createProtocolLldp(device)
             config += self.createPolicyOption(device)
+            config += self.createSnmpTrapAndEvent(device)
             config += self.createVlan(device)
             device.config = config
             modifiedObjects.append(device)
@@ -517,8 +519,8 @@ class L3ClosMediation():
         
         return routingOptionStanza.render(routerId=loopbackIpWithNoCidr, asn=str(device.asn), oobNetworks=oobNetworkList, gateway=gateway)
 
-    def createProtocols(self, device):
-        template = self.templateEnv.get_template('protocolBgpLldp.txt')
+    def createProtocolBgp(self, device):
+        template = self.templateEnv.get_template('protocolBgp.txt')
 
         neighborList = []
         deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name_order_num).all()
@@ -531,6 +533,10 @@ class L3ClosMediation():
 
         return template.render(neighbors=neighborList)        
          
+    def createProtocolLldp(self, device):
+        template = self.templateEnv.get_template('protocolLldp.txt')
+        return template.render()        
+
     def createPolicyOption(self, device):
         pod = device.pod
         
@@ -557,6 +563,17 @@ class L3ClosMediation():
         else:
             return ''
 
+    def getNdTrapGroupSettings(self):
+        snmpTrapConf = self.conf.get('snmpTrap')
+        if (util.isIntegratedWithND(self.conf)):
+            ndSnmpTrapConf = snmpTrapConf.get('networkdirector_trap_group') 
+            if ndSnmpTrapConf is None:
+                logger.error('No SNMP Trap setting found for ND')
+                return
+            
+            return {'name': 'networkdirector_trap_group', 'port': ndSnmpTrapConf['port'], 'targetIp': ndSnmpTrapConf['target'] }
+        return
+    
     def createSnmpTrapAndEvent(self, device):
         snmpTrapConf = self.conf.get('snmpTrap')
         if snmpTrapConf is None:
@@ -576,24 +593,16 @@ class L3ClosMediation():
             openClosGroup = {'name': 'openclos_trap_group', 'port': openclosSnmpTrapConf['port'], 'targetIp': openclosSnmpTrapConf['target'] }
             groups = [openClosGroup]
             
-            if (util.isIntegratedWithND(self.conf)):
-                ndSnmpTrapConf = snmpTrapConf.get('networkdirector_trap_group') 
-                if ndSnmpTrapConf is None:
-                    logger.error('No SNMP Trap setting found for ND')
-
-                ndGroup = {'name': 'networkdirector_trap_group', 'port': ndSnmpTrapConf['port'], 'targetIp': ndSnmpTrapConf['target'] }
+            ndGroup = self.getNdTrapGroupSettings()
+            if ndGroup is not None:
                 groups.append(ndGroup)
                 
             configlet += snmpTemplate.render(trapGroups = groups)
             return configlet
 
         elif device.role == 'spine':
-            if (util.isIntegratedWithND(self.conf)):
-                ndSnmpTrapConf = snmpTrapConf.get('networkdirector_trap_group') 
-                if ndSnmpTrapConf is None:
-                    logger.error('No SNMP Trap setting found for ND')
-
-                ndGroup = {'name': 'networkdirector_trap_group', 'port': ndSnmpTrapConf['port'], 'targetIp': ndSnmpTrapConf['target'] }
+            ndGroup = self.getNdTrapGroupSettings()
+            if ndGroup is not None:
                 configlet += snmpTemplate.render(trapGroups = [ndGroup])
                 return configlet
 
