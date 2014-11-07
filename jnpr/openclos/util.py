@@ -86,15 +86,15 @@ def getPortNamesForDeviceFamily(deviceFamily, conf):
     '''
     returns all port names for a device family grouped by uplink/downlink
     ex - xe-0/0/0, xe-0/0/1 ... xe-0/0/47
-    For some device family (QFX5100-24Q) there is no specific uplink/downlink, 
+    For some device family (qfx5100-24q-2p) there is no specific uplink/downlink, 
     for those it is just a list in the dict.
     
-    :param str: deviceFamily -- example QFX5100-24Q
+    :param str: deviceFamily -- example qfx5100-24q-2p
     :param dict: conf -- device family configuration in dict format, example in openclos.yaml
     :returns dict: portNames
         uplinkPorts: 
         downlinkPorts:
-        ports: list of ports that are not tagged, example QFX5100-24Q 
+        ports: list of ports that are not tagged, example qfx5100-24q-2p 
     '''
 
     if conf is None:
@@ -178,3 +178,39 @@ def getMgmtIps(prefix, count):
         mgmtIps.append(str(ip) + '/' + str(ipNetwork.prefixlen))
 
     return mgmtIps
+
+def isIntegratedWithND(conf):
+    if conf is not None and conf.get('deploymentMode') is not None:
+        return conf['deploymentMode'].get('ndIntegrated', False)
+    return False
+        
+def isZtpStaged(conf):
+    if conf is not None and conf.get('deploymentMode') is not None:
+        return conf['deploymentMode'].get('ztpStaged', False)
+    return False
+
+def isPrimaryNode():
+    '''
+    Checks if current node is primary node in cluster.
+    Needed to check only for ND integration on centos, as ND can run only on centos.
+    For any other platform returns True
+
+    Example output of 'ip a list'
+    2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast qlen 1000
+    link/ether 00:50:56:9f:99:d4 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.63.251/25 brd 192.168.63.255 scope global eth0
+    inet 192.168.63.250/25 brd 192.168.63.255 scope global secondary eth0:0
+
+    :returns bool: True if the node has eth0:0 configured with VIP
+    '''
+    
+    if not isIntegratedWithND() or not isPlatformCentos():
+        return True
+    
+    import subprocess
+    proc = subprocess.Popen('/sbin/ip a list dev eth0 | grep -q eth0:0', shell=True)
+    returnValue = proc.wait()
+    if (returnValue == 0):
+        return True
+    else:
+        return False

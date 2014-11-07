@@ -1,3 +1,14 @@
+# Deployment mode
+# ndIntegrated: true/false indicates if deployed with Network Director
+# ztpStaged: true/false, true indicates ZTP process goes through 2-stage
+# device configuration. During leaf device boot-strap, it gets generic config,
+# then OpenClos finds the topology and applies new topology.
+# False indicates all leaf configs are generated based on cabling-plan and 
+# deployed to the device using ZTP process. 
+deploymentMode :
+    ndIntegrated : false
+    ztpStaged : false
+
 # Generated file/configuration location
 # default value 'out' relative to current dir 
 # can take absolute path as '/tmp/out/'
@@ -40,18 +51,18 @@ writeConfigInFile : false
 
     
 # Device family and port names
-# QFX5100-24Q ports could be [0-32] with two four-port expansion modules
-# unlike 48S or 96S for 24Q there is no specific uplink/downlink
+# qfx5100-24q-2p ports could be [0-32] with two four-port expansion modules
+# unlike 48s or 96s for 24Q there is no specific uplink/downlink
 deviceFamily :
-    QFX5100-24Q :
+    qfx5100-24q-2p :
         uplinkPorts : 
         downlinkPorts : 
         ports : 'et-0/0/[0-23]' 
-    QFX5100-48S :
+    qfx5100-48s-6q :
         uplinkPorts : 'et-0/0/[48-53]' 
         downlinkPorts : 'xe-0/0/[0-47]'
         ports :  
-    QFX5100-96S :
+    qfx5100-96s-8q :
         uplinkPorts : 'et-0/0/[96-103]' 
         downlinkPorts : 'xe-0/0/[0-95]'
         ports :  
@@ -80,11 +91,18 @@ httpServer :
 report :
     threadCount : 10
          
-#snmp trap 
+# SNMP trap settings for NetworkDirector and OpenClos
+# OpenClos uses traps to perform 2-stage ZTP process
+# NetworkDirector trap settings are optional, should be set only when
+# OpenClos is integrated with NetworkDirector, enabling networkdirector_trap_group
+# assumes, it is integrated with NetworkDirector.
 snmpTrap :
-   targets : ['5.6.7.8']   
-   port : 155
- 
+    networkdirector_trap_group :
+        port : 10162
+        target : 1.2.3.4
+    openclos_trap_group :
+        port : 20162
+        target : 1.2.3.4
 
 
 # various scripts

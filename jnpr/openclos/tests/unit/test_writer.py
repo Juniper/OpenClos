@@ -27,10 +27,10 @@ class TestWriterBase(unittest.TestCase):
         self.conf['dbUrl'] = 'sqlite:///'
         self.conf['DOT'] = {'ranksep' : '5 equally', 'colors': ['red', 'green', 'blue']}
         self.conf['deviceFamily'] = {
-            "QFX5100-24Q": {
+            "qfx-5100-24q-2p": {
                 "ports": 'et-0/0/[0-23]'
             },
-            "QFX5100-48S": {
+            "qfx-5100-48s-6q": {
                 "uplinkPorts": 'et-0/0/[48-53]', 
                 "downlinkPorts": 'xe-0/0/[0-47]'
             }
@@ -81,12 +81,12 @@ class TestCablingPlanWriter(TestWriterBase):
         testLinksInTopology = pydot.Dot(graph_type='graph')
         pod = createPod('pod1', self.dao.Session())
         cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
-        deviceOne = Device('spine01','QFX5100-24Q', 'admin', 'admin',  'spine', "", "", pod)
+        deviceOne = Device('spine01','qfx-5100-24q-2p', 'admin', 'admin',  'spine', "", "", pod)
         deviceOne.id = 'spine01'
         IF1 = InterfaceDefinition('IF1', deviceOne, 'downlink')
         IF1.id = 'IF1'
         
-        deviceTwo = Device('leaf01','QFX5100-48S', 'admin', 'admin',  'leaf', "", "", pod)
+        deviceTwo = Device('leaf01','qfx-5100-48s-6q', 'admin', 'admin',  'leaf', "", "", pod)
         deviceTwo.id = 'leaf01'
         IF21 = InterfaceDefinition('IF1', deviceTwo, 'uplink')
         IF21.id = 'IF21'
@@ -108,7 +108,7 @@ class TestCablingPlanWriter(TestWriterBase):
         session = self.dao.Session()
         pod = createPod('pod1', session)
         cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
-        deviceOne = Device('spine01','QFX5100-24Q', 'admin', 'admin',  'spine', "", "", pod)
+        deviceOne = Device('spine01','qfx-5100-24q-2p', 'admin', 'admin',  'spine', "", "", pod)
         session.add(deviceOne)
         IF1 = InterfaceDefinition('et-0/0/0', deviceOne, 'downlink')
         IFL1 = InterfaceLogical('et-0/0/0', deviceOne, '1.2.3.4', 9000)
@@ -121,7 +121,7 @@ class TestCablingPlanWriter(TestWriterBase):
         session.add(IF2)
         session.add(IFL1)
         
-        deviceTwo = Device('leaf01','QFX5100-48S', 'admin', 'admin',  'leaf', "", "", pod)
+        deviceTwo = Device('leaf01','qfx-5100-48s-6q', 'admin', 'admin',  'leaf', "", "", pod)
         session.add(deviceTwo)
         IF21 = InterfaceDefinition('et-0/0/13', deviceTwo, 'uplink')
         IFL21 = InterfaceLogical('et-0/0/13', deviceTwo, '1.2.3.4', 9000)
@@ -144,7 +144,7 @@ class TestCablingPlanWriter(TestWriterBase):
         session.add(IF24)
         session.add(IFL24)
         
-        deviceThree = Device('Access01', 'QFX5100-48S','admin', 'admin',  'leaf', "", "", pod)
+        deviceThree = Device('Access01', 'qfx-5100-48s-6q','admin', 'admin',  'leaf', "", "", pod)
         session.add(deviceThree)
         IF31 = InterfaceDefinition('et-0/0/1', deviceThree, 'uplink')
         IFL31 = InterfaceLogical('et-0/0/1', deviceThree, '1.2.3.4', 9000)
