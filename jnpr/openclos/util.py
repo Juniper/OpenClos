@@ -142,7 +142,7 @@ def expandPortName(portName):
     return portNames
 
 def isPlatformUbuntu():
-    return True or 'ubuntu' in platform.platform().lower()
+    return 'ubuntu' in platform.platform().lower()
 
 def isPlatformCentos():
     return 'centos' in platform.platform().lower()
