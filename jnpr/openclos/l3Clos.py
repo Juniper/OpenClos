@@ -556,6 +556,48 @@ class L3ClosMediation():
             return template.render()
         else:
             return ''
+
+    def createSnmpTrapAndEvent(self, device):
+        snmpTrapConf = self.conf.get('snmpTrap')
+        if snmpTrapConf is None:
+            logger.error('No SNMP Trap setting found on openclos.yaml')
+            return ''
+        
+        snmpTemplate = self.templateEnv.get_template('snmpTrap.txt')
+        trapEventTemplate = self.templateEnv.get_template('eventOptionForTrap.txt')
+        
+        configlet = trapEventTemplate.render()
+        
+        if device.role == 'leaf':
+            openclosSnmpTrapConf = snmpTrapConf.get('openclos_trap_group') 
+            if openclosSnmpTrapConf is None:
+                logger.error('No SNMP Trap setting found for OpenClos')
+
+            openClosGroup = {'name': 'openclos_trap_group', 'port': openclosSnmpTrapConf['port'], 'targetIp': openclosSnmpTrapConf['target'] }
+            groups = [openClosGroup]
+            
+            if (util.isIntegratedWithND(self.conf)):
+                ndSnmpTrapConf = snmpTrapConf.get('networkdirector_trap_group') 
+                if ndSnmpTrapConf is None:
+                    logger.error('No SNMP Trap setting found for ND')
+
+                ndGroup = {'name': 'networkdirector_trap_group', 'port': ndSnmpTrapConf['port'], 'targetIp': ndSnmpTrapConf['target'] }
+                groups.append(ndGroup)
+                
+            configlet += snmpTemplate.render(trapGroups = groups)
+            return configlet
+
+        elif device.role == 'spine':
+            if (util.isIntegratedWithND(self.conf)):
+                ndSnmpTrapConf = snmpTrapConf.get('networkdirector_trap_group') 
+                if ndSnmpTrapConf is None:
+                    logger.error('No SNMP Trap setting found for ND')
+
+                ndGroup = {'name': 'networkdirector_trap_group', 'port': ndSnmpTrapConf['port'], 'targetIp': ndSnmpTrapConf['target'] }
+                configlet += snmpTemplate.render(trapGroups = [ndGroup])
+                return configlet
+
+        return ''
         
 if __name__ == '__main__':
     l3ClosMediation = L3ClosMediation()

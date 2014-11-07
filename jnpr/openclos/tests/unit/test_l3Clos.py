@@ -277,6 +277,64 @@ class TestL3Clos(unittest.TestCase):
         with self.assertRaises(TemplateNotFound) as e:
             l3ClosMediation.templateEnv.get_template('unknown-template')
         self.assertTrue('unknown-template' in e.exception.message)
+
+    def testcreateSnmpTrapAndEventNoTrapConf(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mac", "mgmtIp", None)
+        
+        configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
+        self.assertEqual('', configlet)
+
+    def testcreateSnmpTrapAndEventNoNdSpine(self):
+        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
+                                 'openclos_trap_group': {'port': 10162, 'target': '1.2.3.4'}}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        
+        device = Device("test", "QFX5100-48S", "user", "pwd", "spine", "mac", "mgmtIp", None)
+        configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
+
+        self.assertEqual('', configlet)
   
+    def testcreateSnmpTrapAndEventNoNdLeaf(self):
+        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
+                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        
+        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mac", "mgmtIp", None)
+        configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
+        
+        self.assertTrue('' != configlet)
+        self.assertTrue('event-options' in configlet)
+        self.assertTrue('trap-group openclos_trap_group' in configlet)
+        self.assertFalse('trap-group networkdirector_trap_group' in configlet)
+
+    def testcreateSnmpTrapAndEventWithNdSpine(self):
+        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
+                                 'openclos_trap_group': {'port': 10162, 'target': '5.6.7.8'}}
+        self.conf['deploymentMode'] = {'ndIntegrated': True}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        
+        device = Device("test", "QFX5100-48S", "user", "pwd", "spine", "mac", "mgmtIp", None)
+        configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
+
+        self.assertTrue('' != configlet)
+        self.assertTrue('event-options' in configlet)
+        self.assertFalse('trap-group openclos_trap_group' in configlet)
+        self.assertTrue('trap-group networkdirector_trap_group' in configlet)
+
+    def testcreateSnmpTrapAndEventWithNdLeaf(self):
+        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
+                                 'openclos_trap_group': {'port': 10162, 'target': '5.6.7.8'}}
+        self.conf['deploymentMode'] = {'ndIntegrated': True}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        
+        device = Device("test", "QFX5100-48S", "user", "pwd", "leaf", "mac", "mgmtIp", None)
+        configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
+
+        self.assertTrue('' != configlet)
+        self.assertTrue('event-options' in configlet)
+        self.assertTrue('trap-group openclos_trap_group' in configlet)
+        self.assertTrue('trap-group networkdirector_trap_group' in configlet)
+        print configlet
 if __name__ == '__main__':
     unittest.main()

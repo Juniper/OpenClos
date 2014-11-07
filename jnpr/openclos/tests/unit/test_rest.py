@@ -263,8 +263,9 @@ class TestRest(unittest.TestCase):
         
         response = restServerTestApp.get('/openclos/conf')
         self.assertEqual(200, response.status_int)
-        self.assertEqual(80, response.json['OpenClosConf']['httpServer']['port'])
-        self.assertEqual(155, response.json['OpenClosConf']['snmpTrap']['port'])       
+        self.assertTrue(response.json['OpenClosConf']['httpServer'].has_key('port'))
+        self.assertTrue(response.json['OpenClosConf']['snmpTrap']['networkdirector_trap_group'].has_key('port'))
+        self.assertTrue(response.json['OpenClosConf']['snmpTrap']['openclos_trap_group'].has_key('port'))       
         
     def testdeleteIpFabric(self):
         restServerTestApp = self.setupRestWithTwoPods()

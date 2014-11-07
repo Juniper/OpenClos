@@ -86,6 +86,22 @@ class TestFunctions(unittest.TestCase):
         mgmtIps = getMgmtIps("1.2.3.1/24", 6)
         self.assertEqual(mgmtIpList, mgmtIps)
 
+    def testIsIntegratedWithNd(self):
+        self.assertFalse(isIntegratedWithND(None))
+        self.assertFalse(isIntegratedWithND({}))
+        self.assertFalse(isIntegratedWithND({'deploymentMode': None}))
+        self.assertFalse(isIntegratedWithND({'deploymentMode': {}}))
+        self.assertFalse(isIntegratedWithND({'deploymentMode': {'ndIntegrated': False}}))
+        self.assertTrue(isIntegratedWithND({'deploymentMode': {'ndIntegrated': True}}))
+        
+    def testIsZtpStaged(self):
+        self.assertFalse(isZtpStaged(None))
+        self.assertFalse(isZtpStaged({}))
+        self.assertFalse(isZtpStaged({'deploymentMode': None}))
+        self.assertFalse(isZtpStaged({'deploymentMode': {}}))
+        self.assertFalse(isZtpStaged({'deploymentMode': {'ztpStaged': False}}))
+        self.assertTrue(isZtpStaged({'deploymentMode': {'ztpStaged': True}}))
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

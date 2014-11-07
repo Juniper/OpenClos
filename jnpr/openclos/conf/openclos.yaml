@@ -1,3 +1,14 @@
+# Deployment mode
+# ndIntegrated: true/false indicates if deployed with Network Director
+# ztpStaged: true/false, true indicates ZTP process goes through 2-stage
+# device configuration. During leaf device boot-strap, it gets generic config,
+# then OpenClos finds the topology and applies new topology.
+# False indicates all leaf configs are generated based on cabling-plan and 
+# deployed to the device using ZTP process. 
+deploymentMode :
+    ndIntegrated : false
+    ztpStaged : false
+
 # Generated file/configuration location
 # default value 'out' relative to current dir 
 # can take absolute path as '/tmp/out/'
@@ -80,11 +91,18 @@ httpServer :
 report :
     threadCount : 10
          
-#snmp trap 
+# SNMP trap settings for NetworkDirector and OpenClos
+# OpenClos uses traps to perform 2-stage ZTP process
+# NetworkDirector trap settings are optional, should be set only when
+# OpenClos is integrated with NetworkDirector, enabling networkdirector_trap_group
+# assumes, it is integrated with NetworkDirector.
 snmpTrap :
-   targets : ['5.6.7.8']   
-   port : 155
- 
+    networkdirector_trap_group :
+        port : 10162
+        target : 1.2.3.4
+    openclos_trap_group :
+        port : 20162
+        target : 1.2.3.4
 
 
 # various scripts
