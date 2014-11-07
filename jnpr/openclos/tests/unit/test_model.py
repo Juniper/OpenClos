@@ -23,6 +23,7 @@ def createPod(name, session):
     pod['interConnectPrefix'] = '1.2.0.0'
     pod['vlanPrefix'] = '1.3.0.0'
     pod['loopbackPrefix'] = '1.4.0.0'
+    pod['managementPrefix'] = '172.32.30.101/24'
     pod['spineAS'] = '100'
     pod['leafAS'] = '100'
     pod['topologyType'] = 'threeStage'
@@ -89,6 +90,7 @@ class TestPod(TestOrm):
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
+        pod['managementPrefix'] = '172.32.30.101/24'
         pod['spineAS'] = '100'
         pod['leafAS'] = '100'
         pod['topologyType'] = 'threeStage'
@@ -103,7 +105,7 @@ class TestPod(TestOrm):
             pod = Pod('testPod', **pod)
             pod.validateRequiredFields()
         error = ve.exception.message
-        self.assertEqual(10, error.count(','))
+        self.assertEqual(11, error.count(','))
 
     def testPodValidateMisingFewRequiredFields(self):
         pod = {}
@@ -113,12 +115,13 @@ class TestPod(TestOrm):
             pod = Pod('testPod', **pod)
             pod.validateRequiredFields()
         error = ve.exception.message
-        self.assertEqual(8, error.count(','), 'Number of missing field is not correct')
+        self.assertEqual(9, error.count(','), 'Number of missing field is not correct')
 
     def testPodValidateMisingBadIpAddress(self):
         pod = {}
         pod['interConnectPrefix'] = '1.2.0.0.0'
         pod['vlanPrefix'] = '1.2.0.257'
+        pod['managementPrefix'] = '172.32.30.101/24'
         pod['loopbackPrefix'] = None
         with self.assertRaises(ValueError) as ve:
             pod = Pod('testPod', **pod)
@@ -135,6 +138,7 @@ class TestPod(TestOrm):
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
+        pod['managementPrefix'] = '172.32.30.101/24'
         pod['spineAS'] = '100'
         pod['leafAS'] = '100'
         pod['topologyType'] = 'threeStage'
@@ -151,6 +155,7 @@ class TestPod(TestOrm):
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
+        pod['managementPrefix'] = '172.32.30.101/24'
         pod['spineAS'] = '100'
         pod['leafAS'] = '100'
         pod['topologyType'] = 'threeStage'

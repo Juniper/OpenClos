@@ -1,10 +1,10 @@
 {   "spines" : [
-       { "name" : "clos-spine-01", "macAddress" : "10:0e:7e:af:35:41", "managementIp" : "192.168.48.216/25" },
-       { "name" : "clos-spine-02", "macAddress" : "10:0e:7e:af:50:c1", "managementIp" : "192.168.48.217/25" }
+       { "name" : "clos-spine-01", "macAddress" : "10:0e:7e:af:35:41" },
+       { "name" : "clos-spine-02", "macAddress" : "10:0e:7e:af:50:c1" }
     ],
     "leafs" : [
-       { "name" : "clos-leaf-01", "macAddress" : "88:e0:f3:1c:d6:01", "managementIp" : "192.168.48.218/25", "username": "root1", "password": "Embe1mpls" },
-       { "name" : "clos-leaf-02", "macAddress" : "10:0e:7e:b8:9d:01", "managementIp" : "192.168.48.219/25", "username": "root", "password": "Embe1mpls" },
-       { "name" : "clos-leaf-03", "macAddress" : "88:e0:f3:1c:d4:01", "managementIp" : "192.168.48.999/25", "username": "root", "password": "Embe1mpls" }
+       { "name" : "clos-leaf-01", "macAddress" : "88:e0:f3:1c:d6:01", "username": "root1", "password": "Embe1mpls" },
+       { "name" : "clos-leaf-02", "macAddress" : "10:0e:7e:b8:9d:01", "username": "root", "password": "Embe1mpls" },
+       { "name" : "clos-leaf-03", "macAddress" : "88:e0:f3:1c:d4:01", "username": "root", "password": "Embe1mpls" }
     ]
 }

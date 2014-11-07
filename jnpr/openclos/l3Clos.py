@@ -142,6 +142,13 @@ class L3ClosMediation():
             self.dao.deleteObjects(pod.devices)
             
             # 1. Build inventory
+            spineCount = len(inventoryData['spines'])
+            leafCount = len(inventoryData['leafs'])
+            managementIps = util.getMgmtIps(pod.managementPrefix, spineCount + leafCount)
+            for spine, managementIp in zip(inventoryData['spines'], managementIps[:spineCount]):
+                spine['managementIp'] = managementIp
+            for leaf, managementIp in zip(inventoryData['leafs'], managementIps[spineCount:]):
+                leaf['managementIp'] = managementIp
             self.createSpineIFDs(pod, inventoryData['spines'])
             self.createLeafIFDs(pod, inventoryData['leafs'])
 
@@ -261,8 +268,8 @@ class L3ClosMediation():
         for spine in spines:
             username = spine.get('username')
             password = spine.get('password')
-            managementIp = spine.get('managementIp')
             macAddress = spine.get('macAddress')
+            managementIp = spine.get('managementIp')
             device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, managementIp, pod)
             devices.append(device)
             
@@ -279,8 +286,8 @@ class L3ClosMediation():
         for leaf in leafs:
             username = leaf.get('username')
             password = leaf.get('password')
-            managementIp= leaf.get('managementIp')
             macAddress = leaf.get('macAddress')
+            managementIp = leaf.get('managementIp')
             device = Device(leaf['name'], pod.leafDeviceType, username, password, 'leaf', macAddress, managementIp, pod)
             devices.append(device)
 

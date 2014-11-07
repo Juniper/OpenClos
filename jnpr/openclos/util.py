@@ -10,6 +10,7 @@ import yaml
 import platform
 import datetime
 import shutil
+from netaddr import IPAddress, IPNetwork, AddrFormatError
 
 #__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
@@ -158,3 +159,22 @@ def backupDatabase(conf):
                 timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
                 backupDbFileName = dbFileName + '.' + timestamp
                 shutil.copyfile(dbFileName, backupDbFileName)
+
+def getMgmtIps(prefix, count):
+    '''
+    returns list of management IP for given number of devices
+    
+    Keyword arguments:
+    prefix -- ip prefix, example 1.2.3.4/24
+    count -- number of devices
+    '''
+    mgmtIps = []
+    ipNetwork = IPNetwork(prefix)
+    ipNetworkList = list(ipNetwork)
+    start = ipNetworkList.index(ipNetwork.ip)
+    end = start + count
+    ipList = ipNetworkList[start:end]
+    for ip in ipList:
+        mgmtIps.append(str(ip) + '/' + str(ipNetwork.prefixlen))
+
+    return mgmtIps
