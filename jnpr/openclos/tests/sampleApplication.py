@@ -6,8 +6,14 @@ Created on Oct 2, 2014
 from jnpr.openclos.l3Clos import L3ClosMediation
 from jnpr.openclos.ztp import ZtpServer
 from jnpr.openclos.rest import RestServer
+from jnpr.openclos.trapd import TrapReceiver
 import jnpr.openclos.util
 import os
+import signal
+import sys
+
+trapReceiver = None
+restServer = None
 
 installedDhcpConf = "/etc/dhcp/dhcpd.conf"
 
@@ -63,9 +69,34 @@ class sampleApplication:
         restServer = RestServer()
         restServer.initRest()
         restServer.start()
+        return restServer
 
+    def startTrapReceiver(self):
+        '''
+        start trap receiver to listen on traps from devices
+        '''
+        trapReceiver = TrapReceiver()
+        trapReceiver.start()
+        return trapReceiver
+
+def signal_handler(signal, frame):
+    print("received signal %d" % signal)
+    trapReceiver.stop()
+    # TODO find how to cleanly stop rest server
+    #restServer.stop()
+    sys.exit(0)
+        
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     app = sampleApplication()
+    trapReceiver = app.startTrapReceiver()
     app.createConfigFilesForDevices()
     app.setupZTP()
-    app.startHTTPserverForZTPFileTransferProtocol()
+    restServer = app.startHTTPserverForZTPFileTransferProtocol()
+    
+    # Note we have to do this in order for signal to be properly caught by main thread
+    # We need to do the similar thing when we integrate this into sampleApplication.py
+    while True:
+        signal.pause()

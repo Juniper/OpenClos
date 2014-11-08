@@ -39,6 +39,7 @@ logLevel :
     rest : INFO
     writer : INFO
     devicePlugin : INFO
+    trapd : INFO
 
 
 # debug SQL and ORM
@@ -102,7 +103,7 @@ snmpTrap :
         target : 1.2.3.4
     openclos_trap_group :
         port : 20162
-        target : 1.2.3.4
+        target : 0.0.0.0
 
 
 # various scripts
