@@ -46,7 +46,8 @@ class Pod(ManagedElement, Base):
     spineAS = Column(Integer)
     leafAS = Column(Integer)
     topologyType = Column(Enum('threeStage', 'fiveStageRealEstate', 'fiveStagePerformance'))
-    outOfBandAddressList = Column(String(512))  # comma separated values 
+    outOfBandAddressList = Column(String(512))  # comma separated values
+    outOfBandGateway =  Column(String(32))
     spineJunosImage = Column(String(126))
     leafJunosImage = Column(String(126))
     allocatedInterConnectBlock = Column(String(32))
@@ -55,6 +56,7 @@ class Pod(ManagedElement, Base):
     allocatedSpineAS = Column(Integer)
     allocatefLeafAS = Column(Integer)
     inventoryData = Column(String(2048))
+    leafGenericConfig = Column(BLOB)
     state = Column(Enum('unknown', 'created', 'updated', 'cablingDone', 'deviceConfigDone', 'ztpConfigDone', 'deployed', 'L2Verified', 'L3Verified'))
 
     def __init__(self, name, **kwargs):
@@ -112,6 +114,8 @@ class Pod(ManagedElement, Base):
             addressList = kwargs.get('outOfBandAddressList')
             self.outOfBandAddressList = ','.join(addressList)
             kwargs.pop('outOfBandAddressList')
+        if kwargs.has_key('outOfBandGateway'):
+            self.outOfBandGateway = kwargs.get('outOfBandGateway')
         if kwargs.has_key('spineJunosImage'):
             self.spineJunosImage = kwargs.get('spineJunosImage')
         if kwargs.has_key('leafJunosImage'):

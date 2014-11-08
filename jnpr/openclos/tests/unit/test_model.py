@@ -144,7 +144,13 @@ class TestPod(TestOrm):
         pod['topologyType'] = 'threeStage'
         pod['inventory'] = 'inventoryLabKurt.json'
         pod['outOfBandAddressList'] = ['1.2.3.4', '5.6.7.8']
-        self.assertTrue(Pod('testPod', **pod) is not None)
+        pod['outOfBandGateway'] = '1.3.5.254'
+        
+        constructedPod = Pod('testPod', **pod) 
+        self.assertTrue(constructedPod is not None)
+        self.assertEqual(','.join(['1.2.3.4', '5.6.7.8']), constructedPod.outOfBandAddressList)
+        self.assertEqual('1.3.5.254', constructedPod.outOfBandGateway)
+
 
     def testOrm(self):
         pod = {}

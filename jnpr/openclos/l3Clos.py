@@ -242,8 +242,6 @@ class L3ClosMediation():
         Finds Pod object by id and create device configurations
         It also creates the output folders for pod
         '''
-        writeConfigInFile = self.conf.get('writeConfigInFile', False)
-            
         if podId is not None:
             try:
                 pod = self.dao.getObjectById(Pod, podId)
@@ -251,8 +249,8 @@ class L3ClosMediation():
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
  
             if len(pod.devices) > 0:
-                # create configuration files
-                self.generateConfig(pod, writeConfigInFile)
+                # create configuration
+                self.generateConfig(pod)
 
                 # update status
                 pod.state = 'deviceConfigDone'
@@ -438,17 +436,19 @@ class L3ClosMediation():
 
         self.dao.updateObjects(devices)
         
-    def generateConfig(self, pod, writeConfigInFile = False):
-        
-        if writeConfigInFile:
-            configWriter = ConfigWriter(self.conf, pod, self.dao)
-        
+    def generateConfig(self, pod):
+        configWriter = ConfigWriter(self.conf, pod, self.dao)
         modifiedObjects = []
-
+        isZtpStaged = util.isZtpStaged(self.conf)
+        
         for device in pod.devices:
+            if isZtpStaged and device.role == 'leaf':
+                # leaf configs will get created when they are plugged in
+                continue
             config = self.createBaseConfig(device)
             config += self.createInterfaces(device)
-            config += self.createRoutingOption(device)
+            config += self.createRoutingOptionsStatic(device)
+            config += self.createRoutingOptionsBgp(device)
             config += self.createProtocolBgp(device)
             config += self.createProtocolLldp(device)
             config += self.createPolicyOption(device)
@@ -456,13 +456,17 @@ class L3ClosMediation():
             config += self.createVlan(device)
             device.config = config
             modifiedObjects.append(device)
-            logger.debug('Generated config for device id: %s, name: %s, storing in DB' % (device.id, device.name))
-            
-            if writeConfigInFile:
-                configWriter.write(device)
+            logger.debug('Generated config for device name: %s, id: %s, storing in DB' % (device.name, device.id))
+            configWriter.write(device)
 
+        if isZtpStaged:
+            pod.leafGenericConfig = self.createLeafGenericConfig(pod)
+            modifiedObjects.append(pod)
+            logger.debug('Generated LeafGenericConfig for pod: %s, device family: %s, storing in DB' % (pod.name, pod.leafDeviceType))
+            configWriter.writeGenericLeaf(pod)
+        
         self.dao.updateObjects(modifiedObjects)
-            
+
     def createBaseConfig(self, device):
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), junosTemplateLocation, 'baseTemplate.txt'), 'r') as f:
             baseTemplate = f.read()
@@ -504,20 +508,30 @@ class L3ClosMediation():
         config += "}\n"
         return config
 
-    def createRoutingOption(self, device):
-        routingOptionStanza = self.templateEnv.get_template('routing_options_stanza.txt')
-
-        loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
-        loopbackIpWithNoCidr = loopbackIfl.ipaddress.split('/')[0]
-        
-        oobNetworks = device.pod.outOfBandAddressList
+    def getParamsForOutOfBandNetwork(self, pod):
+        oobNetworks = pod.outOfBandAddressList
         if oobNetworks is not None:
             oobNetworkList = oobNetworks.split(',')
         else:
             oobNetworkList = []
-        gateway = util.loadClosDefinition()['ztp']['dhcpOptionRoute']
         
-        return routingOptionStanza.render(routerId=loopbackIpWithNoCidr, asn=str(device.asn), oobNetworks=oobNetworkList, gateway=gateway)
+        gateway = pod.outOfBandGateway
+        if gateway is None:
+            gateway = util.loadClosDefinition()['ztp']['dhcpOptionRoute']
+        
+        return {'networks': oobNetworkList, 'gateway': gateway}
+    
+    def createRoutingOptionsStatic(self, device):
+        routingOptions = self.templateEnv.get_template('routingOptionsStatic.txt')
+        return routingOptions.render(oob = self.getParamsForOutOfBandNetwork(device.pod))
+
+    def createRoutingOptionsBgp(self, device):
+        routingOptions = self.templateEnv.get_template('routingOptionsBgp.txt')
+
+        loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
+        loopbackIpWithNoCidr = loopbackIfl.ipaddress.split('/')[0]
+        
+        return routingOptions.render(routerId=loopbackIpWithNoCidr, asn=str(device.asn))
 
     def createProtocolBgp(self, device):
         template = self.templateEnv.get_template('protocolBgp.txt')
@@ -565,48 +579,69 @@ class L3ClosMediation():
 
     def getNdTrapGroupSettings(self):
         snmpTrapConf = self.conf.get('snmpTrap')
+        if snmpTrapConf is None:
+            logger.error('No SNMP Trap setting found on openclos.yaml')
+            return
         if (util.isIntegratedWithND(self.conf)):
             ndSnmpTrapConf = snmpTrapConf.get('networkdirector_trap_group') 
             if ndSnmpTrapConf is None:
                 logger.error('No SNMP Trap setting found for ND')
                 return
-            
             return {'name': 'networkdirector_trap_group', 'port': ndSnmpTrapConf['port'], 'targetIp': ndSnmpTrapConf['target'] }
         return
     
-    def createSnmpTrapAndEvent(self, device):
+    def getOpenclosTrapGroupSettings(self):
         snmpTrapConf = self.conf.get('snmpTrap')
         if snmpTrapConf is None:
             logger.error('No SNMP Trap setting found on openclos.yaml')
-            return ''
-        
+            return
+        openclosSnmpTrapConf = snmpTrapConf.get('openclos_trap_group') 
+        if openclosSnmpTrapConf is None:
+            logger.error('No SNMP Trap setting found for OpenClos')
+            return
+        return {'name': 'openclos_trap_group', 'port': openclosSnmpTrapConf['port'], 'targetIp': openclosSnmpTrapConf['target'] }
+
+    def createSnmpTrapAndEvent(self, device):
         snmpTemplate = self.templateEnv.get_template('snmpTrap.txt')
         trapEventTemplate = self.templateEnv.get_template('eventOptionForTrap.txt')
         
         configlet = trapEventTemplate.render()
         
         if device.role == 'leaf':
-            openclosSnmpTrapConf = snmpTrapConf.get('openclos_trap_group') 
-            if openclosSnmpTrapConf is None:
-                logger.error('No SNMP Trap setting found for OpenClos')
-
-            openClosGroup = {'name': 'openclos_trap_group', 'port': openclosSnmpTrapConf['port'], 'targetIp': openclosSnmpTrapConf['target'] }
-            groups = [openClosGroup]
-            
-            ndGroup = self.getNdTrapGroupSettings()
-            if ndGroup is not None:
-                groups.append(ndGroup)
+            groups = []
+            openclosTrapGroup = self.getOpenclosTrapGroupSettings()
+            if openclosTrapGroup is not None:
+                groups.append(openclosTrapGroup)
+                
+            ndTrapGroup = self.getNdTrapGroupSettings()
+            if ndTrapGroup is not None:
+                groups.append(ndTrapGroup)
                 
             configlet += snmpTemplate.render(trapGroups = groups)
             return configlet
 
         elif device.role == 'spine':
-            ndGroup = self.getNdTrapGroupSettings()
-            if ndGroup is not None:
-                configlet += snmpTemplate.render(trapGroups = [ndGroup])
+            ndTrapGroup = self.getNdTrapGroupSettings()
+            if ndTrapGroup is not None:
+                configlet += snmpTemplate.render(trapGroups = [ndTrapGroup])
                 return configlet
 
         return ''
+
+    def createLeafGenericConfig(self, pod):
+        leafTemplate = self.templateEnv.get_template('leafGenericTemplate.txt')
+
+        groups = []
+        openclosTrapGroup = self.getOpenclosTrapGroupSettings()
+        if openclosTrapGroup is not None:
+            groups.append(openclosTrapGroup)
+            
+        ndTrapGroup = self.getNdTrapGroupSettings()
+        if ndTrapGroup is not None:
+            groups.append(ndTrapGroup)
+
+        return leafTemplate.render(leafDeviceFamily = pod.leafDeviceType, 
+                    oob = self.getParamsForOutOfBandNetwork(pod), trapGroups = groups)
         
 if __name__ == '__main__':
     l3ClosMediation = L3ClosMediation()

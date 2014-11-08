@@ -179,6 +179,9 @@ def getMgmtIps(prefix, count):
 
     return mgmtIps
 
+def getMgmtIpsForLeaf():
+    return []
+
 def isIntegratedWithND(conf):
     if conf is not None and conf.get('deploymentMode') is not None:
         return conf['deploymentMode'].get('ndIntegrated', False)

@@ -55,32 +55,43 @@ class ZtpServer():
     def generateSingleDhcpConf(self):
         if util.isPlatformUbuntu():
             ztp = self.populateDhcpGlobalSettings()
-            dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
+            dhcpTemplate = self.templateEnv.get_template('ubuntu.1stage.dhcp.conf')
             return dhcpTemplate.render(ztp = self.populateDhcpDeviceSpecificSettingForAllPods(ztp))
 
     def createPodSpecificDhcpConfFile(self, podId):
         if podId is not None:
             try:
                 pod = self.dao.getObjectById(Pod, podId)
-            except (exc.NoResultFound) as e:
+            except (exc.NoResultFound):
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
             confWriter = DhcpConfWriter(self.conf, pod, self.dao)
             confWriter.write(self.generatePodSpecificDhcpConf(pod.id))
         else:
             raise ValueError("Pod id can't be None")
 
-
+    def getTemplate(self):
+        ''' 
+        Finds template based on o/s on which OpenClos is running
+        and 1stage/2stage ZTP process
+        returns: jinja2 template 
+        '''
+        if util.isPlatformUbuntu():
+            if util.isZtpStaged(self.conf):
+                return self.templateEnv.get_template('ubuntu.2stage.dhcp.conf')
+            else:
+                return self.templateEnv.get_template('ubuntu.1stage.dhcp.conf')
+        elif util.isPlatformCentos():
+            if util.isZtpStaged(self.conf):
+                return self.templateEnv.get_template('centos.2stage.dhcp.conf')
+            else:
+                return self.templateEnv.get_template('centos.1stage.dhcp.conf')
+        
     def generatePodSpecificDhcpConf(self, podId):
         ztp = self.populateDhcpGlobalSettings()
-        conf = None
-        if util.isPlatformUbuntu():
-            dhcpTemplate = self.templateEnv.get_template('dhcp.conf.ubuntu')
-            ztp = self.populateDhcpDeviceSpecificSetting(podId, ztp)
-            conf = dhcpTemplate.render(ztp = ztp)
-        elif util.isPlatformCentos():
-            dhcpTemplate = self.templateEnv.get_template('dhcp.conf.centos')
-            ztp = self.populateDhcpDeviceSpecificSetting(podId, ztp)
-            conf = dhcpTemplate.render(ztp = ztp)
+        
+        dhcpTemplate = self.getTemplate()
+        ztp = self.populateDhcpDeviceSpecificSetting(podId, ztp)
+        conf = dhcpTemplate.render(ztp = ztp)
             
         logger.debug('dhcpd.conf\n%s' % (conf))
         return conf
@@ -128,16 +139,22 @@ class ZtpServer():
             if device.role == 'spine':
                 image = pod.spineJunosImage
             elif device.role == 'leaf':
+                if util.isZtpStaged(self.conf):
+                    continue
                 image = pod.leafJunosImage
             else:
-                image = None
                 logger.error('PodId: %s, Pod: %s, Device: %s with unknown role: %s' % (pod.id, pod.name, device.name, device.role))
+                continue
             
             deviceMgmtIp = str(IPNetwork(device.managementIp).ip)
             ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
             'configUrl': '/openclos/ip-fabrics/' + pod.id + '/devices/' + device.id + '/config',
             'imageUrl': image, 'mgmtIp': deviceMgmtIp})
-                
+        
+        if util.isZtpStaged(self.conf):
+            ztp['leafDeviceFamily'] = pod.leafDeviceType
+            ztp['leafImageUrl'] = pod.leafJunosImage
+            ztp['leafGenericConfigUrl'] = '/openclos/ip-fabrics/' + pod.id + '/' + pod.leafDeviceType + '.conf'
         return ztp
 
 if __name__ == '__main__':
