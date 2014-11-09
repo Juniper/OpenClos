@@ -80,6 +80,7 @@ class RestServer():
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration','GET', self.getZtpConfig)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'GET', self.getDeviceConfigsInZip)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/leaf-generic-configuration', 'GET', self.getLeafGenericConfiguration)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/l2-report', 'GET', self.getL2Report)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/l3-report', 'GET', self.getL3Report)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices', 'GET', self.getDevices)
@@ -200,6 +201,23 @@ class RestServer():
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
 
+    def getLeafGenericConfiguration(self, ipFabricId):
+        ipFabric = self.report.getIpFabric(ipFabricId)
+        if ipFabric is None:
+            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+        
+        logger.debug('IpFabric name: %s' % (ipFabric.name))
+
+        config = ipFabric.leafGenericConfig
+        if config is None:
+            logger.debug("IpFabric exists but no leafGenericConfig found. ipFabricId: '%s'" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric exists but no leafGenericConfig found, probably configuration \
+                was not created. ipFabric name: '%s', id: '%s'" % (ipFabric.name, ipFabricId))
+        
+        bottle.response.headers['Content-Type'] = 'application/json'
+        return config
+
     def getDeviceConfigsInZip(self, ipFabricId):
         ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is None:
@@ -294,7 +312,10 @@ class RestServer():
         if config is None:
             logger.debug("Device exists but no config found. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
             raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
+        
+        bottle.response.headers['Content-Type'] = 'application/json'
         return config
+
     
     def getZtpConfig(self, ipFabricId):
         

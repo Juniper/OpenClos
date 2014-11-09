@@ -7,7 +7,7 @@
 # deployed to the device using ZTP process. 
 deploymentMode :
     ndIntegrated : false
-    ztpStaged : false
+    ztpStaged : true
 
 # Generated file/configuration location
 # default value 'out' relative to current dir 
@@ -94,9 +94,10 @@ report :
          
 # SNMP trap settings for NetworkDirector and OpenClos
 # OpenClos uses traps to perform 2-stage ZTP process
+# target address is where OpenClos is running (same as httpServer:ipAddr)
 # NetworkDirector trap settings are optional, should be set only when
 # OpenClos is integrated with NetworkDirector, enabling networkdirector_trap_group
-# assumes, it is integrated with NetworkDirector.
+# would allow devices to be auto discovered by NetworkDirector.
 snmpTrap :
     networkdirector_trap_group :
         port : 10162

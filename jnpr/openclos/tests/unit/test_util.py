@@ -86,6 +86,10 @@ class TestFunctions(unittest.TestCase):
         mgmtIps = getMgmtIps("1.2.3.1/24", 6)
         self.assertEqual(mgmtIpList, mgmtIps)
 
+        mgmtIpList = ["192.168.48.216/25", "192.168.48.217/25", "192.168.48.218/25", "192.168.48.219/25", "192.168.48.220/25"] 
+        mgmtIps = getMgmtIps("192.168.48.216/25", 5)
+        self.assertEqual(mgmtIpList, mgmtIps)
+
     def testIsIntegratedWithNd(self):
         self.assertFalse(isIntegratedWithND(None))
         self.assertFalse(isIntegratedWithND({}))

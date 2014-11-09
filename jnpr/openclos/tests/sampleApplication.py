@@ -55,7 +55,7 @@ class sampleApplication:
         if jnpr.openclos.util.isPlatformUbuntu():
             os.system('sudo apt-get -y install isc-dhcp-server')
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
-            os.system("/etc/init.d/isc-dhcp-server restart")
+            os.system('sudo /usr/sbin/service isc-dhcp-server restart')
 
         elif jnpr.openclos.util.isPlatformCentos():
             os.system('yum -y install dhcp')
