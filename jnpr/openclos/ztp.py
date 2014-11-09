@@ -127,8 +127,9 @@ class ZtpServer():
 
         ztp['broadcast'] = str(dhcpBlock.broadcast)
         ztp['httpServerIp'] = self.conf['httpServer']['ipAddr']
-        # don't start url as /openclos/... first / causes ZTP problem
-        ztp['imageUrl'] = 'openclos/images/' + ztpGlobalSettings.get('junosImage')
+        if ztpGlobalSettings.get('junosImage') is not None:
+            # don't start url as /openclos/... first / causes ZTP problem
+            ztp['imageUrl'] = 'openclos/images/' + ztpGlobalSettings.get('junosImage')
 
         return ztp
     
@@ -143,18 +144,21 @@ class ZtpServer():
         don't start any url as /openclos/... first / causes ZTP problem
         '''
         imageUrlPrefix =  'openclos/images/'       
-
+        imageUrl = None
+        
         if ztp.get('devices') is None:
             ztp['devices'] = []
         
         pod = self.dao.getObjectById(Pod, podId)
         for device in pod.devices:
             if device.role == 'spine':
-                imageUrl = imageUrlPrefix + pod.spineJunosImage
+                if pod.spineJunosImage is not None:
+                    imageUrl = imageUrlPrefix + pod.spineJunosImage
             elif device.role == 'leaf':
                 if util.isZtpStaged(self.conf):
                     continue
-                imageUrl = imageUrlPrefix + pod.leafJunosImage
+                if pod.spineJunosImage is not None:
+                    imageUrl = imageUrlPrefix + pod.leafJunosImage
             else:
                 logger.error('PodId: %s, Pod: %s, Device: %s with unknown role: %s' % (pod.id, pod.name, device.name, device.role))
                 continue
