@@ -1,0 +1,36 @@
+{% include 'baseTemplate.txt' %}
+interfaces {
+    vme {
+        unit 0 {
+            family inet {
+                dhcp {
+                    vendor-id Juniper-{{leafDeviceFamily}};
+                }
+            }
+        }
+    }
+    irb {
+        mtu 9216
+        unit 1 {
+            description LOCAL_SERVERS;
+            family inet {
+            }
+        }
+    }
+    interface-range ALL-SERVER {
+        member xe-0/0/*;
+        unit 0 {
+            family ethernet-switching {
+                interface-mode access;
+                vlan {
+                    members SERVER;
+                }
+            }
+        }
+    }
+}
+{% include 'routingOptionsStatic.txt' %}
+{% include 'protocolLldp.txt' %}
+{% include 'eventOptionForTrap.txt' %}
+{% include 'snmpTrap.txt' %}
+{% include 'vlans.txt' %}

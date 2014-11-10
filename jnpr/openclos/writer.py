@@ -41,12 +41,25 @@ class WriterBase():
 class ConfigWriter(WriterBase):
     def __init__(self, conf, pod, dao):
         WriterBase.__init__(self, conf, pod, dao)
+        self.writeInFile = self.conf.get('writeConfigInFile', False)
         
     def write(self, device):
+        if not self.writeInFile:
+            return
+        
         fileName = device.id + '__' + device.name
         logger.info('Writing config file for device: %s' % (fileName))
         with open(os.path.join(self.outputDir, fileName + '.conf'), 'w') as f:
             f.write(device.config)
+            
+    def writeGenericLeaf(self, pod):
+        if not self.writeInFile:
+            return
+        
+        fileName =  pod.leafDeviceType + '.conf'
+        logger.info('Writing leafGenericConfig file for : %s' % (fileName))
+        with open(os.path.join(self.outputDir, fileName), 'w') as f:
+            f.write(pod.leafGenericConfig)            
 
 class DhcpConfWriter(WriterBase):
     def __init__(self, conf, pod, dao):

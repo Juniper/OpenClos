@@ -80,6 +80,7 @@ class RestServer():
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration','GET', self.getZtpConfig)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'GET', self.getDeviceConfigsInZip)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/leaf-generic-configuration', 'GET', self.getLeafGenericConfiguration)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/l2-report', 'GET', self.getL2Report)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/l3-report', 'GET', self.getL3Report)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices', 'GET', self.getDevices)
@@ -145,7 +146,9 @@ class RestServer():
         ipFabricsData['uri'] = url 
         return {'ipFabrics' : ipFabricsData}
     
-    def getIpFabric(self, ipFabricId):
+    def getIpFabric(self, ipFabricId, requestUrl = None):
+        if requestUrl is None:
+            requestUrl = bottle.request.url
         ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
             devices = ipFabric.devices
@@ -155,13 +158,14 @@ class RestServer():
             session.expunge(ipFabric)
             ipFabric.__dict__.pop('_sa_instance_state')
             ipFabric.__dict__.pop('inventoryData')
-            ipFabric.__dict__['uri'] = bottle.request.url
-            ipFabric.__dict__['devices'] = {'uri': bottle.request.url + '/devices', 'total':len(devices)}
-            ipFabric.__dict__['cablingPlan'] = {'uri': bottle.request.url + '/cabling-plan'}
-            ipFabric.__dict__['deviceConfiguration'] = {'uri': bottle.request.url + '/device-configuration'}
-            ipFabric.__dict__['ztpConfiguration'] = {'uri': bottle.request.url + '/ztp-configuration'}
-            ipFabric.__dict__['l2Report'] = {'uri': bottle.request.url + '/l2-report'}
-            ipFabric.__dict__['l3Report'] = {'uri': bottle.request.url + '/l3-report'}
+            ipFabric.__dict__.pop('leafGenericConfig')
+            ipFabric.__dict__['uri'] = requestUrl
+            ipFabric.__dict__['devices'] = {'uri': requestUrl + '/devices', 'total':len(devices)}
+            ipFabric.__dict__['cablingPlan'] = {'uri': requestUrl + '/cabling-plan'}
+            ipFabric.__dict__['deviceConfiguration'] = {'uri': requestUrl + '/device-configuration'}
+            ipFabric.__dict__['ztpConfiguration'] = {'uri': requestUrl + '/ztp-configuration'}
+            ipFabric.__dict__['l2Report'] = {'uri': requestUrl + '/l2-report'}
+            ipFabric.__dict__['l3Report'] = {'uri': requestUrl + '/l3-report'}
 
             logger.debug('getIpFabric: %s' % (ipFabricId))
             #return json.dumps(ipFabric.__dict__)
@@ -197,6 +201,23 @@ class RestServer():
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
 
+    def getLeafGenericConfiguration(self, ipFabricId):
+        ipFabric = self.report.getIpFabric(ipFabricId)
+        if ipFabric is None:
+            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+        
+        logger.debug('IpFabric name: %s' % (ipFabric.name))
+
+        config = ipFabric.leafGenericConfig
+        if config is None:
+            logger.debug("IpFabric exists but no leafGenericConfig found. ipFabricId: '%s'" % (ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric exists but no leafGenericConfig found, probably configuration \
+                was not created. ipFabric name: '%s', id: '%s'" % (ipFabric.name, ipFabricId))
+        
+        bottle.response.headers['Content-Type'] = 'application/json'
+        return config
+
     def getDeviceConfigsInZip(self, ipFabricId):
         ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is None:
@@ -218,7 +239,11 @@ class RestServer():
         zipArchive = zipfile.ZipFile(buff, mode='w')
         for device in ipFabric.devices:
             fileName = device.id + '__' + device.name + '.conf'
-            zipArchive.writestr(fileName, device.config)
+            if device.config is not None:
+                zipArchive.writestr(fileName, device.config)
+                
+        if ipFabric.leafGenericConfig is not None:
+            zipArchive.writestr(ipFabric.leafDeviceType + '.conf', ipFabric.leafGenericConfig)
         
         zipArchive.close()
         logger.debug('zip file content:\n' + str(zipArchive.namelist()))
@@ -287,7 +312,10 @@ class RestServer():
         if config is None:
             logger.debug("Device exists but no config found. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
             raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
+        
+        bottle.response.headers['Content-Type'] = 'application/json'
         return config
+
     
     def getZtpConfig(self, ipFabricId):
         
@@ -377,10 +405,13 @@ class RestServer():
         ipFabricName = ipFabric.pop('name')
         fabricDevices = self.getDevDictFromDict(pod)
         fabricId =  l3ClosMediation.createPod(ipFabricName, ipFabric, fabricDevices).id
+        
         url = bottle.request.url + '/' + fabricId
+        ipFabric = self.getIpFabric(fabricId, url)
         bottle.response.set_header('Location', url)
         bottle.response.status = 201
-        return bottle.response
+
+        return ipFabric
         
     def createCablingPlan(self, ipFabricId):
         try:
@@ -461,6 +492,7 @@ class RestServer():
         ipFabric['leafAS'] = podDict.get('leafAS')
         ipFabric['topologyType'] = podDict.get('topologyType')
         ipFabric['outOfBandAddressList'] = podDict.get('outOfBandAddressList')
+        ipFabric['outOfBandGateway'] = podDict.get('outOfBandGateway')
         ipFabric['managementPrefix'] = podDict.get('managementPrefix')
         ipFabric['hostOrVmCountPerLeaf'] = podDict.get('hostOrVmCountPerLeaf')
         ipFabric['description'] = podDict.get('description')

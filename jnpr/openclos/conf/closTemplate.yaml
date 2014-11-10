@@ -8,8 +8,11 @@ ztp:
     # This is the Gateway address for any out-of-band network including 
     # management network, this will get configured using static route
     dhcpOptionRoute : 10.0.2.254
-    dhcpOptionRangeStart :
-    dhcpOptionRangeEnd :
+    # Following two fields are optional, if not provided start and end
+    # includes complete dhcp subnet, example for 10.0.2.0/24
+    # dhcpOptionRangeStart: 10.0.2.1, dhcpOptionRangeEnd: 10.0.2.255
+    dhcpOptionRangeStart : 10.0.2.10
+    dhcpOptionRangeEnd : 10.0.2.20
     
 pods:
     # pod name or pod identifier
@@ -30,10 +33,13 @@ pods:
         # possible options for topologyType are threeStage, fiveStageRealEstate, fiveStagePerformance
         topologyType : threeStage
         inventory : inventoryLabLeafSpine.json
-        # List of out of band networks, example - management network
-        # outOfBandAddressList: 
+        # List of out of band networks, example - devices in management network
+        # outOfBandAddressList : 
         #     - 1.2.3.4/32
         #     - 1.2.3.9/32
+        # Management network gateway address
+        # It overrides ztp:dhcpOptionRoute setting
+        # outOfBandGateway : 1.2.3.254
         
         # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
         # if not placed under this dir, the file would not be accessible from http server
@@ -58,10 +64,14 @@ pods:
         # possible options for topologyType are threeStage, fiveStageRealEstate, fiveStagePerformance
         topologyType : threeStage
         inventory : inventoryAnotherPod.json
-        # List of out of band networks, example - management network
-        outOfBandAddressList: 
+        # List of out of band networks, example - devices in management network
+        outOfBandAddressList : 
             - 10.94.185.18/32
             - 10.94.185.19/32
+        # Management network gateway address
+        # It overrides ztp:dhcpOptionRoute setting
+        outOfBandGateway : 10.94.185.254
+
         # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
         # if not placed under this dir, the file would not be accessible from http server
         # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage

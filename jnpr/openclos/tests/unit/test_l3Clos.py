@@ -44,6 +44,16 @@ class TestL3Clos(unittest.TestCase):
         ''' Deletes 'out' folder under test dir'''
         shutil.rmtree(self.conf['outputDir'], ignore_errors=True)
 
+    def createPodWithoutInventory(self, l3ClosMediation):
+        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24"}
+        pod = l3ClosMediation.createPod('pod1', podDict)
+        return pod
+        
+    def createPod(self, l3ClosMediation):
+        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24", "inventory" : "inventoryLabLeafSpine.json"}
+        pod = l3ClosMediation.createPod('pod1', podDict)
+        return pod
+
     def testLoadClosDefinition(self):
         l3ClosMediation = L3ClosMediation(self.conf)
 
@@ -97,16 +107,6 @@ class TestL3Clos(unittest.TestCase):
         with self.assertRaises(ValueError) as ve:
             l3ClosMediation.createCablingPlan(pod.id)
         
-    def createPodWithoutInventory(self, l3ClosMediation):
-        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24"}
-        pod = l3ClosMediation.createPod('pod1', podDict)
-        return pod
-        
-    def createPod(self, l3ClosMediation):
-        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24", "inventory" : "inventoryLabLeafSpine.json"}
-        pod = l3ClosMediation.createPod('pod1', podDict)
-        return pod
-
     def testCreateSpines(self):
         from jnpr.openclos.l3Clos import util
         flexmock(util, getPortNamesForDeviceFamily={'ports': ['et-0/0/0', 'et-0/0/1']})
@@ -278,16 +278,9 @@ class TestL3Clos(unittest.TestCase):
             l3ClosMediation.templateEnv.get_template('unknown-template')
         self.assertTrue('unknown-template' in e.exception.message)
 
-    def testcreateSnmpTrapAndEventNoTrapConf(self):
-        l3ClosMediation = L3ClosMediation(self.conf)
-        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
-        
-        configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
-        self.assertEqual('', configlet)
-
-    def testcreateSnmpTrapAndEventNoNdSpine(self):
+    def testCreateSnmpTrapAndEventNoNdSpine(self):
         self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
-                                 'openclos_trap_group': {'port': 10162, 'target': '1.2.3.4'}}
+                                 'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
         l3ClosMediation = L3ClosMediation(self.conf)
         
         device = Device("test", "qfx5100-48s-6q", "user", "pwd", "spine", "mac", "mgmtIp", None)
@@ -295,7 +288,7 @@ class TestL3Clos(unittest.TestCase):
 
         self.assertEqual('', configlet)
   
-    def testcreateSnmpTrapAndEventNoNdLeaf(self):
+    def testCreateSnmpTrapAndEventNoNdLeaf(self):
         self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
                                  'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -308,9 +301,9 @@ class TestL3Clos(unittest.TestCase):
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertFalse('trap-group networkdirector_trap_group' in configlet)
 
-    def testcreateSnmpTrapAndEventWithNdSpine(self):
+    def testCreateSnmpTrapAndEventWithNdSpine(self):
         self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
-                                 'openclos_trap_group': {'port': 10162, 'target': '5.6.7.8'}}
+                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
         self.conf['deploymentMode'] = {'ndIntegrated': True}
         l3ClosMediation = L3ClosMediation(self.conf)
         
@@ -322,9 +315,9 @@ class TestL3Clos(unittest.TestCase):
         self.assertFalse('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
 
-    def testcreateSnmpTrapAndEventWithNdLeaf(self):
+    def testCreateSnmpTrapAndEventWithNdLeaf(self):
         self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
-                                 'openclos_trap_group': {'port': 10162, 'target': '5.6.7.8'}}
+                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
         self.conf['deploymentMode'] = {'ndIntegrated': True}
         l3ClosMediation = L3ClosMediation(self.conf)
         
@@ -336,6 +329,50 @@ class TestL3Clos(unittest.TestCase):
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
 
+    def testCreateRoutingOptionsStatic(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", self.createPod(l3ClosMediation))
+        device.pod.outOfBandGateway = '10.0.0.254'
+        device.pod.outOfBandAddressList = '10.0.10.5/32, 10.0.20.5/32'
+
+        configlet = l3ClosMediation.createRoutingOptionsStatic(device)
+        self.assertEquals(1, configlet.count('static'))
+        self.assertEquals(2, configlet.count('route'))
+
+    def testCreateRoutingOptionsBgp(self):
+        pass
+
+    def testCreateLeafGenericConfigNoNd(self):
+        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
+                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        #self.conf['deploymentMode'] = {'ndIntegrated': True}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        pod = self.createPod(l3ClosMediation)        
+        pod.outOfBandGateway = '10.0.0.254'
+        pod.outOfBandAddressList = '10.0.10.5/32'
         
+        configlet = l3ClosMediation.createLeafGenericConfig(pod)
+        self.assertTrue('' != configlet)
+        self.assertTrue('trap-group openclos_trap_group' in configlet)
+        self.assertEquals(1, configlet.count('static'))
+        self.assertEquals(1, configlet.count('route'))
+
+    def testCreateLeafGenericConfigWithNd(self):
+        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
+                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self.conf['deploymentMode'] = {'ndIntegrated': True}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        pod = self.createPod(l3ClosMediation)        
+        pod.outOfBandGateway = '10.0.0.254'
+        pod.outOfBandAddressList = '10.0.10.5/32'
+        
+        configlet = l3ClosMediation.createLeafGenericConfig(pod)
+        self.assertTrue('' != configlet)
+        self.assertTrue('vendor-id Juniper-qfx5100-48s-6q' in configlet)
+        self.assertTrue('trap-group openclos_trap_group' in configlet)
+        self.assertTrue('trap-group networkdirector_trap_group' in configlet)
+        self.assertEquals(1, configlet.count('static'))
+        self.assertEquals(1, configlet.count('route'))
+
 if __name__ == '__main__':
     unittest.main()

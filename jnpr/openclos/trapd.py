@@ -30,12 +30,12 @@ def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
         if msgVer in api.protoModules:
             pMod = api.protoModules[msgVer]
         else:
-            logger.debug('Unsupported SNMP version %s' % msgVer)
+            logger.error('Unsupported SNMP version %s' % msgVer)
             return
         reqMsg, wholeMsg = decoder.decode(
             wholeMsg, asn1Spec=pMod.Message(),
             )
-        logger.debug('Notification message from %s:%s: ' % (
+        logger.info('Notification message from %s:%s: ' % (
             transportDomain, transportAddress
             )
         )

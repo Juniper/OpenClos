@@ -66,7 +66,36 @@ class TestZtp(unittest.TestCase):
 
         self.assertFalse('{{' in dhcpConf)
         self.assertFalse('}}' in dhcpConf)
-        self.assertEquals(5, dhcpConf.count('host-name')) # 1 global + 4 device
+        self.assertFalse('None' in dhcpConf)
+        self.assertEquals(4, dhcpConf.count('host-name')) # 1 global + 3 device
+
+    def testGeneratePodSpecificDhcpConfFor2StageZtp(self):
+        from jnpr.openclos.l3Clos import util
+        flexmock(util, isPlatformUbuntu = True)
+        flexmock(util, isZtpStaged = True)
+        
+        pod = createPod('pod1', self.session)
+        pod.spineJunosImage = 'testSpineImage'
+        pod.leafJunosImage = 'testLeafImage'
+        
+        dev1 = createPodDevice(self.session, 'dev1', pod)
+        dev2 = createPodDevice(self.session, 'dev2', pod)
+        dev3 = createPodDevice(self.session, 'dev3', pod)
+        dev3.role = 'leaf'
+        dev4 = createPodDevice(self.session, 'dev4', pod)
+        dev4.role = 'leaf'
+      
+        dhcpConf = self.ztpServer.generatePodSpecificDhcpConf(pod.id)
+        self.assertEquals(2, dhcpConf.count('testSpineImage'))
+        self.assertEquals(1, dhcpConf.count('testLeafImage'))
+
+        self.assertFalse('{{' in dhcpConf)
+        self.assertFalse('}}' in dhcpConf)
+        self.assertFalse('None' in dhcpConf)
+        self.assertEquals(3, dhcpConf.count('host-name')) # 1 global + 2 spine device
+        self.assertEquals(1, dhcpConf.count('pool'))
+        self.assertEquals(1, dhcpConf.count('class '))
+        self.assertEquals(1, dhcpConf.count('vendor-class-identifier'))
 
     def testPopulateDhcpGlobalSettings(self):
         from jnpr.openclos.l3Clos import util

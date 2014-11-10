@@ -46,6 +46,7 @@ class TestWriterBase(unittest.TestCase):
 class TestConfigWriter(TestWriterBase):
 
     def testWriteConfigInFile(self):
+        self.conf['writeConfigInFile'] = True
         pod = createPod('pod1', self.dao.Session())
         device = Device('test_device', "",'admin', 'admin', 'spine', "", "", pod)
         device.config = "dummy config"
