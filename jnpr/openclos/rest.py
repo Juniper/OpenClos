@@ -11,12 +11,16 @@ from sqlalchemy.orm import exc, Session
 import StringIO
 import zipfile
 
+import json
 import util
+from bottle import error
+from exception import openClosError
 from model import Pod, Device
 from dao import Dao
 from report import ResourceAllocationReport, L2Report
 from l3Clos import L3ClosMediation
 from ztp import ZtpServer
+
 
 moduleName = 'rest'
 logging.basicConfig()
@@ -66,6 +70,12 @@ class RestServer():
     def start(self):
         logger.info('REST server started at %s:%d' % (self.host, self.port))
         bottle.run(self.app, host=self.host, port=self.port)
+        
+    @staticmethod    
+    @error(400)
+    def error400(error):
+        bottle.response.headers['Content-Type'] = 'application/json'
+        return json.dumps({'errorCode': error.exception.errorId , 'errorMessage' : error.exception.errorMessage})
 
     def addRoutes(self, baseUrl):
         self.indexLinks = []
@@ -392,15 +402,14 @@ class RestServer():
 
         return {'OpenClosConf' : confValues }
                     
-    def createIpFabric(self):  
+    def createIpFabric(self): 
         l3ClosMediation = L3ClosMediation(self.conf)
         try:
             pod = bottle.request.json['ipFabric']
             if pod is None:
-                raise bottle.HTTPError(400, "Invalid value in POST body.")
+                raise bottle.HTTPError(400,"Invalid value in POST body.", exception = openClosError(0, "Invalid value in POST body."))
         except ValueError:
-            raise bottle.HTTPError(400, "POST body can not be empty.")
-
+            raise bottle.HTTPError(400, "POST body can not be empty.", exception = openClosError(0, "POST body can not be empty."))
         ipFabric = self.getPodFromDict(pod)
         ipFabricName = ipFabric.pop('name')
         fabricDevices = self.getDevDictFromDict(pod)
@@ -439,9 +448,9 @@ class RestServer():
         try:
             inPod = bottle.request.json['ipFabric']
             if inPod is None:
-                raise bottle.HTTPError(400, "Invalid value in POST body.")
+                raise bottle.HTTPError(400, "Invalid value in POST body.", exception = openClosError(0, "Invalid value in POST body."))
         except ValueError:
-            raise bottle.HTTPError(400, "POST body can not be empty.")
+            raise bottle.HTTPError(400, "POST body can not be empty.",  exception = openClosError(0, "POST body can not be empty."))
 
         ipFabric = self.getPodFromDict(inPod)
         #ipFabric['id'] = ipFabricId
@@ -452,7 +461,7 @@ class RestServer():
             l3ClosMediation.updatePod(ipFabricId, ipFabric, fabricDevices)
             return self.getIpFabric(ipFabricId)
         except ValueError:
-            raise bottle.HTTPError(400, "Invalid value in PUT body.")
+            raise bottle.HTTPError(400, "Invalid value in PUT body.", exception = openClosError(0, "Invalid value in PUT body."))
 
     
     def setOpenClosConfigParams(self):
@@ -477,7 +486,7 @@ class RestServer():
         '''
         if podDict is None:
             logger.debug("Invalid empty podDict")
-            raise bottle.HTTPError(400, "Invalid value in POST/PUT body.")
+            raise bottle.HTTPError(400, "Invalid value in POST/PUT body.", exception = openClosError(0, "Invalid value in POST//PUT body."))
         ipFabric['name'] = podDict.get('name')
         ipFabric['fabricDeviceType'] = podDict.get('fabricDeviceType')
         ipFabric['fabricDeviceCount'] = podDict.get('fabricDeviceCount')
@@ -504,7 +513,7 @@ class RestServer():
         if podDict is not None:
             devices = podDict.get('devices')
         else:
-            raise bottle.HTTPError(400, "Invalid value in POST body.")
+            raise bottle.HTTPError(400, "Invalid value in POST body.",  exception = openClosError(0, "Invalid value in POST body."))
 
         fabricDevices = {}
         spines = []
@@ -521,7 +530,7 @@ class RestServer():
             elif temp['role'] == 'leaf':
                 leaves.append(temp)
             else:
-                raise bottle.HTTPError(400, "Unexpected role value in device inventory list")
+                raise bottle.HTTPError(400, "Unexpected role value in device inventory list", exception = openClosError(0, "Unexpected role value in device inventory list" ))
             fabricDevices['spines'] = spines
             fabricDevices['leafs'] = leaves
 
@@ -558,7 +567,7 @@ class RestServer():
             }}
         except ValueError:
             raise bottle.HTTPError(404, "Fabric with id: %s not found" % (ipFabricId))
-
+               
 
 if __name__ == '__main__':
     restServer = RestServer()
