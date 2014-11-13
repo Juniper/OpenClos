@@ -6,14 +6,12 @@ Created on Sep 5, 2014
 import logging
 from sqlalchemy.orm import exc
 import concurrent.futures
-import traceback
 
 import util
 from dao import Dao
-from model import Pod, InterfaceDefinition
-from devicePlugin import Netconf
+from model import Pod
+from devicePlugin import L2DataCollector
 from writer import CablingPlanWriter
-from exception import DeviceError
 
 moduleName = 'report'
 logging.basicConfig()
@@ -128,10 +126,15 @@ class L2Report(Report):
             futureList = []
             for device in pod.devices:
                 if device.role == 'leaf':
-                    futureList.append(self.executor.submit(self.collectAndProcessLldpData, device))
-            
+                    l2DataCollector = L2DataCollector(device.id, self.conf, self.dao) 
+                    futureList.append(self.executor.submit(l2DataCollector.startL2Report))
             logger.info('Submitted processing all devices')
             concurrent.futures.wait(futureList)
+            # At this point multiple threads, ie multiple db sessions
+            # have updated device, so we need to refresh pod data. 
+            # Rather than refresh, better option is expire, which
+            # would trigger lazy load.
+            self.dao.Session.expire(pod)
             logger.info('Done processing all devices')
         else:
             logger.info('Generating L2Report from cached data')
@@ -141,64 +144,6 @@ class L2Report(Report):
         else:
             return cablingPlanWriter.getThreeStageL2ReportJson()
 
-
-    
-    def collectAndProcessLldpData(self, device):
-        deviceIp = device.managementIp.split('/')[0]
-        deviceLog = 'device id: %s, name: %s, ip: %s' % (device.id, device.name, deviceIp)
-        try:
-            lldpData = Netconf(self.conf).collectLldpFromDevice({'ip': deviceIp, 
-                'username': device.username, 'password': device.password})
-            logger.debug('Collected LLDP data for %s' % (deviceLog))
-            self.updateDeviceStatus(device, None)
-            self.updateIfdLldpStatusForUplinks(lldpData, device)
-        except DeviceError as exc:
-            logger.error('Collect LLDP data failed for %s, %s' % (deviceLog, exc))
-            logger.debug('StackTrace: %s' % (traceback.format_exc()))
-            self.updateDeviceStatus(device, exc)
-    
-    def updateDeviceStatus(self, device, error):
-        if error is None:
-            device.status = 'good'
-        else:
-            device.status = 'bad'
-            device.statusReason = str(error.cause)
-        self.dao.updateObjects([device])
-        
-    def updateIfdLldpStatusForUplinks(self, lldpData, device):
-        '''
-        :param dict lldpData:
-            deivce1: local device (on which lldp was run)
-            port1: local interface (on device1)
-            device2: remote device
-            port2: remote interface
-        '''
-        uplinkPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
-            filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.name_order_num).all()
-
-        uplinkPortsDict = {}
-        for port in uplinkPorts:
-            uplinkPortsDict[port.name] = port
-        
-        modifiedObjects = []
-        for link in lldpData:
-            uplinkPort = uplinkPortsDict.get(link['port1'])
-            if uplinkPort is None:
-                continue
-            
-            peerPort = uplinkPort.peer
-            if peerPort is not None and peerPort.name == link['port2'] and peerPort.device.name == link['device2']:
-                uplinkPort.lldpStatus = 'good'
-                peerPort.lldpStatus = 'good'
-                modifiedObjects.append(uplinkPort)
-                modifiedObjects.append(peerPort)
-            else:
-                uplinkPort.lldpStatus = 'bad'
-                modifiedObjects.append(uplinkPort)
-        
-        self.dao.updateObjects(modifiedObjects)
-
-    
 class L3Report(Report):
     def __init__(self, conf = {}, dao = None):
         super(L3Report, self).__init__(conf, dao)
@@ -215,4 +160,4 @@ if __name__ == '__main__':
     l2Report = L2Report()
     pod = l2Report.getPod('anotherPod')
     if pod is not None:
-        l2Report.generateReport(pod.id, True)
+        print l2Report.generateReport(pod.id, False, True)

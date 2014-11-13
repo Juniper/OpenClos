@@ -5,6 +5,7 @@ Created on Jul 8, 2014
 
 '''
 import uuid
+import math
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, ForeignKey, Enum, BLOB
 from sqlalchemy.orm import relationship, backref
@@ -36,6 +37,7 @@ class Pod(ManagedElement, Base):
     description = Column(String(256))
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
+    leafUplinkcountMustBeUp = Column(Integer) 
     leafCount = Column(Integer)
     leafDeviceType = Column(String(100))
     hostOrVmCountPerLeaf = Column(Integer)
@@ -94,6 +96,10 @@ class Pod(ManagedElement, Base):
             self.leafCount = kwargs.get('leafCount')
         if kwargs.has_key('leafDeviceType'):
             self.leafDeviceType = kwargs.get('leafDeviceType')
+        if kwargs.has_key('leafUplinkcountMustBeUp'):
+            self.leafUplinkcountMustBeUp = kwargs.get('leafUplinkcountMustBeUp')
+        else:
+            self.leafUplinkcountMustBeUp = self.calculateLeafUplinkcountMustBeUp()
         if kwargs.has_key('hostOrVmCountPerLeaf'):
             self.hostOrVmCountPerLeaf = kwargs.get('hostOrVmCountPerLeaf')
         if kwargs.has_key('interConnectPrefix'):
@@ -124,6 +130,13 @@ class Pod(ManagedElement, Base):
         if self.state is None:
             self.state = 'unknown'
 
+    def calculateLeafUplinkcountMustBeUp(self):
+        if self.spineCount is not None:
+            count = int(math.ceil(float(self.spineCount)/2))
+            if count < 2:
+                count = 2
+            return count
+        
     '''
     Additional validations - 
     1. Spine ASN less then leaf ASN
@@ -132,7 +145,10 @@ class Pod(ManagedElement, Base):
     def validate(self):
         self.validateRequiredFields()
         self.validateIPaddr()  
-    
+        if self.leafUplinkcountMustBeUp < 2 or self.leafUplinkcountMustBeUp > self.spineCount:
+            raise ValueError('leafUplinkcountMustBeUp(%s) should be between 2 and spineCount(%s)' \
+                % (self.leafUplinkcountMustBeUp, self.spineCount))
+        
     def validateRequiredFields(self):
         
         error = ''
@@ -196,8 +212,12 @@ class Device(ManagedElement, Base):
     managementIp = Column(String(32))
     family = Column(String(100))
     asn = Column(Integer)
-    status = Column(Enum('unknown', 'good', 'bad'))
-    statusReason = Column(String(256)) # will be populated only when status is 'bad'
+    l2Status = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
+    l2StatusReason = Column(String(256)) # will be populated only when status is error
+    l3Status = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
+    l3StatusReason = Column(String(256)) # will be populated only when status is error
+    configStatus = Column(Enum('unknown', 'processing', 'done', 'error'), default = 'unknown')
+    configStatusReason = Column(String(256)) # will be populated only when status is error
     config = Column(BLOB)
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
@@ -271,7 +291,7 @@ class InterfaceDefinition(Interface):
     id = Column(String(60), ForeignKey('interface.id' ), primary_key=True)
     role = Column(String(60))
     mtu = Column(Integer)
-    lldpStatus = Column(Enum('unknown', 'good', 'bad')) 
+    lldpStatus = Column(Enum('unknown', 'good', 'error'), default = 'unknown') 
         
     __mapper_args__ = {
         'polymorphic_identity':'physical',
@@ -281,4 +301,3 @@ class InterfaceDefinition(Interface):
         super(InterfaceDefinition, self).__init__(name, device)
         self.mtu = mtu
         self.role = role
-        self.lldpStatus = 'unknown'

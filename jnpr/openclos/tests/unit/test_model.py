@@ -14,21 +14,26 @@ import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
 
-def createPod(name, session):  
+def createPodObj(name):  
     pod = {}
     pod['spineCount'] = '3'
     pod['spineDeviceType'] = 'qfx-5100-24q-2p'
     pod['leafCount'] = '5'
     pod['leafDeviceType'] = 'qfx-5100-48s-6q'
+    pod['leafUplinkcountMustBeUp'] = 3
     pod['interConnectPrefix'] = '1.2.0.0'
     pod['vlanPrefix'] = '1.3.0.0'
+    pod['hostOrVmCountPerLeaf'] = 100
     pod['loopbackPrefix'] = '1.4.0.0'
     pod['managementPrefix'] = '172.32.30.101/24'
     pod['spineAS'] = '100'
     pod['leafAS'] = '100'
     pod['topologyType'] = 'threeStage'
     pod['inventory'] = 'inventoryLabKurt.json'
-    pod = Pod(name, **pod)
+    return Pod(name, **pod)
+
+def createPod(name, session):  
+    pod = createPodObj(name)
     session.add(pod)
     session.commit()
     return pod
@@ -65,7 +70,6 @@ class TestManagedElement(unittest.TestCase):
               
 class TestOrm(unittest.TestCase):
     def setUp(self):
-    
         '''
         Change echo=True to troubleshoot ORM issue
         '''
@@ -128,6 +132,19 @@ class TestPod(TestOrm):
             pod.validateIPaddr()
         error = ve.exception.message
         self.assertEqual(2, error.count(','), 'Number of bad Ip address format field is not correct')
+
+    def testPodVaidateLeafUplinkcountMustBeUp(self):
+        pod = createPodObj('name')
+        with self.assertRaises(ValueError) as ve:
+            pod.leafUplinkcountMustBeUp = 1
+            pod.validate()
+        error = ve.exception.message
+        self.assertTrue('leafUplinkcountMustBeUp' in error and 'should be between 2 and spineCount' in error)
+
+        pod = {}
+        pod['spineCount'] = '5'
+        pod = Pod('name', **pod)
+        self.assertEqual(3, pod.leafUplinkcountMustBeUp)
 
     def testConstructorPass(self):
         pod = {}

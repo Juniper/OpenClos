@@ -5,7 +5,7 @@ Created on Nov. 6, 2014
 '''
 import unittest
 import os
-import shutil
+import sys
 from time import sleep
 
 from jnpr.openclos.trapd import TrapReceiver
@@ -36,7 +36,8 @@ class TestTrapReceiver(unittest.TestCase):
             return True
         else:
             return False
-           
+
+    @unittest.skipIf(sys.platform.startswith("win"), "Don't run on Windows")
     def testStart(self):
         self.conf = {}
         self.conf['snmpTrap'] = {}

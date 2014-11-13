@@ -39,6 +39,7 @@ class L3ClosMediation():
         self.dao = Dao(self.conf)
         self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
         self.templateEnv.keep_trailing_newline = True
+        self.isZtpStaged = util.isZtpStaged(self.conf)
         
     def loadClosDefinition(self, closDefination = os.path.join(util.configLocation, 'closTemplate.yaml')):
         '''
@@ -439,10 +440,9 @@ class L3ClosMediation():
     def generateConfig(self, pod):
         configWriter = ConfigWriter(self.conf, pod, self.dao)
         modifiedObjects = []
-        isZtpStaged = util.isZtpStaged(self.conf)
         
         for device in pod.devices:
-            if isZtpStaged and device.role == 'leaf':
+            if self.isZtpStaged and device.role == 'leaf':
                 # leaf configs will get created when they are plugged in
                 continue
             config = self.createBaseConfig(device)
@@ -459,7 +459,7 @@ class L3ClosMediation():
             logger.debug('Generated config for device name: %s, id: %s, storing in DB' % (device.name, device.id))
             configWriter.write(device)
 
-        if isZtpStaged:
+        if self.isZtpStaged:
             pod.leafGenericConfig = self.createLeafGenericConfig(pod)
             modifiedObjects.append(pod)
             logger.debug('Generated LeafGenericConfig for pod: %s, device family: %s, storing in DB' % (pod.name, pod.leafDeviceType))
