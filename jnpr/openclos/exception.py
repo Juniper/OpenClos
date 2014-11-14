@@ -36,3 +36,14 @@ class DeviceError(BaseError):
     """
     Device communication error
     """
+    
+    
+class openClosError(BaseError):
+    """
+     openClosError class defines openClos errorId and
+     errorMessage 
+    """
+    def __init__(self, errorId, errorMessage):
+        self.errorId = errorId
+        self.errorMessage = errorMessage
+        
