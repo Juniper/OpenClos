@@ -6,6 +6,7 @@ Created on Sep 6, 2014
 import unittest
 import os
 import shutil
+import json
 from webtest import TestApp, AppError
 
 from jnpr.openclos.rest import RestServer, webServerRoot, junosImageRoot
@@ -284,7 +285,56 @@ class TestRest(unittest.TestCase):
             restServerTestApp.delete('/openclos/ip-fabrics/' + 'nonExisting')
         self.assertTrue('404 Not Found', e.exception.message)
         
-         
+    def testCreateIpFabricWithPostBodyEmpty(self):
+        restServer = RestServer(self.conf)
+        restServer.initRest()
+        restServerTestApp = TestApp(restServer.app)
+        
+        response = restServerTestApp.post('/openclos/ip-fabrics', headers = {'Content-Type':'application/json'}, expect_errors = True)
+        self.assertEqual(400, response.status_int)
+        self.assertTrue('POST body can not be empty' in response.json['errorMessage'] )
+        
+    def testReconfigureIpFabricWithPostBodyEmpty(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+        
+        response = restServerTestApp.put('/openclos/ip-fabrics/'+self.ipFabric1.id, headers = {'Content-Type':'application/json'}, expect_errors = True)
+        self.assertEqual(400, response.status_int)
+        self.assertTrue('POST body can not be empty' in response.json['errorMessage'] )
+        
+    def testCreateIpFabricWithInvalidRole(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+        
+        ipFabricDetails = {
+            "ipFabric": {
+                "name": "moloy1",
+                "spineDeviceType": "qfx5100-24q-2p",
+                "spineCount": 2,
+                "spineAS": 100,
+                "leafDeviceType": "qfx5100-48s-6q",
+                "leafCount": 1,
+                "leafAS": 200,
+                "topologyType": "threeStage",
+                "loopbackPrefix": "1.1.1.1",
+                "vlanPrefix": "3.3.3.3",
+                "interConnectPrefix": "2.2.2.2",
+                "outOfBandAddressList": "10.204.244.95",
+                "outOfBandGateway": "10.204.244.254",
+                "managementPrefix": "4.4.4.0/24",
+                "description": "moloy 11111111",
+                "hostOrVmCountPerLeaf": 254,
+                "devices": [
+                    {
+                    "role": "test",
+                    "name": "pparam_Test1-spine-0",
+                    "username": "root",
+                    "password": "Test123!"
+                    },
+                ]
+            }
+        }
+        response = restServerTestApp.put('/openclos/ip-fabrics/'+self.ipFabric1.id, params=json.dumps(ipFabricDetails), headers = {'Content-Type':'application/json'}, expect_errors = True)
+        self.assertEqual(400, response.status_int)
+        self.assertTrue('Unexpected role value' in response.json['errorMessage'] )         
 
         
 if __name__ == "__main__":
