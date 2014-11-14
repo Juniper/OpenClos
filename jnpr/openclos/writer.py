@@ -107,7 +107,7 @@ class CablingPlanWriter(WriterBase):
         devices = []
         links = []
         for device in self.pod.devices:
-            devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.status, 'reason': device.statusReason})
+            devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason})
             if device.role == 'leaf':
                 leafPeerPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
                 .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()

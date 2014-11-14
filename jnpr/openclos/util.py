@@ -142,10 +142,14 @@ def expandPortName(portName):
     return portNames
 
 def isPlatformUbuntu():
-    return 'ubuntu' in platform.platform().lower()
+    #return 'ubuntu' in platform.platform().lower()
+    result = os.popen("grep -i ubuntu /etc/*-release").read()
+    return result is not None and len(result) > 0
 
 def isPlatformCentos():
-    return 'centos' in platform.platform().lower()
+    #return 'centos' in platform.platform().lower()
+    result = os.popen("grep -i centos /etc/*-release").read()
+    return result is not None and len(result) > 0
 
 def isPlatformWindows():
     return 'windows' in platform.platform().lower()

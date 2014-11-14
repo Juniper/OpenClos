@@ -23,6 +23,13 @@ pods:
         leafCount : 6
         # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
         leafDeviceType : qfx5100-48s-6q
+        # Number of uplink from leaf must be properly connected and up to indicate
+        # the leaf device as "good". If the leaf device is not in "good" state
+        # it would not go through 2-stage ZTP/configuration process.
+        # Possible value is in between 2 and spineCount, inclusive both end.
+        # This field is optional, default value is >= 2 and math.celi(spineCount/2)
+        leafUplinkcountMustBeUp : 3 
+        
         hostOrVmCountPerLeaf : 254
         interConnectPrefix : 192.168.0.0
         vlanPrefix : 172.16.0.0
@@ -54,11 +61,18 @@ pods:
         leafCount : 4
         # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
         leafDeviceType : qfx5100-96s-8q
+        # Number of uplink from leaf must be properly connected to indicate
+        # the leaf device as "good". If the leaf device is not in "good" state
+        # it would not go through 2-stage ZTP/configuration process.
+        # Possible value is in between 2 and spineCount, inclusive both end.
+        # This field is optional, default value is >= 2 and math.celi(spineCount/2)
+        # leafUplinkcountMustBeUp : 2 
+
         hostOrVmCountPerLeaf : 254
         interConnectPrefix : 192.169.0.0
         vlanPrefix : 172.17.0.0
         loopbackPrefix : 10.11.0.0
-        managementPrefix : 172.32.31.101/24
+        managementPrefix : 192.168.48.216/24
         spineAS : 300
         leafAS : 400
         # possible options for topologyType are threeStage, fiveStageRealEstate, fiveStagePerformance
@@ -68,9 +82,10 @@ pods:
         outOfBandAddressList : 
             - 10.94.185.18/32
             - 10.94.185.19/32
+            - 172.16.0.0/12
         # Management network gateway address
         # It overrides ztp:dhcpOptionRoute setting
-        outOfBandGateway : 10.94.185.254
+        outOfBandGateway : 192.168.48.254
 
         # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
         # if not placed under this dir, the file would not be accessible from http server
