@@ -4,7 +4,7 @@ interfaces {
         unit 0 {
             family inet {
                 dhcp {
-                    vendor-id Juniper-{{leafDeviceFamily}};
+                    vendor-id Juniper-{{deviceFamily}};
                 }
             }
         }

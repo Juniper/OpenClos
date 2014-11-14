@@ -29,14 +29,18 @@ logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 
 class L3ClosMediation():
-    def __init__(self, conf = {}):
+    def __init__(self, conf = {}, dao = None):
         if any(conf) == False:
             self.conf = util.loadConfig()
             logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
         else:
             self.conf = conf
 
-        self.dao = Dao(self.conf)
+        if dao is None:
+            self.dao = Dao(self.conf)
+        else:
+            self.dao = dao
+
         self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
         self.templateEnv.keep_trailing_newline = True
         self.isZtpStaged = util.isZtpStaged(self.conf)
@@ -148,8 +152,11 @@ class L3ClosMediation():
             managementIps = util.getMgmtIps(pod.managementPrefix, spineCount + leafCount)
             for spine, managementIp in zip(inventoryData['spines'], managementIps[:spineCount]):
                 spine['managementIp'] = managementIp
-            for leaf, managementIp in zip(inventoryData['leafs'], managementIps[spineCount:]):
-                leaf['managementIp'] = managementIp
+                
+            if not self.isZtpStaged:
+                ''' allocate management IPs only when ztp/configuration process is not staged '''
+                for leaf, managementIp in zip(inventoryData['leafs'], managementIps[spineCount:]):
+                    leaf['managementIp'] = managementIp
             self.createSpineIFDs(pod, inventoryData['spines'])
             self.createLeafIFDs(pod, inventoryData['leafs'])
 
@@ -460,7 +467,7 @@ class L3ClosMediation():
             configWriter.write(device)
 
         if self.isZtpStaged:
-            pod.leafGenericConfig = self.createLeafGenericConfig(pod)
+            pod.leafGenericConfig = self.createLeafGenericConfigFor2Stage(pod)
             modifiedObjects.append(pod)
             logger.debug('Generated LeafGenericConfig for pod: %s, device family: %s, storing in DB' % (pod.name, pod.leafDeviceType))
             configWriter.writeGenericLeaf(pod)
@@ -628,7 +635,29 @@ class L3ClosMediation():
 
         return ''
 
-    def createLeafGenericConfig(self, pod):
+    def createSnmpTrapAndEventForLeafFor2ndStage(self, device):
+        snmpTemplate = self.templateEnv.get_template('snmpTrap.txt')
+        trapEventTemplate = self.templateEnv.get_template('eventOptionForTrap.txt')
+        disableSnmpTemplate = self.templateEnv.get_template('snmpTrapDisable.txt')
+        
+        configlet = trapEventTemplate.render()
+        
+        if device.role == 'leaf':
+            openclosTrapGroup = self.getOpenclosTrapGroupSettings()
+            if openclosTrapGroup is not None:
+                configlet += disableSnmpTemplate.render(trapGroups = [openclosTrapGroup])
+               
+            ndTrapGroup = self.getNdTrapGroupSettings()
+            if ndTrapGroup is not None:
+                configlet += snmpTemplate.render(trapGroups = [ndTrapGroup])
+                
+            return configlet
+
+        elif device.role == 'spine':
+            logger.debug('Device: %s, id: %s, role: spine, no 2ndStage trap/event connfig generated' % (device.name, device.id))
+        return ''
+
+    def createLeafGenericConfigFor2Stage(self, pod):
         leafTemplate = self.templateEnv.get_template('leafGenericTemplate.txt')
 
         groups = []
@@ -640,8 +669,26 @@ class L3ClosMediation():
         if ndTrapGroup is not None:
             groups.append(ndTrapGroup)
 
-        return leafTemplate.render(leafDeviceFamily = pod.leafDeviceType, 
+        return leafTemplate.render(deviceFamily = pod.leafDeviceType, 
                     oob = self.getParamsForOutOfBandNetwork(pod), trapGroups = groups)
+
+    def createLeafConfigFor2Stage(self, device):
+        configWriter = ConfigWriter(self.conf, device.pod, self.dao)
+        
+        config = self.createBaseConfig(device)
+        config += self.createInterfaces(device)
+        config += self.createRoutingOptionsStatic(device)
+        config += self.createRoutingOptionsBgp(device)
+        config += self.createProtocolBgp(device)
+        config += self.createProtocolLldp(device)
+        config += self.createPolicyOption(device)
+        config += self.createSnmpTrapAndEventForLeafFor2ndStage(device)
+        config += self.createVlan(device)
+        device.config = config
+        self.dao.updateObjects([device])
+        logger.debug('Generated config for device name: %s, id: %s, storing in DB' % (device.name, device.id))
+        configWriter.write(device)
+        return config
         
 if __name__ == '__main__':
     l3ClosMediation = L3ClosMediation()

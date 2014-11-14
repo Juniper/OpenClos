@@ -7,7 +7,7 @@ import unittest
 #from flexmock import flexmock
 
 
-from jnpr.openclos.devicePlugin import DeviceDataCollectorNetconf, L2DataCollector, DataCollectorInProgressCache 
+from jnpr.openclos.devicePlugin import DeviceDataCollectorNetconf, L2DataCollector, DeviceOperationInProgressCache, TwoStageConfigurator 
 from jnpr.openclos.exception import DeviceError
 from jnpr.openclos.model import Device, InterfaceDefinition
 from jnpr.openclos.dao import Dao
@@ -15,7 +15,7 @@ from jnpr.junos.exception import ConnectError
 
 from flexmock import flexmock
 
-
+'''
 class TestDeviceDataCollectorNetconf(unittest.TestCase):
 
 
@@ -159,19 +159,51 @@ class TestL2DataCollector(unittest.TestCase):
 
 class TestDataCollectorInProgressCache(unittest.TestCase):
     def testSingleton(self):
-        cache1 = DataCollectorInProgressCache.getInstance()
-        cache2 = DataCollectorInProgressCache.getInstance()
+        cache1 = DeviceOperationInProgressCache.getInstance()
+        cache2 = DeviceOperationInProgressCache.getInstance()
         
         self.assertEqual(cache1, cache2)
 
     def testIsDeviceInProgress(self):
-        cache = DataCollectorInProgressCache.getInstance()
+        cache = DeviceOperationInProgressCache.getInstance()
         self.assertTrue(cache.checkAndAddDevice("1234"))
         self.assertFalse(cache.checkAndAddDevice("1234"))
         self.assertTrue(cache.isDeviceInProgress("1234"))
         self.assertFalse(cache.isDeviceInProgress("5678"))
+        self.assertIsNotNone(cache.doneDevice("1234"))
+        self.assertTrue(cache.checkAndAddDevice("1234"))
+'''
+class TestTwoStageConfigurator(unittest.TestCase):
 
-        
+    def setUp(self):
+        self.conf = {'dbUrl': 'sqlite:///'}
+        self.dao = Dao(self.conf)
+        self.session = self.dao.Session()
+
+        self.configurator = TwoStageConfigurator('192.168.48.219', self.conf)
+        self.configurator.dao = self.dao
+        self.configurator.manualInit()
+    def tearDown(self):
+        pass
+
+    @unittest.skip("need physical device to test")
+    def testCollectLldpAndMatchDevice(self):
+        self.configurator.collectLldpAndMatchDevice()
+
+    def getLldpData(self):
+        return [
+           {'device1': None, 'port1': 'et-0/0/96', 'device2': 'clos-spine-01', 'port2': 'et-0/0/1'},
+           {'device1': None, 'port1': 'et-0/0/97', 'device2': 'clos-spine-01', 'port2': 'et-0/0/1'},
+           {'device1': None, 'port1': 'xe-0/0/1', 'device2': 'clos-leaf-02', 'port2': 'xe-0/0/0'}, 
+           {'device1': None, 'port1': 'xe-0/0/0', 'device2': 'clos-leaf-02', 'port2': 'xe-0/0/1'},
+           {'device1': None, 'port1': 'xe-0/0/49', 'device2': 'clos-leaf-02', 'port2': 'xe-0/0/48'},
+           {'device1': None, 'port1': 'xe-0/0/48', 'device2': 'clos-leaf-02', 'port2': 'xe-0/0/49'}
+        ]
+
+    @unittest.skip
+    def testMatchDevice(self):
+        self.configurator.findMatchedDevice(self.getLldpData(), 'qfx5100-96s-8q')
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

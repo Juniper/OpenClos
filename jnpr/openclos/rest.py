@@ -56,6 +56,8 @@ class RestServer():
         self.baseUrl = 'http://%s:%d' % (self.host, self.port)
 
         self.report = ResourceAllocationReport(self.conf, self.dao)
+        # Create a single instance of l2Report as it holds thread-pool
+        # for device connection. Don't create l2Report multiple times 
         self.l2Report = L2Report(self.conf, self.dao)
 
         
@@ -485,6 +487,7 @@ class RestServer():
         ipFabric['spineDeviceType'] = podDict.get('spineDeviceType')
         ipFabric['leafCount'] = podDict.get('leafCount')
         ipFabric['leafDeviceType'] = podDict.get('leafDeviceType')
+        ipFabric['leafUplinkcountMustBeUp'] = podDict.get('leafUplinkcountMustBeUp')
         ipFabric['interConnectPrefix'] = podDict.get('interConnectPrefix')
         ipFabric['vlanPrefix'] = podDict.get('vlanPrefix')
         ipFabric['loopbackPrefix'] = podDict.get('loopbackPrefix')

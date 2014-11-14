@@ -82,9 +82,10 @@ pods:
         outOfBandAddressList : 
             - 10.94.185.18/32
             - 10.94.185.19/32
+            - 172.16.0.0/12
         # Management network gateway address
         # It overrides ztp:dhcpOptionRoute setting
-        outOfBandGateway : 10.94.185.254
+        outOfBandGateway : 192.168.48.254
 
         # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
         # if not placed under this dir, the file would not be accessible from http server

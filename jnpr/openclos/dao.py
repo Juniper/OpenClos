@@ -5,8 +5,15 @@ Created on Aug 26, 2014
 '''
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import exc
+import logging
 
-from model import Base
+from model import Base, Device, InterfaceDefinition
+
+moduleName = 'dao'
+logging.basicConfig()
+logger = logging.getLogger(moduleName)
+logger.setLevel(logging.INFO)
 
 class Dao:
     def __init__(self, conf):
@@ -87,6 +94,17 @@ class Dao:
         session = self.Session()
         try:
             return session.query(objectType).filter_by(name = name).all()
+        finally:
+            #self.Session.remove()
+            pass
+
+    def getIfdByDeviceNamePortName(self, deviceName, portName):
+        session = self.Session()
+        try:
+            device = session.query(Device).filter_by(name = deviceName).one()
+            return session.query(InterfaceDefinition).filter_by(device_id = device.id).filter_by(name = portName).one()
+        except (exc.NoResultFound, exc.MultipleResultsFound) as ex:
+            logger.info(str(ex))
         finally:
             #self.Session.remove()
             pass

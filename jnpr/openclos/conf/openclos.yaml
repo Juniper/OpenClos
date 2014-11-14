@@ -40,6 +40,7 @@ logLevel :
     writer : INFO
     devicePlugin : INFO
     trapd : INFO
+    dao : INFO
 
 
 # debug SQL and ORM
@@ -101,7 +102,7 @@ report :
 snmpTrap :
     networkdirector_trap_group :
         port : 10162
-        target : 1.2.3.4
+        target : 0.0.0.0
     openclos_trap_group :
         port : 20162
         target : 0.0.0.0

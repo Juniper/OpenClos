@@ -329,6 +329,22 @@ class TestL3Clos(unittest.TestCase):
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
 
+    def testCreateSnmpTrapAndEventForLeafFor2ndStage(self):
+        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
+                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self.conf['deploymentMode'] = {'ndIntegrated': True}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
+        configlet = l3ClosMediation.createSnmpTrapAndEventForLeafFor2ndStage(device)
+        print configlet
+        self.assertTrue('' != configlet)
+        self.assertTrue('event-options' in configlet)
+        self.assertTrue('trap-group openclos_trap_group' in configlet)
+        self.assertTrue('trap-group networkdirector_trap_group' in configlet)
+        self.assertEquals(1, configlet.count('destination-port'))
+        self.assertEquals(1, configlet.count('targets'))
+
     def testCreateRoutingOptionsStatic(self):
         l3ClosMediation = L3ClosMediation(self.conf)
         device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", self.createPod(l3ClosMediation))
@@ -351,7 +367,7 @@ class TestL3Clos(unittest.TestCase):
         pod.outOfBandGateway = '10.0.0.254'
         pod.outOfBandAddressList = '10.0.10.5/32'
         
-        configlet = l3ClosMediation.createLeafGenericConfig(pod)
+        configlet = l3ClosMediation.createLeafGenericConfigFor2Stage(pod)
         self.assertTrue('' != configlet)
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertEquals(1, configlet.count('static'))
@@ -366,7 +382,7 @@ class TestL3Clos(unittest.TestCase):
         pod.outOfBandGateway = '10.0.0.254'
         pod.outOfBandAddressList = '10.0.10.5/32'
         
-        configlet = l3ClosMediation.createLeafGenericConfig(pod)
+        configlet = l3ClosMediation.createLeafGenericConfigFor2Stage(pod)
         self.assertTrue('' != configlet)
         self.assertTrue('vendor-id Juniper-qfx5100-48s-6q' in configlet)
         self.assertTrue('trap-group openclos_trap_group' in configlet)

@@ -216,7 +216,7 @@ class Device(ManagedElement, Base):
     l2StatusReason = Column(String(256)) # will be populated only when status is error
     l3Status = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
     l3StatusReason = Column(String(256)) # will be populated only when status is error
-    configStatus = Column(Enum('unknown', 'processing', 'done', 'error'), default = 'unknown')
+    configStatus = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
     configStatusReason = Column(String(256)) # will be populated only when status is error
     config = Column(BLOB)
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
@@ -235,8 +235,6 @@ class Device(ManagedElement, Base):
         self.macAddress = mac
         self.managementIp = mgmtIp
         self.pod = pod
-        self.status = 'unknown'
-        self.statusReason = ''
                
 class Interface(ManagedElement, Base):
     __tablename__ = 'interface'
