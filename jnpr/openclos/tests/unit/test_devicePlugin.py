@@ -15,7 +15,6 @@ from jnpr.junos.exception import ConnectError
 
 from flexmock import flexmock
 
-'''
 class TestDeviceDataCollectorNetconf(unittest.TestCase):
 
 
@@ -172,7 +171,7 @@ class TestDataCollectorInProgressCache(unittest.TestCase):
         self.assertFalse(cache.isDeviceInProgress("5678"))
         self.assertIsNotNone(cache.doneDevice("1234"))
         self.assertTrue(cache.checkAndAddDevice("1234"))
-'''
+
 class TestTwoStageConfigurator(unittest.TestCase):
 
     def setUp(self):
