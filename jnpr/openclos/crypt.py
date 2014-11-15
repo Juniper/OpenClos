@@ -8,8 +8,10 @@ import re
 #------------------------------------------------------------------------------
 class Cryptic:
 
-    MAGIC = "$9$"
-    MAGIC_SEARCH = "\$9\$"
+    MAGIC             = "$9$"
+    MAGIC_SEARCH      = "\$9\$"
+    HASH_MAGIC        = "$1$"
+    HASH_MAGIC_SEARCH = "\$1\$"
     FAMILY = [ 'QzF3n6/9CAtpu0O', 
                'B1IREhcSyrleKvMW8LXx', 
                '7N-dVbwsY2g4oaJZGUDj',
@@ -44,7 +46,7 @@ class Cryptic:
         ret   = ""
 
         while ( count > 0 ):
-            ret = ret + self.NUM_ALPHA [ random.randint ( 0, len ( self.NUM_ALPHA ) ) ]
+            ret = ret + self.NUM_ALPHA [ random.randint ( 0, len ( self.NUM_ALPHA ) - 1 ) ]
             count = count - 1
 
         return ret
@@ -138,9 +140,23 @@ class Cryptic:
             print Crypt + " is invalid !!"
 
 #------------------------------------------------------------------------------
-    def moduli_exp ( self, pos ):
-        some_list = [ 1, 2, 3, 4 ]
-        print ( pos % len ( some_list ) )
+    def hashify ( self, plain_text ):
+        hash_object = hashlib.new ( "md5" )
+        hash_object.update ( plain_text )
+        return self.HASH_MAGIC + hash_object.hexdigest ()
+
+#------------------------------------------------------------------------------
+    def authenticate_hash ( self, plain_text, hash_text ):
+        match_object = re.match ( self.HASH_MAGIC_SEARCH, hash_text )
+        if match_object is not None:
+            hashed = self.hashify ( plain_text )
+            if ( hashed == hash_text ):
+                return 0
+            else:
+                return 1
+        else:
+            print "Hashed password is not valid"
+            return None
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -149,3 +165,5 @@ if __name__ == "__main__":
     print cryptic.decrypt ( cryptic.encrypt ( 'Embe1mpls' ) )
     print cryptic.decrypt ( cryptic.encrypt ( 'no' ) )
     print cryptic.decrypt ( cryptic.encrypt ( 'Ramesh' ) )
+    hash_text = cryptic.hashify ( "Embe1mpls" )
+    print cryptic.authenticate_hash ( "Embe1mpls", hash_text )
