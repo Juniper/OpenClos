@@ -44,6 +44,7 @@ class RestError(BaseError):
     """
     
     def __init__(self, errorId, errorMessage, cause=None):
+        super(BaseError, self).__init__(cause)
         self.errorId = errorId
         self.errorMessage = errorMessage
-        self.cause = cause
+
