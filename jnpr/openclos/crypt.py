@@ -1,7 +1,8 @@
 
+import subprocess
 import hashlib
 import random
-from pprint import pprint
+#from pprint import pprint
 import re
 
 #------------------------------------------------------------------------------
@@ -10,8 +11,8 @@ class Cryptic:
 
     MAGIC             = "$9$"
     MAGIC_SEARCH      = "\$9\$"
-    HASH_MAGIC        = "$1$"
-    HASH_MAGIC_SEARCH = "\$1\$"
+    HASH_MAGIC        = "$1$f+uslYF01$"
+    HASH_MAGIC_SEARCH = "\$1\$\+uslYF01\$"
     FAMILY = [ 'QzF3n6/9CAtpu0O', 
                'B1IREhcSyrleKvMW8LXx', 
                '7N-dVbwsY2g4oaJZGUDj',
@@ -141,19 +142,23 @@ class Cryptic:
 
 #------------------------------------------------------------------------------
     def hashify ( self, plain_text ):
-        hash_object = hashlib.new ( "md5" )
-        hash_object.update ( plain_text )
-        return self.HASH_MAGIC + hash_object.hexdigest ()
+        cmd = "openssl passwd -1 -salt " + self.HASH_MAGIC + " " + plain_text
+        try:
+            output = subprocess.check_output ( cmd, shell=True )
+            return output.strip ()
+        except subprocess.CalledProcessError as e:
+            print "Command " + cmd + " returned error code " + str ( e.returncode ) + " and output " + e.output
+            return None
 
 #------------------------------------------------------------------------------
     def authenticate_hash ( self, plain_text, hash_text ):
         match_object = re.match ( self.HASH_MAGIC_SEARCH, hash_text )
         if match_object is not None:
             hashed = self.hashify ( plain_text )
-            if ( hashed == hash_text ):
-                return 0
+            if ( hashed is not None and hashed == hash_text ):
+                return True
             else:
-                return 1
+                return False
         else:
             print "Hashed password is not valid"
             return None
@@ -167,3 +172,7 @@ if __name__ == "__main__":
     print cryptic.decrypt ( cryptic.encrypt ( 'Ramesh' ) )
     hash_text = cryptic.hashify ( "Embe1mpls" )
     print cryptic.authenticate_hash ( "Embe1mpls", hash_text )
+    hash_text = cryptic.hashify ( "Juniper123" )
+    print cryptic.authenticate_hash ( "Juniper123", hash_text )
+    hash_text = cryptic.hashify ( "Embe1mpls" )
+    print cryptic.authenticate_hash ( "Juniper123", hash_text )
