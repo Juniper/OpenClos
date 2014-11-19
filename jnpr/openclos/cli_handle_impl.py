@@ -14,6 +14,7 @@ Command context from the openclos CLI will invoke one or more functions (or hand
 import os
 import re
 import collections
+import getpass
 
 # Python frameworks required for openclos
 import yaml
@@ -22,6 +23,7 @@ import yaml
 import util
 from l3Clos import L3ClosMediation
 from model import Pod
+from crypt import Cryptic
 from ztp import ZtpServer
 import dao
 import rest
@@ -65,6 +67,7 @@ class CLIImplementor:
         self.add_attr_to_pod_struct ( 'allocatedSpineAS', 'Allocated Spine Autonomous Number' )
         self.add_attr_to_pod_struct ( 'allocatedLeafAS', 'Allocated Leaf Autonomous Number' )
         self.add_attr_to_pod_struct ( 'state', 'POD State' )
+#       self.add_attr_to_pod_struct ( 'devicePassword', 'Password' )
 
         self.rl_indent = "\t" + " " * ( self.pod_indentation + 4 )
 
@@ -209,8 +212,30 @@ class CLIImplementor:
             os.system("/etc/rc.d/init.d/dhcpd restart")
 
 #------------------------------------------------------------------------------
-    def handle_update_password ( self, *args ):
-        print "TODO: handle_update_password"
+    def handle_update_password ( self, pod_id, tries=0, *args ):
+        if tries > 2:
+            print "Maximum attempts to update password reached. Please try the command again"
+            return None
+
+        l3ClosMediation = L3ClosMediation ()
+        pod = l3ClosMediation.dao.getObjectById ( Pod, pod_id )
+        plain_text = getpass.getpass ( prompt = 'Enter Pod Password: ' )
+        password_rule = re.compile ( "^[a-zA-Z0-9\!\@\#\$\%\^\&\*\,\+\<\>\:\;]*$" )
+        if password_rule.match ( plain_text ) is not None:
+            repeat = getpass.getpass ( prompt = 'Re-Enter Pod Password: ' )
+            if ( repeat == plain_text ):
+                pod.update ( id = pod.id, name = pod.name, devicePassword = Cryptic ().encrypt ( plain_text ) )
+                l3ClosMediation.dao.updateObjects ( [ pod ] )
+                print "Password update for Pod " + pod.name + " with UUID " + pod.id + " was successful"
+            else:
+                print "Passwords dont match.\n"
+                self.handle_update_password ( pod_id, (tries + 1) )
+        else:
+            print "Password should contain only the following:"
+            print "\tAlpha-numeric characters"
+            print "\tSpecial characters !,@,#,$,%,^,&,*,+,<,>"
+            print "\tPunctuations :(colon), ;(semicolon), ,(comma)\n"
+            self.handle_update_password ( pod_id, (tries + 1) )
 
 #------------------------------------------------------------------------------
     def handle_run_reports ( self, *args ):
