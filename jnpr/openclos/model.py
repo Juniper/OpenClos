@@ -60,6 +60,7 @@ class Pod(ManagedElement, Base):
     inventoryData = Column(String(2048))
     leafGenericConfig = Column(BLOB)
     state = Column(Enum('unknown', 'created', 'updated', 'cablingDone', 'deviceConfigDone', 'ztpConfigDone', 'deployed', 'L2Verified', 'L3Verified'))
+    devicePassword = Column(String(100))
 
     def __init__(self, name, **kwargs):
         '''
@@ -126,6 +127,8 @@ class Pod(ManagedElement, Base):
             self.spineJunosImage = kwargs.get('spineJunosImage')
         if kwargs.has_key('leafJunosImage'):
             self.leafJunosImage = kwargs.get('leafJunosImage')
+        if kwargs.has_key('devicePassword'):
+            self.devicePassword = kwargs.get('devicePassword')
         
         if self.state is None:
             self.state = 'unknown'
