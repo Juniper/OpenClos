@@ -31,18 +31,18 @@ class TestDao(unittest.TestCase):
         device = createDevice(session, "test")
         ifd1 = InterfaceDefinition('ifd1', device, 'downlink')
         ifd2 = InterfaceDefinition('ifd2', device, 'downlink')
-        ifd3 = InterfaceDefinition('ifd1', device, 'downlink')
-        ifd4 = InterfaceDefinition('ifd2', device, 'downlink')
+        ifd3 = InterfaceDefinition('ifd3', device, 'downlink')
+        ifd4 = InterfaceDefinition('ifd4', device, 'downlink')
         dao.createObjects([ifd1, ifd2, ifd3, ifd4])
 
         self.assertEqual(4, len(dao.getAll(InterfaceDefinition)))
-        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'ifd1')))
-        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'ifd2')))
+        self.assertEqual(1, len(dao.getObjectsByName(InterfaceDefinition, 'ifd1')))
+        self.assertEqual(1, len(dao.getObjectsByName(InterfaceDefinition, 'ifd2')))
 
     def testDeleteNonExistingPod(self):
         dao = Dao(self.conf)
         dict = {}
-        pod = Pod('unknown', **dict)
+        pod = Pod('unknown', dict)
         with self.assertRaises(exc.InvalidRequestError):
             dao.deleteObject(pod)
 

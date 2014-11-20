@@ -61,6 +61,7 @@ class ResourceAllocationReport(Report):
             pod['leafDeviceType'] = podObject[i].leafDeviceType
             pod['leafCount'] = podObject[i].leafCount
             pod['topologyType'] = podObject[i].topologyType        
+            pod['devicePassword'] = podObject[i].getCleartextPassword()
             pods.append(pod)
             
         return pods

@@ -27,7 +27,10 @@ class TestL3Clos(unittest.TestCase):
                 'reporting' : 'INFO',
                 'ztp' : 'INFO',
                 'rest' : 'INFO',
-                'writer' : 'INFO'
+                'writer' : 'INFO',
+                'devicePlugin' : 'INFO',
+                'trapd' : 'INFO',
+                'dao' : 'INFO'
         }
         self.conf['DOT'] = {'ranksep' : '5 equally', 'colors': ['red', 'green', 'blue']}
         self.conf['deviceFamily'] = {
@@ -84,7 +87,12 @@ class TestL3Clos(unittest.TestCase):
                          "leafs" : [{ "name" : "leaf-11", "macAddress" : "aa:bb:cc:dd:ee:a1", "managementIp" : "172.32.32.101/24" }]}
         l3ClosMediation.updatePod(pod.id, podDict, inventoryDict)
 
-        self.assertEqual(2, session.query(Device).count())
+        self.assertEqual(10, len(pod.devices))
+        deployedCount = 0
+        for device in pod.devices:
+            if device.deployed == True:
+                deployedCount += 1
+        self.assertEqual(2, deployedCount)
         self.assertEqual(101, pod.spineAS)
 
     def testUpdatePodInvalidId(self):
@@ -100,66 +108,19 @@ class TestL3Clos(unittest.TestCase):
         self.assertEqual(True, l3ClosMediation.createCablingPlan(pod.id))
         self.assertEqual(True, l3ClosMediation.createDeviceConfig(pod.id))
 
-    def testCablingPlanNoInventory(self):
-        l3ClosMediation = L3ClosMediation(self.conf)
-        pod = self.createPodWithoutInventory(l3ClosMediation)
-
-        with self.assertRaises(ValueError) as ve:
-            l3ClosMediation.createCablingPlan(pod.id)
-        
-    def testCreateSpines(self):
-        from jnpr.openclos.l3Clos import util
-        flexmock(util, getPortNamesForDeviceFamily={'ports': ['et-0/0/0', 'et-0/0/1']})
-        self.conf['deviceFamily'] = {}
-        
-        l3ClosMediation = L3ClosMediation(self.conf)
-        dao = l3ClosMediation.dao
-        pod = self.createPodWithoutInventory(l3ClosMediation)
-
-        spineString = u'[{ "name" : "spine-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "managementIp" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "spine-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "managementIp" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
-        l3ClosMediation.createSpineIFDs(pod, json.loads(spineString))
-
-        self.assertEqual(2, len(dao.getAll(Device)))
-        self.assertEqual(0, len(dao.getAll(InterfaceLogical)))
-        self.assertEqual(4, len(dao.getAll(InterfaceDefinition)))
-        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'et-0/0/0')))
-        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'et-0/0/1')))
-
-    def testCreateLeafs(self):
-        from jnpr.openclos.l3Clos import util
-        flexmock(util, getPortNamesForDeviceFamily={'uplinkPorts': ['et-0/0/48'], 'downlinkPorts': ['xe-0/0/0', 'xe-0/0/1']})
-        self.conf['deviceFamily'] = {}
-
-        l3ClosMediation = L3ClosMediation(self.conf)
-        dao = l3ClosMediation.dao
-        pod = self.createPodWithoutInventory(l3ClosMediation)
-
-        leafString = u'[{ "name" : "leaf-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "managementIp" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "leaf-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "managementIp" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
-        l3ClosMediation.createLeafIFDs(pod, json.loads(leafString))
-
-        self.assertEqual(2, len(dao.getAll(Device)))
-        self.assertEqual(0, len(dao.getAll(InterfaceLogical)))
-        self.assertEqual(6, len(dao.getAll(InterfaceDefinition)))
-        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'et-0/0/48')))
-        self.assertEqual(2, len(dao.getObjectsByName(InterfaceDefinition, 'xe-0/0/0')))
-
     def createPodSpineLeaf(self, l3ClosMediation):
-        from jnpr.openclos.l3Clos import util
-        flexmock(util, getPortNamesForDeviceFamily={'ports': ['et-0/0/0', 'et-0/0/1'], 'uplinkPorts': ['et-0/0/48', 'et-0/0/49'], 'downlinkPorts': ['xe-0/0/0', 'xe-0/0/1']})
-        self.conf['deviceFamily'] = {}
-
         pod = self.createPodWithoutInventory(l3ClosMediation)
         spineString = u'[{ "name" : "spine-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "managementIp" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "spine-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "managementIp" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
-        l3ClosMediation.createSpineIFDs(pod, json.loads(spineString))
+        l3ClosMediation.deployInventory(pod, json.loads(spineString), 'spine')
         leafString = u'[{ "name" : "leaf-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "managementIp" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "leaf-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "managementIp" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
-        l3ClosMediation.createLeafIFDs(pod, json.loads(leafString))
+        l3ClosMediation.deployInventory(pod, json.loads(leafString), 'leaf')
+        l3ClosMediation.dao.updateObjects(pod.devices)
         return pod
     
     def testCreateLinks(self):
         l3ClosMediation = L3ClosMediation(self.conf)
         pod = self.createPodSpineLeaf(l3ClosMediation)
-        l3ClosMediation.createLinkBetweenIfds(pod)
-
+        
         # force close current session and get new session to make sure merge and flush took place properly
         podId = pod.id
         l3ClosMediation.dao.Session.remove()                
@@ -180,51 +141,34 @@ class TestL3Clos(unittest.TestCase):
         pod = self.createPodSpineLeaf(l3ClosMediation)
 
         leafSpineDict = l3ClosMediation.getLeafSpineFromPod(pod)
-        self.assertEqual(2, len(leafSpineDict['leafs']))
-        self.assertEqual(2, len(leafSpineDict['spines']))
+        self.assertEqual(6, len(leafSpineDict['leafs']))
+        self.assertEqual(4, len(leafSpineDict['spines']))
         
     def testAllocateLoopback(self):
         l3ClosMediation = L3ClosMediation(self.conf)
         pod = self.createPodSpineLeaf(l3ClosMediation)
         session = l3ClosMediation.dao.Session()
     
-        l3ClosMediation.allocateLoopback(pod, "10.0.0.0", pod.devices)
-        
-        self.assertEqual(4, len(l3ClosMediation.dao.getObjectsByName(InterfaceLogical, 'lo0.0')))
         ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.name == 'leaf-01').filter(Device.pod_id == pod.id).one()
-        self.assertEqual('10.0.0.1/32', ifl.ipaddress)
+        self.assertEqual('10.0.0.5/32', ifl.ipaddress)
         ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.name == 'spine-02').filter(Device.pod_id == pod.id).one()
-        self.assertEqual('10.0.0.4/32', ifl.ipaddress)
-        self.assertEqual('10.0.0.0/29', pod.allocatedLoopbackBlock)
+        self.assertEqual('10.0.0.2/32', ifl.ipaddress)
+        self.assertEqual('10.0.0.0/28', pod.allocatedLoopbackBlock)
 
     def testAllocateIrb(self):
         l3ClosMediation = L3ClosMediation(self.conf)
         pod = self.createPodSpineLeaf(l3ClosMediation)
         session = l3ClosMediation.dao.Session()
-    
-        l3ClosMediation.allocateIrb(pod, '172.16.0.0', pod.devices)
-
-        self.assertEqual(4, len(l3ClosMediation.dao.getObjectsByName(InterfaceLogical, 'irb.1')))
+        
         ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.name == 'leaf-01').filter(Device.pod_id == pod.id).one()
         self.assertEqual('172.16.0.1/24', ifl.ipaddress)
-        ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.name == 'spine-02').filter(Device.pod_id == pod.id).one()
-        self.assertEqual('172.16.3.1/24', ifl.ipaddress)
-        self.assertEqual('172.16.0.0/22', pod.allocatedIrbBlock)
+        self.assertEqual('172.16.0.0/21', pod.allocatedIrbBlock)
 
-    def createPodSpineLeafLink(self, l3ClosMediation):
-        pod = self.createPodSpineLeaf(l3ClosMediation)
-        l3ClosMediation.createLinkBetweenIfds(pod)
-        return pod
-        
     def testAllocateInterconnect(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        pod = self.createPodSpineLeafLink(l3ClosMediation)
+        pod = self.createPodSpineLeaf(l3ClosMediation)
         session = l3ClosMediation.dao.Session()
 
-        leafSpineDict = l3ClosMediation.getLeafSpineFromPod(pod)
-        l3ClosMediation.allocateInterconnect('192.168.0.0', leafSpineDict['spines'], leafSpineDict['leafs'] )
-
-        self.assertEqual(8, len(l3ClosMediation.dao.getAll(InterfaceLogical)))
         ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'et-0/0/0.0').filter(Device.name == 'spine-01').filter(Device.pod_id == pod.id).one()
         belowIfd = session.query(InterfaceDefinition).filter(InterfaceDefinition.id == ifl.layer_below_id).one()
         self.assertEqual('et-0/0/0', belowIfd.name)
@@ -236,12 +180,9 @@ class TestL3Clos(unittest.TestCase):
 
     def testAllocateAsNumber(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        pod = self.createPodSpineLeafLink(l3ClosMediation)
+        pod = self.createPodSpineLeaf(l3ClosMediation)
         session = l3ClosMediation.dao.Session()
 
-        leafSpineDict = l3ClosMediation.getLeafSpineFromPod(pod)
-        l3ClosMediation.allocateAsNumber(100, 200, leafSpineDict['spines'], leafSpineDict['leafs'] )
-        
         self.assertEqual(100, session.query(Device).filter(Device.role == 'spine').all()[0].asn)
         self.assertEqual(201, session.query(Device).filter(Device.role == 'leaf').all()[1].asn)
         

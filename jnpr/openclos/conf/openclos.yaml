@@ -46,6 +46,7 @@ logLevel :
 # debug SQL and ORM
 # "true" will enable logging all SQL statements to underlying DB
 debugSql : false
+debugRest : true
 
 #device configuration will be stored by default in DB
 #"file" will allow device configuration to store in DB and File
@@ -99,6 +100,7 @@ report :
 # NetworkDirector trap settings are optional, should be set only when
 # OpenClos is integrated with NetworkDirector, enabling networkdirector_trap_group
 # would allow devices to be auto discovered by NetworkDirector.
+# threadCount: Number of threads used to start 2-stage configuration for devices
 snmpTrap :
     networkdirector_trap_group :
         port : 10162
@@ -106,6 +108,7 @@ snmpTrap :
     openclos_trap_group :
         port : 20162
         target : 0.0.0.0
+    threadCount : 10
 
 
 # various scripts
