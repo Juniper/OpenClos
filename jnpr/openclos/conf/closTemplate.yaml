@@ -54,6 +54,9 @@ pods:
         # these fields are optional
         spineJunosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
         leafJunosImage : jinstall-qfx-5-flex-13.2X51-D21.2-domestic-signed.tgz
+        
+        # device default root password
+        devicePassword: Embe1mpls
     anotherPod:
         spineCount : 2
         # possible options for leafDeviceType are qfx5100-24q-2p
@@ -93,3 +96,6 @@ pods:
         # these fields are optional
         spineJunosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
         leafJunosImage : jinstall-qfx-5-flex-13.2X51-D21.2-domestic-signed.tgz
+        
+        # device default root password
+        devicePassword: Embe1mpls

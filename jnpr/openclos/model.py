@@ -7,9 +7,10 @@ Created on Jul 8, 2014
 import uuid
 import math
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum, BLOB
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum, BLOB, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship, backref
 from netaddr import IPAddress, IPNetwork, AddrFormatError
+from crypt import Cryptic
 Base = declarative_base()
 
 class ManagedElement(object):
@@ -60,72 +61,78 @@ class Pod(ManagedElement, Base):
     inventoryData = Column(String(2048))
     leafGenericConfig = Column(BLOB)
     state = Column(Enum('unknown', 'created', 'updated', 'cablingDone', 'deviceConfigDone', 'ztpConfigDone', 'deployed', 'L2Verified', 'L3Verified'))
-
-    def __init__(self, name, **kwargs):
+    encryptedPassword = Column(String(100)) # 2-way encrypted
+    cryptic = Cryptic()
+        
+    def __init__(self, name, podDict):
         '''
         Creates a Pod object from dict, if following fields are missing, it throws ValueError
         interConnectPrefix, vlanPrefix, loopbackPrefix, spineAS, leafAS
         '''
-        super(Pod, self).__init__(**kwargs)
-        self.update(None, name, **kwargs)
+        super(Pod, self).__init__(**podDict)
+        self.update(None, name, podDict)
         
-    def update(self, id, name, **kwargs):
+    def update(self, id, name, podDict):
         '''
         Updates a Pod ORM object from dict, it updates only following fields.
         spineCount, leafCount
         '''
         if id is not None:
             self.id = id
-        elif kwargs.has_key('id'):
-            self.id = kwargs.get('id')
+        elif 'id' in podDict:
+            self.id = podDict.get('id')
         else:
             self.id = str(uuid.uuid4())
         
         if name is not None:
             self.name = name
-        elif kwargs.has_key('name'):
-            self.name = kwargs.get('name')
+        elif 'name' in podDict:
+            self.name = podDict.get('name')
         
-        if kwargs.has_key('description'):
-            self.description = kwargs.get('description')
-        if kwargs.has_key('spineCount'):
-            self.spineCount = kwargs.get('spineCount')
-        if kwargs.has_key('spineDeviceType'):
-            self.spineDeviceType = kwargs.get('spineDeviceType')
-        if kwargs.has_key('leafCount'):
-            self.leafCount = kwargs.get('leafCount')
-        if kwargs.has_key('leafDeviceType'):
-            self.leafDeviceType = kwargs.get('leafDeviceType')
-        if kwargs.has_key('leafUplinkcountMustBeUp'):
-            self.leafUplinkcountMustBeUp = kwargs.get('leafUplinkcountMustBeUp')
+        if 'description' in podDict:
+            self.description = podDict.get('description')
+        if 'spineCount' in podDict:
+            self.spineCount = podDict.get('spineCount')
+        if 'spineDeviceType' in podDict:
+            self.spineDeviceType = podDict.get('spineDeviceType')
+        if 'leafCount' in podDict:
+            self.leafCount = podDict.get('leafCount')
+        if 'leafDeviceType' in podDict:
+            self.leafDeviceType = podDict.get('leafDeviceType')
+        if 'leafUplinkcountMustBeUp' in podDict:
+            self.leafUplinkcountMustBeUp = podDict.get('leafUplinkcountMustBeUp')
         else:
             self.leafUplinkcountMustBeUp = self.calculateLeafUplinkcountMustBeUp()
-        if kwargs.has_key('hostOrVmCountPerLeaf'):
-            self.hostOrVmCountPerLeaf = kwargs.get('hostOrVmCountPerLeaf')
-        if kwargs.has_key('interConnectPrefix'):
-            self.interConnectPrefix = kwargs.get('interConnectPrefix')
-        if kwargs.has_key('vlanPrefix'):
-            self.vlanPrefix = kwargs.get('vlanPrefix')
-        if kwargs.has_key('loopbackPrefix'):
-            self.loopbackPrefix = kwargs.get('loopbackPrefix')
-        if kwargs.has_key('managementPrefix'):
-            self.managementPrefix = kwargs.get('managementPrefix')
-        if kwargs.has_key('spineAS'):
-            self.spineAS = int(kwargs.get('spineAS'))
-        if kwargs.has_key('leafAS'):
-            self.leafAS = int(kwargs.get('leafAS'))
-        if kwargs.has_key('topologyType'):
-            self.topologyType = kwargs.get('topologyType')
-        if kwargs.has_key('outOfBandAddressList'):
-            addressList = kwargs.get('outOfBandAddressList')
+        if 'hostOrVmCountPerLeaf' in podDict:
+            self.hostOrVmCountPerLeaf = podDict.get('hostOrVmCountPerLeaf')
+        if 'interConnectPrefix' in podDict:
+            self.interConnectPrefix = podDict.get('interConnectPrefix')
+        if 'vlanPrefix' in podDict:
+            self.vlanPrefix = podDict.get('vlanPrefix')
+        if 'loopbackPrefix' in podDict:
+            self.loopbackPrefix = podDict.get('loopbackPrefix')
+        if 'managementPrefix' in podDict:
+            self.managementPrefix = podDict.get('managementPrefix')
+        if 'spineAS' in podDict:
+            self.spineAS = int(podDict.get('spineAS'))
+        if 'leafAS' in podDict:
+            self.leafAS = int(podDict.get('leafAS'))
+        if 'topologyType' in podDict:
+            self.topologyType = podDict.get('topologyType')
+        if 'outOfBandAddressList' in podDict:
+            addressList = podDict.get('outOfBandAddressList')
             self.outOfBandAddressList = ','.join(addressList)
-            kwargs.pop('outOfBandAddressList')
-        if kwargs.has_key('outOfBandGateway'):
-            self.outOfBandGateway = kwargs.get('outOfBandGateway')
-        if kwargs.has_key('spineJunosImage'):
-            self.spineJunosImage = kwargs.get('spineJunosImage')
-        if kwargs.has_key('leafJunosImage'):
-            self.leafJunosImage = kwargs.get('leafJunosImage')
+            podDict.pop('outOfBandAddressList')
+        if 'outOfBandGateway' in podDict:
+            self.outOfBandGateway = podDict.get('outOfBandGateway')
+        if 'spineJunosImage' in podDict:
+            self.spineJunosImage = podDict.get('spineJunosImage')
+        if 'leafJunosImage' in podDict:
+            self.leafJunosImage = podDict.get('leafJunosImage')
+        if 'devicePassword' in podDict:
+            self.encryptedPassword = self.cryptic.encrypt(podDict.get('devicePassword'))
+        else:
+            self.encryptedPassword = self.cryptic.encrypt('Embe1mpls')
         
         if self.state is None:
             self.state = 'unknown'
@@ -137,6 +144,25 @@ class Pod(ManagedElement, Base):
                 count = 2
             return count
         
+    def getCleartextPassword(self):
+        '''
+        Return decrypted password
+        '''
+        if self.encryptedPassword is not None and len(self.encryptedPassword) > 0:
+            return self.cryptic.decrypt(self.encryptedPassword)
+        else:
+            return None
+            
+    def getHashPassword(self):
+        '''
+        Return hashed password
+        '''
+        cleartext = self.getCleartextPassword()
+        if cleartext is not None:
+            return self.cryptic.hashify(cleartext)
+        else:
+            return None
+            
     '''
     Additional validations - 
     1. Spine ASN less then leaf ASN
@@ -206,7 +232,7 @@ class Device(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     name = Column(String(100))
     username = Column(String(100))
-    password = Column(String(100))
+    encryptedPassword = Column(String(100)) # 2-way encrypted
     role = Column(String(32))
     macAddress = Column(String(32))
     managementIp = Column(String(32))
@@ -221,8 +247,10 @@ class Device(ManagedElement, Base):
     config = Column(BLOB)
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
-        
-    def __init__(self, name, family, username, password, role, mac, mgmtIp, pod):
+    deployed = Column(Boolean, default=True)
+    cryptic = Cryptic()
+                
+    def __init__(self, name, family, username, password, role, mac, mgmtIp, pod, deployed=True):
         '''
         Creates Device object.
         '''
@@ -230,12 +258,44 @@ class Device(ManagedElement, Base):
         self.name = name
         self.family = family
         self.username = username
-        self.password = password
+        if password is not None and len(password) > 0:
+            self.encryptedPassword = self.cryptic.encrypt(password)
         self.role = role
         self.macAddress = mac
         self.managementIp = mgmtIp
         self.pod = pod
-               
+        self.deployed = deployed
+    
+    def update(self, name, username, password, mac, deployed=True):
+        '''
+        Updates Device object.
+        '''
+        self.name = name
+        self.username = username
+        if password is not None and len(password) > 0:
+            self.encryptedPassword = self.cryptic.encrypt(password)
+        self.macAddress = mac
+        self.deployed = deployed
+        
+    def getCleartextPassword(self):
+        '''
+        Return decrypted password
+        '''
+        if self.encryptedPassword is not None and len(self.encryptedPassword) > 0:
+            return self.cryptic.decrypt(self.encryptedPassword)
+        else:
+            return self.pod.getCleartextPassword()
+            
+    def getHashPassword(self):
+        '''
+        Return hashed password
+        '''
+        cleartext = self.getCleartextPassword()
+        if cleartext is not None:
+            return self.cryptic.hashify(cleartext)
+        else:
+            return None
+            
 class Interface(ManagedElement, Base):
     __tablename__ = 'interface'
     id = Column(String(60), primary_key=True)
@@ -251,18 +311,24 @@ class Interface(ManagedElement, Base):
     peer = relationship('Interface', foreign_keys=[peer_id], uselist=False, post_update=True, )
     layer_below_id = Column(String(60), ForeignKey('interface.id'))
     layerAboves = relationship('Interface', foreign_keys=[layer_below_id])
+    deployed = Column(Boolean, default=True)
+    __table_args__ = (
+        UniqueConstraint('device_id', 'name', name='_device_id_name_uc'),
+        UniqueConstraint('device_id', 'name_order_num', name='_device_id_name_order_num_uc'),
+    )
 
     __mapper_args__ = {
         'polymorphic_identity':'interface',
         'polymorphic_on':type
     }
         
-    def __init__(self, name, device):
+    def __init__(self, name, device, deployed=True):
         self.id = str(uuid.uuid4())
         self.name = name
         self.device = device
         if name.split('/')[-1].isdigit():
             self.name_order_num = int(name.split('/')[-1])
+        self.deployed = deployed
         
 class InterfaceLogical(Interface):
     __tablename__ = 'IFL'
@@ -274,13 +340,13 @@ class InterfaceLogical(Interface):
         'polymorphic_identity':'logical',
     }
     
-    def __init__(self, name, device, ipaddress=None, mtu=0):
+    def __init__(self, name, device, ipaddress=None, mtu=0, deployed=True):
         '''
         Creates Logical Interface object.
         ipaddress is optional so that it can be allocated later
         mtu is optional, default value is taken from global setting
         '''
-        super(InterfaceLogical, self).__init__(name, device)
+        super(InterfaceLogical, self).__init__(name, device, deployed)
         self.ipaddress = ipaddress
         self.mtu = mtu
 
@@ -295,7 +361,7 @@ class InterfaceDefinition(Interface):
         'polymorphic_identity':'physical',
     }
 
-    def __init__(self, name, device, role, mtu=0):
-        super(InterfaceDefinition, self).__init__(name, device)
+    def __init__(self, name, device, role, mtu=0, deployed=True):
+        super(InterfaceDefinition, self).__init__(name, device, deployed)
         self.mtu = mtu
         self.role = role

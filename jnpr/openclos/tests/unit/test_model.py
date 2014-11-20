@@ -30,7 +30,7 @@ def createPodObj(name):
     pod['leafAS'] = '100'
     pod['topologyType'] = 'threeStage'
     pod['inventory'] = 'inventoryLabKurt.json'
-    return Pod(name, **pod)
+    return Pod(name, pod)
 
 def createPod(name, session):  
     pod = createPodObj(name)
@@ -99,14 +99,14 @@ class TestPod(TestOrm):
         pod['leafAS'] = '100'
         pod['topologyType'] = 'threeStage'
         pod['inventory'] = 'inventoryLabKurt.json'
-        pod = Pod("test", **pod)
+        pod = Pod("test", pod)
         
         pod.validate()
   
     def testPodValidateMisingAllRequiredFields(self):
         pod = {}
         with self.assertRaises(ValueError) as ve:
-            pod = Pod('testPod', **pod)
+            pod = Pod('testPod', pod)
             pod.validateRequiredFields()
         error = ve.exception.message
         self.assertEqual(11, error.count(','))
@@ -116,7 +116,7 @@ class TestPod(TestOrm):
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['leafAS'] = '100'
         with self.assertRaises(ValueError) as ve:
-            pod = Pod('testPod', **pod)
+            pod = Pod('testPod', pod)
             pod.validateRequiredFields()
         error = ve.exception.message
         self.assertEqual(9, error.count(','), 'Number of missing field is not correct')
@@ -128,7 +128,7 @@ class TestPod(TestOrm):
         pod['managementPrefix'] = '172.32.30.101/24'
         pod['loopbackPrefix'] = None
         with self.assertRaises(ValueError) as ve:
-            pod = Pod('testPod', **pod)
+            pod = Pod('testPod', pod)
             pod.validateIPaddr()
         error = ve.exception.message
         self.assertEqual(2, error.count(','), 'Number of bad Ip address format field is not correct')
@@ -143,7 +143,7 @@ class TestPod(TestOrm):
 
         pod = {}
         pod['spineCount'] = '5'
-        pod = Pod('name', **pod)
+        pod = Pod('name', pod)
         self.assertEqual(3, pod.leafUplinkcountMustBeUp)
 
     def testConstructorPass(self):
@@ -163,7 +163,7 @@ class TestPod(TestOrm):
         pod['outOfBandAddressList'] = ['1.2.3.4', '5.6.7.8']
         pod['outOfBandGateway'] = '1.3.5.254'
         
-        constructedPod = Pod('testPod', **pod) 
+        constructedPod = Pod('testPod', pod) 
         self.assertTrue(constructedPod is not None)
         self.assertEqual(','.join(['1.2.3.4', '5.6.7.8']), constructedPod.outOfBandAddressList)
         self.assertEqual('1.3.5.254', constructedPod.outOfBandGateway)
@@ -184,7 +184,7 @@ class TestPod(TestOrm):
         pod['topologyType'] = 'threeStage'
         pod['inventory'] = 'inventoryLabKurt.json'
         pod['outOfBandAddressList'] = ['1.2.3.4', '5.6.7.8']
-        podOne = Pod('testPod', **pod)
+        podOne = Pod('testPod', pod)
         self.session.add(podOne)
         self.session.commit()
         

@@ -76,7 +76,7 @@ class TestCablingPlanWriter(TestWriterBase):
         testDeviceTopology.write_raw(path)
         data = open(path, 'r').read()
         #check the generated label for device
-        self.assertTrue('"preethi-1" [shape=record, label=Preethi];' in data)
+        self.assertTrue('"preethi-1"' in data and 'label=Preethi' in data)
 
     def testcreateLinksInGraph(self):
         testLinksInTopology = pydot.Dot(graph_type='graph')
@@ -109,66 +109,6 @@ class TestCablingPlanWriter(TestWriterBase):
         session = self.dao.Session()
         pod = createPod('pod1', session)
         cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
-        deviceOne = Device('spine01','qfx-5100-24q-2p', 'admin', 'admin',  'spine', "", "", pod)
-        session.add(deviceOne)
-        IF1 = InterfaceDefinition('et-0/0/0', deviceOne, 'downlink')
-        IFL1 = InterfaceLogical('et-0/0/0', deviceOne, '1.2.3.4', 9000)
-        IF1.layerAboves.append(IFL1)
-        session.add(IF1)
-        session.add(IFL1)
-        IF2 = InterfaceDefinition('et-0/0/1', deviceOne, 'downlink')
-        IFL2 = InterfaceLogical('et-0/0/1', deviceOne, '1.2.3.4', 9000)
-        IF2.layerAboves.append(IFL2)
-        session.add(IF2)
-        session.add(IFL1)
-        
-        deviceTwo = Device('leaf01','qfx-5100-48s-6q', 'admin', 'admin',  'leaf', "", "", pod)
-        session.add(deviceTwo)
-        IF21 = InterfaceDefinition('et-0/0/13', deviceTwo, 'uplink')
-        IFL21 = InterfaceLogical('et-0/0/13', deviceTwo, '1.2.3.4', 9000)
-        IF21.layerAboves.append(IFL21)
-        session.add(IF21)
-        session.add(IFL21)
-        IF22 = InterfaceDefinition('et-0/0/13', deviceTwo, 'uplink')
-        IFL22 = InterfaceLogical('et-0/0/14', deviceTwo, '1.2.3.4', 9000)
-        IF22.layerAboves.append(IFL22)
-        session.add(IF22)
-        session.add(IFL22)
-        IF23 = InterfaceDefinition('et-0/0/14', deviceTwo, 'downlink')
-        IFL23 = InterfaceLogical('et-0/0/15', deviceTwo, '1.2.3.4', 9000)
-        IF23.layerAboves.append(IFL23)
-        session.add(IF23)
-        session.add(IFL23)
-        IF24 = InterfaceDefinition('et-0/0/15', deviceTwo, 'downlink')
-        IFL24 = InterfaceLogical('et-0/0/15', deviceTwo, '1.2.3.4', 9000)
-        IF24.layerAboves.append(IFL24)
-        session.add(IF24)
-        session.add(IFL24)
-        
-        deviceThree = Device('Access01', 'qfx-5100-48s-6q','admin', 'admin',  'leaf', "", "", pod)
-        session.add(deviceThree)
-        IF31 = InterfaceDefinition('et-0/0/1', deviceThree, 'uplink')
-        IFL31 = InterfaceLogical('et-0/0/1', deviceThree, '1.2.3.4', 9000)
-        IF31.layerAboves.append(IFL31)
-        session.add(IF31)
-        session.add(IFL31)
-        IF32 = InterfaceDefinition('et-0/0/2', deviceThree, 'uplink')
-        IFL32 = InterfaceLogical('et-0/0/2', deviceThree, '1.2.3.4', 9000)
-        IF32.layerAboves.append(IFL32)
-        session.add(IF32)
-        session.add(IFL2)
-        
-        IF1.peer = IF21
-        IF2.peer = IF22
-        IF21.peer = IF1
-        IF22.peer = IF2
-        IF23.peer = IF31
-        IF31.peer = IF23
-        IF24.peer = IF32
-        IF32.peer = IF24   
-        
-        session.commit()
-        devices = session.query(Device).all()
         #check the DOT file is generated
         cablingPlanWriter.writeDOT()
         data = open(cablingPlanWriter.outputDir + '/cablingPlan.dot', 'r').read()

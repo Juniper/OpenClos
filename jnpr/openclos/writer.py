@@ -107,7 +107,7 @@ class CablingPlanWriter(WriterBase):
         devices = []
         links = []
         for device in self.pod.devices:
-            devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason})
+            devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployed': device.deployed})
             if device.role == 'leaf':
                 leafPeerPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
                 .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
@@ -211,9 +211,15 @@ class CablingPlanWriter(WriterBase):
                     
         if label.endswith('|'):
             label = label[:-1]
-            label += '}|{' + device.name + "\{" +device.family + "\}" + '}|{'
+            if device.deployed == True:
+                label += '}|{' + device.name + "\{" +device.family + "\}" + '}|{'
+            else:
+                label += '}|{' + device.name + '}|{'
         else:
-            label += device.name + "\{" +device.family + "\}" + '}|{'
+            if device.deployed == True:
+                label += device.name + "\{" +device.family + "\}" + '}|{'
+            else:
+                label += device.name + '}|{'
             
         for ifd in device.interfaces:
             if type(ifd) is InterfaceDefinition:
@@ -232,8 +238,11 @@ class CablingPlanWriter(WriterBase):
 
     def createDeviceInGraph(self, labelStrs, device, testDeviceLabel):
         #create device in DOT graph
-        testDeviceLabel.add_node(pydot.Node(device.id, shape='record', label= labelStrs))
-            
+        if device.deployed == True:
+            testDeviceLabel.add_node(pydot.Node(device.id, shape='record', style='filled', color='green', label= labelStrs))
+        else:
+            testDeviceLabel.add_node(pydot.Node(device.id, shape='record', style='filled', color='red',  label= labelStrs))
+        
     def createLabelForLinks(self, device):
         links = {}
                       

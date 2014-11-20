@@ -13,6 +13,8 @@ import logging
 import util
 import signal
 import sys
+import concurrent.futures
+from devicePlugin import TwoStageConfigurator 
 
 moduleName = 'trapd'
 logging.basicConfig()
@@ -21,54 +23,62 @@ logger.setLevel(logging.DEBUG)
 
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 20162
+DEFAULT_MAX_THREADS = 10
 
 trapReceiver = None
 
 def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
-    while wholeMsg:
-        msgVer = int(api.decodeMessageVersion(wholeMsg))
-        if msgVer in api.protoModules:
-            pMod = api.protoModules[msgVer]
-        else:
-            logger.error('Unsupported SNMP version %s' % msgVer)
-            return
-        reqMsg, wholeMsg = decoder.decode(
-            wholeMsg, asn1Spec=pMod.Message(),
-            )
-        logger.info('Notification message from %s:%s: ' % (
-            transportDomain, transportAddress
-            )
-        )
-        reqPDU = pMod.apiMessage.getPDU(reqMsg)
-        if reqPDU.isSameTypeWith(pMod.TrapPDU()):
-            if msgVer == api.protoVersion1:
-                logger.debug('Enterprise: %s' % (
-                    pMod.apiTrapPDU.getEnterprise(reqPDU).prettyPrint()
-                    )
-                )
-                logger.debug('Agent Address: %s' % (
-                    pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint()
-                    )
-                )
-                logger.debug('Generic Trap: %s' % (
-                    pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint()
-                    )
-                )
-                logger.debug('Specific Trap: %s' % (
-                    pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint()
-                    )
-                )
-                logger.debug('Uptime: %s' % (
-                    pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint()
-                    )
-                )
-                varBinds = pMod.apiTrapPDU.getVarBindList(reqPDU)
+    # don't even log the trap PDU unless we are at DEBUG level
+    if logger.isEnabledFor(logging.DEBUG):
+        while wholeMsg:
+            msgVer = int(api.decodeMessageVersion(wholeMsg))
+            if msgVer in api.protoModules:
+                pMod = api.protoModules[msgVer]
             else:
-                varBinds = pMod.apiPDU.getVarBindList(reqPDU)
-            logger.debug('Var-binds:')
-            for oid, val in varBinds:
-                logger.debug('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
-    return wholeMsg
+                logger.error('Unsupported SNMP version %s' % msgVer)
+                return
+            reqMsg, wholeMsg = decoder.decode(
+                wholeMsg, asn1Spec=pMod.Message(),
+                )
+            logger.info('Notification message from %s: ' % (
+                transportAddress
+                )
+            )
+            reqPDU = pMod.apiMessage.getPDU(reqMsg)
+            if reqPDU.isSameTypeWith(pMod.TrapPDU()):
+                if msgVer == api.protoVersion1:
+                    logger.debug('Enterprise: %s' % (
+                        pMod.apiTrapPDU.getEnterprise(reqPDU).prettyPrint()
+                        )
+                    )
+                    logger.debug('Agent Address: %s' % (
+                        pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint()
+                        )
+                    )
+                    logger.debug('Generic Trap: %s' % (
+                        pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint()
+                        )
+                    )
+                    logger.debug('Specific Trap: %s' % (
+                        pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint()
+                        )
+                    )
+                    logger.debug('Uptime: %s' % (
+                        pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint()
+                        )
+                    )
+                    varBinds = pMod.apiTrapPDU.getVarBindList(reqPDU)
+                else:
+                    varBinds = pMod.apiPDU.getVarBindList(reqPDU)
+                logger.debug('Var-binds:')
+                for oid, val in varBinds:
+                    logger.debug('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
+                    
+    # start the 2-stage configuration in a separate thread
+    if trapReceiver is not None:
+        logger.debug("Starting 2-stage configuration for device '%s'..." % (transportAddress[0]))
+        configurator = TwoStageConfigurator(transportAddress[0])
+        trapReceiver.executor.submit(configurator.start2StageConfiguration)        
 
 class TrapReceiver():
     def __init__(self, conf = {}):
@@ -93,6 +103,11 @@ class TrapReceiver():
             self.port = int(self.conf['snmpTrap']['openclos_trap_group']['port'])
         else:
             logger.info("snmpTrap:openclos_trap_group:port is missing from configuration. using %d" % (self.port))                
+            
+        if 'snmpTrap' in self.conf and 'threadCount' in self.conf['snmpTrap']:
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self.conf['snmpTrap']['threadCount'])
+        else:
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = DEFAULT_MAX_THREADS)
        
     def threadFunction(self):
         self.transportDispatcher = AsynsockDispatcher()
@@ -123,6 +138,7 @@ class TrapReceiver():
 
     def stop(self):
         logger.info("Stopping trap receiver...")
+        self.executor.shutdown()
         self.transportDispatcher.jobFinished(1)  
         self.thread.join()
         logger.info("Trap receiver stopped")

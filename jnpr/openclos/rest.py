@@ -70,7 +70,7 @@ class RestServer():
 
     def start(self):
         logger.info('REST server started at %s:%d' % (self.host, self.port))
-        bottle.run(self.app, host=self.host, port=self.port)
+        bottle.run(self.app, host=self.host, port=self.port, debug=self.conf.get('debugRest', False))
 
     @staticmethod
     @error(400)
@@ -154,6 +154,7 @@ class RestServer():
             ipFabric['spineCount'] = IpFabrics[i]['spineCount']
             ipFabric['leafDeviceType'] = IpFabrics[i]['leafDeviceType']
             ipFabric['leafCount'] = IpFabrics[i]['leafCount']
+            ipFabric['devicePassword'] = IpFabrics[i]['devicePassword']
             listOfIpFbarics.append(ipFabric)
         ipFabricsData['ipFabric'] =  listOfIpFbarics
         ipFabricsData['total'] = len(listOfIpFbarics)
@@ -165,26 +166,39 @@ class RestServer():
             requestUrl = bottle.request.url
         ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
+            outputDict = {} 
             devices = ipFabric.devices
+            outputDict['id'] = ipFabric.id
+            outputDict['name'] = ipFabric.name
+            outputDict['description'] = ipFabric.description 
+            outputDict['spineAS'] = ipFabric.spineAS
+            outputDict['spineDeviceType'] = ipFabric.spineDeviceType
+            outputDict['spineCount'] = ipFabric.spineCount
+            outputDict['leafAS'] = ipFabric.leafAS
+            outputDict['leafDeviceType'] = ipFabric.leafDeviceType
+            outputDict['leafCount'] = ipFabric.leafCount
+            outputDict['loopbackPrefix'] = ipFabric.loopbackPrefix 
+            outputDict['vlanPrefix'] = ipFabric.vlanPrefix
+            outputDict['interConnectPrefix'] = ipFabric.interConnectPrefix 
+            outputDict['managementPrefix'] = ipFabric.managementPrefix
+            outputDict['outOfBandAddressList'] = ipFabric.outOfBandAddressList
+            outputDict['outOfBandGateway'] = ipFabric.outOfBandGateway 
+            outputDict['topologyType'] = ipFabric.topologyType
+            outputDict['spineJunosImage'] = ipFabric.spineJunosImage
+            outputDict['leafJunosImage'] = ipFabric.leafJunosImage 
+            outputDict['devicePassword'] = ipFabric.getCleartextPassword()
+            outputDict['state'] = ipFabric.state
+            outputDict['uri'] = requestUrl
+            outputDict['devices'] = {'uri': requestUrl + '/devices', 'total':len(devices)}
+            outputDict['cablingPlan'] = {'uri': requestUrl + '/cabling-plan'}
+            outputDict['deviceConfiguration'] = {'uri': requestUrl + '/device-configuration'}
+            outputDict['ztpConfiguration'] = {'uri': requestUrl + '/ztp-configuration'}
+            outputDict['l2Report'] = {'uri': requestUrl + '/l2-report'}
+            outputDict['l3Report'] = {'uri': requestUrl + '/l3-report'}
             
-            #Detaching the object from session
-            session = Session.object_session(ipFabric)
-            session.expunge(ipFabric)
-            ipFabric.__dict__.pop('_sa_instance_state')
-            ipFabric.__dict__.pop('inventoryData')
-            ipFabric.__dict__.pop('leafGenericConfig')
-            ipFabric.__dict__['uri'] = requestUrl
-            ipFabric.__dict__['devices'] = {'uri': requestUrl + '/devices', 'total':len(devices)}
-            ipFabric.__dict__['cablingPlan'] = {'uri': requestUrl + '/cabling-plan'}
-            ipFabric.__dict__['deviceConfiguration'] = {'uri': requestUrl + '/device-configuration'}
-            ipFabric.__dict__['ztpConfiguration'] = {'uri': requestUrl + '/ztp-configuration'}
-            ipFabric.__dict__['l2Report'] = {'uri': requestUrl + '/l2-report'}
-            ipFabric.__dict__['l3Report'] = {'uri': requestUrl + '/l3-report'}
-
             logger.debug('getIpFabric: %s' % (ipFabricId))
-            #return json.dumps(ipFabric.__dict__)
          
-            return {'ipFabric': ipFabric.__dict__}
+            return {'ipFabric': outputDict}
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
@@ -269,19 +283,17 @@ class RestServer():
         listOfDevices = []
         ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
-            #devicesObject = ipFabric.devices
-            
-            session = Session.object_session(ipFabric)
             for device in ipFabric.devices:
-                session.expunge(device)
-                device.__dict__.pop('_sa_instance_state')
-                device.__dict__.pop('username')
-                device.__dict__.pop('asn')
-                device.__dict__.pop('password')
-                device.__dict__.pop('pod_id')
-                device.__dict__.pop('config')
-                device.__dict__['uri'] = bottle.request.url + '/' +device.id
-                listOfDevices.append(device.__dict__)
+                outputDict = {}
+                outputDict['id'] = device.id
+                outputDict['name'] = device.name
+                outputDict['role'] = device.role
+                outputDict['family'] = device.family
+                outputDict['macAddress'] = device.macAddress
+                outputDict['managementIp'] = device.managementIp
+                outputDict['deployed'] = device.deployed
+                outputDict['uri'] = bottle.request.url + '/' +device.id
+                listOfDevices.append(outputDict)
             devices['device'] = listOfDevices
             devices['uri'] = bottle.request.url
             devices['total'] = len(ipFabric.devices)
@@ -301,16 +313,28 @@ class RestServer():
         ipFbaricUri = "/".join(uri)
                
         if device is not None:
+            outputDict = {}
+            outputDict['id'] = device.id
+            outputDict['name'] = device.name
+            outputDict['role'] = device.role
+            outputDict['family'] = device.family
+            outputDict['username'] = device.username
+            outputDict['password'] = device.getCleartextPassword()
+            outputDict['macAddress'] = device.macAddress
+            outputDict['managementIp'] = device.managementIp
+            outputDict['asn'] = device.asn
+            outputDict['configStatus'] = device.configStatus
+            outputDict['configStatusReason'] = device.configStatusReason
+            outputDict['l2Status'] = device.l2Status
+            outputDict['l2StatusReason'] = device.l2StatusReason
+            outputDict['l3Status'] = device.l3Status
+            outputDict['l3StatusReason'] = device.l3StatusReason
+            outputDict['deployed'] = device.deployed
+            outputDict['uri'] = bottle.request.url
+            outputDict['pod'] = {'uri': ipFbaricUri }
+            outputDict['config'] = {'uri': bottle.request.url + '/config' }
             
-            session = Session.object_session(device)
-            session.expunge(device)
-            device.__dict__.pop('_sa_instance_state')
-            device.__dict__.pop('pod_id')
-            device.__dict__['uri'] = bottle.request.url
-            device.__dict__['pod'] = {'uri': ipFbaricUri }
-            device.__dict__['config'] = {'uri': bottle.request.url + '/config' }
-         
-            return {'device': device.__dict__}
+            return {'device': outputDict}
         else:
             logger.debug("device with id: %s not found" % (deviceId))
             raise bottle.HTTPError(404, "device with id: %s not found" % (deviceId))  
@@ -511,6 +535,7 @@ class RestServer():
         ipFabric['managementPrefix'] = podDict.get('managementPrefix')
         ipFabric['hostOrVmCountPerLeaf'] = podDict.get('hostOrVmCountPerLeaf')
         ipFabric['description'] = podDict.get('description')
+        ipFabric['devicePassword'] = podDict.get('devicePassword')
 
         return ipFabric
 
@@ -530,7 +555,7 @@ class RestServer():
             temp['macAddress'] = device.get('macAddress')
             temp['role'] = device.get('role')
             temp['username'] = device.get('username')
-            temp['password'] = device.get('username')
+            temp['password'] = device.get('password')
             if temp['role'] == 'spine':
                 spines.append(temp)
             elif temp['role'] == 'leaf':

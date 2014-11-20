@@ -89,12 +89,13 @@ class DeviceDataCollectorNetconf(object):
         '''
         if self.device.managementIp == None or self.device.username == None:
             raise ValueError('Device: %s, ip: %s, username: %s' % (self.device.id, self.device.managementIp, self.device.username))
-        if self.device.password == None:
+        cleartext = self.device.getCleartextPassword()
+        if cleartext == None:
             raise ValueError('Device: %s, password is None' % (self.device.id))
         
         try:
             deviceIp = self.device.managementIp.split('/')[0]
-            deviceConnection = DeviceConnection(host=deviceIp, user=self.device.username, password=self.device.password)
+            deviceConnection = DeviceConnection(host=deviceIp, user=self.device.username, password=cleartext)
             deviceConnection.open()
             logger.debug('Connected to device: %s' % (self.device.managementIp))
             self.deviceConnectionHandle = deviceConnection
@@ -254,7 +255,7 @@ class TwoStageConfigurator(L2DataCollector):
 
     def manualInit(self):
         super(TwoStageConfigurator, self).manualInit()
-        #TODO get password from some config
+        # for real device the password is coming from pod
         tmpDevice = Device('tmpZtpDiscovered', None, 'root', 'Embe1mpls', 'leaf', None, self.deviceIp, None)
         tmpDevice.id = self.deviceIp
         self.updateSelfDeviceContext(tmpDevice)
@@ -413,10 +414,12 @@ class TwoStageConfigurator(L2DataCollector):
         except CommitError as exc:
             #TODO: eznc Error handling is not giving helpful error message
             logger.error('updateDeviceConfiguration failed for %s, CommitError: %s, %s, %s' % (self.deviceLogStr, exc, exc.errs, exc.rpc_error))
+            configurationUnit.rollback() 
             raise DeviceError(exc)
         except Exception as exc:
             logger.error('updateDeviceConfiguration failed for %s, %s' % (self.deviceLogStr, exc))
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
+            configurationUnit.rollback() 
             raise DeviceError(exc)
 
         finally:
