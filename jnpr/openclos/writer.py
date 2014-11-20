@@ -103,10 +103,12 @@ class CablingPlanWriter(WriterBase):
         elif self.pod.topologyType == 'fiveStagePerformance':
             return self.writeJSONFiveStagePerformance()
 
-    def getDataFor3StageCablingPlan(self):            
+    def getDataFor3StageCablingPlan(self, deployedOnly=False):            
         devices = []
         links = []
         for device in self.pod.devices:
+            if deployedOnly == True and device.deployed == False:
+                continue
             devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployed': device.deployed})
             if device.role == 'leaf':
                 leafPeerPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
@@ -125,7 +127,7 @@ class CablingPlanWriter(WriterBase):
         This method will be called by REST layer
         :returns str:cablingPlan in json format.
         '''
-        data = self.getDataFor3StageCablingPlan()
+        data = self.getDataFor3StageCablingPlan(False)
         cablingPlanJson = self.template.render(devices = data['devices'], links = data['links'])
         return cablingPlanJson
     
@@ -142,7 +144,7 @@ class CablingPlanWriter(WriterBase):
         This method will be called by REST layer
         :returns str: l2Report in json format.
         '''
-        data = self.getDataFor3StageCablingPlan()
+        data = self.getDataFor3StageCablingPlan(True)
         l2ReportJson = self.l2ReportTemplate.render(devices = data['devices'], links = data['links'])
         return l2ReportJson
     
