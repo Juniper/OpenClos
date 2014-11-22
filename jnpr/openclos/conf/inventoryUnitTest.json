@@ -1,0 +1,9 @@
+{   "spines" : [
+       { "name" : "spine-01", "macAddress" : "10:0e:7e:af:35:41", "username": "root", "password": "Embe1mpls", "deployStatus" : "deploy" },
+       { "name" : "spine-02", "macAddress" : "10:0e:7e:af:50:c1", "username": "root", "password": "Embe1mpls", "deployStatus" : "deploy" }
+    ],
+    "leafs" : [
+       { "name" : "leaf-01", "macAddress" : "88:e0:f3:1c:d6:01", "username": "root", "password": "Embe1mpls", "deployStatus" : "deploy" },
+       { "name" : "leaf-02", "macAddress" : "10:0e:7e:b8:9d:01", "username": "root", "password": "Embe1mpls", "deployStatus" : "deploy" }
+    ]
+}

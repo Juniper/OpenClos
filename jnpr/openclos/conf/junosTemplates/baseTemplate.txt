@@ -1,4 +1,5 @@
 system {
+    host-name "{{hostName}}";
     time-zone America/Los_Angeles;
     root-authentication {
         encrypted-password "{{hashedPassword}}"; ## SECRET-DATA

@@ -85,9 +85,9 @@ DOT :
 # HttpServer for REST and ZTP.
 # To make ZTP work the port has to be 80. IpAddr specified here
 # is used to populate dhcpd.conf fot ZTP. If no address is provided
-# REST will start at localhost, but ZTP process would not work
+# REST will start at 0.0.0.0
 httpServer :
-    ipAddr : 
+    ipAddr : 0.0.0.0
     port : 80
 
 # Number of threads used to communicate with devices
