@@ -120,7 +120,12 @@ class Pod(ManagedElement, Base):
         if 'topologyType' in podDict:
             self.topologyType = podDict.get('topologyType')
         if 'outOfBandAddressList' in podDict:
-            addressList = podDict.get('outOfBandAddressList')
+            addressList = []
+            outOfBandAddressList = podDict.get('outOfBandAddressList')
+            if isinstance(outOfBandAddressList, list) == True:
+                addressList = outOfBandAddressList
+            else:
+                addressList.append(outOfBandAddressList)
             self.outOfBandAddressList = ','.join(addressList)
             podDict.pop('outOfBandAddressList')
         if 'outOfBandGateway' in podDict:
@@ -129,11 +134,13 @@ class Pod(ManagedElement, Base):
             self.spineJunosImage = podDict.get('spineJunosImage')
         if 'leafJunosImage' in podDict:
             self.leafJunosImage = podDict.get('leafJunosImage')
-        if 'devicePassword' in podDict:
-            self.encryptedPassword = self.cryptic.encrypt(podDict.get('devicePassword'))
+            
+        devicePassword = podDict.get('devicePassword')
+        if devicePassword is not None and len(devicePassword) > 0:
+            self.encryptedPassword = self.cryptic.encrypt(devicePassword)
         else:
-            self.encryptedPassword = self.cryptic.encrypt('Embe1mpls')
-        
+            raise ValueError("Pod[id='%s', name='%s']: 'devicePassword' cannot be empty or None" % (self.id, self.name))
+            
         if self.state is None:
             self.state = 'unknown'
 
@@ -247,10 +254,10 @@ class Device(ManagedElement, Base):
     config = Column(BLOB)
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
-    deployed = Column(Boolean, default=True)
+    deployStatus = Column(Enum('deploy', 'provision'), default = 'deploy')
     cryptic = Cryptic()
                 
-    def __init__(self, name, family, username, password, role, mac, mgmtIp, pod, deployed=True):
+    def __init__(self, name, family, username, password, role, macAddress, managementIp, pod, deployStatus='deploy'):
         '''
         Creates Device object.
         '''
@@ -261,12 +268,12 @@ class Device(ManagedElement, Base):
         if password is not None and len(password) > 0:
             self.encryptedPassword = self.cryptic.encrypt(password)
         self.role = role
-        self.macAddress = mac
-        self.managementIp = mgmtIp
+        self.macAddress = macAddress
+        self.managementIp = managementIp
         self.pod = pod
-        self.deployed = deployed
-    
-    def update(self, name, username, password, mac, deployed=True):
+        self.deployStatus = deployStatus
+        
+    def update(self, name, username, password, macAddress, deployStatus='deploy'):
         '''
         Updates Device object.
         '''
@@ -274,9 +281,11 @@ class Device(ManagedElement, Base):
         self.username = username
         if password is not None and len(password) > 0:
             self.encryptedPassword = self.cryptic.encrypt(password)
-        self.macAddress = mac
-        self.deployed = deployed
-        
+        self.macAddress = macAddress
+        self.deployStatus = deployStatus
+        for interface in self.interfaces:
+            interface.deployStatus = deployStatus
+    
     def getCleartextPassword(self):
         '''
         Return decrypted password
@@ -311,7 +320,7 @@ class Interface(ManagedElement, Base):
     peer = relationship('Interface', foreign_keys=[peer_id], uselist=False, post_update=True, )
     layer_below_id = Column(String(60), ForeignKey('interface.id'))
     layerAboves = relationship('Interface', foreign_keys=[layer_below_id])
-    deployed = Column(Boolean, default=True)
+    deployStatus = Column(Enum('deploy', 'provision'), default = 'deploy')
     __table_args__ = (
         UniqueConstraint('device_id', 'name', name='_device_id_name_uc'),
         UniqueConstraint('device_id', 'name_order_num', name='_device_id_name_order_num_uc'),
@@ -322,13 +331,13 @@ class Interface(ManagedElement, Base):
         'polymorphic_on':type
     }
         
-    def __init__(self, name, device, deployed=True):
+    def __init__(self, name, device, deployStatus='deploy'):
         self.id = str(uuid.uuid4())
         self.name = name
         self.device = device
         if name.split('/')[-1].isdigit():
             self.name_order_num = int(name.split('/')[-1])
-        self.deployed = deployed
+        self.deployStatus = deployStatus
         
 class InterfaceLogical(Interface):
     __tablename__ = 'IFL'
@@ -340,13 +349,13 @@ class InterfaceLogical(Interface):
         'polymorphic_identity':'logical',
     }
     
-    def __init__(self, name, device, ipaddress=None, mtu=0, deployed=True):
+    def __init__(self, name, device, ipaddress=None, mtu=0, deployStatus='deploy'):
         '''
         Creates Logical Interface object.
         ipaddress is optional so that it can be allocated later
         mtu is optional, default value is taken from global setting
         '''
-        super(InterfaceLogical, self).__init__(name, device, deployed)
+        super(InterfaceLogical, self).__init__(name, device, deployStatus)
         self.ipaddress = ipaddress
         self.mtu = mtu
 
@@ -361,7 +370,7 @@ class InterfaceDefinition(Interface):
         'polymorphic_identity':'physical',
     }
 
-    def __init__(self, name, device, role, mtu=0, deployed=True):
-        super(InterfaceDefinition, self).__init__(name, device, deployed)
+    def __init__(self, name, device, role, mtu=0, deployStatus='deploy'):
+        super(InterfaceDefinition, self).__init__(name, device, deployStatus)
         self.mtu = mtu
         self.role = role

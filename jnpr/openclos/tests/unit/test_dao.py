@@ -41,7 +41,7 @@ class TestDao(unittest.TestCase):
 
     def testDeleteNonExistingPod(self):
         dao = Dao(self.conf)
-        dict = {}
+        dict = {'devicePassword': 'test'}
         pod = Pod('unknown', dict)
         with self.assertRaises(exc.InvalidRequestError):
             dao.deleteObject(pod)

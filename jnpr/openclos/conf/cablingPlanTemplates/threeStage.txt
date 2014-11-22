@@ -1,7 +1,7 @@
 {
 "cablingPlan": {
   "devices": [
-    {% for device in devices %}    {"id": "{{ device['id'] }}", "name": "{{ device['name'] }}", "family": "{{ device['family'] }}", "role":"{{ device['role'] }}", "deployed":"{{ device['deployed'] }}"}{% if not loop.last %},
+    {% for device in devices %}    {"id": "{{ device['id'] }}", "name": "{{ device['name'] }}", "family": "{{ device['family'] }}", "role":"{{ device['role'] }}", "deployStatus":"{{ device['deployStatus'] }}"}{% if not loop.last %},
     {% endif %}{% endfor %}
   ],
   "links": [

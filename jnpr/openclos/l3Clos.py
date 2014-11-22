@@ -74,23 +74,20 @@ class L3ClosMediation():
         pod.state = 'created'
         self.dao.updateObjects([pod])
 
-        logger.debug("Pod[id='%s', name='%s']: pre allocating inventory and resource..." % (pod.id, pod.name))
-        self.preAllocateSpines(pod)
-        self.preAllocateLeaves(pod)
-        self.createLinkBetweenIfds(pod)
-        self.allocateResource(pod)
-        
         # shortcut for updating in createPod
         # this use case is typical in script invocation but not in ND REST invocation
         self.updatePodData(pod, podDict, inventoryDict)
         
         return pod
 
-    def preAllocateSpines(self, pod):
+    def createSpineIfds(self, pod, spines):
         devices = []
         interfaces = []
-        for i in range(pod.spineCount):
-            device = Device('not deployed', pod.spineDeviceType, "", "", 'spine', '', '', pod, False)
+        for spine in spines:
+            username = spine.get('username')
+            password = spine.get('password')
+            macAddress = spine.get('macAddress')
+            device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, None, pod, spine['deployStatus'])
             devices.append(device)
             
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
@@ -100,11 +97,14 @@ class L3ClosMediation():
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)
         
-    def preAllocateLeaves(self, pod):
+    def createLeafIfds(self, pod, leaves):
         devices = []
         interfaces = []
-        for i in range(pod.leafCount):
-            device = Device('not deployed', pod.leafDeviceType, "", "", 'leaf', '', '', pod, False)
+        for leaf in leaves:
+            username = leaf.get('username')
+            password = leaf.get('password')
+            macAddress = leaf.get('macAddress')
+            device = Device(leaf['name'], pod.leafDeviceType, username, password, 'leaf', macAddress, None, pod, leaf['deployStatus'])
             devices.append(device)
             
             portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
@@ -121,38 +121,22 @@ class L3ClosMediation():
     
     def deployInventory(self, pod, inventory, role):
         for inv in inventory:
-            firstNotDeployed = None
             for device in pod.devices:
-                if device.role == role:
-                    # remember the first "not deployed" device for later use
-                    if firstNotDeployed is None and device.deployed == False:
-                        firstNotDeployed = device
-                    # if we found a matching device, we mark it and all its interfaces back as deployed
-                    # first check id. if id exists, that means we have created this device before
-                    if device.id == inv.get('id') or device.name == inv['name']:
-                        logger.debug("Pod[id='%s', name='%s']: %s device '%s' already deployed" % (pod.id, pod.name, role, inv['name']))
-                        device.deployed = True
-                        for interface in device.interfaces:
-                            interface.deployed = True
-                        break
-            else:
-                # not found. we will claim the first "not deployed" device
-                if firstNotDeployed is not None:
-                    logger.debug("Pod[id='%s', name='%s']: deploying new %s device '%s'" % (pod.id, pod.name, role, inv['name']))
-                    firstNotDeployed.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), True)
-                    for interface in firstNotDeployed.interfaces:
-                        interface.deployed = True
-                else:
-                    logger.debug("Pod[id='%s', name='%s']: could not deploy new %s device' %s': capacity exceeded" % (pod.id, pod.name, role, inv['name']))
-                        
-    def diffInventory(self, pod, podDict, inventoryDict):
-        # Compare new inventory that user provides against old inventory that we stored in the database.
-        # The devices that are in the database but not in the new inventory are deleted from database. 
-        # All referred rows from IFD/IFL/interface are also deleted.
-        # Returns a dictionary containing only the new devices that are not in the database yet.
-        # This dictionary is in the same format as the inventory dictionary
-        inventoryChanged = False
-        
+                # find match by role/id/name
+                if device.role == role and (device.id == inv.get('id') or device.name == inv['name']):
+                    if device.deployStatus == inv['deployStatus']:
+                        logger.debug("Pod[id='%s', name='%s']: %s device '%s' unchanged" % (pod.id, pod.name, device.role, device.name))
+                    elif device.deployStatus == 'deploy' and inv['deployStatus'] == 'provision':
+                        logger.debug("Pod[id='%s', name='%s']: %s device '%s' provisioned" % (pod.id, pod.name, device.role, device.name))
+                        device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv['deployStatus'])
+                    elif device.deployStatus == 'provision' and inv['deployStatus'] == 'deploy':
+                        logger.debug("Pod[id='%s', name='%s']: %s device '%s' deployed" % (pod.id, pod.name, device.role, device.name))
+                        device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv['deployStatus'])
+                       
+    def resolveInventory(self, podDict, inventoryDict):
+        if podDict is None:
+            raise ValueError("Pod[id='%s', name='%s']: podDict cannot be None" % (pod.id, pod.name))
+            
         # typical use case for ND REST invocation is to provide an non-empty inventoryDict
         # typical use case for script invocation is to provide an non-empty podDict['inventory']
         inventoryData = None
@@ -163,26 +147,95 @@ class L3ClosMediation():
             inventoryData = json.load(json_inventory)
             json_inventory.close()
 
-        # get current inventory stored in database
-        # Note if user does not provide inventory, don't consider inventory has changed
-        if inventoryData is not None:
-            # user provides an inventory. now check the inventory we already have in database
-            if pod.inventoryData is not None:
-                # restored to cleartext JSON format
-                inventoryDataInDb = json.loads(zlib.decompress(base64.b64decode(pod.inventoryData)))
-                if inventoryData != inventoryDataInDb:
-                    inventoryChanged = True
-            else:
-                # the whole inventory is new
-                inventoryChanged = True
+        return inventoryData
+
+    def validateAttribute(self, pod, attr, dct):
+        if dct.get(attr) is None:
+            raise ValueError("Pod[id='%s', name='%s']: device '%s' attribute '%s' cannot be None" % (pod.id, pod.name, dct.get('name'), attr))
+        
+    def validatePod(self, pod, podDict, inventoryData):
+        if inventoryData is None:
+            raise ValueError("Pod[id='%s', name='%s']: inventory cannot be empty" % (pod.id, pod.name))
+        
+        # if following data changed we need to reallocate resource
+        if pod.spineCount != podDict.get('spineCount') or pod.leafCount != podDict.get('leafCount'):
+            raise ValueError("Pod[id='%s', name='%s']: capacity cannot be changed" % (pod.id, pod.name))
+
+        for spine in inventoryData['spines']:
+            self.validateAttribute(pod, 'name', spine)
+            #self.validateAttribute(pod, 'role', spine)
+            #self.validateAttribute(pod, 'family', spine)
+            self.validateAttribute(pod, 'deployStatus', spine)
+            
+        for leaf in inventoryData['leafs']:
+            self.validateAttribute(pod, 'name', leaf)
+            #self.validateAttribute(pod, 'role', leaf)
+            #self.validateAttribute(pod, 'family', leaf)
+            self.validateAttribute(pod, 'deployStatus', leaf)
                 
+        # inventory should contain exact same number of devices as capacity
+        expectedDeviceCount = int(podDict.get('spineCount')) + int(podDict.get('leafCount'))
+        inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
+        if expectedDeviceCount != inventoryDeviceCount:
+            raise ValueError("Pod[id='%s', name='%s']: inventory device count %d != capacity %d" % (pod.id, pod.name, inventoryDeviceCount, expectedDeviceCount))
+           
+    def diffInventory(self, pod, inventoryData):
+        # Compare new inventory that user provides against old inventory that we stored in the database.
+        inventoryChanged = True
+        
+        # user provides an inventory. now check the inventory we already have in database
+        if pod.inventoryData is not None:
+            # restored to cleartext JSON format
+            inventoryDataInDb = json.loads(zlib.decompress(base64.b64decode(pod.inventoryData)))
+            if inventoryData == inventoryDataInDb:
+                inventoryChanged = False
+            
         if inventoryChanged == True:
             logger.debug("Pod[id='%s', name='%s']: inventory changed" % (pod.id, pod.name))
             # save the new inventory to database
             pod.inventoryData = base64.b64encode(zlib.compress(json.dumps(inventoryData)))
+
+            # deploy the new devices and undeploy deleted devices
+            self.deployInventory(pod, inventoryData['spines'], 'spine')
+            self.deployInventory(pod, inventoryData['leafs'], 'leaf')
         else:
             logger.debug("Pod[id='%s', name='%s']: inventory not changed" % (pod.id, pod.name))
+
+    def needToRebuild(self, pod, podDict):
+        if pod.spineDeviceType != podDict.get('spineDeviceType') or \
+           pod.leafDeviceType != podDict.get('leafDeviceType') or \
+           pod.interConnectPrefix != podDict.get('interConnectPrefix') or \
+           pod.vlanPrefix != podDict.get('vlanPrefix') or \
+           pod.loopbackPrefix != podDict.get('loopbackPrefix') or \
+           pod.managementPrefix != podDict.get('managementPrefix'):
+            return True
+        else:
+            return False
             
+    def updatePodData(self, pod, podDict, inventoryDict):
+        # inventory can come from either podDict or inventoryDict
+        inventoryData = self.resolveInventory(podDict, inventoryDict)
+        
+        # check inventory contains correct number of devices
+        self.validatePod(pod, podDict, inventoryData)
+        
+        # if following data changed we need to reallocate resource
+        if self.needToRebuild(pod, podDict) == True:
+            logger.debug("Pod[id='%s', name='%s']: rebuilding required" % (pod.id, pod.name))
+            if len(pod.devices) > 0:
+                self.dao.deleteObjects(pod.devices)
+
+        # first time
+        if len(pod.devices) == 0:
+            logger.debug("Pod[id='%s', name='%s']: building inventory and resource..." % (pod.id, pod.name))
+            self.createSpineIfds(pod, inventoryData['spines'])
+            self.createLeafIfds(pod, inventoryData['leafs'])
+            self.createLinkBetweenIfds(pod)
+            self.allocateResource(pod)
+        else:        
+            # compare new inventory that user provides against old inventory that we stored in the database
+            self.diffInventory(pod, inventoryData)
+                
         # update pod itself
         pod.update(pod.id, pod.name, podDict)
         
@@ -190,56 +243,6 @@ class L3ClosMediation():
         pod.state = 'updated'
         self.dao.updateObjects([pod])
             
-        return (inventoryData, inventoryChanged)
-        
-    def updatePodData(self, pod, podDict, inventoryDict):
-        if podDict is None and inventoryDict is None:
-            return 
-            
-        if pod.spineDeviceType != podDict.get('spineDeviceType') or \
-           pod.leafDeviceType != podDict.get('leafDeviceType') or \
-           pod.interConnectPrefix != podDict.get('interConnectPrefix') or \
-           pod.vlanPrefix != podDict.get('vlanPrefix') or \
-           pod.loopbackPrefix != podDict.get('loopbackPrefix') or \
-           pod.managementPrefix != podDict.get('managementPrefix'):
-            # if these data changed we need to clear existing inventory because we need to reallocate resource
-            logger.debug("Pod[id='%s', name='%s']: rebuilding inventory and resource..." % (pod.id, pod.name))
-            if len(pod.devices) > 0:
-                self.dao.deleteObjects(pod.devices)
-            self.preAllocateSpines(pod)
-            self.preAllocateLeaves(pod)
-            self.createLinkBetweenIfds(pod)
-            self.allocateResource(pod)
-        
-        # check if we need to allocate resource for new device 
-        (inventoryData, inventoryChanged) = self.diffInventory(pod, podDict, inventoryDict)
-        if inventoryChanged == True and inventoryData is not None:
-            # first set all devices to be "undeployed"
-            for device in pod.devices:
-                device.deployed = False
-                for interface in device.interfaces:
-                    interface.deployed = False
-            # deploy the new devices and undeploy deleted devices
-            self.deployInventory(pod, inventoryData['spines'], 'spine')
-            self.deployInventory(pod, inventoryData['leafs'], 'leaf')
-            # for all those undeployed devices, mark their names 
-            for device in pod.devices:
-                if device.deployed is False:
-                    # this device was deleted
-                    if device.name != "not deployed":
-                        logger.debug("Pod[id='%s', name='%s']: %s device '%s' undeployed" % (pod.id, pod.name, device.role, device.name))
-                    device.name = "not deployed"
-                    device.username = ""
-                    device.password = ""
-                    device.macAddress = ""
-
-            self.dao.updateObjects(pod.devices)
-            
-        # allocate management IPs only when ztp/configuration process is not staged
-        #if not self.isZtpStaged:
-        #    for leaf, managementIp in zip(inventoryData['leafs'], managementIps[spineCount:]):
-        #        leaf['managementIp'] = managementIp
-
         # TODO move the backup operation to CLI 
         # backup current database
         util.backupDatabase(self.conf)
@@ -259,7 +262,7 @@ class L3ClosMediation():
                 self.updatePodData(pod, podDict, inventoryDict)
                 logger.info("Pod[id='%s', name='%s']: updated" % (pod.id, pod.name)) 
         else:
-            raise ValueError("Pod id can't be None")
+            raise ValueError("Pod id cannot be None")
             
         return pod
     
@@ -277,7 +280,7 @@ class L3ClosMediation():
                 logger.info("Pod[id='%s', name='%s']: deleted" % (pod.id, pod.name)) 
                 self.dao.deleteObject(pod)
         else:
-            raise ValueError("Pod id can't be None")
+            raise ValueError("Pod id cannot be None")
 
     def createCablingPlan(self, podId):
         '''
@@ -306,7 +309,7 @@ class L3ClosMediation():
                 raise ValueError("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
             
         else:
-            raise ValueError("Pod id can't be None") 
+            raise ValueError("Pod id cannot be None") 
             
     def createDeviceConfig(self, podId):
         '''
@@ -331,7 +334,7 @@ class L3ClosMediation():
             else:
                 raise ValueError("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
         else:
-            raise ValueError("Pod id can't be None") 
+            raise ValueError("Pod id cannot be None") 
 
     def createLinkBetweenIfds(self, pod):
         leaves = []
@@ -386,7 +389,11 @@ class L3ClosMediation():
     def allocateManagement(self, pod, managementPrefix, devices):
         managementIps = util.getMgmtIps(managementPrefix, len(devices))
         for device, managementIp in zip(devices, managementIps):
-            device.managementIp = managementIp
+            # for 2stage and leaf, don' fill in management ip
+            if self.isZtpStaged == True and device.role == 'leaf':
+                pass
+            else:
+                device.managementIp = managementIp
         self.dao.updateObjects(devices)
         
     def allocateLoopback(self, pod, loopbackPrefix, devices):
@@ -505,7 +512,7 @@ class L3ClosMediation():
 
     def createBaseConfig(self, device):
         baseTemplate = self.templateEnv.get_template('baseTemplate.txt')
-        return baseTemplate.render(hashedPassword=device.getHashPassword())
+        return baseTemplate.render(hostName=device.name, hashedPassword=device.getHashPassword())
 
     def createInterfaces(self, device): 
         interfaceStanza = self.templateEnv.get_template('interface_stanza.txt')

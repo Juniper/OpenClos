@@ -256,7 +256,7 @@ class TwoStageConfigurator(L2DataCollector):
     def manualInit(self):
         super(TwoStageConfigurator, self).manualInit()
         # for real device the password is coming from pod
-        tmpDevice = Device('tmpZtpDiscovered', None, 'root', 'Embe1mpls', 'leaf', None, self.deviceIp, None)
+        tmpDevice = Device(self.deviceIp, None, 'root', 'Embe1mpls', 'leaf', None, self.deviceIp, None)
         tmpDevice.id = self.deviceIp
         self.updateSelfDeviceContext(tmpDevice)
 

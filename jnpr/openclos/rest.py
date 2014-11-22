@@ -291,7 +291,7 @@ class RestServer():
                 outputDict['family'] = device.family
                 outputDict['macAddress'] = device.macAddress
                 outputDict['managementIp'] = device.managementIp
-                outputDict['deployed'] = device.deployed
+                outputDict['deployStatus'] = device.deployStatus
                 outputDict['uri'] = bottle.request.url + '/' +device.id
                 listOfDevices.append(outputDict)
             devices['device'] = listOfDevices
@@ -329,7 +329,7 @@ class RestServer():
             outputDict['l2StatusReason'] = device.l2StatusReason
             outputDict['l3Status'] = device.l3Status
             outputDict['l3StatusReason'] = device.l3StatusReason
-            outputDict['deployed'] = device.deployed
+            outputDict['deployStatus'] = device.deployStatus
             outputDict['uri'] = bottle.request.url
             outputDict['pod'] = {'uri': ipFbaricUri }
             outputDict['config'] = {'uri': bottle.request.url + '/config' }
@@ -442,7 +442,10 @@ class RestServer():
         ipFabric = self.getPodFromDict(pod)
         ipFabricName = ipFabric.pop('name')
         fabricDevices = self.getDevDictFromDict(pod)
-        fabricId =  l3ClosMediation.createPod(ipFabricName, ipFabric, fabricDevices).id
+        try:
+            fabricId =  l3ClosMediation.createPod(ipFabricName, ipFabric, fabricDevices).id
+        except ValueError as e:
+            raise bottle.HTTPError(400, exception = RestError(0, e.message))
         
         url = bottle.request.url + '/' + fabricId
         ipFabric = self.getIpFabric(fabricId, url)
@@ -556,6 +559,8 @@ class RestServer():
             temp['role'] = device.get('role')
             temp['username'] = device.get('username')
             temp['password'] = device.get('password')
+            temp['family'] = device.get('family')
+            temp['deployStatus'] = device.get('deployStatus')
             if temp['role'] == 'spine':
                 spines.append(temp)
             elif temp['role'] == 'leaf':

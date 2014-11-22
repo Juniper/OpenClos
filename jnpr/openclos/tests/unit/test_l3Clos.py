@@ -47,15 +47,10 @@ class TestL3Clos(unittest.TestCase):
         ''' Deletes 'out' folder under test dir'''
         shutil.rmtree(self.conf['outputDir'], ignore_errors=True)
 
-    def createPodWithoutInventory(self, l3ClosMediation):
-        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24"}
-        pod = l3ClosMediation.createPod('pod1', podDict)
-        return pod
-        
     def createPod(self, l3ClosMediation):
-        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24", "inventory" : "inventoryLabLeafSpine.json"}
+        podDict = {"devicePassword": "Embe1mpls", "hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 2, "interConnectPrefix": "192.168.0.0", "spineCount": 2, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24", "inventory" : "inventoryUnitTest.json"}
         pod = l3ClosMediation.createPod('pod1', podDict)
-        return pod
+        return (pod, podDict)
 
     def testLoadClosDefinition(self):
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -74,47 +69,48 @@ class TestL3Clos(unittest.TestCase):
         l3ClosMediation = L3ClosMediation(self.conf)
         session = l3ClosMediation.dao.Session()
 
-        pod = self.createPod(l3ClosMediation)
+        (pod, podDict) = self.createPod(l3ClosMediation)
         self.assertEqual(1, session.query(Pod).count())
 
     def testUpdatePod(self):
         l3ClosMediation = L3ClosMediation(self.conf)
         session = l3ClosMediation.dao.Session()
         
-        pod = self.createPodWithoutInventory(l3ClosMediation)
-        podDict = {"spineAS": 101}
-        inventoryDict = {"spines" : [{ "name" : "spine-11", "macAddress" : "aa:bb:cc:dd:ee:b1", "managementIp" : "172.32.32.201/24" }], \
-                         "leafs" : [{ "name" : "leaf-11", "macAddress" : "aa:bb:cc:dd:ee:a1", "managementIp" : "172.32.32.101/24" }]}
+        (pod, podDict) = self.createPod(l3ClosMediation)
+        inventoryDict = {
+            "spines" : [
+               { "name" : "spine-01", "macAddress" : "10:0e:7e:af:35:41", "username": "root", "password": "Embe1mpls", "deployStatus": "deploy" },
+               { "name" : "spine-02", "macAddress" : "10:0e:7e:af:50:c1", "username": "root", "password": "Embe1mpls", "deployStatus": "provision" }
+            ],
+            "leafs" : [
+               { "name" : "leaf-01", "macAddress" : "88:e0:f3:1c:d6:01", "username": "root", "password": "Embe1mpls", "deployStatus": "deploy" },
+               { "name" : "leaf-02", "macAddress" : "10:0e:7e:b8:9d:01", "username": "root", "password": "Embe1mpls", "deployStatus": "provision" }
+            ]
+        }
         l3ClosMediation.updatePod(pod.id, podDict, inventoryDict)
 
-        self.assertEqual(10, len(pod.devices))
-        deployedCount = 0
+        self.assertEqual(4, len(pod.devices))
+        deployCount = 0
         for device in pod.devices:
-            if device.deployed == True:
-                deployedCount += 1
-        self.assertEqual(2, deployedCount)
-        self.assertEqual(101, pod.spineAS)
+            if device.deployStatus == "deploy":
+                deployCount += 1
+        self.assertEqual(2, deployCount)
+                
 
     def testUpdatePodInvalidId(self):
-        podDict = {"hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 6, "interConnectPrefix": "192.168.0.0", "spineCount": 4, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200}
         l3ClosMediation = L3ClosMediation(self.conf)
         
         with self.assertRaises(ValueError) as ve:
-            l3ClosMediation.updatePod("invalid_id", podDict, None)
+            l3ClosMediation.updatePod("invalid_id", None)
 
     def testCablingPlanAndDeviceConfig(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        pod = self.createPod(l3ClosMediation)
+        (pod, podDict) = self.createPod(l3ClosMediation)
         self.assertEqual(True, l3ClosMediation.createCablingPlan(pod.id))
         self.assertEqual(True, l3ClosMediation.createDeviceConfig(pod.id))
 
     def createPodSpineLeaf(self, l3ClosMediation):
-        pod = self.createPodWithoutInventory(l3ClosMediation)
-        spineString = u'[{ "name" : "spine-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "managementIp" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "spine-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "managementIp" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
-        l3ClosMediation.deployInventory(pod, json.loads(spineString), 'spine')
-        leafString = u'[{ "name" : "leaf-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "managementIp" : "172.32.32.201/24", "user" : "root", "password" : "Embe1mpls" }, { "name" : "leaf-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "managementIp" : "172.32.32.202/24", "user" : "root", "password" : "Embe1mpls" }]'
-        l3ClosMediation.deployInventory(pod, json.loads(leafString), 'leaf')
-        l3ClosMediation.dao.updateObjects(pod.devices)
+        (pod, podDict) = self.createPod(l3ClosMediation)
         return pod
     
     def testCreateLinks(self):
@@ -141,8 +137,8 @@ class TestL3Clos(unittest.TestCase):
         pod = self.createPodSpineLeaf(l3ClosMediation)
 
         leafSpineDict = l3ClosMediation.getLeafSpineFromPod(pod)
-        self.assertEqual(6, len(leafSpineDict['leafs']))
-        self.assertEqual(4, len(leafSpineDict['spines']))
+        self.assertEqual(2, len(leafSpineDict['leafs']))
+        self.assertEqual(2, len(leafSpineDict['spines']))
         
     def testAllocateLoopback(self):
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -150,10 +146,10 @@ class TestL3Clos(unittest.TestCase):
         session = l3ClosMediation.dao.Session()
     
         ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.name == 'leaf-01').filter(Device.pod_id == pod.id).one()
-        self.assertEqual('10.0.0.5/32', ifl.ipaddress)
+        self.assertEqual('10.0.0.1/32', ifl.ipaddress)
         ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.name == 'spine-02').filter(Device.pod_id == pod.id).one()
-        self.assertEqual('10.0.0.2/32', ifl.ipaddress)
-        self.assertEqual('10.0.0.0/28', pod.allocatedLoopbackBlock)
+        self.assertEqual('10.0.0.4/32', ifl.ipaddress)
+        self.assertEqual('10.0.0.0/29', pod.allocatedLoopbackBlock)
 
     def testAllocateIrb(self):
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -162,7 +158,7 @@ class TestL3Clos(unittest.TestCase):
         
         ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.name == 'leaf-01').filter(Device.pod_id == pod.id).one()
         self.assertEqual('172.16.0.1/24', ifl.ipaddress)
-        self.assertEqual('172.16.0.0/21', pod.allocatedIrbBlock)
+        self.assertEqual('172.16.0.0/23', pod.allocatedIrbBlock)
 
     def testAllocateInterconnect(self):
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -188,7 +184,8 @@ class TestL3Clos(unittest.TestCase):
         
     def testCreatePolicyOptionSpine(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        device = Device("test", "qfx5100-24q-2p", "user", "pwd", "spine", "mac", "mgmtIp", self.createPod(l3ClosMediation))
+        (pod, podDict) = self.createPod(l3ClosMediation)
+        device = Device("test", "qfx5100-24q-2p", "user", "pwd", "spine", "mac", "mgmtIp", pod)
         device.pod.allocatedIrbBlock = '10.0.0.0/28'
         device.pod.allocatedLoopbackBlock = '11.0.0.0/28'
         configlet = l3ClosMediation.createPolicyOption(device)
@@ -200,7 +197,8 @@ class TestL3Clos(unittest.TestCase):
 
     def testCreatePolicyOptionLeaf(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", self.createPod(l3ClosMediation))
+        (pod, podDict) = self.createPod(l3ClosMediation)
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
         device.pod.allocatedIrbBlock = '10.0.0.0/28'
         device.pod.allocatedLoopbackBlock = '11.0.0.0/28'        
         flexmock(l3ClosMediation.dao.Session).should_receive('query.join.filter.filter.one').and_return(InterfaceLogical("test", device, '12.0.0.0/28'))
@@ -288,7 +286,8 @@ class TestL3Clos(unittest.TestCase):
 
     def testCreateRoutingOptionsStatic(self):
         l3ClosMediation = L3ClosMediation(self.conf)
-        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", self.createPod(l3ClosMediation))
+        (pod, podDict) = self.createPod(l3ClosMediation)
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
         device.pod.outOfBandGateway = '10.0.0.254'
         device.pod.outOfBandAddressList = '10.0.10.5/32, 10.0.20.5/32'
 
@@ -304,7 +303,7 @@ class TestL3Clos(unittest.TestCase):
                                  'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
         #self.conf['deploymentMode'] = {'ndIntegrated': True}
         l3ClosMediation = L3ClosMediation(self.conf)
-        pod = self.createPod(l3ClosMediation)        
+        (pod, podDict) = self.createPod(l3ClosMediation)
         pod.outOfBandGateway = '10.0.0.254'
         pod.outOfBandAddressList = '10.0.10.5/32'
         
@@ -319,7 +318,7 @@ class TestL3Clos(unittest.TestCase):
                                  'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
         self.conf['deploymentMode'] = {'ndIntegrated': True}
         l3ClosMediation = L3ClosMediation(self.conf)
-        pod = self.createPod(l3ClosMediation)        
+        (pod, podDict) = self.createPod(l3ClosMediation)
         pod.outOfBandGateway = '10.0.0.254'
         pod.outOfBandAddressList = '10.0.10.5/32'
         
