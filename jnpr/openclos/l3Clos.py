@@ -152,13 +152,53 @@ class L3ClosMediation():
     def validateAttribute(self, pod, attr, dct):
         if dct.get(attr) is None:
             raise ValueError("Pod[id='%s', name='%s']: device '%s' attribute '%s' cannot be None" % (pod.id, pod.name, dct.get('name'), attr))
-        
+    
+    def validateLoopbackPrefix(self, pod, podDict, inventoryData):
+        inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
+        lo0Block = IPNetwork(podDict['loopbackPrefix'])
+        lo0Ips = list(lo0Block.iter_hosts())
+        availableIps = len(lo0Ips)
+        if availableIps < inventoryDeviceCount:
+            raise ValueError("Pod[id='%s', name='%s']: loopbackPrefix available IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
+
+    def validateVlanPrefix(self, pod, podDict, inventoryData):
+        vlanBlock = IPNetwork(podDict['vlanPrefix'])
+        numOfHostIpsPerSwitch = podDict['hostOrVmCountPerLeaf']
+        numOfSubnets = len(inventoryData['leafs'])
+        numOfIps = (numOfSubnets * (numOfHostIpsPerSwitch + 2)) # +2 for network and broadcast
+        numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
+        cidr = 32 - numOfBits
+        if vlanBlock.prefixlen > cidr:
+            raise ValueError("Pod[id='%s', name='%s']: vlanPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, vlanBlock.prefixlen, cidr))
+    
+    def validateInterConnectPrefix(self, pod, podDict, inventoryData):
+        interConnectBlock = IPNetwork(podDict['interConnectPrefix'])
+        numOfIpsPerInterconnect = 2
+        numOfSubnets = len(inventoryData['spines']) * len(inventoryData['leafs'])
+        # no need to add +2 for network and broadcast, as junos supports /31
+        # TODO: it should be configurable and come from property file
+        bitsPerSubnet = int(math.ceil(math.log(numOfIpsPerInterconnect, 2)))    # value is 1  
+        cidrForEachSubnet = 32 - bitsPerSubnet  # value is 31 as junos supports /31
+
+        numOfIps = (numOfSubnets * (numOfIpsPerInterconnect)) # no need to add +2 for network and broadcast
+        numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
+        cidr = 32 - numOfBits
+        if interConnectBlock.prefixlen > cidr:
+            raise ValueError("Pod[id='%s', name='%s']: interConnectPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, interConnectBlock.prefixlen, cidr))
+    
+    def validateManagementPrefix(self, pod, podDict, inventoryData):
+        inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
+        managementIps = util.getMgmtIps(podDict['managementPrefix'], inventoryDeviceCount)
+        availableIps = len(managementIps)
+        if availableIps < inventoryDeviceCount:
+            raise ValueError("Pod[id='%s', name='%s']: managementPrefix avaiable IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
+    
     def validatePod(self, pod, podDict, inventoryData):
         if inventoryData is None:
             raise ValueError("Pod[id='%s', name='%s']: inventory cannot be empty" % (pod.id, pod.name))
         
         # if following data changed we need to reallocate resource
-        if pod.spineCount != podDict.get('spineCount') or pod.leafCount != podDict.get('leafCount'):
+        if pod.spineCount != podDict['spineCount'] or pod.leafCount != podDict['leafCount']:
             raise ValueError("Pod[id='%s', name='%s']: capacity cannot be changed" % (pod.id, pod.name))
 
         for spine in inventoryData['spines']:
@@ -174,11 +214,24 @@ class L3ClosMediation():
             self.validateAttribute(pod, 'deployStatus', leaf)
                 
         # inventory should contain exact same number of devices as capacity
-        expectedDeviceCount = int(podDict.get('spineCount')) + int(podDict.get('leafCount'))
+        expectedDeviceCount = int(podDict['spineCount']) + int(podDict['leafCount'])
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
         if expectedDeviceCount != inventoryDeviceCount:
-            raise ValueError("Pod[id='%s', name='%s']: inventory device count %d != capacity %d" % (pod.id, pod.name, inventoryDeviceCount, expectedDeviceCount))
-           
+            raise ValueError("Pod[id='%s', name='%s']: inventory device count %d does not match capacity %d" % (pod.id, pod.name, inventoryDeviceCount, expectedDeviceCount))
+
+        # validate loopbackPrefix is big enough
+        self.validateLoopbackPrefix(pod, podDict, inventoryData)
+
+        # validate vlanPrefix is big enough
+        self.validateVlanPrefix(pod, podDict, inventoryData)
+        
+        # validate interConnectPrefix is big enough
+        self.validateInterConnectPrefix(pod, podDict, inventoryData)
+        
+        # validate managementPrefix is big enough
+        self.validateManagementPrefix(pod, podDict, inventoryData)
+                
+        
     def diffInventory(self, pod, inventoryData):
         # Compare new inventory that user provides against old inventory that we stored in the database.
         inventoryChanged = True
@@ -379,28 +432,34 @@ class L3ClosMediation():
         return deviceDict
     
     def allocateResource(self, pod):
-        self.allocateManagement(pod, pod.managementPrefix, pod.devices)
         self.allocateLoopback(pod, pod.loopbackPrefix, pod.devices)
         leafSpineDict = self.getLeafSpineFromPod(pod)
         self.allocateIrb(pod, pod.vlanPrefix, leafSpineDict['leafs'])
         self.allocateInterconnect(pod.interConnectPrefix, leafSpineDict['spines'], leafSpineDict['leafs'])
         self.allocateAsNumber(pod.spineAS, pod.leafAS, leafSpineDict['spines'], leafSpineDict['leafs'])
+        self.allocateManagement(pod.managementPrefix, leafSpineDict['spines'], leafSpineDict['leafs'])
         
-    def allocateManagement(self, pod, managementPrefix, devices):
-        managementIps = util.getMgmtIps(managementPrefix, len(devices))
-        for device, managementIp in zip(devices, managementIps):
+    def allocateManagement(self, managementPrefix, spines, leaves):
+        deviceCount = len(spines)+len(leaves)
+        managementIps = util.getMgmtIps(managementPrefix, deviceCount)
+        # don't do partial allocation
+        if len(managementIps) == deviceCount:
+            for spine, managementIp in zip(spines, managementIps[:len(spines)]):
+                spine.managementIp = managementIp
+            self.dao.updateObjects(spines)
+            
             # for 2stage and leaf, don' fill in management ip
-            if self.isZtpStaged == True and device.role == 'leaf':
-                pass
-            else:
-                device.managementIp = managementIp
-        self.dao.updateObjects(devices)
+            if self.isZtpStaged == False:
+                for leaf, managementIp in zip(leaves, managementIps[len(spines):]):
+                    leaf.managementIp = managementIp
+                self.dao.updateObjects(leaves)
         
     def allocateLoopback(self, pod, loopbackPrefix, devices):
+        loopbackIp = IPNetwork(loopbackPrefix).ip
         numOfIps = len(devices) + 2 # +2 for network and broadcast
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
-        lo0Block = IPNetwork(loopbackPrefix + "/" + str(cidr))
+        lo0Block = IPNetwork(str(loopbackIp) + "/" + str(cidr))
         lo0Ips = list(lo0Block.iter_hosts())
         
         interfaces = []
@@ -411,6 +470,7 @@ class L3ClosMediation():
         self.dao.createObjects(interfaces)
 
     def allocateIrb(self, pod, irbPrefix, leafs):
+        irbIp = IPNetwork(irbPrefix).ip
         numOfHostIpsPerSwitch = pod.hostOrVmCountPerLeaf
         numOfSubnets = len(leafs)
         bitsPerSubnet = int(math.ceil(math.log(numOfHostIpsPerSwitch + 2, 2)))  # +2 for network and broadcast
@@ -419,7 +479,7 @@ class L3ClosMediation():
         numOfIps = (numOfSubnets * (numOfHostIpsPerSwitch + 2)) # +2 for network and broadcast
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
-        irbBlock = IPNetwork(irbPrefix + "/" + str(cidr))
+        irbBlock = IPNetwork(str(irbIp) + "/" + str(cidr))
         irbSubnets = list(irbBlock.subnet(cidrForEachSubnet))
         
         interfaces = [] 
@@ -432,6 +492,7 @@ class L3ClosMediation():
         self.dao.createObjects(interfaces)
 
     def allocateInterconnect(self, interConnectPrefix, spines, leafs):
+        interConnectIp = IPNetwork(interConnectPrefix).ip
         numOfIpsPerInterconnect = 2
         numOfSubnets = len(spines) * len(leafs)
         # no need to add +2 for network and broadcast, as junos supports /31
@@ -442,7 +503,7 @@ class L3ClosMediation():
         numOfIps = (numOfSubnets * (numOfIpsPerInterconnect)) # no need to add +2 for network and broadcast
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
-        interconnectBlock = IPNetwork(interConnectPrefix + "/" + str(cidr))
+        interconnectBlock = IPNetwork(str(interConnectIp) + "/" + str(cidr))
         interconnectSubnets = list(interconnectBlock.subnet(cidrForEachSubnet))
 
         interfaces = [] 
@@ -551,16 +612,16 @@ class L3ClosMediation():
 
     def getParamsForOutOfBandNetwork(self, pod):
         oobNetworks = pod.outOfBandAddressList
-        if oobNetworks is not None:
+        if oobNetworks is not None and len(oobNetworks) > 0:
             oobNetworkList = oobNetworks.split(',')
+            
+            gateway = pod.outOfBandGateway
+            if gateway is None:
+                gateway = util.loadClosDefinition()['ztp']['dhcpOptionRoute']
+       
+            return {'networks': oobNetworkList, 'gateway': gateway}
         else:
-            oobNetworkList = []
-        
-        gateway = pod.outOfBandGateway
-        if gateway is None:
-            gateway = util.loadClosDefinition()['ztp']['dhcpOptionRoute']
-        
-        return {'networks': oobNetworkList, 'gateway': gateway}
+            return {}
     
     def createRoutingOptionsStatic(self, device):
         routingOptions = self.templateEnv.get_template('routingOptionsStatic.txt')

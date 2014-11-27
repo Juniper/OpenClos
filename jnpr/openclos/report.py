@@ -123,7 +123,8 @@ class L2Report(Report):
             logger.error('No pod found for podId: %s' % (podId))
             raise ValueError('No pod found for podId: %s' % (podId)) 
         
-        if not cachedData:
+        if cachedData == False:
+            logger.info('Generating L2Report from real data')
             futureList = []
             for device in pod.devices:
                 if device.role == 'leaf':

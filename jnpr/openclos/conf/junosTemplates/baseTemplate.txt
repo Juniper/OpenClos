@@ -1,5 +1,5 @@
 system {
-    host-name "{{hostName}}";
+    {% if hostName is defined %}host-name "{{hostName}}";{% endif %}
     time-zone America/Los_Angeles;
     root-authentication {
         encrypted-password "{{hashedPassword}}"; ## SECRET-DATA

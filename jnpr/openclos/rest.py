@@ -574,9 +574,13 @@ class RestServer():
 
     def getL2Report(self, ipFabricId):
         try:
-            cached = bottle.request.query.get('cached', True)
+            cached = bottle.request.query.get('cached', '1')
+            if cached == '1':
+                cachedData = True
+            else:
+                cachedData = False
             bottle.response.headers['Content-Type'] = 'application/json'
-            return self.l2Report.generateReport(ipFabricId, cached)
+            return self.l2Report.generateReport(ipFabricId, cachedData)
 
         except ValueError:
             raise bottle.HTTPError(404, "Fabric with id: %s not found" % (ipFabricId))

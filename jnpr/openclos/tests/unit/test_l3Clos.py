@@ -48,7 +48,7 @@ class TestL3Clos(unittest.TestCase):
         shutil.rmtree(self.conf['outputDir'], ignore_errors=True)
 
     def createPod(self, l3ClosMediation):
-        podDict = {"devicePassword": "Embe1mpls", "hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 2, "interConnectPrefix": "192.168.0.0", "spineCount": 2, "vlanPrefix": "172.16.0.0", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0", "leafAS": 200, "managementPrefix": "172.32.30.101/24", "inventory" : "inventoryUnitTest.json"}
+        podDict = {"devicePassword": "Embe1mpls", "hostOrVmCountPerLeaf": 254, "leafDeviceType": "qfx5100-48s-6q", "spineAS": 100, "spineDeviceType": "qfx5100-24q-2p", "leafCount": 2, "interConnectPrefix": "192.168.0.0/24", "spineCount": 2, "vlanPrefix": "172.16.0.0/22", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0/24", "leafAS": 200, "managementPrefix": "172.32.30.101/24", "inventory" : "inventoryUnitTest.json"}
         pod = l3ClosMediation.createPod('pod1', podDict)
         return (pod, podDict)
 

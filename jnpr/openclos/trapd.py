@@ -40,8 +40,8 @@ def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
             reqMsg, wholeMsg = decoder.decode(
                 wholeMsg, asn1Spec=pMod.Message(),
                 )
-            logger.info('Notification message from %s: ' % (
-                transportAddress
+            logger.info('Notification message from %s:%s ' % (
+                transportAddress[0], transportAddress[1]
                 )
             )
             reqPDU = pMod.apiMessage.getPDU(reqMsg)
