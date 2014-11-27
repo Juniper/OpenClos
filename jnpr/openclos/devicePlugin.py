@@ -128,7 +128,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
     
     def startCollectAndProcessLldp(self):
         if (self.collectionInProgressCache.isDeviceInProgress(self.device.id)):
-            logger.trace('Data collection is in progress for %s', (self.deviceLogStr))
+            logger.debug('Data collection is in progress for %s', (self.deviceLogStr))
             return
         
         if (self.collectionInProgressCache.checkAndAddDevice(self.device.id)):
@@ -151,7 +151,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                 logger.debug('Ended CollectAndProcessLldp for %s' % (self.deviceLogStr))
                 
         else:
-            logger.trace('Data collection is in progress for %s', (self.deviceLogStr))
+            logger.debug('Data collection is in progress for %s', (self.deviceLogStr))
             
     def validateDeviceL2Status(self, goodBadCount):
         if (goodBadCount['goodUplinkCount'] < self.device.pod.leafUplinkcountMustBeUp):
@@ -282,7 +282,7 @@ class TwoStageConfigurator(L2DataCollector):
     def collectLldpAndMatchDevice(self):
 
         if (self.configurationInProgressCache.isDeviceInProgress(self.device.id)):
-            logger.trace('Two stage configuration is in progress for %s, skipping', (self.deviceLogStr))
+            logger.debug('Two stage configuration is in progress for %s, skipping', (self.deviceLogStr))
             return
         
         if (self.configurationInProgressCache.checkAndAddDevice(self.device.id)):
@@ -317,7 +317,7 @@ class TwoStageConfigurator(L2DataCollector):
                 self.configurationInProgressCache.doneDevice(self.deviceId)
                 logger.debug('Ended two stage configuration for %s' % (self.deviceLogStr))
         else:
-            logger.trace('Two stage configuration is in progress for %s, skipping', (self.deviceLogStr))
+            logger.debug('Two stage configuration is in progress for %s, skipping', (self.deviceLogStr))
 
     def filterRemotePortIfdInDb(self,lldpData, deviceFamily):
         ''' filter only remote ports that are  IFD configured in the DB '''
@@ -371,7 +371,8 @@ class TwoStageConfigurator(L2DataCollector):
             return
 
         device = self.dao.getObjectById(Device, keyForMaxCount)
-        device.managementIp = self.deviceIp
+        mgmtNetwork = IPNetwork(device.pod.managementPrefix)
+        device.managementIp = self.deviceIp + '/' + str(mgmtNetwork.prefixlen)
         self.dao.updateObjects([device])
         
         # Is BEST match good enough match

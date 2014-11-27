@@ -120,14 +120,14 @@ class Pod(ManagedElement, Base):
         if 'topologyType' in podDict:
             self.topologyType = podDict.get('topologyType')
         if 'outOfBandAddressList' in podDict:
-            addressList = []
             outOfBandAddressList = podDict.get('outOfBandAddressList')
-            if isinstance(outOfBandAddressList, list) == True:
-                addressList = outOfBandAddressList
-            else:
-                addressList.append(outOfBandAddressList)
-            self.outOfBandAddressList = ','.join(addressList)
-            podDict.pop('outOfBandAddressList')
+            if outOfBandAddressList is not None and len(outOfBandAddressList) > 0:
+                addressList = []
+                if isinstance(outOfBandAddressList, list) == True:
+                    addressList = outOfBandAddressList
+                else:
+                    addressList.append(outOfBandAddressList)
+                self.outOfBandAddressList = ','.join(addressList)
         if 'outOfBandGateway' in podDict:
             self.outOfBandGateway = podDict.get('outOfBandGateway')
         if 'spineJunosImage' in podDict:

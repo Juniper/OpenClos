@@ -1,6 +1,7 @@
-routing-options {
+{% if oob['gateway'] and oob['networks']|length %}routing-options {
     replace:
-{% if oob['gateway'] and oob['networks']|length %}    static {
+    static {
 {% for oobNetwork in oob['networks'] %}        route {{oobNetwork}} next-hop {{oob['gateway']}};
-{% endfor %}    }{% endif %}
+{% endfor %}    }
 }
+{% endif %}
