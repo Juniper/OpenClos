@@ -17,7 +17,7 @@ import concurrent.futures
 from devicePlugin import TwoStageConfigurator 
 
 moduleName = 'trapd'
-logging.basicConfig()
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 
