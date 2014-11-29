@@ -89,67 +89,53 @@ class Pod(ManagedElement, Base):
         elif 'name' in podDict:
             self.name = podDict.get('name')
         
-        if 'description' in podDict:
-            self.description = podDict.get('description')
-        if 'spineCount' in podDict:
-            self.spineCount = podDict.get('spineCount')
-        if 'spineDeviceType' in podDict:
-            self.spineDeviceType = podDict.get('spineDeviceType')
-        if 'leafCount' in podDict:
-            self.leafCount = podDict.get('leafCount')
-        if 'leafDeviceType' in podDict:
-            self.leafDeviceType = podDict.get('leafDeviceType')
-        if 'leafUplinkcountMustBeUp' in podDict:
-            self.leafUplinkcountMustBeUp = podDict.get('leafUplinkcountMustBeUp')
-        else:
+        self.description = podDict.get('description')
+        self.spineCount = podDict.get('spineCount')
+        self.spineDeviceType = podDict.get('spineDeviceType')
+        self.leafCount = podDict.get('leafCount')
+        self.leafDeviceType = podDict.get('leafDeviceType')
+        self.leafUplinkcountMustBeUp = podDict.get('leafUplinkcountMustBeUp')
+        if self.leafUplinkcountMustBeUp is None:
             self.leafUplinkcountMustBeUp = self.calculateLeafUplinkcountMustBeUp()
-        if 'hostOrVmCountPerLeaf' in podDict:
-            self.hostOrVmCountPerLeaf = podDict.get('hostOrVmCountPerLeaf')
-        if 'interConnectPrefix' in podDict:
-            self.interConnectPrefix = podDict.get('interConnectPrefix')
-        if 'vlanPrefix' in podDict:
-            self.vlanPrefix = podDict.get('vlanPrefix')
-        if 'loopbackPrefix' in podDict:
-            self.loopbackPrefix = podDict.get('loopbackPrefix')
-        if 'managementPrefix' in podDict:
-            self.managementPrefix = podDict.get('managementPrefix')
-        if 'spineAS' in podDict:
-            self.spineAS = int(podDict.get('spineAS'))
-        if 'leafAS' in podDict:
-            self.leafAS = int(podDict.get('leafAS'))
-        if 'topologyType' in podDict:
-            self.topologyType = podDict.get('topologyType')
-        if 'outOfBandAddressList' in podDict:
-            outOfBandAddressList = podDict.get('outOfBandAddressList')
-            if outOfBandAddressList is not None and len(outOfBandAddressList) > 0:
-                addressList = []
-                if isinstance(outOfBandAddressList, list) == True:
-                    addressList = outOfBandAddressList
-                else:
-                    addressList.append(outOfBandAddressList)
-                self.outOfBandAddressList = ','.join(addressList)
-        if 'outOfBandGateway' in podDict:
-            self.outOfBandGateway = podDict.get('outOfBandGateway')
-        if 'spineJunosImage' in podDict:
-            self.spineJunosImage = podDict.get('spineJunosImage')
-        if 'leafJunosImage' in podDict:
-            self.leafJunosImage = podDict.get('leafJunosImage')
+        self.hostOrVmCountPerLeaf = podDict.get('hostOrVmCountPerLeaf')
+        self.interConnectPrefix = podDict.get('interConnectPrefix')
+        self.vlanPrefix = podDict.get('vlanPrefix')
+        self.loopbackPrefix = podDict.get('loopbackPrefix')
+        self.managementPrefix = podDict.get('managementPrefix')
+        spineAS = podDict.get('spineAS')
+        if spineAS is not None:
+            self.spineAS = int(spineAS)
+        leafAS = podDict.get('leafAS')
+        if leafAS is not None:
+            self.leafAS = int(leafAS)
+        self.topologyType = podDict.get('topologyType')
+        
+        outOfBandAddressList = podDict.get('outOfBandAddressList')
+        if outOfBandAddressList is not None and len(outOfBandAddressList) > 0:
+            addressList = []
+            if isinstance(outOfBandAddressList, list) == True:
+                addressList = outOfBandAddressList
+            else:
+                addressList.append(outOfBandAddressList)
+            self.outOfBandAddressList = ','.join(addressList)
+        self.outOfBandGateway = podDict.get('outOfBandGateway')
+        self.spineJunosImage = podDict.get('spineJunosImage')
+        self.leafJunosImage = podDict.get('leafJunosImage')
             
         devicePassword = podDict.get('devicePassword')
         if devicePassword is not None and len(devicePassword) > 0:
             self.encryptedPassword = self.cryptic.encrypt(devicePassword)
-        else:
-            raise ValueError("Pod[id='%s', name='%s']: 'devicePassword' cannot be empty or None" % (self.id, self.name))
             
         if self.state is None:
             self.state = 'unknown'
 
     def calculateLeafUplinkcountMustBeUp(self):
+        count = 2
         if self.spineCount is not None:
             count = int(math.ceil(float(self.spineCount)/2))
             if count < 2:
                 count = 2
-            return count
+        return count
         
     def getCleartextPassword(self):
         '''
@@ -204,11 +190,13 @@ class Pod(ManagedElement, Base):
         if self.managementPrefix is None:
             error += 'managementPrefix, '
         if self.spineAS is None:
-            error += 'spineAS,'
+            error += 'spineAS, '
         if self.leafAS is None:
             error += 'leafAS, '
         if self.topologyType is None:
-            error += 'topologyType'
+            error += 'topologyType, '
+        if self.encryptedPassword is None:
+            error += 'devicePassword'
         if error != '':
             raise ValueError('Missing required fields: ' + error)
         
@@ -216,15 +204,15 @@ class Pod(ManagedElement, Base):
         error = ''     
  
         try:
-            IPAddress(self.interConnectPrefix)  
+            IPNetwork(self.interConnectPrefix)  
         except AddrFormatError:
                 error += 'interConnectPrefix, ' 
         try:
-            IPAddress(self.vlanPrefix)  
+            IPNetwork(self.vlanPrefix)  
         except AddrFormatError:
                 error += 'vlanPrefix, '
         try:
-            IPAddress(self.loopbackPrefix)  
+            IPNetwork(self.loopbackPrefix)  
         except AddrFormatError:
                 error += 'loopbackPrefix'
         try:

@@ -17,7 +17,7 @@ from sqlalchemy.orm import exc
 
 
 moduleName = 'ztp'
-logging.basicConfig()
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 

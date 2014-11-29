@@ -17,7 +17,7 @@ import concurrent.futures
 from devicePlugin import TwoStageConfigurator 
 
 moduleName = 'trapd'
-logging.basicConfig()
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 
@@ -76,7 +76,6 @@ def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
                     
     # start the 2-stage configuration in a separate thread
     if trapReceiver is not None:
-        logger.debug("Starting 2-stage configuration for device '%s'..." % (transportAddress[0]))
         configurator = TwoStageConfigurator(transportAddress[0])
         trapReceiver.executor.submit(configurator.start2StageConfiguration)        
 

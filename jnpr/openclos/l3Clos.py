@@ -24,7 +24,7 @@ from jinja2 import Environment, PackageLoader
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 
 moduleName = 'fabric'
-logging.basicConfig()
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 
@@ -67,7 +67,7 @@ class L3ClosMediation():
         Create a new POD
         '''
         pod = Pod(podName, podDict)
-        #pod.validate()
+        pod.validate()
         self.dao.createObjects([pod])
         logger.info("Pod[id='%s', name='%s']: created" % (pod.id, podName)) 
         # update status
