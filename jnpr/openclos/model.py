@@ -102,8 +102,12 @@ class Pod(ManagedElement, Base):
         self.vlanPrefix = podDict.get('vlanPrefix')
         self.loopbackPrefix = podDict.get('loopbackPrefix')
         self.managementPrefix = podDict.get('managementPrefix')
-        self.spineAS = int(podDict.get('spineAS'))
-        self.leafAS = int(podDict.get('leafAS'))
+        spineAS = podDict.get('spineAS')
+        if spineAS is not None:
+            self.spineAS = int(spineAS)
+        leafAS = podDict.get('leafAS')
+        if leafAS is not None:
+            self.leafAS = int(leafAS)
         self.topologyType = podDict.get('topologyType')
         
         outOfBandAddressList = podDict.get('outOfBandAddressList')
