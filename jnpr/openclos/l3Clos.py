@@ -67,7 +67,7 @@ class L3ClosMediation():
         Create a new POD
         '''
         pod = Pod(podName, podDict)
-        #pod.validate()
+        pod.validate()
         self.dao.createObjects([pod])
         logger.info("Pod[id='%s', name='%s']: created" % (pod.id, podName)) 
         # update status

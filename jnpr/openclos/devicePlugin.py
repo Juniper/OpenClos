@@ -34,10 +34,12 @@ class DeviceOperationInProgressCache(SingletonBase):
         self.__lock = threading.RLock()
         
     def isDeviceInProgress(self, deviceId):
-        return (self.__cache.has_key(deviceId))
+        with self.__lock:
+            return (self.__cache.has_key(deviceId))
 
     def doneDevice(self, deviceId):
-        return self.__cache.pop(deviceId, None)
+        with self.__lock:
+            return self.__cache.pop(deviceId, None)
     
     def checkAndAddDevice(self, deviceId):
         with self.__lock:
@@ -277,6 +279,12 @@ class TwoStageConfigurator(L2DataCollector):
         
     def start2StageConfiguration(self):
         self.manualInit()
+        # artificial delay to give time for lldp database to be populated fully on leaf
+        # sanity check
+        delay = util.getZtpStagedDelay(self.conf)
+        if delay is not None and delay > 0:
+            logger.debug('Delay for %d seconds before starting 2 stage configuration...' % delay)
+            time.sleep(delay)
         self.collectLldpAndMatchDevice()
     
     def collectLldpAndMatchDevice(self):

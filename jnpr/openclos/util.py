@@ -15,6 +15,8 @@ from netaddr import IPAddress, IPNetwork, AddrFormatError
 #__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 
+TWO_STAGE_CONFIGURATOR_DEFAULT_DELAY=60 # in seconds
+
 def loadConfig(confFile = 'openclos.yaml'):
     '''
     Loads global configuration and creates hash 'conf'
@@ -196,6 +198,12 @@ def isZtpStaged(conf):
         return conf['deploymentMode'].get('ztpStaged', False)
     return False
 
+def getZtpStagedDelay(conf):
+    if isZtpStaged(conf) == True:
+        return conf['deploymentMode'].get('ztpStagedDelay', TWO_STAGE_CONFIGURATOR_DEFAULT_DELAY)
+    else:
+        return None
+    
 def isPrimaryNode():
     '''
     Checks if current node is primary node in cluster.
