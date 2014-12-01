@@ -20,7 +20,6 @@ def createPodObj(name):
     pod['spineDeviceType'] = 'qfx-5100-24q-2p'
     pod['leafCount'] = '2'
     pod['leafDeviceType'] = 'qfx-5100-48s-6q'
-    pod['leafUplinkcountMustBeUp'] = 3
     pod['interConnectPrefix'] = '1.2.0.0'
     pod['vlanPrefix'] = '1.3.0.0'
     pod['hostOrVmCountPerLeaf'] = 100
@@ -143,11 +142,8 @@ class TestPod(TestOrm):
         error = ve.exception.message
         self.assertTrue('leafUplinkcountMustBeUp' in error and 'should be between 2 and spineCount' in error)
 
-        pod = {}
-        pod['spineCount'] = '5'
-        pod['devicePassword'] = 'test'
-        pod = Pod('name', pod)
-        self.assertEqual(3, pod.leafUplinkcountMustBeUp)
+        pod = createPodObj('name')
+        self.assertEqual(2, pod.leafUplinkcountMustBeUp)
 
     def testConstructorPass(self):
         pod = {}

@@ -14,7 +14,7 @@ from devicePlugin import L2DataCollector
 from writer import CablingPlanWriter
 
 moduleName = 'report'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 maxThreads = 10

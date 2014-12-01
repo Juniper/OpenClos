@@ -12,7 +12,7 @@ from model import InterfaceDefinition
 cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
 
 moduleName = 'writer'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 

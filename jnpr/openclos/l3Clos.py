@@ -24,7 +24,7 @@ from jinja2 import Environment, PackageLoader
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 
 moduleName = 'fabric'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 
