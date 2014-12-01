@@ -11,7 +11,7 @@ import logging
 from model import Base, Device, InterfaceDefinition
 
 moduleName = 'dao'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.INFO)
 

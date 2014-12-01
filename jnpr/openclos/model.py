@@ -38,7 +38,7 @@ class Pod(ManagedElement, Base):
     description = Column(String(256))
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
-    leafUplinkcountMustBeUp = Column(Integer) 
+    leafUplinkcountMustBeUp = Column(Integer)
     leafCount = Column(Integer)
     leafDeviceType = Column(String(100))
     hostOrVmCountPerLeaf = Column(Integer)
@@ -96,7 +96,7 @@ class Pod(ManagedElement, Base):
         self.leafDeviceType = podDict.get('leafDeviceType')
         self.leafUplinkcountMustBeUp = podDict.get('leafUplinkcountMustBeUp')
         if self.leafUplinkcountMustBeUp is None:
-            self.leafUplinkcountMustBeUp = self.calculateLeafUplinkcountMustBeUp()
+            self.leafUplinkcountMustBeUp = 2
         self.hostOrVmCountPerLeaf = podDict.get('hostOrVmCountPerLeaf')
         self.interConnectPrefix = podDict.get('interConnectPrefix')
         self.vlanPrefix = podDict.get('vlanPrefix')
@@ -129,12 +129,20 @@ class Pod(ManagedElement, Base):
         if self.state is None:
             self.state = 'unknown'
 
-    def calculateLeafUplinkcountMustBeUp(self):
-        count = 2
-        if self.spineCount is not None:
-            count = int(math.ceil(float(self.spineCount)/2))
-            if count < 2:
-                count = 2
+    def calculateEffectiveLeafUplinkcountMustBeUp(self):
+        # if user configured a value, use it always 
+        if self.leafUplinkcountMustBeUp is not None and self.leafUplinkcountMustBeUp > 0:
+            return self.leafUplinkcountMustBeUp
+
+        deployedSpines = 0
+        for device in self.devices:
+            if device.role == 'spine' and device.deployStatus == 'deploy':
+                deployedSpines += 1
+                
+        count = int(math.ceil(float(deployedSpines)/2))
+        if count < 2:
+            count = 2
+
         return count
         
     def getCleartextPassword(self):

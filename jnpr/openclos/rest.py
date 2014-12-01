@@ -22,7 +22,7 @@ from l3Clos import L3ClosMediation
 from ztp import ZtpServer
 
 moduleName = 'rest'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 

@@ -20,9 +20,10 @@ from exception import DeviceError
 from common import SingletonBase
 from l3Clos import L3ClosMediation
 import util
+from netaddr import IPNetwork
 
 moduleName = 'devicePlugin'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
 logger = logging.getLogger(moduleName)
 logger.setLevel(logging.DEBUG)
 
@@ -81,7 +82,7 @@ class DeviceDataCollectorNetconf(object):
             self.device = self.dao.getObjectById(Device, self.deviceId)
             self.deviceLogStr = 'device name: %s, ip: %s, id: %s' % (self.device.name, self.device.managementIp, self.device.id)
     
-    def connectToDevice(self):
+    def connectToDevice(self, cleartext):
         '''
         :param dict deviceInfo:
             ip: ip address of the device
@@ -91,7 +92,6 @@ class DeviceDataCollectorNetconf(object):
         '''
         if self.device.managementIp == None or self.device.username == None:
             raise ValueError('Device: %s, ip: %s, username: %s' % (self.device.id, self.device.managementIp, self.device.username))
-        cleartext = self.device.getCleartextPassword()
         if cleartext == None:
             raise ValueError('Device: %s, password is None' % (self.device.id))
         
@@ -129,15 +129,12 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         self.startCollectAndProcessLldp()
     
     def startCollectAndProcessLldp(self):
-        if (self.collectionInProgressCache.isDeviceInProgress(self.device.id)):
-            logger.debug('Data collection is in progress for %s', (self.deviceLogStr))
-            return
-        
         if (self.collectionInProgressCache.checkAndAddDevice(self.device.id)):
-            logger.debug('Started CollectAndProcessLldp for %s' % (self.deviceLogStr))
+            logger.debug('Started L2 data collection for %s' % (self.deviceLogStr))
             try:
                 self.updateDeviceL2Status('processing')
-                self.connectToDevice()
+                # use device level password for leaves that already went through staged configuration
+                self.connectToDevice(cleartext = self.device.getCleartextPassword())
                 lldpData = self.collectLldpFromDevice()
                 goodBadCount = self.processLlDpData(lldpData) 
 
@@ -150,15 +147,16 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                 self.updateDeviceL2Status('error', str(exc))
             finally:
                 self.collectionInProgressCache.doneDevice(self.deviceId)
-                logger.debug('Ended CollectAndProcessLldp for %s' % (self.deviceLogStr))
+                logger.debug('Ended L2 data collection for %s' % (self.deviceLogStr))
                 
         else:
-            logger.debug('Data collection is in progress for %s', (self.deviceLogStr))
+            logger.debug('L2 data collection is already in progress for %s', (self.deviceLogStr))
             
     def validateDeviceL2Status(self, goodBadCount):
-        if (goodBadCount['goodUplinkCount'] < self.device.pod.leafUplinkcountMustBeUp):
+        effectiveLeafUplinkcountMustBeUp = self.device.pod.calculateEffectiveLeafUplinkcountMustBeUp()
+        if (goodBadCount['goodUplinkCount'] < effectiveLeafUplinkcountMustBeUp):
             errorStr = 'Good uplink count: %d is less than required limit: %d' % \
-                (goodBadCount['goodUplinkCount'], self.device.pod.leafUplinkcountMustBeUp)
+                (goodBadCount['goodUplinkCount'], effectiveLeafUplinkcountMustBeUp)
             self.updateDeviceL2Status('error', errorStr)
         else:
             self.updateDeviceL2Status('good')
@@ -217,24 +215,34 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         modifiedObjects = []
         goodUplinkCount = 0
         badUplinkCount = 0
-
-        for link in lldpData:
-            uplinkPort = uplinkPortsDict.get(link['port1'])
-            if uplinkPort is None:
-                continue
-            
+        
+        # check all the uplink ports connecting to spines according to cabling plan against lldp data.
+        for uplinkPort in uplinkPorts:
+            found = False
             peerPort = uplinkPort.peer
-            if peerPort is not None and peerPort.name == link['port2'] and peerPort.device.name == link['device2']:
-                goodUplinkCount += 1
-                uplinkPort.lldpStatus = 'good'
-                peerPort.lldpStatus = 'good'
-                modifiedObjects.append(uplinkPort)
-                modifiedObjects.append(peerPort)
-            else:
+            for link in lldpData:
+                if link['port1'] == uplinkPort.name:
+                    found = True
+                    # case 1 (normal case): lldp agrees with cabling plan about the peer port
+                    if peerPort is not None and peerPort.name == link['port2'] and peerPort.device.name == link['device2']:
+                        goodUplinkCount += 1
+                        uplinkPort.lldpStatus = 'good'
+                        peerPort.lldpStatus = 'good'
+                        modifiedObjects.append(uplinkPort)
+                        modifiedObjects.append(peerPort)
+                    # case 2: lldp says this port is connected to another port but cabling plan does not show this port connected to another port.
+                    else:
+                        badUplinkCount += 1
+                        uplinkPort.lldpStatus = 'error'
+                        modifiedObjects.append(uplinkPort)
+                    break
+            # case 3: lldp does not have this port but cabling plan shows this port connected to another port.
+            if found == False and peerPort is not None:
                 badUplinkCount += 1
                 uplinkPort.lldpStatus = 'error'
                 modifiedObjects.append(uplinkPort)
-        
+            # case 4 (no-op): lldp does not have this port and cabling plan does not show this port is connected to another port.
+            
         self.dao.updateObjects(modifiedObjects)
         logger.debug('Total uplink count: %d, good: %d, error: %d', len(uplinkPorts), goodUplinkCount, badUplinkCount)
         return {'goodUplinkCount': goodUplinkCount, 'badUplinkCount': badUplinkCount};
@@ -279,24 +287,21 @@ class TwoStageConfigurator(L2DataCollector):
         
     def start2StageConfiguration(self):
         self.manualInit()
-        # artificial delay to give time for lldp database to be populated fully on leaf
-        # sanity check
-        delay = util.getZtpStagedDelay(self.conf)
-        if delay is not None and delay > 0:
-            logger.debug('Delay for %d seconds before starting 2 stage configuration...' % delay)
-            time.sleep(delay)
         self.collectLldpAndMatchDevice()
     
     def collectLldpAndMatchDevice(self):
-
-        if (self.configurationInProgressCache.isDeviceInProgress(self.device.id)):
-            logger.debug('Two stage configuration is in progress for %s, skipping', (self.deviceLogStr))
-            return
-        
         if (self.configurationInProgressCache.checkAndAddDevice(self.device.id)):
+            # artificial delay to give time for lldp database to be populated fully on leaf
+            # sanity check
+            delay = util.getZtpStagedDelay(self.conf)
+            if delay is not None and delay > 0:
+                logger.debug('Delay for %d seconds before starting two stage configuration for %s...' % (delay, self.deviceLogStr))
+                time.sleep(delay)
+                
             logger.debug('Started two stage configuration for %s' % (self.deviceLogStr))
             try:
-                self.connectToDevice()
+                # use pod level password for generic leaf
+                self.connectToDevice(self.device.pod.getCleartextPassword())
                 self.device.family = self.deviceConnectionHandle.facts['model'].lower()
                 lldpData = self.collectLldpFromDevice()
             except DeviceError as exc:
@@ -325,7 +330,7 @@ class TwoStageConfigurator(L2DataCollector):
                 self.configurationInProgressCache.doneDevice(self.deviceId)
                 logger.debug('Ended two stage configuration for %s' % (self.deviceLogStr))
         else:
-            logger.debug('Two stage configuration is in progress for %s, skipping', (self.deviceLogStr))
+            logger.debug('Two stage configuration is already in progress for %s', (self.deviceLogStr))
 
     def filterRemotePortIfdInDb(self,lldpData, deviceFamily):
         ''' filter only remote ports that are  IFD configured in the DB '''
@@ -384,11 +389,12 @@ class TwoStageConfigurator(L2DataCollector):
         self.dao.updateObjects([device])
         
         # Is BEST match good enough match
-        if maxCount >= device.pod.leafUplinkcountMustBeUp:
+        effectiveLeafUplinkcountMustBeUp = device.pod.calculateEffectiveLeafUplinkcountMustBeUp()
+        if maxCount >= effectiveLeafUplinkcountMustBeUp:
             self.updateSelfDeviceContext(device)
             return self.device
         else:
-            self.updateDeviceConfigStatus('error', 'Number of matched uplink count: %s, is less than required leafUplinkcountMustBeUp: %d' % (maxCount, device.pod.leafUplinkcountMustBeUp))
+            self.updateDeviceConfigStatus('error', 'Number of matched uplink count: %s, is less than required effectiveLeafUplinkcountMustBeUp: %d' % (maxCount, effectiveLeafUplinkcountMustBeUp))
         
 
     def updateDeviceConfiguration(self):
