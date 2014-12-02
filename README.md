@@ -74,3 +74,9 @@ Run tests
 
     cd /path/to/OpenClos/jnpr/openclos/tests
     nosetests --exe --with-coverage --cover-package=jnpr.openclos --cover-erase
+
+Support
+-------
+
+For bugs please open issues on the repository.  
+For general question and support please send email to openclos-support@juniper.net.
