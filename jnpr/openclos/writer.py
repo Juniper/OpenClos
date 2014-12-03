@@ -117,8 +117,9 @@ class CablingPlanWriter(WriterBase):
                     leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
                     spinePeerPort = port.peer
                     spineInterconnectIp = spinePeerPort.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
-                    links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
-                                  'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
+                    if spinePeerPort.device.deployStatus == 'deploy':
+                        links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
+                                      'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
 
         return {'devices': devices, 'links': links}
     

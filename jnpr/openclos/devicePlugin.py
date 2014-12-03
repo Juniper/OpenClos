@@ -15,12 +15,12 @@ from jnpr.junos.exception import ConnectError, RpcError, CommitError, LockError
 from jnpr.junos.utils.config import Config
 
 from dao import Dao
-from model import Device, InterfaceDefinition
+from model import Pod, Device, InterfaceDefinition
 from exception import DeviceError
 from common import SingletonBase
 from l3Clos import L3ClosMediation
 import util
-from netaddr import IPNetwork
+from netaddr import IPAddress, IPNetwork
 
 moduleName = 'devicePlugin'
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
@@ -125,8 +125,12 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         super(L2DataCollector, self).manualInit()
 
     def startL2Report(self):
-        self.manualInit()
-        self.startCollectAndProcessLldp()
+        try:
+            self.manualInit()
+            self.startCollectAndProcessLldp()
+        except Exception as exc:
+            logger.error('L2 data collection failed for %s, %s' % (self.deviceId, exc))
+            raise
     
     def startCollectAndProcessLldp(self):
         if (self.collectionInProgressCache.checkAndAddDevice(self.device.id)):
@@ -208,10 +212,6 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         uplinkPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == self.device.id).\
             filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.name_order_num).all()
 
-        uplinkPortsDict = {}
-        for port in uplinkPorts:
-            uplinkPortsDict[port.name] = port
-        
         modifiedObjects = []
         goodUplinkCount = 0
         badUplinkCount = 0
@@ -262,13 +262,10 @@ class TwoStageConfigurator(L2DataCollector):
         self.configurationInProgressCache = TwoStageConfigInProgressCache.getInstance()
         super(TwoStageConfigurator, self).__init__(None, conf)
         self.deviceIp = deviceIp
+        self.deviceLogStr = 'device ip: %s' % (self.deviceIp)
 
     def manualInit(self):
         super(TwoStageConfigurator, self).manualInit()
-        # for real device the password is coming from pod
-        tmpDevice = Device(self.deviceIp, None, 'root', 'Embe1mpls', 'leaf', None, self.deviceIp, None)
-        tmpDevice.id = self.deviceIp
-        self.updateSelfDeviceContext(tmpDevice)
 
     def updateSelfDeviceContext(self, device):
         self.device = device
@@ -286,11 +283,30 @@ class TwoStageConfigurator(L2DataCollector):
         self.dao.updateObjects([self.device])
         
     def start2StageConfiguration(self):
-        self.manualInit()
-        self.collectLldpAndMatchDevice()
-    
+        try:
+            self.manualInit()
+            self.collectLldpAndMatchDevice()
+        except Exception as exc:
+            logger.error('Two stage configuration failed for %s, %s' % (self.deviceIp, exc))
+            raise
+            
+    def findPodByMgmtIp(self, deviceIp):
+        logger.debug("Checking all pods for ip %s" % (deviceIp))
+        pods = self.dao.getAll(Pod)
+        for pod in pods:
+            logger.debug("Checking pod[id='%s', name='%s']: %s" % (pod.id, pod.name, pod.managementPrefix))
+            ipNetwork = IPNetwork(pod.managementPrefix)
+            ipNetworkList = list(ipNetwork)
+            start = ipNetworkList.index(ipNetwork.ip)
+            end = start + len(pod.devices)
+            ipList = ipNetworkList[start:end]
+            deviceIpAddr = IPAddress(deviceIp)
+            if deviceIpAddr in ipList:
+                logger.debug("Found pod[id='%s', name='%s']" % (pod.id, pod.name))
+                return pod
+        
     def collectLldpAndMatchDevice(self):
-        if (self.configurationInProgressCache.checkAndAddDevice(self.device.id)):
+        if (self.configurationInProgressCache.checkAndAddDevice(self.deviceIp)):
             # artificial delay to give time for lldp database to be populated fully on leaf
             # sanity check
             delay = util.getZtpStagedDelay(self.conf)
@@ -299,6 +315,18 @@ class TwoStageConfigurator(L2DataCollector):
                 time.sleep(delay)
                 
             logger.debug('Started two stage configuration for %s' % (self.deviceLogStr))
+            
+            # for real device the password is coming from pod
+            pod = self.findPodByMgmtIp(self.deviceIp)
+            if pod is None:
+                logger.error("Couldn't find any pod containing %s" % (self.deviceLogStr))
+                self.configurationInProgressCache.doneDevice(self.deviceIp)
+                return
+                
+            tmpDevice = Device(self.deviceIp, None, '', '', 'leaf', None, self.deviceIp, pod)
+            tmpDevice.id = self.deviceIp
+            self.updateSelfDeviceContext(tmpDevice)
+            
             try:
                 # use pod level password for generic leaf
                 self.connectToDevice(self.device.pod.getCleartextPassword())
@@ -306,14 +334,14 @@ class TwoStageConfigurator(L2DataCollector):
                 lldpData = self.collectLldpFromDevice()
             except DeviceError as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
-                self.configurationInProgressCache.doneDevice(self.deviceId)
+                self.configurationInProgressCache.doneDevice(self.deviceIp)
                 logger.debug('Ended two stage configuration for %s' % (self.deviceLogStr))
                 return
             
             device = self.findMatchedDevice(lldpData, self.device.family)
             if device is None:
                 logger.info('Did not find good enough match for %s' % (self.deviceLogStr))
-                self.configurationInProgressCache.doneDevice(self.deviceId)
+                self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
             
             try:
@@ -327,7 +355,7 @@ class TwoStageConfigurator(L2DataCollector):
                 logger.error('Two stage configuration failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceConfigStatus('error', str(exc))
             finally:
-                self.configurationInProgressCache.doneDevice(self.deviceId)
+                self.configurationInProgressCache.doneDevice(self.deviceIp)
                 logger.debug('Ended two stage configuration for %s' % (self.deviceLogStr))
         else:
             logger.debug('Two stage configuration is already in progress for %s', (self.deviceLogStr))

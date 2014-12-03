@@ -17,8 +17,11 @@ logger.setLevel(logging.INFO)
 
 class Dao:
     def __init__(self, conf):
+        if conf is not None and 'logLevel' in conf:
+            logger.setLevel(logging.getLevelName(conf['logLevel'][moduleName]))
+            
         if conf is not None and 'dbUrl' in conf:
-            engine = sqlalchemy.create_engine(conf['dbUrl'], echo = conf.get('debugSql', False))  
+            engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={'check_same_thread':False}, echo = conf.get('debugSql', False))  
             Base.metadata.create_all(engine) 
             session_factory = sessionmaker(bind=engine)
             self.Session = scoped_session(session_factory)
