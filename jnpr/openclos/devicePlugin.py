@@ -323,13 +323,13 @@ class TwoStageConfigurator(L2DataCollector):
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
                 
-            tmpDevice = Device(self.deviceIp, None, '', '', 'leaf', None, self.deviceIp, pod)
+            tmpDevice = Device(self.deviceIp, None, '', '', 'leaf', None, self.deviceIp, None)
             tmpDevice.id = self.deviceIp
             self.updateSelfDeviceContext(tmpDevice)
             
             try:
                 # use pod level password for generic leaf
-                self.connectToDevice(self.device.pod.getCleartextPassword())
+                self.connectToDevice(pod.getCleartextPassword())
                 self.device.family = self.deviceConnectionHandle.facts['model'].lower()
                 lldpData = self.collectLldpFromDevice()
             except DeviceError as exc:
