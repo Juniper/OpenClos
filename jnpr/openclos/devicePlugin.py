@@ -6,7 +6,7 @@ Created on Oct 29, 2014
 import logging
 import os
 import traceback
-import threading
+from threading import RLock, Event
 import time
 
 from jnpr.junos import Device as DeviceConnection
@@ -32,7 +32,7 @@ junosEzTableLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 class DeviceOperationInProgressCache(SingletonBase):
     def __init__(self):
         self.__cache = {}
-        self.__lock = threading.RLock()
+        self.__lock = RLock()
         
     def isDeviceInProgress(self, deviceId):
         with self.__lock:
@@ -104,10 +104,12 @@ class DeviceDataCollectorNetconf(object):
             return deviceConnection
         except ConnectError as exc:
             logger.error('Device connection failure, %s' % (exc))
+            self.deviceConnectionHandle = None
             raise DeviceError(exc)
         except Exception as exc:
             logger.error('Unknown error, %s' % (exc))
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
+            self.deviceConnectionHandle = None
             raise DeviceError(exc)
 
 class L2DataCollector(DeviceDataCollectorNetconf):
@@ -258,12 +260,19 @@ class TwoStageConfigurator(L2DataCollector):
     Perform manual "init" from  start2StageZtpConfig/startL2Report to make sure it is done 
     from child thread's context
     '''
-    def __init__(self, deviceIp, conf = {}, dao = None):
+    def __init__(self, deviceIp, conf = {}, dao = None, stopEvent = None):
         self.configurationInProgressCache = TwoStageConfigInProgressCache.getInstance()
         super(TwoStageConfigurator, self).__init__(None, conf)
         self.deviceIp = deviceIp
         self.deviceLogStr = 'device ip: %s' % (self.deviceIp)
-
+        # at this point self.conf is initialized
+        self.interval = util.getZtpStagedInterval(self.conf)
+        self.attempt = util.getZtpStagedAttempt(self.conf)
+        if stopEvent is not None:
+            self.stopEvent = stopEvent
+        else:
+            self.stopEvent = Event()
+            
     def manualInit(self):
         super(TwoStageConfigurator, self).manualInit()
 
@@ -284,6 +293,16 @@ class TwoStageConfigurator(L2DataCollector):
         
     def start2StageConfiguration(self):
         try:
+            # sanity check
+            if self.interval is None or self.attempt is None:
+                logger.error("ztpStagedInterval or ztpStagedAttempt is None: two stage configuration is disabled")
+                return
+                
+            # sanity check
+            if self.attempt == 0:
+                logger.info("ztpStagedAttempt is 0: two stage configuration is disabled")
+                return
+                
             self.manualInit()
             self.collectLldpAndMatchDevice()
         except Exception as exc:
@@ -307,15 +326,6 @@ class TwoStageConfigurator(L2DataCollector):
         
     def collectLldpAndMatchDevice(self):
         if (self.configurationInProgressCache.checkAndAddDevice(self.deviceIp)):
-            # artificial delay to give time for lldp database to be populated fully on leaf
-            # sanity check
-            delay = util.getZtpStagedDelay(self.conf)
-            if delay is not None and delay > 0:
-                logger.debug('Delay for %d seconds before starting two stage configuration for %s...' % (delay, self.deviceLogStr))
-                time.sleep(delay)
-                
-            logger.debug('Started two stage configuration for %s' % (self.deviceLogStr))
-            
             # for real device the password is coming from pod
             pod = self.findPodByMgmtIp(self.deviceIp)
             if pod is None:
@@ -326,21 +336,44 @@ class TwoStageConfigurator(L2DataCollector):
             tmpDevice = Device(self.deviceIp, None, '', '', 'leaf', None, self.deviceIp, None)
             tmpDevice.id = self.deviceIp
             self.updateSelfDeviceContext(tmpDevice)
+            cleartextPassword = pod.getCleartextPassword()
             
+            logger.debug('Started two stage configuration for %s' % (self.deviceIp))
+            
+            for i in range(1, self.attempt+1):
+                # wait first: this will replace the original delay design 
+                logger.debug('Wait for %d seconds...' % (self.interval))
+                # don't do unnecessary context switch
+                if self.interval > 0:
+                    self.stopEvent.wait(self.interval)
+                    if self.stopEvent.is_set():
+                        return
+                        
+                logger.debug('Connecting to %s: attempt %d' % (self.deviceIp, i))
+                try:
+                    # use pod level password for generic leaf
+                    self.connectToDevice(cleartextPassword)
+                    logger.debug('Connected to %s' % (self.deviceIp))
+                    break
+                except Exception as exc:
+                    pass
+
+            if self.deviceConnectionHandle is None:
+                logger.error('All %d attempts failed for %s' % (self.attempt, self.deviceIp))
+                self.configurationInProgressCache.doneDevice(self.deviceIp)
+                return
+                
             try:
-                # use pod level password for generic leaf
-                self.connectToDevice(pod.getCleartextPassword())
                 self.device.family = self.deviceConnectionHandle.facts['model'].lower()
                 lldpData = self.collectLldpFromDevice()
             except DeviceError as exc:
-                logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
-                self.configurationInProgressCache.doneDevice(self.deviceIp)
-                logger.debug('Ended two stage configuration for %s' % (self.deviceLogStr))
-                return
-            
+                logger.error('Collect LLDP data failed for %s, %s' % (self.deviceIp, exc))
+            except Exception as exc:
+                logger.error('Collect LLDP data failed for %s, %s' % (self.deviceIp, exc))
+
             device = self.findMatchedDevice(lldpData, self.device.family)
             if device is None:
-                logger.info('Did not find good enough match for %s' % (self.deviceLogStr))
+                logger.info('Did not find good enough match for %s' % (self.deviceIp))
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
             
@@ -385,6 +418,9 @@ class TwoStageConfigurator(L2DataCollector):
         :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
         :returns Device: 
         '''
+        if lldpData is None:
+            return
+            
         matchedIfds = self.filterRemotePortIfdInDb(lldpData, deviceFamily)
         if len(matchedIfds) < 2:
             logger.info('Device: %s, number of matched IFD count is %d (too less), skipping findMatchedDevice' % (self.deviceIp, len(matchedIfds)))

@@ -8,7 +8,7 @@ from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher
 from pysnmp.carrier.asynsock.dgram import udp
 from pyasn1.codec.ber import decoder
 from pysnmp.proto import api
-from threading import Thread
+from threading import Thread, Event
 import logging
 import util
 import signal
@@ -76,7 +76,7 @@ def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
                     
     # start the 2-stage configuration in a separate thread
     if trapReceiver is not None:
-        configurator = TwoStageConfigurator(transportAddress[0])
+        configurator = TwoStageConfigurator(deviceIp=transportAddress[0], stopEvent=trapReceiver.stopEvent)
         trapReceiver.executor.submit(configurator.start2StageConfiguration)        
 
 class TrapReceiver():
@@ -107,6 +107,9 @@ class TrapReceiver():
             self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self.conf['snmpTrap']['threadCount'])
         else:
             self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = DEFAULT_MAX_THREADS)
+
+        # event to stop from sleep
+        self.stopEvent = Event()
        
     def threadFunction(self):
         self.transportDispatcher = AsynsockDispatcher()
@@ -137,6 +140,7 @@ class TrapReceiver():
 
     def stop(self):
         logger.info("Stopping trap receiver...")
+        self.stopEvent.set()
         self.executor.shutdown()
         self.transportDispatcher.jobFinished(1)  
         self.thread.join()
