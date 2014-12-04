@@ -432,6 +432,9 @@ class TwoStageConfigurator(L2DataCollector):
         tentativeFabricDevice = {}
         for link in matchedIfds:
             remoteIfd = link['ifd2']
+            # sanity check against leaf-to-leaf link
+            if remoteIfd.peer is None:
+                continue
             tentativeSelfDeviceId = remoteIfd.peer.device.id
             count = tentativeFabricDevice.get(tentativeSelfDeviceId)
             if count is not None:

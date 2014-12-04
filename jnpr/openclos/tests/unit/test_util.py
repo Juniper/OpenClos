@@ -106,6 +106,10 @@ class TestFunctions(unittest.TestCase):
         self.assertFalse(isZtpStaged({'deploymentMode': {'ztpStaged': False}}))
         self.assertTrue(isZtpStaged({'deploymentMode': {'ztpStaged': True}}))
 
+    def testEnumerateRoutableIpv4Addresses(self):
+        addrList = enumerateRoutableIpv4Addresses()
+        self.assertTrue(len(addrList) > 0)
+        
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

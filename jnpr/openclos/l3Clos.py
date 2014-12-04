@@ -689,7 +689,12 @@ class L3ClosMediation():
             if ndSnmpTrapConf is None:
                 logger.error('No SNMP Trap setting found for ND')
                 return
-            return {'name': 'networkdirector_trap_group', 'port': ndSnmpTrapConf['port'], 'targetIp': ndSnmpTrapConf['target'] }
+            targetList = []
+            if isinstance(ndSnmpTrapConf['target'], list) == True:
+                targetList = ndSnmpTrapConf['target']
+            else:
+                targetList.append(ndSnmpTrapConf['target'])
+            return {'name': 'networkdirector_trap_group', 'port': ndSnmpTrapConf['port'], 'targetIp': targetList }
         return
     
     def getOpenclosTrapGroupSettings(self):
@@ -701,7 +706,8 @@ class L3ClosMediation():
         if openclosSnmpTrapConf is None:
             logger.error('No SNMP Trap setting found for OpenClos')
             return
-        return {'name': 'openclos_trap_group', 'port': openclosSnmpTrapConf['port'], 'targetIp': openclosSnmpTrapConf['target'] }
+        targetList = util.enumerateRoutableIpv4Addresses()
+        return {'name': 'openclos_trap_group', 'port': openclosSnmpTrapConf['port'], 'targetIp': targetList }
 
     def createSnmpTrapAndEvent(self, device):
         snmpTemplate = self.templateEnv.get_template('snmpTrap.txt')
