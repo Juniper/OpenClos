@@ -64,13 +64,13 @@ setup(
     # project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/technical.html#install-requires-vs-requirements-files
-    install_requires=['netaddr', 'sqlalchemy >= 0.9.6', 'pyyaml', 'nose', 'coverage', 'jinja2', 'flexmock', 'pydot', 'bottle', 'webtest', 'junos-eznc', 'futures', 'pysnmp' ],
+    install_requires=['netaddr', 'sqlalchemy >= 0.9.6', 'pyyaml', 'nose', 'coverage', 'jinja2', 'flexmock', 'pydot', 'bottle', 'webtest', 'junos-eznc', 'futures', 'pysnmp', 'netifaces' ],
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     package_data={
-        'jnpr.openclos': ['conf/*.yaml', 'conf/*.json', 'conf/junosTemplates/*', 'conf/cablingPlanTemplates/*', 'conf/ztp/*', 'data/.dat', 'script/*', 'tests/*.py', 'tests/unit/*.py'],
+        'jnpr.openclos': ['conf/*.yaml', 'conf/*.json', 'conf/junosTemplates/*', 'conf/cablingPlanTemplates/*', 'conf/ztp/*', 'conf/junosEznc/*', 'data/.dat', 'script/*', 'tests/*.py', 'tests/unit/*.py'],
         '': ['./*.txt'],
     },
 

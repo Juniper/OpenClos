@@ -11,6 +11,7 @@ import platform
 import datetime
 import shutil
 from netaddr import IPAddress, IPNetwork, AddrFormatError
+import netifaces
 
 #__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
@@ -236,3 +237,14 @@ def isPrimaryNode():
         return True
     else:
         return False
+
+def enumerateRoutableIpv4Addresses():
+    addrs = []
+    intfs = netifaces.interfaces()
+    for intf in intfs:
+        if intf != 'lo':
+            addrDict = netifaces.ifaddresses(intf)
+            ipv4AddrInfoList = addrDict[netifaces.AF_INET]
+            for ipv4AddrInfo in ipv4AddrInfoList:
+                addrs.append(ipv4AddrInfo['addr'])
+    return addrs

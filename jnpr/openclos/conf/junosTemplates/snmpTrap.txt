@@ -11,8 +11,8 @@ snmp {
             authentication;
         }
         targets {
-            {{trapGroup['targetIp']}};
-        }
+{% for target in trapGroup['targetIp'] %}            {{target}};
+{% endfor %}        }
     } 
 {% endfor %}
 }
