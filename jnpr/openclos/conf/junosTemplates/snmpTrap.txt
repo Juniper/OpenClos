@@ -3,7 +3,7 @@ snmp {
         authorization read-write;
     }
 {% for trapGroup in trapGroups %}    trap-group {{trapGroup['name']}} {
-        version all;
+        version v2;
         destination-port {{trapGroup['port']}};
         categories {
             link;

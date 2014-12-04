@@ -5,14 +5,18 @@
 # then OpenClos finds the topology and applies new topology.
 # False indicates all leaf configs are generated based on cabling-plan and 
 # deployed to the device using ZTP process. 
-# ztpStagedDelay is how long OpenClos waits for before it starts collecting 
-# lldp data from leaf when it receives trap from that leaf. 
-# default is 60 seconds. 0 means do not wait. ztpStagedDely only takes effect
+# ztpStagedAttempt is how many times OpenClos tries to connect to leaf
+# to collect lldp data when it receives trap from that leaf. 
+# default is 5 times. 0 means no-op so it basically disables the 2-stage.
+# ztpStagedInterval is how long OpenClos waits in between retries. 
+# default is 60 seconds. 0 means do not wait. 
+# ztpStagedAttempt and ztpStagedInterval only take effect
 # when ztpStaged is set to true.
 deploymentMode :
     ndIntegrated : false
     ztpStaged : true
-    ztpStagedDelay: 60
+    ztpStagedAttempt: 5
+    ztpStagedInterval: 60
     
 # Generated file/configuration location
 # default value 'out' relative to current dir 

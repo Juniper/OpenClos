@@ -15,7 +15,8 @@ from netaddr import IPAddress, IPNetwork, AddrFormatError
 #__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 
-TWO_STAGE_CONFIGURATOR_DEFAULT_DELAY=60 # in seconds
+TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT=5
+TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL=60 # in seconds
 
 def loadConfig(confFile = 'openclos.yaml'):
     '''
@@ -198,9 +199,15 @@ def isZtpStaged(conf):
         return conf['deploymentMode'].get('ztpStaged', False)
     return False
 
-def getZtpStagedDelay(conf):
+def getZtpStagedInterval(conf):
     if isZtpStaged(conf) == True:
-        return conf['deploymentMode'].get('ztpStagedDelay', TWO_STAGE_CONFIGURATOR_DEFAULT_DELAY)
+        return conf['deploymentMode'].get('ztpStagedInterval', TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL)
+    else:
+        return None
+        
+def getZtpStagedAttempt(conf):
+    if isZtpStaged(conf) == True:
+        return conf['deploymentMode'].get('ztpStagedAttempt', TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT)
     else:
         return None
     
