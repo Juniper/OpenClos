@@ -395,7 +395,21 @@ class RestServer():
         return config
     
     def getOpenClosConfigParams(self):
-        
+        # hack for ND trap target starts
+        clientIp = bottle.request.remote_addr
+        logger.debug("Client IP: %s" % (clientIp))
+        clientUserAgent = bottle.request.headers.get('User-Agent')
+        logger.debug("Client User-Agent: %s" % (clientUserAgent))
+ 
+        # ND sends User-Agent as 'Jakarta Commons-HttpClient/3.0.1'
+        # adding this check to make sure trap target does not changed by other REST clients, ex browser
+        if clientIp is not None and 'Jakarta Commons-HttpClient' in clientUserAgent:
+            util.modifyConfigTrapTarget(clientIp)
+            self.conf = util.loadConfig()
+            logger.debug("Updated SNMP trap target for ND: %s" % (self.conf['snmpTrap']['networkdirector_trap_group']['target']))
+             
+        # hack for ND trap target ends
+
         supportedDevices = []
         for device in self.conf['deviceFamily']:
             port = util.getPortNamesForDeviceFamily(device, self.conf['deviceFamily'])
