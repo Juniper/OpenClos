@@ -12,6 +12,7 @@ import datetime
 import shutil
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 import netifaces
+import fileinput
 
 #__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
@@ -248,3 +249,23 @@ def enumerateRoutableIpv4Addresses():
             for ipv4AddrInfo in ipv4AddrInfoList:
                 addrs.append(ipv4AddrInfo['addr'])
     return addrs
+
+def modifyConfigTrapTarget(target, confFile = 'openclos.yaml'):
+    '''
+    Modify openclos.yaml, sets trap target for ND only
+    '''
+    try:
+        lineIterator = fileinput.input(os.path.join(configLocation, confFile), inplace=True) 
+        for line in lineIterator:
+            if 'networkdirector_trap_group :' in line:
+                print line,
+                print lineIterator.next(),
+                lineIterator.next()
+                print '        target : %s' %(target)
+            else:
+                print line,
+        
+    except (OSError, IOError) as e:
+        print "File error:", e
+        return None
+

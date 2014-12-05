@@ -109,6 +109,12 @@ class TestFunctions(unittest.TestCase):
     def testEnumerateRoutableIpv4Addresses(self):
         addrList = enumerateRoutableIpv4Addresses()
         self.assertTrue(len(addrList) > 0)
+
+    def testModifyConfigTrapTarget(self):
+        modifyConfigTrapTarget('99.99.99.99')
+        conf = loadConfig()
+        self.assertEquals('99.99.99.99', conf['snmpTrap']['networkdirector_trap_group']['target'])
+
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
