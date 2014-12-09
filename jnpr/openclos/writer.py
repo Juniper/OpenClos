@@ -103,12 +103,10 @@ class CablingPlanWriter(WriterBase):
         elif self.pod.topologyType == 'fiveStagePerformance':
             return self.writeJSONFiveStagePerformance()
 
-    def getDataFor3StageCablingPlan(self, deployedOnly=False):            
+    def getDataFor3StageCablingPlan(self):            
         devices = []
         links = []
         for device in self.pod.devices:
-            if deployedOnly == True and device.deployStatus == 'provision':
-                continue
             devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployStatus': device.deployStatus})
             if device.role == 'leaf':
                 leafPeerPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
@@ -117,9 +115,8 @@ class CablingPlanWriter(WriterBase):
                     leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
                     spinePeerPort = port.peer
                     spineInterconnectIp = spinePeerPort.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
-                    if deployedOnly == False or spinePeerPort.device.deployStatus == 'deploy':
-                        links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
-                                      'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
+                    links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
+                                  'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
 
         return {'devices': devices, 'links': links}
     
@@ -128,7 +125,7 @@ class CablingPlanWriter(WriterBase):
         This method will be called by REST layer
         :returns str:cablingPlan in json format.
         '''
-        data = self.getDataFor3StageCablingPlan(False)
+        data = self.getDataFor3StageCablingPlan()
         cablingPlanJson = self.template.render(devices = data['devices'], links = data['links'])
         return cablingPlanJson
     
@@ -140,13 +137,37 @@ class CablingPlanWriter(WriterBase):
         with open(path, 'w') as f:
                 f.write(cablingPlanJson)
 
+    def getDataFor3StageL2Report(self):            
+        devices = []
+        links = []
+        additionalLinks = []
+        for device in self.pod.devices:
+            if device.deployStatus == 'deploy':
+                devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployStatus': device.deployStatus})
+                if device.role == 'leaf':
+                    leafPeerPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
+                    .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
+                    for port in leafPeerPorts:
+                        leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
+                        spinePeerPort = port.peer
+                        spineInterconnectIp = spinePeerPort.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
+                        if spinePeerPort.device.deployStatus == 'deploy':
+                            links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
+                                          'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
+                    # additional links
+                    for link in device.additionalLinks:
+                        additionalLinks.append({'device1': device.name, 'port1': link.name, 'ip1': link.ipaddress, 
+                                                'device2': link.peer.device.name, 'port2': link.peer.name, 'ip2': link.peer.ipaddress, 'lldpStatus': link.lldpStatus})
+
+        return {'devices': devices, 'links': links, 'additionalLinks': additionalLinks}
+        
     def getThreeStageL2ReportJson(self):
         '''
         This method will be called by REST layer
         :returns str: l2Report in json format.
         '''
-        data = self.getDataFor3StageCablingPlan(True)
-        l2ReportJson = self.l2ReportTemplate.render(devices = data['devices'], links = data['links'])
+        data = self.getDataFor3StageL2Report()
+        l2ReportJson = self.l2ReportTemplate.render(devices = data['devices'], links = data['links'], additionalLinks = data['additionalLinks'])
         return l2ReportJson
     
     def writeThreeStageL2ReportJson(self):

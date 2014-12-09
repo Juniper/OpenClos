@@ -15,7 +15,7 @@ from jnpr.junos.exception import ConnectError, RpcError, CommitError, LockError
 from jnpr.junos.utils.config import Config
 
 from dao import Dao
-from model import Pod, Device, InterfaceDefinition
+from model import Pod, Device, InterfaceDefinition, AdditionalLink
 from exception import DeviceError
 from common import SingletonBase
 from l3Clos import L3ClosMediation
@@ -430,17 +430,23 @@ class TwoStageConfigurator(L2DataCollector):
         # dict of probable fabric and device
         # key <device id> : value count of IFD found
         tentativeFabricDevice = {}
+        additionalLinks = []
         for link in matchedIfds:
             remoteIfd = link['ifd2']
-            # sanity check against leaf-to-leaf link
+            # sanity check against links that are not according to the cabling plan
             if remoteIfd.peer is None:
-                continue
+                additionalLink = AdditionalLink(name, device, 'deploy', 'error')
+                additionalLinks.append(additionalLink)
+                
             tentativeSelfDeviceId = remoteIfd.peer.device.id
             count = tentativeFabricDevice.get(tentativeSelfDeviceId)
             if count is not None:
                 tentativeFabricDevice[tentativeSelfDeviceId] = count + 1
             else:
                 tentativeFabricDevice[tentativeSelfDeviceId] = 1
+        
+        # add additional links to the database
+        #self.dao.createObjects(additionalLinks)
         
         # Take max count as BEST match
         keyForMaxCount = max(tentativeFabricDevice.iterkeys(), key=lambda k: tentativeFabricDevice[k])

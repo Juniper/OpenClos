@@ -370,3 +370,26 @@ class InterfaceDefinition(Interface):
         super(InterfaceDefinition, self).__init__(name, device, deployStatus)
         self.mtu = mtu
         self.role = role
+        
+class AdditionalLink(ManagedElement, Base):
+    __tablename__ = 'additionalLink'
+    id = Column(String(60), primary_key=True)
+    name = Column(String(100))
+    ipaddress = Column(String(40))
+    device_id = Column(String(60), ForeignKey('device.id'), nullable = False)
+    device = relationship("Device",backref=backref('additionalLinks', order_by=name, cascade='all, delete, delete-orphan'))
+    peer_id = Column(String(60), ForeignKey('additionalLink.id'))
+    peer = relationship('AdditionalLink', foreign_keys=[peer_id], uselist=False, post_update=True, )
+    deployStatus = Column(Enum('deploy', 'provision'), default = 'deploy')
+    lldpStatus = Column(Enum('unknown', 'good', 'error'), default = 'unknown') 
+    __table_args__ = (
+        UniqueConstraint('device_id', 'name', name='_device_id_name_uc'),
+    )
+        
+    def __init__(self, name, device, ipaddress, deployStatus='deploy', lldpStatus='unknown'):
+        self.id = str(uuid.uuid4())
+        self.name = name
+        self.device = device
+        self.ipaddress = ipaddress
+        self.deployStatus = deployStatus
+        self.lldpStatus = lldpStatus
