@@ -128,6 +128,12 @@ It also generates a cabling plan in two formats:
 The cabling plan files are available in the <path-to-OpenClos>/jnpr/openclos/out directory.
 
 
+License
+-------
+
+Apache 2.0
+
+
 Support
 -----------
 
