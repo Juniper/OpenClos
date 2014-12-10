@@ -131,5 +131,6 @@ The cabling plan files are available in the <path-to-OpenClos>/jnpr/openclos/out
 Support
 -----------
 
-If you find an issue with the software, please open a bug report on the OpenClos repository.
-For general questions and support, send e-mail to openclos-support@juniper.net.
+If you find an issue with the software, please open a bug report on the OpenClos repository.  
+  
+The Juniper Networks Technical Assistance Center (JTAC) does not provide support for OpenClos software. For general questions and support, send e-mail to openclos-support@juniper.net.
