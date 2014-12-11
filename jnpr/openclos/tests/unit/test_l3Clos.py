@@ -298,6 +298,18 @@ class TestL3Clos(unittest.TestCase):
     def testCreateRoutingOptionsBgp(self):
         pass
 
+    def testCreateAccessInterfaceNoNd(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        configlet = l3ClosMediation.createAccessPortInterfaces('qfx5100-48s-6q')
+        self.assertTrue('interface-range ALL-SERVER' in configlet)
+        self.assertTrue('xe-0/0/*' in configlet)
+
+    def testCreateAccessInterfaceNd(self):
+        self.conf['deploymentMode'] = {'ndIntegrated': True}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        configlet = l3ClosMediation.createAccessPortInterfaces('qfx5100-48s-6q')
+        self.assertEquals(48, configlet.count('family ethernet-switching'))
+
     def testCreateLeafGenericConfigNoNd(self):
         self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
                                  'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
