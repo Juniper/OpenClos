@@ -370,3 +370,23 @@ class InterfaceDefinition(Interface):
         super(InterfaceDefinition, self).__init__(name, device, deployStatus)
         self.mtu = mtu
         self.role = role
+        
+class AdditionalLink(ManagedElement, Base):
+    __tablename__ = 'additionalLink'
+    id = Column(String(60), primary_key=True)
+    device1 = Column(String(60)) # free form in case device does not exist in device table
+    port1 = Column(String(100))
+    device2 = Column(String(60)) # free form in case device does not exist in device table
+    port2 = Column(String(100))
+    lldpStatus = Column(Enum('unknown', 'good', 'error'), default = 'unknown') 
+    __table_args__ = (
+        UniqueConstraint('device1', 'port1', 'device2', 'port2', name='_device1_port1_device2_port2_uc'),
+    )
+        
+    def __init__(self, device1, port1, device2, port2, lldpStatus='unknown'):
+        self.id = str(uuid.uuid4())
+        self.device1 = device1
+        self.port1 = port1
+        self.device2 = device2
+        self.port2 = port2
+        self.lldpStatus = lldpStatus
