@@ -7,7 +7,7 @@ import pydot
 import os
 import logging
 from jinja2 import Environment, PackageLoader
-from model import InterfaceDefinition
+from model import InterfaceDefinition, AdditionalLink
 
 cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
 
@@ -140,7 +140,6 @@ class CablingPlanWriter(WriterBase):
     def getDataFor3StageL2Report(self):            
         devices = []
         links = []
-        additionalLinks = []
         for device in self.pod.devices:
             if device.deployStatus == 'deploy':
                 devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployStatus': device.deployStatus})
@@ -154,12 +153,16 @@ class CablingPlanWriter(WriterBase):
                         if spinePeerPort.device.deployStatus == 'deploy':
                             links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
                                           'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
-                    # additional links
-                    for link in device.additionalLinks:
-                        additionalLinks.append({'device1': device.name, 'port1': link.name, 'ip1': link.ipaddress, 
-                                                'device2': link.peer.device.name, 'port2': link.peer.name, 'ip2': link.peer.ipaddress, 'lldpStatus': link.lldpStatus})
+        # additional links
+        additionalLinkList = []
+        additionalLinks = self.dao.Session().query(AdditionalLink).all()
+        if additionalLinks is not None:
+            for link in additionalLinks:
+                additionalLinkList.append({'device1': link.device1, 'port1': link.port1, 'ip1': '', 
+                                           'device2': link.device2, 'port2': link.port2, 'ip2': '', 
+                                           'lldpStatus': link.lldpStatus})
 
-        return {'devices': devices, 'links': links, 'additionalLinks': additionalLinks}
+        return {'devices': devices, 'links': links, 'additionalLinks': additionalLinkList}
         
     def getThreeStageL2ReportJson(self):
         '''
