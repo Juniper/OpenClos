@@ -8,5 +8,9 @@
     {% for link in links %}    { "device1": "{{ link['device1'] }}", "port1": "{{ link['port1'] }}", "ip1":"{{ link['ip1'] }}", "device2": "{{ link['device2'] }}", "port2": "{{ link['port2'] }}", "ip2":"{{ link['ip2'] }}", "lldpStatus":"{{ link['lldpStatus'] }}"}{% if not loop.last %},
     {% endif %}{% endfor %}
   ]
+{% if additionalLinks | length > 0 %},  "additionalLinks": [
+    {% for link in additionalLinks %}    { "device1": "{{ link['device1'] }}", "port1": "{{ link['port1'] }}", "ip1":"{{ link['ip1'] }}", "device2": "{{ link['device2'] }}", "port2": "{{ link['port2'] }}", "ip2":"{{ link['ip2'] }}", "lldpStatus":"{{ link['lldpStatus'] }}"}{% if not loop.last %},
+    {% endif %}{% endfor %}
+  ]{% endif %}
 }
 }

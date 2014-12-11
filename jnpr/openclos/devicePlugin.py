@@ -15,7 +15,7 @@ from jnpr.junos.exception import ConnectError, RpcError, CommitError, LockError
 from jnpr.junos.utils.config import Config
 
 from dao import Dao
-from model import Pod, Device, InterfaceDefinition
+from model import Pod, Device, InterfaceDefinition, AdditionalLink
 from exception import DeviceError
 from common import SingletonBase
 from l3Clos import L3ClosMediation
@@ -217,11 +217,13 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         modifiedObjects = []
         goodUplinkCount = 0
         badUplinkCount = 0
+        additionalLinkCount = 0
         
         # check all the uplink ports connecting to spines according to cabling plan against lldp data.
         for uplinkPort in uplinkPorts:
             found = False
             peerPort = uplinkPort.peer
+            lldpDataRemaining = []
             for link in lldpData:
                 if link['port1'] == uplinkPort.name:
                     found = True
@@ -237,17 +239,35 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                         badUplinkCount += 1
                         uplinkPort.lldpStatus = 'error'
                         modifiedObjects.append(uplinkPort)
-                    break
+                else:
+                    # remove this found record because at the end of the outer loop
+                    # we need to count how many orphaned records are left. Those are "extra links"
+                    lldpDataRemaining.append(link)
+            # candidate for next iteration
+            lldpData = lldpDataRemaining
+            
             # case 3: lldp does not have this port but cabling plan shows this port connected to another port.
             if found == False and peerPort is not None:
                 badUplinkCount += 1
                 uplinkPort.lldpStatus = 'error'
                 modifiedObjects.append(uplinkPort)
             # case 4 (no-op): lldp does not have this port and cabling plan does not show this port is connected to another port.
-            
+            else:
+                pass
+                
         self.dao.updateObjects(modifiedObjects)
-        logger.debug('Total uplink count: %d, good: %d, error: %d', len(uplinkPorts), goodUplinkCount, badUplinkCount)
-        return {'goodUplinkCount': goodUplinkCount, 'badUplinkCount': badUplinkCount};
+        
+        # case 5: lldp has this port but cabling plan does not have this port. this is the case of "additional links"
+        self.dao.Session().query(AdditionalLink).filter(AdditionalLink.device1 == self.device.name).delete()
+        self.dao.Session().commit()
+        additionalLinks = []
+        for link in lldpData:
+            additionalLinkCount += 1
+            additionalLinks.append(AdditionalLink(self.device.name, link['port1'], link['device2'], link['port2'], 'error'))
+        self.dao.createObjects(additionalLinks)
+        
+        logger.debug('Total uplink count: %d, good: %d, error: %d, additionalLink: %d', len(uplinkPorts), goodUplinkCount, badUplinkCount, additionalLinkCount)
+        return {'goodUplinkCount': goodUplinkCount, 'badUplinkCount': badUplinkCount, 'additionalLinkCount': additionalLinkCount};
 
 class L3DataCollector(DeviceDataCollectorNetconf):
     pass
@@ -432,7 +452,7 @@ class TwoStageConfigurator(L2DataCollector):
         tentativeFabricDevice = {}
         for link in matchedIfds:
             remoteIfd = link['ifd2']
-            # sanity check against leaf-to-leaf link
+            # sanity check against links that are not according to the cabling plan
             if remoteIfd.peer is None:
                 continue
             tentativeSelfDeviceId = remoteIfd.peer.device.id
@@ -515,6 +535,14 @@ if __name__ == "__main__":
     #### TEST CODE, should not be executed
     #### .219 is the only device we have on which we can test
     #### please rollback changes from CLI after running this test
-    configurator = TwoStageConfigurator('192.168.48.219')
-    configurator.start2StageConfiguration()
+    #configurator = TwoStageConfigurator('192.168.48.219')
+    #configurator.start2StageConfiguration()
     #### TEST CODE, should not be executed
+    l3ClosMediation = L3ClosMediation()
+    pods = l3ClosMediation.loadClosDefinition()
+    pod = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
+    raw_input("pause...")
+    leaf1 = l3ClosMediation.dao.Session.query(Device).filter(Device.name == 'clos-leaf-01').one()
+    c = L2DataCollector(leaf1.id)
+    c.startL2Report()
+        

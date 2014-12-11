@@ -12,7 +12,7 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #t
 import unittest
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
+from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base, AdditionalLink
 
 def createPodObj(name):  
     pod = {}
@@ -377,6 +377,62 @@ class TestInterfaceDefinition(TestOrm):
         self.assertEqual('et-0/0/12', fetchedIfds[6].name)
         self.assertEqual('et-0/0/13', fetchedIfds[7].name)
         
+class TestAdditionalLink(TestOrm):
+    
+    def testConstructorPass(self):
+        self.assertTrue(AdditionalLink('device1', 'et-0/0/0', "device2", 'et-0/0/1'))
+                        
+    def testOrm(self):       
+        IF = AdditionalLink('device1', 'et-0/0/0', "device2", 'et-0/0/1')
+        self.session.add(IF)
+        self.session.commit()
+        
+        self.assertEqual(1, self.session.query(AdditionalLink).count())
+        fetched = self.session.query(AdditionalLink).one()
+        self.assertEqual(IF, fetched)
+        
+        #delete object
+        self.session.delete(IF)
+        self.session.commit()
+        self.assertEqual(0, self.session.query(AdditionalLink).count())
+        
+    def testRelationDeviceAdditionalLink(self):
+        # create pod
+        # create device
+        #create AdditionalLink
+        IFLone = AdditionalLink('device1', 'et-0/0/1', "device2", 'et-0/0/2')
+        IFLtwo = AdditionalLink('device3', 'et-0/0/3', "device4", 'et-0/0/4')
+        self.session.add(IFLone)
+        self.session.add(IFLtwo)
+        self.session.commit()
+        
+        self.assertEqual(2, self.session.query(AdditionalLink).count())
+        # check relation navigation from additionalLink device
+        additionalLinks = self.session.query(AdditionalLink).all()
+        self.assertEqual("device1", additionalLinks[0].device1)
+        self.assertEqual("device2", additionalLinks[0].device2)
+        self.assertEqual("device3", additionalLinks[1].device1)
+        self.assertEqual("device4", additionalLinks[1].device2)
+        
+           
+    def testRelationAdditionalLinkPeer(self):
+        # create pod
+        # create device
+        #create AdditionalLink
+        IFLone = AdditionalLink('device1', 'et-0/0/1', "device2", 'et-0/0/2')
+        IFLtwo = AdditionalLink('device3', 'et-0/0/3', "device4", 'et-0/0/4')
+        self.session.add(IFLone)
+        self.session.add(IFLtwo)
+        self.session.commit()
+        
+        self.assertEqual(2, self.session.query(AdditionalLink).count())
+        # check relation navigation from additionalLink device
+        additionalLinks = self.session.query(AdditionalLink).all()
+        self.assertEqual("et-0/0/1", additionalLinks[0].port1)
+        self.assertEqual("et-0/0/2", additionalLinks[0].port2)
+        self.assertEqual("et-0/0/3", additionalLinks[1].port1)
+        self.assertEqual("et-0/0/4", additionalLinks[1].port2)
+               
 
 if __name__ == '__main__':
     unittest.main()
