@@ -580,7 +580,6 @@ class L3ClosMediation():
         lo0Stanza = self.templateEnv.get_template('lo0_stanza.txt')
         mgmtStanza = self.templateEnv.get_template('mgmt_interface.txt')
         rviStanza = self.templateEnv.get_template('rvi_stanza.txt')
-        serverInterfaceStanza = self.templateEnv.get_template('server_interface_stanza.txt')
             
         config = "interfaces {" + "\n" 
         # management interface
@@ -594,7 +593,7 @@ class L3ClosMediation():
         if device.role == 'leaf':
             irbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.id == device.id).one()
             config += rviStanza.render(address=irbIfl.ipaddress)
-            config += serverInterfaceStanza.render()
+            config += self.createAccessPortInterfaces(device.family)
 
         # Interconnect interfaces
         deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name_order_num).all()
@@ -608,6 +607,19 @@ class L3ClosMediation():
                                              address=interconnectIfl.ipaddress)
                 
         config += "}\n"
+        return config
+
+    def createAccessPortInterfaces(self, deviceFamily):
+        accessInterface = self.templateEnv.get_template('accessInterface.txt')
+        accessInterfaceRange = self.templateEnv.get_template('accessInterfaceRange.txt')
+        config = ''
+
+        if util.isIntegratedWithND(self.conf):
+            for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['downlinkPorts']:
+                config += accessInterface.render(ifd_name=ifdName)
+        else:
+            config += accessInterfaceRange.render()
+
         return config
 
     def getParamsForOutOfBandNetwork(self, pod):

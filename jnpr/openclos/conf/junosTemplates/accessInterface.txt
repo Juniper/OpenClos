@@ -1,0 +1,11 @@
+    replace:
+    {{ifd_name}} {
+        unit 0 {
+            family ethernet-switching {
+                interface-mode access;
+                vlan {
+                    members SERVER;
+                }
+            }
+        }
+    }
