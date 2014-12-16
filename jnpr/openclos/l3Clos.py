@@ -611,14 +611,10 @@ class L3ClosMediation():
 
     def createAccessPortInterfaces(self, deviceFamily):
         accessInterface = self.templateEnv.get_template('accessInterface.txt')
-        accessInterfaceRange = self.templateEnv.get_template('accessInterfaceRange.txt')
         config = ''
 
-        if util.isIntegratedWithND(self.conf):
-            for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['downlinkPorts']:
-                config += accessInterface.render(ifd_name=ifdName)
-        else:
-            config += accessInterfaceRange.render()
+        for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['downlinkPorts']:
+            config += accessInterface.render(ifd_name=ifdName)
 
         return config
 

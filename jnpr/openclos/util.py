@@ -245,9 +245,10 @@ def enumerateRoutableIpv4Addresses():
     for intf in intfs:
         if intf != 'lo':
             addrDict = netifaces.ifaddresses(intf)
-            ipv4AddrInfoList = addrDict[netifaces.AF_INET]
-            for ipv4AddrInfo in ipv4AddrInfoList:
-                addrs.append(ipv4AddrInfo['addr'])
+            ipv4AddrInfoList = addrDict.get(netifaces.AF_INET)
+            if ipv4AddrInfoList is not None:
+                for ipv4AddrInfo in ipv4AddrInfoList:
+                    addrs.append(ipv4AddrInfo['addr'])
     return addrs
 
 def modifyConfigTrapTarget(target, confFile = 'openclos.yaml'):

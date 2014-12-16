@@ -1,6 +1,6 @@
     replace:
     interface-range ALL-SERVER {
-        member xe-0/0/*;
+        member {{interfaceNameRange}};
         unit 0 {
             family ethernet-switching {
                 interface-mode access;
