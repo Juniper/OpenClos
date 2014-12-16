@@ -334,9 +334,10 @@ class Interface(ManagedElement, Base):
         
         if name.count('/') == 3:
             self.name_order_num = 0
-            fpc = name.split('/')[-3]
-            pic = name.split('/')[-2]
-            port = name.split('/')[-1]
+            nameSplit = name.split('/') 
+            fpc = nameSplit[-3]
+            pic = nameSplit[-2]
+            port = nameSplit[-1]
             if fpc.isdigit():
                 self.name_order_num += int(fpc) * 10000
             if pic.isdigit():
