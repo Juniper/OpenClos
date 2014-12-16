@@ -175,6 +175,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             table = lldpTable(self.deviceConnectionHandle)
             lldpData = table.get()
             links = []
+            devicesToBeUpdated = []
             for link in lldpData:
                 logger.debug('device1: %s, port1: %s, device2: %s, port2: %s' % (link.device1, link.port1, link.device2, link.port2))
                 links.append({'device1': link.device1, 'port1': link.port1, 'device2': link.device2, 'port2': link.port2})
@@ -186,9 +187,12 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                     if device2.role == 'spine':
                         device2.l2Status = 'good'
                         device2.configStatus = 'good'
-                    self.dao.updateObjects([device2])
+                    devicesToBeUpdated.append(device2)
                     
             logger.debug('End LLDP data collector for %s' % (self.deviceLogStr))
+
+            if len(devicesToBeUpdated) > 0:
+                self.dao.updateObjects(devicesToBeUpdated)
 
             return links
         except RpcError as exc:
@@ -427,6 +431,7 @@ class TwoStageConfigurator(L2DataCollector):
         ''' filter only remote ports that are  IFD configured in the DB '''
         uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['uplinkPorts']
         IfdLinks = []
+        devicesToBeUpdated = []
         for link in lldpData:
             if link['port1'] in uplinkNames:
                 ifd2 = self.dao.getIfdByDeviceNamePortName(link['device2'], link['port2'])
@@ -440,8 +445,12 @@ class TwoStageConfigurator(L2DataCollector):
                     if ifd2.device.role == 'spine':
                         ifd2.device.l2Status = 'good'
                         ifd2.device.configStatus = 'good'
-                    self.dao.updateObjects([ifd2.device])
+                    devicesToBeUpdated.append(ifd2.device)
         logger.debug('Number of IFDs found from LLDP data is %d' % (len(IfdLinks)))
+
+        if len(devicesToBeUpdated) > 0:
+            self.dao.updateObjects(devicesToBeUpdated)
+
         return IfdLinks
         
     def findMatchedDevice(self, lldpData, deviceFamily):
