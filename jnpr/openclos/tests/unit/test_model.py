@@ -363,7 +363,9 @@ class TestInterfaceDefinition(TestOrm):
         IFDs = [InterfaceDefinition('et-0/0/0', deviceOne, 9000), InterfaceDefinition('et-0/0/1', deviceOne, 9000), 
                 InterfaceDefinition('et-0/0/2', deviceOne, 9000), InterfaceDefinition('et-0/0/3', deviceOne, 9000), 
                 InterfaceDefinition('et-0/0/10', deviceOne, 9000), InterfaceDefinition('et-0/0/11', deviceOne, 9000),
-                InterfaceDefinition('et-0/0/12', deviceOne, 9000), InterfaceDefinition('et-0/0/13', deviceOne, 9000)]
+                InterfaceDefinition('et-0/0/12', deviceOne, 9000), InterfaceDefinition('et-0/0/13', deviceOne, 9000),
+                InterfaceDefinition('et-0/1/0', deviceOne, 9000), InterfaceDefinition('et-0/1/1', deviceOne, 9000),
+                InterfaceDefinition('et-0/1/2', deviceOne, 9000), InterfaceDefinition('et-0/1/3', deviceOne, 9000)]
         self.session.add_all(IFDs)
         self.session.commit()
         
@@ -376,6 +378,11 @@ class TestInterfaceDefinition(TestOrm):
         self.assertEqual('et-0/0/11', fetchedIfds[5].name)
         self.assertEqual('et-0/0/12', fetchedIfds[6].name)
         self.assertEqual('et-0/0/13', fetchedIfds[7].name)
+        self.assertEqual('et-0/1/0', fetchedIfds[8].name)
+        self.assertEqual('et-0/1/1', fetchedIfds[9].name)
+        self.assertEqual('et-0/1/2', fetchedIfds[10].name)
+        self.assertEqual('et-0/1/3', fetchedIfds[11].name)
+
         
 class TestAdditionalLink(TestOrm):
     

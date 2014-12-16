@@ -78,6 +78,10 @@ deviceFamily :
         uplinkPorts : 'et-0/0/[96-103]' 
         downlinkPorts : 'xe-0/0/[0-95]'
         ports :  
+    ex4300-48p :
+        uplinkPorts : 'et-0/1/[0-3]' 
+        downlinkPorts : 'ge-0/0/[0-47]'
+        ports :  
 
 # List of colors used in the DOT file to represent interconnects 
 DOT :
