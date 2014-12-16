@@ -293,6 +293,8 @@ class RestServer():
                 outputDict['managementIp'] = device.managementIp
                 outputDict['deployStatus'] = device.deployStatus
                 outputDict['configStatus'] = device.configStatus
+                outputDict['l2Status'] = device.l2Status
+                outputDict['l3Status'] = device.l3Status
                 outputDict['uri'] = bottle.request.url + '/' +device.id
                 listOfDevices.append(outputDict)
             devices['device'] = listOfDevices

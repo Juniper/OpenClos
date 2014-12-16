@@ -175,11 +175,25 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             table = lldpTable(self.deviceConnectionHandle)
             lldpData = table.get()
             links = []
+            devicesToBeUpdated = []
             for link in lldpData:
                 logger.debug('device1: %s, port1: %s, device2: %s, port2: %s' % (link.device1, link.port1, link.device2, link.port2))
                 links.append({'device1': link.device1, 'port1': link.port1, 'device2': link.device2, 'port2': link.port2})
-            
+                
+                device2 = self.dao.getUniqueObjectByName(Device, link.device2)
+                if device2 is not None:
+                    device2.deployStatus = 'deploy'
+                    # only update l2Status for spine because leaf will get updated when we collect its L2 data
+                    if device2.role == 'spine':
+                        device2.l2Status = 'good'
+                        device2.configStatus = 'good'
+                    devicesToBeUpdated.append(device2)
+                    
             logger.debug('End LLDP data collector for %s' % (self.deviceLogStr))
+
+            if len(devicesToBeUpdated) > 0:
+                self.dao.updateObjects(devicesToBeUpdated)
+
             return links
         except RpcError as exc:
             logger.error('LLDP data collection failure, %s' % (exc))
@@ -417,6 +431,7 @@ class TwoStageConfigurator(L2DataCollector):
         ''' filter only remote ports that are  IFD configured in the DB '''
         uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['uplinkPorts']
         IfdLinks = []
+        devicesToBeUpdated = []
         for link in lldpData:
             if link['port1'] in uplinkNames:
                 ifd2 = self.dao.getIfdByDeviceNamePortName(link['device2'], link['port2'])
@@ -424,7 +439,18 @@ class TwoStageConfigurator(L2DataCollector):
                     link['ifd2'] = ifd2
                     IfdLinks.append(link)
                     logger.debug('Found IFD deviceName: %s, portName: %s' % (link['device2'], link['port2']))
+                    # in case remote is a plug-and-play leaf, we want to automatically turn its deployStatus to 'deploy'
+                    ifd2.device.deployStatus = 'deploy'
+                    # only update l2Status for spine because leaf will get updated when we collect its L2 data
+                    if ifd2.device.role == 'spine':
+                        ifd2.device.l2Status = 'good'
+                        ifd2.device.configStatus = 'good'
+                    devicesToBeUpdated.append(ifd2.device)
         logger.debug('Number of IFDs found from LLDP data is %d' % (len(IfdLinks)))
+
+        if len(devicesToBeUpdated) > 0:
+            self.dao.updateObjects(devicesToBeUpdated)
+
         return IfdLinks
         
     def findMatchedDevice(self, lldpData, deviceFamily):
@@ -473,6 +499,8 @@ class TwoStageConfigurator(L2DataCollector):
         device = self.dao.getObjectById(Device, keyForMaxCount)
         mgmtNetwork = IPNetwork(device.pod.managementPrefix)
         device.managementIp = self.deviceIp + '/' + str(mgmtNetwork.prefixlen)
+        # mark as 'deploy' automatically because this is a plug-and-play leaf
+        device.deployStatus = 'deploy'
         self.dao.updateObjects([device])
         
         # Is BEST match good enough match
@@ -481,7 +509,7 @@ class TwoStageConfigurator(L2DataCollector):
             self.updateSelfDeviceContext(device)
             return self.device
         else:
-            self.updateDeviceConfigStatus('error', 'Number of matched uplink count: %s, is less than required effectiveLeafUplinkcountMustBeUp: %d' % (maxCount, effectiveLeafUplinkcountMustBeUp))
+            logger.info('Number of matched uplink count: %s, is less than required effectiveLeafUplinkcountMustBeUp: %d' % (maxCount, effectiveLeafUplinkcountMustBeUp))
         
 
     def updateDeviceConfiguration(self):
