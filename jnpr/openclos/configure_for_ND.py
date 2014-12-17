@@ -4,6 +4,7 @@ import fileinput
 import re
 
 import util
+from crypt import Cryptic
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
@@ -94,7 +95,7 @@ class NDConfMgr:
             return 'dbUser : ' + self.cmd_args.dbuser + '\n'
 
         if re.search ( 'dbPassword', line) is not None:
-            return 'dbPassword : ' + self.cmd_args.dbpass + '\n'
+            return 'dbPassword : ' + self.db_pass_crypt + '\n'
 
         if re.search ( 'dbName', line ) is not None:
             return 'dbName : openclos\n'
@@ -129,7 +130,8 @@ class NDConfMgr:
         for ip in self.cmd_args.nodeip:
             print "        - " + ip
         print "DB User      : " + self.cmd_args.dbuser
-        print "DB Pass      : " + self.cmd_args.dbpass
+        self.db_pass_crypt = Cryptic ().encrypt ( self.cmd_args.dbpass )
+        print "DB Pass      : " + self.db_pass_crypt
         print "ND Trap Port : " + self.cmd_args.ndtrapport
 
         conf_file = os.path.join ( util.configLocation,
