@@ -13,12 +13,16 @@ import shutil
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 import netifaces
 import fileinput
+import logging
+import logging.config
 
 #__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 
 TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT=5
 TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL=60 # in seconds
+
+loggingInitialized = False
 
 def loadConfig(confFile = 'openclos.yaml'):
     '''
@@ -270,3 +274,36 @@ def modifyConfigTrapTarget(target, confFile = 'openclos.yaml'):
         print "File error:", e
         return None
 
+def loadLoggingConfig(appName, confFile = 'logging.yaml'):
+    '''
+    Loads global configuration and creates hash 'conf'
+    '''
+    try:
+        confStream = open(os.path.join(configLocation, confFile), 'r')
+        conf = yaml.load(confStream)
+        if conf is not None:
+            handlers = conf.get('handlers')
+            if handlers is not None:
+                for handlerName, handlerDict in handlers.items():
+                    filename = handlerDict.get('filename')
+                    if filename is not None:
+                        handlerDict['filename'] = filename.replace('%(appName)', appName)
+            # now we are done with substitution, we are ready to start the logging
+            logging.config.dictConfig(conf)
+            global loggingInitialized
+            loggingInitialized = True
+    except (OSError, IOError) as e:
+        print "File error:", e
+    except (yaml.scanner.ScannerError) as e:
+        print "YAML error:", e
+        confStream.close()
+    return loggingInitialized
+
+def getLogger(moduleName):
+    '''
+    Get logger based on module name
+    '''
+    if loggingInitialized == False:
+        raise ValueError("util.loadLoggingConfig needs to be called before util.getLogger")
+        
+    return logging.getLogger(moduleName)

@@ -17,9 +17,7 @@ import concurrent.futures
 from devicePlugin import TwoStageConfigurator 
 
 moduleName = 'trapd'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
-logger = logging.getLogger(moduleName)
-logger.setLevel(logging.DEBUG)
+logger = None
 
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 20162
@@ -81,12 +79,12 @@ def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
 
 class TrapReceiver():
     def __init__(self, conf = {}):
+        global logger
+        logger = util.getLogger(moduleName)
         if conf is None or any(conf) == False:
             self.conf = util.loadConfig()
         else:
             self.conf = conf
-        if 'logLevel' in self.conf:
-            logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName])) 
 
         # default value
         self.target = DEFAULT_HOST
@@ -153,6 +151,8 @@ def trap_receiver_signal_handler(signal, frame):
     sys.exit(0)
         
 if __name__ == '__main__':
+    util.loadLoggingConfig(moduleName)
+
     signal.signal(signal.SIGINT, trap_receiver_signal_handler)
     signal.signal(signal.SIGTERM, trap_receiver_signal_handler)
     trapReceiver = TrapReceiver()

@@ -13,7 +13,7 @@ import zipfile
 
 import json
 import util
-from bottle import error
+from bottle import error, request, response
 from exception import RestError
 from model import Pod, Device
 from dao import Dao
@@ -22,12 +22,22 @@ from l3Clos import L3ClosMediation
 from ztp import ZtpServer
 
 moduleName = 'rest'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
-logger = logging.getLogger(moduleName)
-logger.setLevel(logging.DEBUG)
+logger = None
 
 webServerRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
 junosImageRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf', 'ztp')
+
+def loggingPlugin(callback):
+    def wrapper(*args, **kwargs):
+        body = callback(*args, **kwargs)
+        msg = '"{} {} {}" {}'.format(request.method, 
+                                        request.path, 
+                                        request.environ.get('SERVER_PROTOCOL', ''),
+                                        response.status_code)
+        logger.info(msg)
+        logger.debug('%s: %s' % (msg, body))
+        return body
+    return wrapper
 
 class ResourceLink():
     def __init__(self, baseUrl, path):
@@ -38,9 +48,10 @@ class ResourceLink():
 
 class RestServer():
     def __init__(self, conf = {}):
+        global logger
+        logger = util.getLogger(moduleName)
         if any(conf) == False:
             self.conf = util.loadConfig()
-            logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
             global webServerRoot
             webServerRoot = self.conf['outputDir']
         else:
@@ -67,6 +78,7 @@ class RestServer():
     def initRest(self):
         self.addRoutes(self.baseUrl)
         self.app = bottle.app()
+        self.app.install(loggingPlugin)
 
     def start(self):
         logger.info('REST server started at %s:%d' % (self.host, self.port))
@@ -627,6 +639,8 @@ class RestServer():
 
 
 if __name__ == '__main__':
+    util.loadLoggingConfig(moduleName)
+
     restServer = RestServer()
     restServer.initRest()
     restServer.start()

@@ -17,18 +17,17 @@ from sqlalchemy.orm import exc
 
 
 moduleName = 'ztp'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
-logger = logging.getLogger(moduleName)
-logger.setLevel(logging.DEBUG)
+logger = None
 
 ztpTemplateLocation = os.path.join('conf', 'ztp')
 
 
 class ZtpServer():
     def __init__(self, conf = {}, templateEnv = None):
+        global logger
+        logger = util.getLogger(moduleName)
         if any(conf) == False:
             self.conf = util.loadConfig()
-            logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
 
         else:
             self.conf = conf
@@ -184,6 +183,8 @@ class ZtpServer():
         return ztp
 
 if __name__ == '__main__':
+    util.loadLoggingConfig(moduleName)
+    
     ztpServer = ZtpServer()
     pods = ztpServer.dao.getAll(Pod)
     ztpServer.createPodSpecificDhcpConfFile(pods[0].id)

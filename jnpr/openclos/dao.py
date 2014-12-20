@@ -7,18 +7,17 @@ import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import exc
 import logging
+import util
 
 from model import Base, Device, InterfaceDefinition
 
 moduleName = 'dao'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
-logger = logging.getLogger(moduleName)
-logger.setLevel(logging.INFO)
+logger = None
 
 class Dao:
     def __init__(self, conf):
-        if conf is not None and 'logLevel' in conf:
-            logger.setLevel(logging.getLevelName(conf['logLevel'][moduleName]))
+        global logger
+        logger = util.getLogger(moduleName)
             
         if conf is not None and 'dbUrl' in conf:
             engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={}, echo = conf.get('debugSql', False))  

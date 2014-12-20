@@ -5,14 +5,15 @@ Created on Aug 26, 2014
 '''
 import unittest
 from sqlalchemy import exc
+import jnpr.openclos.util
 
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition
 
 class TestDao(unittest.TestCase):
     def setUp(self):
-        
         '''Creates Dao with in-memory DB'''
+        jnpr.openclos.util.loggingInitialized = True
         self.conf = {}
         self.conf['dbUrl'] = 'sqlite:///'
     
