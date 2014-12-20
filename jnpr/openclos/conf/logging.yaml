@@ -1,0 +1,39 @@
+version: 1
+loggers:
+    l3Clos :
+        level: INFO
+        handlers: [console, file] 
+    report : 
+        level: INFO
+        handlers: [console, file] 
+    ztp : 
+        level: INFO
+        handlers: [console, file] 
+    rest : 
+        level: INFO
+        handlers: [console, file] 
+    writer : 
+        level: INFO
+        handlers: [console, file] 
+    devicePlugin : 
+        level: INFO
+        handlers: [console, file] 
+    trapd : 
+        level: INFO
+        handlers: [console, file] 
+    dao : 
+        level: INFO
+        handlers: [console, file] 
+formatters:
+    detailed:
+        format: '%(asctime)s [%(name)-12s] [%(levelname)-8s] [%(thread)8x] %(message)s'
+handlers:
+    console:
+        class: logging.StreamHandler
+        formatter: detailed
+    file:
+        filename: openclos-%(appName).log
+        class: logging.handlers.RotatingFileHandler
+        formatter: detailed
+        maxBytes: 1048576
+        backupCount: 0

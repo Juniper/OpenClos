@@ -14,16 +14,15 @@ from devicePlugin import L2DataCollector
 from writer import CablingPlanWriter
 
 moduleName = 'report'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
-logger = logging.getLogger(moduleName)
-logger.setLevel(logging.DEBUG)
+logger = None
 maxThreads = 10
 
 class Report(object):
     def __init__(self, conf = {}, dao = None):
+        global logger
+        logger = util.getLogger(moduleName)
         if any(conf) == False:
             self.conf = util.loadConfig()
-            logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
         else:
             self.conf = conf
 
@@ -152,6 +151,8 @@ class L3Report(Report):
     
 
 if __name__ == '__main__':
+    util.loadLoggingConfig(moduleName)
+
     report = ResourceAllocationReport()
     print report.getPods();
     print report.getInterconnectAllocation('labLeafSpine')

@@ -23,9 +23,7 @@ import util
 from netaddr import IPAddress, IPNetwork
 
 moduleName = 'devicePlugin'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
-logger = logging.getLogger(moduleName)
-logger.setLevel(logging.DEBUG)
+logger = None
 
 junosEzTableLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf', 'junosEznc')
 
@@ -65,9 +63,10 @@ class DeviceDataCollectorNetconf(object):
     Uses junos-eznc to connect to device
     '''
     def __init__(self, deviceId, conf = {}):
+        global logger
+        logger = util.getLogger(moduleName)
         if any(conf) == False:
             self.conf = util.loadConfig()
-            logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
         else:
             self.conf = conf
 
@@ -566,6 +565,8 @@ if __name__ == "__main__":
     #configurator = TwoStageConfigurator('192.168.48.219')
     #configurator.start2StageConfiguration()
     #### TEST CODE, should not be executed
+    util.loadLoggingConfig(moduleName)
+    
     l3ClosMediation = L3ClosMediation()
     pods = l3ClosMediation.loadClosDefinition()
     pod = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
