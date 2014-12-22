@@ -475,7 +475,7 @@ class L3ClosMediation():
         bitsPerSubnet = int(math.ceil(math.log(numOfHostIpsPerSwitch + 2, 2)))  # +2 for network and broadcast
         cidrForEachSubnet = 32 - bitsPerSubnet
 
-        numOfIps = (numOfSubnets * (numOfHostIpsPerSwitch + 2)) # +2 for network and broadcast
+        numOfIps = (numOfSubnets * (2 ** bitsPerSubnet))
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
         irbBlock = IPNetwork(str(irbIp) + "/" + str(cidr))
