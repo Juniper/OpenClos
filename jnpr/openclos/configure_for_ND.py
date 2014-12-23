@@ -16,8 +16,7 @@ parser.add_argument ( '--restport',
                       action = 'store',
                       help   = 'Port number to which REST server will bind' )
 parser.add_argument ( '--nodeip',
-                      action = 'append',
-                      dest   = 'nodeip',
+                      action = 'store',
                       help   = 'Node IP address for Network Director' )
 parser.add_argument ( '--dbuser',
                       action = 'store',
@@ -65,9 +64,8 @@ class NDConfMgr:
             if ip_format.match ( self.cmd_args.ndvip ) is None:
                 error_str += "- Network Director VIP address is not valid\n"
 
-            for ip_addr in self.cmd_args.nodeip:
-                if ip_format.match ( ip_addr ) is None:
-                    error_str += "- Node IP address " + ip_addr + " is not valid\n"
+            if ip_format.match ( self.cmd_args.nodeip ) is None:
+                error_str += "- Node IP address is not valid\n"
         else:
             error_str += "\nPlease use -h option to view all command arguments"
 
@@ -92,10 +90,10 @@ class NDConfMgr:
             return 'dbHost : ' + self.cmd_args.ndvip + '\n'
 
         if re.search ( 'dbUser', line ) is not None:
-            return 'dbUser : ' + self.cmd_args.dbuser + '\n'
+            return 'dbUser : ' + "'" + self.cmd_args.dbuser + "'" + '\n'
 
         if re.search ( 'dbPassword', line) is not None:
-            return 'dbPassword : ' + self.db_pass_crypt + '\n'
+            return 'dbPassword : ' + "'" + self.db_pass_crypt + "'" + '\n'
 
         if re.search ( 'dbName', line ) is not None:
             return 'dbName : openclos\n'
@@ -126,9 +124,7 @@ class NDConfMgr:
         print "Configuring OpenCLOS with following parameters:"
         print "ND VIP       : " + self.cmd_args.ndvip
         print "REST Port    : " + self.cmd_args.restport
-        print "Node IP      : "
-        for ip in self.cmd_args.nodeip:
-            print "        - " + ip
+        print "Node IP      : " + self.cmd_args.nodeip
         print "DB User      : " + self.cmd_args.dbuser
         self.db_pass_crypt = Cryptic ().encrypt ( self.cmd_args.dbpass )
         print "DB Pass      : " + self.db_pass_crypt
@@ -141,18 +137,16 @@ class NDConfMgr:
             for line in lineIter:
                 if 'httpServer :' in line:
                     print line,
-                    print lineIter.next (),
+                    print '    ipAddr : ' + self.cmd_args.nodeip
                     lineIter.next (),
                     print '    port : ' + self.cmd_args.restport
+                    lineIter.next (),
                 elif '    networkdirector_trap_group :' in line:
                     print line,
                     print '        port : ' + self.cmd_args.ndtrapport
                     lineIter.next (),
-                    print '        target :'
-                    for ip in self.cmd_args.nodeip:
-                        print '            - ' + ip
+                    print '        target : ' + self.cmd_args.nodeip
                     lineIter.next (),
-                    self.set_stale_entry_flag ()
                 else:
                     add_line = self.process_line ( line )
                     if add_line is not None:
