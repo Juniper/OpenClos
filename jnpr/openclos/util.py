@@ -15,6 +15,7 @@ import netifaces
 import fileinput
 import logging
 import logging.config
+from crypt import Cryptic
 
 #__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
@@ -38,7 +39,8 @@ def loadConfig(confFile = 'openclos.yaml'):
                 # dbUrl is used by sqlite only
                 conf['dbUrl'] = fixSqlliteDbUrlForRelativePath(conf['dbUrl'])
             elif 'dbDialect' in conf:
-                conf['dbUrl'] = conf['dbDialect'] + '://' + conf['dbUser'] + ':' + conf['dbPassword'] + '@' + conf['dbHost'] + '/' + conf['dbName'] 
+                db_pass = Cryptic ().decrypt ( conf['dbPassword'] )
+                conf['dbUrl'] = conf['dbDialect'] + '://' + conf['dbUser'] + ':' + db_pass + '@' + conf['dbHost'] + '/' + conf['dbName'] 
             if 'outputDir' in conf:
                 conf['outputDir'] = fixOutputDirForRelativePath(conf['outputDir'])
         
