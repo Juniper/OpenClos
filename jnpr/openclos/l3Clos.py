@@ -23,16 +23,15 @@ from jinja2 import Environment, PackageLoader
 
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 
-moduleName = 'fabric'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
-logger = logging.getLogger(moduleName)
-logger.setLevel(logging.DEBUG)
+moduleName = 'l3Clos'
+logger = None
 
 class L3ClosMediation():
     def __init__(self, conf = {}, dao = None):
+        global logger
+        logger = util.getLogger(moduleName)
         if any(conf) == False:
             self.conf = util.loadConfig()
-            logger.setLevel(logging.getLevelName(self.conf['logLevel'][moduleName]))
         else:
             self.conf = conf
 
@@ -476,7 +475,7 @@ class L3ClosMediation():
         bitsPerSubnet = int(math.ceil(math.log(numOfHostIpsPerSwitch + 2, 2)))  # +2 for network and broadcast
         cidrForEachSubnet = 32 - bitsPerSubnet
 
-        numOfIps = (numOfSubnets * (numOfHostIpsPerSwitch + 2)) # +2 for network and broadcast
+        numOfIps = (numOfSubnets * (2 ** bitsPerSubnet))
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
         irbBlock = IPNetwork(str(irbIp) + "/" + str(cidr))
@@ -611,14 +610,10 @@ class L3ClosMediation():
 
     def createAccessPortInterfaces(self, deviceFamily):
         accessInterface = self.templateEnv.get_template('accessInterface.txt')
-        accessInterfaceRange = self.templateEnv.get_template('accessInterfaceRange.txt')
         config = ''
 
-        if util.isIntegratedWithND(self.conf):
-            for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['downlinkPorts']:
-                config += accessInterface.render(ifd_name=ifdName)
-        else:
-            config += accessInterfaceRange.render()
+        for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['downlinkPorts']:
+            config += accessInterface.render(ifd_name=ifdName)
 
         return config
 
@@ -804,6 +799,8 @@ class L3ClosMediation():
         return config
         
 if __name__ == '__main__':
+    util.loadLoggingConfig(moduleName)
+    
     l3ClosMediation = L3ClosMediation()
     pods = l3ClosMediation.loadClosDefinition()
 

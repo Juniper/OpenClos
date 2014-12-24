@@ -8,19 +8,18 @@ import os
 import logging
 from jinja2 import Environment, PackageLoader
 from model import InterfaceDefinition, AdditionalLink
+import util
 
 cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
 
 moduleName = 'writer'
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(thread)d - %(message)s')
-logger = logging.getLogger(moduleName)
-logger.setLevel(logging.DEBUG)
+logger = None
 
 class WriterBase():
     def __init__(self, conf, pod, dao):
-        if 'logLevel' in conf:
-            logger.setLevel(logging.getLevelName(conf['logLevel'][moduleName]))        
-        
+        global logger
+        logger = util.getLogger(moduleName)
+       
         # use dao to generate various output
         self.dao = dao
         

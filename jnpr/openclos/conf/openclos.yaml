@@ -39,19 +39,6 @@ dbUrl : sqlite:///data/sqllite3.db
 #dbPassword : password
 #dbName : openclos
 
-# Logging level
-# possible values: DEBUG, INFO, WARNING, ERROR, CRITICAL
-logLevel : 
-    fabric : INFO
-    report : INFO
-    ztp : INFO
-    rest : INFO
-    writer : INFO
-    devicePlugin : INFO
-    trapd : INFO
-    dao : INFO
-
-
 # debug SQL and ORM
 # "true" will enable logging all SQL statements to underlying DB
 debugSql : false
@@ -75,9 +62,25 @@ deviceFamily :
         downlinkPorts : 'xe-0/0/[0-47]'
         ports :  
     qfx5100-96s-8q :
-        uplinkPorts : 'et-0/0/[96-103]' 
+        uplinkPorts : 'et-0/0/[96-103]'
         downlinkPorts : 'xe-0/0/[0-95]'
-        ports :  
+        ports :
+    ex4300-48p :
+        uplinkPorts : 'et-0/1/[0-3]'
+        downlinkPorts : 'ge-0/0/[0-47]'
+        ports :
+    ex4300-48t :
+        uplinkPorts : 'et-0/1/[0-3]'
+        downlinkPorts : 'ge-0/0/[0-47]'
+        ports :
+    ex4300-24p :
+        uplinkPorts : 'et-0/1/[0-3]'
+        downlinkPorts : 'ge-0/0/[0-23]'
+        ports :
+    ex4300-24t :
+        uplinkPorts : 'et-0/1/[0-3]'
+        downlinkPorts : 'ge-0/0/[0-23]'
+        ports :
 
 # List of colors used in the DOT file to represent interconnects 
 DOT :

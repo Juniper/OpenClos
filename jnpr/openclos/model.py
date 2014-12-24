@@ -331,8 +331,19 @@ class Interface(ManagedElement, Base):
         self.id = str(uuid.uuid4())
         self.name = name
         self.device = device
-        if name.split('/')[-1].isdigit():
-            self.name_order_num = int(name.split('/')[-1])
+        
+        if name.count('/') == 3:
+            self.name_order_num = 0
+            nameSplit = name.split('/') 
+            fpc = nameSplit[-3]
+            pic = nameSplit[-2]
+            port = nameSplit[-1]
+            if fpc.isdigit():
+                self.name_order_num += int(fpc) * 10000
+            if pic.isdigit():
+                self.name_order_num += int(pic) * 100
+            if port.isdigit():
+                self.name_order_num += int(port)
         self.deployStatus = deployStatus
         
 class InterfaceLogical(Interface):

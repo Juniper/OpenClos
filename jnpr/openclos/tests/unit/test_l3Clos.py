@@ -301,8 +301,20 @@ class TestL3Clos(unittest.TestCase):
     def testCreateAccessInterfaceNoNd(self):
         l3ClosMediation = L3ClosMediation(self.conf)
         configlet = l3ClosMediation.createAccessPortInterfaces('qfx5100-48s-6q')
-        self.assertTrue('interface-range ALL-SERVER' in configlet)
-        self.assertTrue('xe-0/0/*' in configlet)
+        self.assertEquals(48, configlet.count('family ethernet-switching'))
+        self.assertTrue('xe-0/0/0' in configlet)
+        self.assertTrue('xe-0/0/47' in configlet)
+
+    def testCreateAccessInterfaceEx4300NoNd(self):
+        self.conf['deviceFamily']['ex4300-48p'] = {
+                "uplinkPorts": 'et-0/0/[48-51]', 
+                "downlinkPorts": 'ge-0/0/[0-47]'
+        }
+        l3ClosMediation = L3ClosMediation(self.conf)
+        configlet = l3ClosMediation.createAccessPortInterfaces('ex4300-48p')
+        self.assertEquals(48, configlet.count('family ethernet-switching'))
+        self.assertTrue('ge-0/0/0' in configlet)
+        self.assertTrue('ge-0/0/47' in configlet)
 
     def testCreateAccessInterfaceNd(self):
         self.conf['deploymentMode'] = {'ndIntegrated': True}
