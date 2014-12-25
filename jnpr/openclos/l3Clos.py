@@ -611,12 +611,12 @@ class L3ClosMediation():
 
     def createAccessPortInterfaces(self, deviceFamily):
         accessInterface = self.templateEnv.get_template('accessInterface.txt')
-        config = ''
+        ifdNames = []
 
         for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['downlinkPorts']:
-            config += accessInterface.render(ifd_name=ifdName)
+            ifdNames.append(ifdName)
 
-        return config
+        return accessInterface.render(ifdNames=ifdNames)
 
     def getParamsForOutOfBandNetwork(self, pod):
         oobNetworks = pod.outOfBandAddressList
@@ -747,15 +747,10 @@ class L3ClosMediation():
     def createSnmpTrapAndEventForLeafFor2ndStage(self, device):
         snmpTemplate = self.templateEnv.get_template('snmpTrap.txt')
         trapEventTemplate = self.templateEnv.get_template('eventOptionForTrap.txt')
-        disableSnmpTemplate = self.templateEnv.get_template('snmpTrapDisable.txt')
         
         configlet = trapEventTemplate.render()
         
         if device.role == 'leaf':
-            openclosTrapGroup = self.getOpenclosTrapGroupSettings()
-            if openclosTrapGroup is not None:
-                configlet += disableSnmpTemplate.render(trapGroups = [openclosTrapGroup])
-               
             ndTrapGroup = self.getNdTrapGroupSettings()
             if ndTrapGroup is not None:
                 configlet += snmpTemplate.render(trapGroups = [ndTrapGroup])
@@ -777,9 +772,13 @@ class L3ClosMediation():
         ndTrapGroup = self.getNdTrapGroupSettings()
         if ndTrapGroup is not None:
             groups.append(ndTrapGroup)
+        
+        ifdNames = []
+        for ifdName in util.getPortNamesForDeviceFamily(pod.leafDeviceType, self.conf['deviceFamily'])['downlinkPorts']:
+            ifdNames.append(ifdName)
 
-        return leafTemplate.render(deviceFamily = pod.leafDeviceType, 
-                    oob = self.getParamsForOutOfBandNetwork(pod), trapGroups = groups, hashedPassword=pod.getHashPassword())
+        return leafTemplate.render(deviceFamily = pod.leafDeviceType, oob = self.getParamsForOutOfBandNetwork(pod), 
+                trapGroups = groups, hashedPassword=pod.getHashPassword(), ifdNames=ifdNames)
 
     def createLeafConfigFor2Stage(self, device):
         configWriter = ConfigWriter(self.conf, device.pod, self.dao)

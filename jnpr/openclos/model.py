@@ -263,6 +263,8 @@ class Device(ManagedElement, Base):
         self.username = username
         if password is not None and len(password) > 0:
             self.encryptedPassword = self.cryptic.encrypt(password)
+        elif pod is not None:
+            self.encryptedPassword = pod.encryptedPassword
         self.role = role
         self.macAddress = macAddress
         self.managementIp = managementIp

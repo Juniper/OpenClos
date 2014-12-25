@@ -82,22 +82,22 @@ class DeviceDataCollectorNetconf(object):
             self.device = self.dao.getObjectById(Device, self.deviceId)
             self.deviceLogStr = 'device name: %s, ip: %s, id: %s' % (self.device.name, self.device.managementIp, self.device.id)
     
-    def connectToDevice(self, cleartext):
+    def connectToDevice(self):
         '''
         :param dict deviceInfo:
             ip: ip address of the device
             username: device credential username
-            password: clear-text password used by ncclient
         :returns Device: Device, handle to device connection.
         '''
         if self.device.managementIp == None or self.device.username == None:
             raise ValueError('Device: %s, ip: %s, username: %s' % (self.device.id, self.device.managementIp, self.device.username))
-        if cleartext == None:
-            raise ValueError('Device: %s, password is None' % (self.device.id))
+        if self.device.encryptedPassword == None:
+            raise ValueError('Device: %s, , ip: %s, password is None' % (self.device.id, self.device.managementIp))
         
         try:
             deviceIp = self.device.managementIp.split('/')[0]
-            deviceConnection = DeviceConnection(host=deviceIp, user=self.device.username, password=cleartext)
+            devicePassword = self.device.getCleartextPassword()
+            deviceConnection = DeviceConnection(host=deviceIp, user=self.device.username, password=devicePassword)
             deviceConnection.open()
             logger.debug('Connected to device: %s' % (self.device.managementIp))
             self.deviceConnectionHandle = deviceConnection
@@ -140,7 +140,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             try:
                 self.updateDeviceL2Status('processing')
                 # use device level password for leaves that already went through staged configuration
-                self.connectToDevice(cleartext = self.device.getCleartextPassword())
+                self.connectToDevice()
                 lldpData = self.collectLldpFromDevice()
                 goodBadCount = self.processLlDpData(lldpData) 
 
@@ -367,10 +367,9 @@ class TwoStageConfigurator(L2DataCollector):
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
                 
-            tmpDevice = Device(self.deviceIp, None, '', '', 'leaf', None, self.deviceIp, None)
+            tmpDevice = Device(self.deviceIp, None, 'root', pod.getCleartextPassword(), 'leaf', None, self.deviceIp, None)
             tmpDevice.id = self.deviceIp
             self.updateSelfDeviceContext(tmpDevice)
-            cleartextPassword = pod.getCleartextPassword()
             
             logger.debug('Started two stage configuration for %s' % (self.deviceIp))
             
@@ -385,8 +384,7 @@ class TwoStageConfigurator(L2DataCollector):
                         
                 logger.debug('Connecting to %s: attempt %d' % (self.deviceIp, i))
                 try:
-                    # use pod level password for generic leaf
-                    self.connectToDevice(cleartextPassword)
+                    self.connectToDevice()
                     logger.debug('Connected to %s' % (self.deviceIp))
                     break
                 except Exception as exc:
@@ -534,7 +532,7 @@ class TwoStageConfigurator(L2DataCollector):
             # make sure no changes are taken from CLI candidate config left over
             configurationUnit.rollback() 
             logger.debug('Rollback any other config for %s' % (self.deviceLogStr))
-            configurationUnit.load(config, format='text')
+            configurationUnit.load(config, format='text', overwrite=True)
             logger.debug('Load generated config as candidate, for %s' % (self.deviceLogStr))
 
             #print configurationUnit.diff()
