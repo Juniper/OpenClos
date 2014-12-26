@@ -1,5 +1,5 @@
-    replace:
-    {{ifd_name}} {
+{% for ifdName in ifdNames %}    replace:
+    {{ifdName}} {
         unit 0 {
             family ethernet-switching {
                 interface-mode access;
@@ -9,3 +9,5 @@
             }
         }
     }
+{% endfor %}        
+    

@@ -33,7 +33,7 @@ class TestDeviceDataCollectorNetconf(unittest.TestCase):
         dataCollector.dao = self.dao
         dataCollector.manualInit()
         
-        dataCollector.connectToDevice("Embe1mpls")
+        dataCollector.connectToDevice()
 
     def testConnectToDeviceValueError(self):
         flexmock(self.dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", None, "Embe1mpls", "leaf", "", "0.0.0.0", None))
@@ -43,7 +43,7 @@ class TestDeviceDataCollectorNetconf(unittest.TestCase):
         dataCollector.manualInit()
 
         with self.assertRaises(ValueError) as ve:
-            dataCollector.connectToDevice("Embe1mpls")
+            dataCollector.connectToDevice()
         
         self.assertEquals(ValueError, type(ve.exception))
 
@@ -55,7 +55,7 @@ class TestDeviceDataCollectorNetconf(unittest.TestCase):
         dataCollector.manualInit()
 
         with self.assertRaises(DeviceError) as de:
-            dataCollector.connectToDevice("Embe1mpls")
+            dataCollector.connectToDevice()
         
         self.assertIsNotNone(de.exception.cause)
         self.assertTrue(issubclass(type(de.exception.cause), ConnectError))

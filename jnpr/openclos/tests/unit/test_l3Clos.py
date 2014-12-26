@@ -279,10 +279,8 @@ class TestL3Clos(unittest.TestCase):
         print configlet
         self.assertTrue('' != configlet)
         self.assertTrue('event-options' in configlet)
-        self.assertTrue('trap-group openclos_trap_group' in configlet)
+        self.assertTrue('trap-group openclos_trap_group' not in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-        self.assertEquals(1, configlet.count('destination-port'))
-        self.assertEquals(1, configlet.count('targets'))
 
     def testCreateRoutingOptionsStatic(self):
         l3ClosMediation = L3ClosMediation(self.conf)

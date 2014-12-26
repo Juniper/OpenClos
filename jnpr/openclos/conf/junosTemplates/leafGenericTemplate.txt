@@ -17,17 +17,7 @@ interfaces {
             }
         }
     }
-    interface-range ALL-SERVER {
-        member xe-0/0/*;
-        unit 0 {
-            family ethernet-switching {
-                interface-mode access;
-                vlan {
-                    members SERVER;
-                }
-            }
-        }
-    }
+{% include 'accessInterface.txt' %}
 }
 {% include 'routingOptionsStatic.txt' %}
 {% include 'protocolLldp.txt' %}
