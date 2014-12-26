@@ -69,8 +69,12 @@ deviceFamily :
     qfx5100-24q-2p :
         uplinkPorts : 
         downlinkPorts : 
-        ports : 'et-0/0/[0-23]' 
+        ports : 'et-0/0/[0-31]'
     qfx5100-48s-6q :
+        uplinkPorts : 'et-0/0/[48-53]'
+        downlinkPorts : 'xe-0/0/[0-47]'
+        ports :
+    qfx5100-48t-6q :
         uplinkPorts : 'et-0/0/[48-53]' 
         downlinkPorts : 'xe-0/0/[0-47]'
         ports :  
@@ -81,6 +85,10 @@ deviceFamily :
     ex4300-48p :
         uplinkPorts : 'et-0/1/[0-3]'
         downlinkPorts : 'ge-0/0/[0-47]'
+        ports :
+    ex4300-32f :
+        uplinkPorts : 'et-0/1/[0-3]'
+        downlinkPorts : 'ge-0/0/[0-31]'
         ports :
     ex4300-48t :
         uplinkPorts : 'et-0/1/[0-3]'
@@ -129,7 +137,7 @@ report :
 snmpTrap :
     networkdirector_trap_group :
         port : 10162
-        target : 0.0.0.0
+        target : 99.99.99.99
     openclos_trap_group :
         port : 20162
         target : 0.0.0.0
