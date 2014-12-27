@@ -9,7 +9,7 @@ from sqlalchemy.orm import exc
 import logging
 import util
 
-from model import Base, Device, InterfaceDefinition
+from model import Base, Device, InterfaceDefinition, PodConfig
 
 moduleName = 'dao'
 logger = None
@@ -110,3 +110,10 @@ class Dao:
         finally:
             #self.Session.remove()
             pass
+
+    def getLeafGenericConfig(self, podId, deviceFamily):
+        session = self.Session()
+        try:
+            return session.query(PodConfig).filter_by(pod_id = podId).filter_by(deviceFamily = deviceFamily).one()
+        except (exc.NoResultFound) as ex:
+            logger.info(str(ex))

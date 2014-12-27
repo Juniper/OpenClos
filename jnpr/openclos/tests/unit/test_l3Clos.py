@@ -323,13 +323,16 @@ class TestL3Clos(unittest.TestCase):
     def testCreateLeafGenericConfigNoNd(self):
         self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
                                  'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        #self.conf['deploymentMode'] = {'ndIntegrated': True}
+        self.conf['deviceFamily']['ex4300-24p'] = {"uplinkPorts": 'et-0/1/[0-3]', "downlinkPorts": 'ge-0/0/[0-23]'}
         l3ClosMediation = L3ClosMediation(self.conf)
         (pod, podDict) = self.createPod(l3ClosMediation)
         pod.outOfBandGateway = '10.0.0.254'
         pod.outOfBandAddressList = '10.0.10.5/32'
         
-        configlet = l3ClosMediation.createLeafGenericConfigFor2Stage(pod)
+        leafConfigs = l3ClosMediation.createLeafGenericConfigsFor2Stage(pod)
+        self.assertTrue(2, len(leafConfigs))
+        configlet = leafConfigs[0].config
+
         self.assertTrue('' != configlet)
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertEquals(1, configlet.count('static'))
@@ -339,12 +342,16 @@ class TestL3Clos(unittest.TestCase):
         self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
                                  'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
         self.conf['deploymentMode'] = {'ndIntegrated': True}
+
         l3ClosMediation = L3ClosMediation(self.conf)
         (pod, podDict) = self.createPod(l3ClosMediation)
         pod.outOfBandGateway = '10.0.0.254'
         pod.outOfBandAddressList = '10.0.10.5/32'
         
-        configlet = l3ClosMediation.createLeafGenericConfigFor2Stage(pod)
+        leafConfigs = l3ClosMediation.createLeafGenericConfigsFor2Stage(pod)
+        self.assertTrue(1, len(leafConfigs))
+        configlet = leafConfigs[0].config
+
         self.assertTrue('' != configlet)
         self.assertTrue('vendor-id Juniper-qfx5100-48s-6q' in configlet)
         self.assertTrue('trap-group openclos_trap_group' in configlet)

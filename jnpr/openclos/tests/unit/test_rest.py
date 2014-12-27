@@ -336,6 +336,38 @@ class TestRest(unittest.TestCase):
         self.assertEqual(400, response.status_int)
         self.assertTrue('Unexpected role value' in response.json['errorMessage'] )         
 
+    def testGetLeafGenericConfiguration404(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+        podId = self.ipFabric1.id
+        
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.get('/openclos/ip-fabrics/'+podId+'/leaf-generic-configurations/qfx5100-48s-6q')
+        self.assertTrue('404 Not Found' in e.exception.message)
+        self.assertTrue('IpFabric exists but no leaf generic config' in e.exception.message)
+        self.assertTrue('qfx5100-48s-6q' in e.exception.message)
+
+    def setupRestWithPodAndGenericConfig(self):
+        from test_model import createPod
+        from jnpr.openclos.model import PodConfig
+
+        restServer = RestServer(self.conf)
+        session = restServer.dao.Session()
+        self.ipFabric1 = createPod("test1", session)
+        podConfig = PodConfig('qfx5100-48s-6q', self.ipFabric1.id, "testConfig abcd")
+        self.ipFabric1.leafGenericConfigs = [podConfig]
+        session.merge(self.ipFabric1)
+        session.commit()
+
+        restServer.initRest()
+        return TestApp(restServer.app)
+
+    def testGetLeafGenericConfiguration(self):
+        restServerTestApp = self.setupRestWithPodAndGenericConfig()
+        podId = self.ipFabric1.id
+        
+        response = restServerTestApp.get('/openclos/ip-fabrics/'+podId+'/leaf-generic-configurations/qfx5100-48s-6q')
+        self.assertEqual(200, response.status_int) 
+        self.assertTrue('testConfig abcd' in response.body)
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

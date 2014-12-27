@@ -59,7 +59,7 @@ class Pod(ManagedElement, Base):
     allocatedSpineAS = Column(Integer)
     allocatefLeafAS = Column(Integer)
     inventoryData = Column(String(2048))
-    leafGenericConfig = Column(BLOB)
+    leafGenericConfigs = relationship("PodConfig", order_by='PodConfig.deviceFamily', cascade='all, delete, delete-orphan')
     state = Column(Enum('unknown', 'created', 'updated', 'cablingDone', 'deviceConfigDone', 'ztpConfigDone', 'deployed', 'L2Verified', 'L3Verified'))
     encryptedPassword = Column(String(100)) # 2-way encrypted
     cryptic = Cryptic()
@@ -229,7 +229,18 @@ class Pod(ManagedElement, Base):
                 error += 'managementPrefix'
         if error != '':
             raise ValueError('invalid IP format: ' + error)
-        
+
+class PodConfig(ManagedElement, Base):
+    __tablename__ = 'podConfig'
+    deviceFamily = Column(String(100), primary_key=True)
+    pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False, primary_key=True)
+    config = Column(BLOB)
+
+    def __init__(self, deviceFamily, podId, config=''):
+        self.deviceFamily = deviceFamily
+        self.pod_id = podId
+        self.config = config
+    
 class Device(ManagedElement, Base):
     __tablename__ = 'device'
     id = Column(String(60), primary_key=True)

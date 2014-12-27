@@ -93,6 +93,18 @@ def loadClosDefinition(closDefination = os.path.join(configLocation, 'closTempla
     finally:
         pass
 
+
+def getSupportedDeviceFamily(conf):
+    '''
+    :param dict: conf -- device family configuration in dict format, not the whole conf, conf['deviceFamily']
+    :returns list: device model/family (exactly as it is appeared on junos)
+
+    '''
+    if conf is None:
+        raise ValueError("Missing configuration data")
+    return conf.keys()
+    
+
 def getPortNamesForDeviceFamily(deviceFamily, conf):
     '''
     returns all port names for a device family grouped by uplink/downlink

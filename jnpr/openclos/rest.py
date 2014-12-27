@@ -15,7 +15,7 @@ import json
 import util
 from bottle import error, request, response
 from exception import RestError
-from model import Pod, Device
+from model import Pod, PodConfig, Device
 from dao import Dao
 from report import ResourceAllocationReport, L2Report
 from l3Clos import L3ClosMediation
@@ -106,7 +106,7 @@ class RestServer():
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration','GET', self.getZtpConfig)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'GET', self.getDeviceConfigsInZip)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/leaf-generic-configuration', 'GET', self.getLeafGenericConfiguration)
+        bottle.route('/openclos/ip-fabrics/<ipFabricId>/leaf-generic-configurations/<deviceModel>', 'GET', self.getLeafGenericConfiguration)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/l2-report', 'GET', self.getL2Report)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/l3-report', 'GET', self.getL3Report)
         bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices', 'GET', self.getDevices)
@@ -241,22 +241,22 @@ class RestServer():
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
 
-    def getLeafGenericConfiguration(self, ipFabricId):
+    def getLeafGenericConfiguration(self, ipFabricId, deviceModel):
         ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is None:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
         
-        logger.debug('IpFabric name: %s' % (ipFabric.name))
-
-        config = ipFabric.leafGenericConfig
-        if config is None:
-            logger.debug("IpFabric exists but no leafGenericConfig found. ipFabricId: '%s'" % (ipFabricId))
-            raise bottle.HTTPError(404, "IpFabric exists but no leafGenericConfig found, probably configuration \
-                was not created. ipFabric name: '%s', id: '%s'" % (ipFabric.name, ipFabricId))
+        logger.debug('IpFabric name: %s, id: %s' % (ipFabric.name, ipFabricId))
+        
+        leafGenericConfig = self.dao.getLeafGenericConfig(ipFabricId, deviceModel)
+        if leafGenericConfig is None:
+            logger.debug("IpFabric exists but no leaf generic config found for %s, ipFabricId: '%s'" % (deviceModel, ipFabricId))
+            raise bottle.HTTPError(404, "IpFabric exists but no leaf generic config found, probably configuration \
+                was not created. deviceModel: %s, ipFabric name: '%s', id: '%s'" % (deviceModel, ipFabric.name, ipFabricId))
         
         bottle.response.headers['Content-Type'] = 'application/json'
-        return config
+        return leafGenericConfig.config
 
     def getDeviceConfigsInZip(self, ipFabricId):
         ipFabric = self.report.getIpFabric(ipFabricId)
@@ -282,8 +282,9 @@ class RestServer():
             if device.config is not None:
                 zipArchive.writestr(fileName, device.config)
                 
-        if ipFabric.leafGenericConfig is not None:
-            zipArchive.writestr(ipFabric.leafDeviceType + '.conf', ipFabric.leafGenericConfig)
+        if ipFabric.leafGenericConfigs is not None:
+            for leafGenericConfig in ipFabric.leafGenericConfigs: 
+                zipArchive.writestr(leafGenericConfig.deviceFamily + '.conf', leafGenericConfig.config)
         
         zipArchive.close()
         logger.debug('zip file content:\n' + str(zipArchive.namelist()))

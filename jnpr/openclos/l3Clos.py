@@ -15,7 +15,7 @@ import base64
 from netaddr import IPNetwork
 from sqlalchemy.orm import exc
 
-from model import Pod, Device, InterfaceLogical, InterfaceDefinition
+from model import Pod, PodConfig, Device, InterfaceLogical, InterfaceDefinition
 from dao import Dao
 import util
 from writer import ConfigWriter, CablingPlanWriter
@@ -563,9 +563,9 @@ class L3ClosMediation():
             configWriter.write(device)
 
         if self.isZtpStaged:
-            pod.leafGenericConfig = self.createLeafGenericConfigFor2Stage(pod)
+            pod.leafGenericConfigs = self.createLeafGenericConfigsFor2Stage(pod)
             modifiedObjects.append(pod)
-            logger.debug('Generated LeafGenericConfig for pod: %s, device family: %s, storing in DB' % (pod.name, pod.leafDeviceType))
+            logger.debug('Generated %d leafGenericConfigs for pod: %s, storing in DB' % (len(pod.leafGenericConfigs), pod.name))
             configWriter.writeGenericLeaf(pod)
         
         self.dao.updateObjects(modifiedObjects)
@@ -760,8 +760,14 @@ class L3ClosMediation():
             logger.debug('Device: %s, id: %s, role: spine, no 2ndStage trap/event connfig generated' % (device.name, device.id))
         return ''
 
-    def createLeafGenericConfigFor2Stage(self, pod):
+    def createLeafGenericConfigsFor2Stage(self, pod):
+        '''
+        :param Pod: pod
+        :returns list: list of PodConfigs
+        '''
         leafTemplate = self.templateEnv.get_template('leafGenericTemplate.txt')
+        leafConfigs = []
+        supportedDeviceFamilys = util.getSupportedDeviceFamily(self.conf['deviceFamily'])
 
         groups = []
         openclosTrapGroup = self.getOpenclosTrapGroupSettings()
@@ -771,13 +777,23 @@ class L3ClosMediation():
         ndTrapGroup = self.getNdTrapGroupSettings()
         if ndTrapGroup is not None:
             groups.append(ndTrapGroup)
+            
+        outOfBandNetworkParams = self.getParamsForOutOfBandNetwork(pod)
         
-        ifdNames = []
-        for ifdName in util.getPortNamesForDeviceFamily(pod.leafDeviceType, self.conf['deviceFamily'])['downlinkPorts']:
-            ifdNames.append(ifdName)
+        for deviceFamily in supportedDeviceFamilys:
+            if deviceFamily == 'qfx5100-24q-2p':
+                continue
+            
+            ifdNames = []
+            for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['downlinkPorts']:
+                ifdNames.append(ifdName)
 
-        return leafTemplate.render(deviceFamily = pod.leafDeviceType, oob = self.getParamsForOutOfBandNetwork(pod), 
+            config = leafTemplate.render(deviceFamily = deviceFamily, oob = outOfBandNetworkParams, 
                 trapGroups = groups, hashedPassword=pod.getHashPassword(), ifdNames=ifdNames)
+            
+            leafConfigs.append(PodConfig(deviceFamily, pod.id, config))
+            
+        return leafConfigs
 
     def createLeafConfigFor2Stage(self, device):
         configWriter = ConfigWriter(self.conf, device.pod, self.dao)
