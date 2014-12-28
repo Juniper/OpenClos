@@ -10,6 +10,7 @@ import json
 from webtest import TestApp, AppError
 
 from jnpr.openclos.rest import RestServer, webServerRoot, junosImageRoot
+import jnpr.openclos.util
 
 configLocation = webServerRoot
 imageLocation = junosImageRoot
@@ -23,6 +24,7 @@ class TestRest(unittest.TestCase):
         
         if not os.path.exists(configLocation):
             os.makedirs(configLocation)
+        jnpr.openclos.util.loadLoggingConfigForTest()
 
 
     def tearDown(self):
@@ -189,13 +191,13 @@ class TestRest(unittest.TestCase):
         self.assertEqual(200, response.status_int)
         os.remove(os.path.join(imageLocation, 'efgh.tgz'))
         
-    def testGetgetIpFabric(self):
+    def testGetIpFabric(self):
         restServerTestApp = self.setupRestWithTwoPods()
 
         response = restServerTestApp.get('/openclos/ip-fabrics/' + self.ipFabric1.id)
         self.assertEqual(200, response.status_int)
         self.assertEqual(self.ipFabric1.name, response.json['ipFabric']['name'])
-        self.assertEqual(self.ipFabric1.leafDeviceType, response.json['ipFabric']['leafDeviceType'])
+        self.assertEqual(self.ipFabric1.spineDeviceType, response.json['ipFabric']['spineDeviceType'])
         self.assertTrue('/openclos/ip-fabrics/' + self.ipFabric1.id + '/cabling-plan' in response.json['ipFabric']['cablingPlan']['uri'])
         self.assertTrue('/openclos/ip-fabrics/' + self.ipFabric1.id + '/devices' in response.json['ipFabric']['devices']['uri'])
 
@@ -348,13 +350,13 @@ class TestRest(unittest.TestCase):
 
     def setupRestWithPodAndGenericConfig(self):
         from test_model import createPod
-        from jnpr.openclos.model import PodConfig
+        from jnpr.openclos.model import LeafSetting
 
         restServer = RestServer(self.conf)
         session = restServer.dao.Session()
         self.ipFabric1 = createPod("test1", session)
-        podConfig = PodConfig('qfx5100-48s-6q', self.ipFabric1.id, "testConfig abcd")
-        self.ipFabric1.leafGenericConfigs = [podConfig]
+        leafSetting = LeafSetting('qfx5100-48s-6q', self.ipFabric1.id, config = "testConfig abcd")
+        self.ipFabric1.leafSettings = [leafSetting]
         session.merge(self.ipFabric1)
         session.commit()
 

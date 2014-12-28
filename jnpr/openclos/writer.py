@@ -55,7 +55,7 @@ class ConfigWriter(WriterBase):
         if not self.writeInFile:
             return
         
-        for leafConfig in pod.leafGenericConfigs:
+        for leafConfig in pod.leafSettings:
             fileName =  leafConfig.deviceFamily + '.conf'
             logger.info('Writing leaf generic config file for : %s' % (fileName))
             with open(os.path.join(self.outputDir, fileName), 'w') as f:

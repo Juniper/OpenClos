@@ -7,7 +7,8 @@ import unittest
 from flexmock import flexmock
 
 from jnpr.openclos.ztp import ZtpServer
-from test_model import createPod, createDevice, createPodDevice
+import jnpr.openclos.util
+from test_model import createPod, createDevice, createPodDevice, LeafSetting
 
 
 class TestZtp(unittest.TestCase):
@@ -17,6 +18,8 @@ class TestZtp(unittest.TestCase):
         self.conf = {}
         self.conf['dbUrl'] = 'sqlite:///'
         self.conf['httpServer'] = {'ipAddr': '127.0.0.1'}
+        jnpr.openclos.util.loadLoggingConfigForTest()
+
         self.ztpServer = ZtpServer(self.conf)
         
         self.session = self.ztpServer.dao.Session()
@@ -51,7 +54,6 @@ class TestZtp(unittest.TestCase):
         
         pod = createPod('pod1', self.session)
         pod.spineJunosImage = 'testSpineImage'
-        pod.leafJunosImage = 'testLeafImage'
         
         createPodDevice(self.session, 'dev1', pod)
         dev2 = createPodDevice(self.session, 'dev2', pod)
@@ -62,7 +64,6 @@ class TestZtp(unittest.TestCase):
       
         dhcpConf = self.ztpServer.generatePodSpecificDhcpConf(pod.id)
         self.assertEquals(2, dhcpConf.count('testSpineImage'))
-        self.assertEquals(1, dhcpConf.count('testLeafImage'))
 
         self.assertFalse('{{' in dhcpConf)
         self.assertFalse('}}' in dhcpConf)
@@ -76,7 +77,7 @@ class TestZtp(unittest.TestCase):
         
         pod = createPod('pod1', self.session)
         pod.spineJunosImage = 'testSpineImage'
-        pod.leafJunosImage = 'testLeafImage'
+        pod.leafSettings.append(LeafSetting('ex4300-24p', pod.id))
         
         dev1 = createPodDevice(self.session, 'dev1', pod)
         dev2 = createPodDevice(self.session, 'dev2', pod)
@@ -87,15 +88,14 @@ class TestZtp(unittest.TestCase):
       
         dhcpConf = self.ztpServer.generatePodSpecificDhcpConf(pod.id)
         self.assertEquals(2, dhcpConf.count('testSpineImage'))
-        self.assertEquals(1, dhcpConf.count('testLeafImage'))
 
         self.assertFalse('{{' in dhcpConf)
         self.assertFalse('}}' in dhcpConf)
         self.assertFalse('None' in dhcpConf)
         self.assertEquals(3, dhcpConf.count('host-name')) # 1 global + 2 spine device
         self.assertEquals(1, dhcpConf.count('pool'))
-        self.assertEquals(1, dhcpConf.count('class '))
-        self.assertEquals(1, dhcpConf.count('vendor-class-identifier'))
+        self.assertEquals(2, dhcpConf.count('class '))
+        self.assertEquals(4, dhcpConf.count('vendor-class-identifier'))
 
     def testPopulateDhcpGlobalSettings(self):
         from jnpr.openclos.l3Clos import util

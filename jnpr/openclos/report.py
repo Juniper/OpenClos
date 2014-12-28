@@ -57,7 +57,9 @@ class ResourceAllocationReport(Report):
             pod['name'] = podObject[i].name
             pod['spineDeviceType'] = podObject[i].spineDeviceType
             pod['spineCount'] = podObject[i].spineCount
-            pod['leafDeviceType'] = podObject[i].leafDeviceType
+            pod['leafSettings'] = []
+            for leafSetting in podObject[i].leafSettings:
+                pod['leafSettings'].append({'leafDeviceType': leafSetting.deviceFamily, 'leafJunosImage': leafSetting.junosImage})
             pod['leafCount'] = podObject[i].leafCount
             pod['topologyType'] = podObject[i].topologyType        
             pod['devicePassword'] = podObject[i].getCleartextPassword()

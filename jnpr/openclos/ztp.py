@@ -143,21 +143,29 @@ class ZtpServer():
         don't start any url as /openclos/... first / causes ZTP problem
         '''
         imageUrlPrefix =  'openclos/images/'       
-        imageUrl = None
         
         if ztp.get('devices') is None:
             ztp['devices'] = []
         
         pod = self.dao.getObjectById(Pod, podId)
         for device in pod.devices:
+            if device.macAddress is None:
+                continue
+            
             if device.role == 'spine':
-                if pod.spineJunosImage is not None:
-                    imageUrl = imageUrlPrefix + pod.spineJunosImage
+                imageName = util.getImageNameForDevice(pod, device)
+                if imageName is not None:
+                    imageUrl = imageUrlPrefix + imageName
+                else:
+                    imageUrl = None
             elif device.role == 'leaf':
                 if util.isZtpStaged(self.conf):
                     continue
-                if pod.spineJunosImage is not None:
-                    imageUrl = imageUrlPrefix + pod.leafJunosImage
+                imageName = util.getImageNameForDevice(pod, device)
+                if imageName is not None:
+                    imageUrl = imageUrlPrefix + imageName
+                else:
+                    imageUrl = None
             else:
                 logger.error('PodId: %s, Pod: %s, Device: %s with unknown role: %s' % (pod.id, pod.name, device.name, device.role))
                 continue
@@ -169,17 +177,25 @@ class ZtpServer():
             'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
         
         if util.isZtpStaged(self.conf):
-            ztp['leafDeviceFamily'] = pod.leafDeviceType
-            ztp['leafImageUrl'] = imageUrlPrefix + pod.leafJunosImage
-            # don't start url as /openclos/ip-fabrics/..., first / causes ZTP problem
-            ztp['leafGenericConfigUrl'] = 'openclos/ip-fabrics/' + pod.id + '/leaf-generic-configuration'
-            '''
-            ztp['substringLength'] is the last argument of substring on dhcpd.conf, 
-            should not be hardcoded, as it would change based on device family
-            match if substring (option vendor-class-identifier, 0,21) = "Juniper-qfx5100-48s-6q"
-
-            '''
-            ztp['substringLength'] = len('Juniper-' + pod.leafDeviceType)
+            ztp['leafs'] = []
+            for leafSetting in pod.leafSettings:
+                setting = {}
+                setting['leafDeviceFamily'] = leafSetting.deviceFamily
+                if leafSetting.junosImage is not None:
+                    setting['leafImageUrl'] = imageUrlPrefix + leafSetting.junosImage
+                else:
+                    setting['leafImageUrl'] = None
+                # don't start url as /openclos/ip-fabrics/..., first / causes ZTP problem
+                setting['leafGenericConfigUrl'] = 'openclos/ip-fabrics/' + pod.id + '/leaf-generic-configuration/' + leafSetting.deviceFamily
+                '''
+                setting['substringLength'] is the last argument of substring on dhcpd.conf, 
+                should not be hardcoded, as it would change based on device family
+                match if substring (option vendor-class-identifier, 0,21) = "Juniper-qfx5100-48s-6q"
+    
+                '''
+                setting['substringLength'] = len('Juniper-' + leafSetting.deviceFamily)
+                ztp['leafs'].append(setting)
+                
         return ztp
 
 if __name__ == '__main__':

@@ -5,9 +5,8 @@ Created on Sep 2, 2014
 '''
 
 import os
-import logging
 import bottle
-from sqlalchemy.orm import exc, Session
+from sqlalchemy.orm import exc
 import StringIO
 import zipfile
 
@@ -15,7 +14,7 @@ import json
 import util
 from bottle import error, request, response
 from exception import RestError
-from model import Pod, PodConfig, Device
+from model import Pod, Device
 from dao import Dao
 from report import ResourceAllocationReport, L2Report
 from l3Clos import L3ClosMediation
@@ -164,7 +163,7 @@ class RestServer():
             ipFabric['name'] = IpFabrics[i]['name']
             ipFabric['spineDeviceType'] = IpFabrics[i]['spineDeviceType']
             ipFabric['spineCount'] = IpFabrics[i]['spineCount']
-            ipFabric['leafDeviceType'] = IpFabrics[i]['leafDeviceType']
+            ipFabric['leafSettings'] = IpFabrics[i]['leafSettings']
             ipFabric['leafCount'] = IpFabrics[i]['leafCount']
             ipFabric['devicePassword'] = IpFabrics[i]['devicePassword']
             listOfIpFbarics.append(ipFabric)
@@ -187,7 +186,9 @@ class RestServer():
             outputDict['spineDeviceType'] = ipFabric.spineDeviceType
             outputDict['spineCount'] = ipFabric.spineCount
             outputDict['leafAS'] = ipFabric.leafAS
-            outputDict['leafDeviceType'] = ipFabric.leafDeviceType
+            outputDict['leafSettings'] = []
+            for leafSetting in ipFabric.leafSettings:
+                outputDict['leafSettings'].append({'leafDeviceType': leafSetting.deviceFamily, 'leafJunosImage': leafSetting.junosImage})
             outputDict['leafCount'] = ipFabric.leafCount
             outputDict['loopbackPrefix'] = ipFabric.loopbackPrefix 
             outputDict['vlanPrefix'] = ipFabric.vlanPrefix
@@ -197,9 +198,7 @@ class RestServer():
             outputDict['outOfBandGateway'] = ipFabric.outOfBandGateway 
             outputDict['topologyType'] = ipFabric.topologyType
             outputDict['spineJunosImage'] = ipFabric.spineJunosImage
-            outputDict['leafJunosImage'] = ipFabric.leafJunosImage 
             outputDict['devicePassword'] = ipFabric.getCleartextPassword()
-            outputDict['state'] = ipFabric.state
             outputDict['uri'] = requestUrl
             outputDict['devices'] = {'uri': requestUrl + '/devices', 'total':len(devices)}
             outputDict['cablingPlan'] = {'uri': requestUrl + '/cabling-plan'}
@@ -249,14 +248,14 @@ class RestServer():
         
         logger.debug('IpFabric name: %s, id: %s' % (ipFabric.name, ipFabricId))
         
-        leafGenericConfig = self.dao.getLeafGenericConfig(ipFabricId, deviceModel)
-        if leafGenericConfig is None:
+        leafSetting = self.dao.getLeafSetting(ipFabricId, deviceModel)
+        if leafSetting is None or leafSetting.config is None:
             logger.debug("IpFabric exists but no leaf generic config found for %s, ipFabricId: '%s'" % (deviceModel, ipFabricId))
             raise bottle.HTTPError(404, "IpFabric exists but no leaf generic config found, probably configuration \
                 was not created. deviceModel: %s, ipFabric name: '%s', id: '%s'" % (deviceModel, ipFabric.name, ipFabricId))
         
         bottle.response.headers['Content-Type'] = 'application/json'
-        return leafGenericConfig.config
+        return leafSetting.config
 
     def getDeviceConfigsInZip(self, ipFabricId):
         ipFabric = self.report.getIpFabric(ipFabricId)
@@ -282,9 +281,10 @@ class RestServer():
             if device.config is not None:
                 zipArchive.writestr(fileName, device.config)
                 
-        if ipFabric.leafGenericConfigs is not None:
-            for leafGenericConfig in ipFabric.leafGenericConfigs: 
-                zipArchive.writestr(leafGenericConfig.deviceFamily + '.conf', leafGenericConfig.config)
+        if ipFabric.leafSettings is not None:
+            for leafSetting in ipFabric.leafSettings:
+                if leafSetting.config is not None:
+                    zipArchive.writestr(leafSetting.deviceFamily + '.conf', leafSetting.config)
         
         zipArchive.close()
         logger.debug('zip file content:\n' + str(zipArchive.namelist()))
@@ -555,7 +555,7 @@ class RestServer():
         ipFabric['spineCount'] = podDict.get('spineCount')
         ipFabric['spineDeviceType'] = podDict.get('spineDeviceType')
         ipFabric['leafCount'] = podDict.get('leafCount')
-        ipFabric['leafDeviceType'] = podDict.get('leafDeviceType')
+        ipFabric['leafSettings'] = podDict.get('leafSettings')
         ipFabric['leafUplinkcountMustBeUp'] = podDict.get('leafUplinkcountMustBeUp')
         ipFabric['interConnectPrefix'] = podDict.get('interConnectPrefix')
         ipFabric['vlanPrefix'] = podDict.get('vlanPrefix')

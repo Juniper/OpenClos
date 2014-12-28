@@ -7,9 +7,9 @@ Created on Jul 8, 2014
 import uuid
 import math
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum, BLOB, UniqueConstraint, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum, BLOB, UniqueConstraint
 from sqlalchemy.orm import relationship, backref
-from netaddr import IPAddress, IPNetwork, AddrFormatError
+from netaddr import IPNetwork, AddrFormatError
 from crypt import Cryptic
 Base = declarative_base()
 
@@ -38,9 +38,10 @@ class Pod(ManagedElement, Base):
     description = Column(String(256))
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
-    leafUplinkcountMustBeUp = Column(Integer)
+    spineJunosImage = Column(String(126))
     leafCount = Column(Integer)
-    leafDeviceType = Column(String(100))
+    leafUplinkcountMustBeUp = Column(Integer)
+    leafSettings = relationship("LeafSetting", order_by='LeafSetting.deviceFamily', cascade='all, delete, delete-orphan')
     hostOrVmCountPerLeaf = Column(Integer)
     interConnectPrefix = Column(String(32))
     vlanPrefix = Column(String(32))
@@ -51,31 +52,25 @@ class Pod(ManagedElement, Base):
     topologyType = Column(Enum('threeStage', 'fiveStageRealEstate', 'fiveStagePerformance'))
     outOfBandAddressList = Column(String(512))  # comma separated values
     outOfBandGateway =  Column(String(32))
-    spineJunosImage = Column(String(126))
-    leafJunosImage = Column(String(126))
     allocatedInterConnectBlock = Column(String(32))
     allocatedIrbBlock = Column(String(32))
     allocatedLoopbackBlock = Column(String(32))
     allocatedSpineAS = Column(Integer)
     allocatefLeafAS = Column(Integer)
     inventoryData = Column(String(2048))
-    leafGenericConfigs = relationship("PodConfig", order_by='PodConfig.deviceFamily', cascade='all, delete, delete-orphan')
-    state = Column(Enum('unknown', 'created', 'updated', 'cablingDone', 'deviceConfigDone', 'ztpConfigDone', 'deployed', 'L2Verified', 'L3Verified'))
     encryptedPassword = Column(String(100)) # 2-way encrypted
     cryptic = Cryptic()
         
     def __init__(self, name, podDict):
         '''
-        Creates a Pod object from dict, if following fields are missing, it throws ValueError
-        interConnectPrefix, vlanPrefix, loopbackPrefix, spineAS, leafAS
+        Creates a Pod object from dict
         '''
-        super(Pod, self).__init__(**podDict)
+        super(Pod, self).__init__()
         self.update(None, name, podDict)
         
     def update(self, id, name, podDict):
         '''
-        Updates a Pod ORM object from dict, it updates only following fields.
-        spineCount, leafCount
+        Updates a Pod ORM object from dict
         '''
         if id is not None:
             self.id = id
@@ -93,7 +88,13 @@ class Pod(ManagedElement, Base):
         self.spineCount = podDict.get('spineCount')
         self.spineDeviceType = podDict.get('spineDeviceType')
         self.leafCount = podDict.get('leafCount')
-        self.leafDeviceType = podDict.get('leafDeviceType')
+        leafSettings = podDict.get('leafSettings')
+        if leafSettings is not None:
+            self.leafSettings = []
+            for leafSetting in leafSettings:
+                junosImage = leafSetting.get('leafJunosImage')
+                self.leafSettings.append(LeafSetting(leafSetting['leafDeviceType'], self.id, junosImage = junosImage))
+        
         self.leafUplinkcountMustBeUp = podDict.get('leafUplinkcountMustBeUp')
         if self.leafUplinkcountMustBeUp is None:
             self.leafUplinkcountMustBeUp = 2
@@ -120,14 +121,10 @@ class Pod(ManagedElement, Base):
             self.outOfBandAddressList = ','.join(addressList)
         self.outOfBandGateway = podDict.get('outOfBandGateway')
         self.spineJunosImage = podDict.get('spineJunosImage')
-        self.leafJunosImage = podDict.get('leafJunosImage')
             
         devicePassword = podDict.get('devicePassword')
         if devicePassword is not None and len(devicePassword) > 0:
             self.encryptedPassword = self.cryptic.encrypt(devicePassword)
-            
-        if self.state is None:
-            self.state = 'unknown'
 
     def calculateEffectiveLeafUplinkcountMustBeUp(self):
         # if user configured a value, use it always 
@@ -185,8 +182,8 @@ class Pod(ManagedElement, Base):
             error += 'spineDeviceType, '
         if self.leafCount is None:
             error += 'leafCount, '
-        if self.leafDeviceType is None:
-            error += 'leafDeviceType, '
+        if self.leafSettings is None or len(self.leafSettings) == 0:
+            error += 'leafSettings, '
         if self.hostOrVmCountPerLeaf is None:
             error += 'hostOrVmCountPerLeaf, '
         if self.interConnectPrefix is None:
@@ -230,15 +227,17 @@ class Pod(ManagedElement, Base):
         if error != '':
             raise ValueError('invalid IP format: ' + error)
 
-class PodConfig(ManagedElement, Base):
-    __tablename__ = 'podConfig'
+class LeafSetting(ManagedElement, Base):
+    __tablename__ = 'leafSetting'
     deviceFamily = Column(String(100), primary_key=True)
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False, primary_key=True)
+    junosImage = Column(String(126))
     config = Column(BLOB)
 
-    def __init__(self, deviceFamily, podId, config=''):
+    def __init__(self, deviceFamily, podId, junosImage = None, config = None):
         self.deviceFamily = deviceFamily
         self.pod_id = podId
+        self.junosImage = junosImage
         self.config = config
     
 class Device(ManagedElement, Base):
@@ -250,7 +249,7 @@ class Device(ManagedElement, Base):
     role = Column(String(32))
     macAddress = Column(String(32))
     managementIp = Column(String(32))
-    family = Column(String(100))
+    family = Column(String(100), default = 'unknown')
     asn = Column(Integer)
     l2Status = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
     l2StatusReason = Column(String(256)) # will be populated only when status is error
@@ -261,10 +260,10 @@ class Device(ManagedElement, Base):
     config = Column(BLOB)
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
-    deployStatus = Column(Enum('deploy', 'provision'), default = 'deploy')
+    deployStatus = Column(Enum('deploy', 'provision'), default = 'provision')
     cryptic = Cryptic()
                 
-    def __init__(self, name, family, username, password, role, macAddress, managementIp, pod, deployStatus='deploy'):
+    def __init__(self, name, family, username, password, role, macAddress, managementIp, pod, deployStatus=None):
         '''
         Creates Device object.
         '''
@@ -282,7 +281,7 @@ class Device(ManagedElement, Base):
         self.pod = pod
         self.deployStatus = deployStatus
         
-    def update(self, name, username, password, macAddress, deployStatus='deploy'):
+    def update(self, name, username, password, macAddress, deployStatus):
         '''
         Updates Device object.
         '''
@@ -292,8 +291,8 @@ class Device(ManagedElement, Base):
             self.encryptedPassword = self.cryptic.encrypt(password)
         self.macAddress = macAddress
         self.deployStatus = deployStatus
-        for interface in self.interfaces:
-            interface.deployStatus = deployStatus
+        #for interface in self.interfaces:
+        #    interface.deployStatus = deployStatus
     
     def getCleartextPassword(self):
         '''
@@ -329,7 +328,7 @@ class Interface(ManagedElement, Base):
     peer = relationship('Interface', foreign_keys=[peer_id], uselist=False, post_update=True, )
     layer_below_id = Column(String(60), ForeignKey('interface.id'))
     layerAboves = relationship('Interface', foreign_keys=[layer_below_id])
-    deployStatus = Column(Enum('deploy', 'provision'), default = 'deploy')
+    deployStatus = Column(Enum('deploy', 'provision'), default = 'provision')
     __table_args__ = (
         UniqueConstraint('device_id', 'name', name='_device_id_name_uc'),
         UniqueConstraint('device_id', 'name_order_num', name='_device_id_name_order_num_uc'),
@@ -340,7 +339,7 @@ class Interface(ManagedElement, Base):
         'polymorphic_on':type
     }
         
-    def __init__(self, name, device, deployStatus='deploy'):
+    def __init__(self, name, device, deployStatus=None):
         self.id = str(uuid.uuid4())
         self.name = name
         self.device = device
@@ -369,7 +368,7 @@ class InterfaceLogical(Interface):
         'polymorphic_identity':'logical',
     }
     
-    def __init__(self, name, device, ipaddress=None, mtu=0, deployStatus='deploy'):
+    def __init__(self, name, device, ipaddress=None, mtu=0, deployStatus=None):
         '''
         Creates Logical Interface object.
         ipaddress is optional so that it can be allocated later
@@ -390,7 +389,7 @@ class InterfaceDefinition(Interface):
         'polymorphic_identity':'physical',
     }
 
-    def __init__(self, name, device, role, mtu=0, deployStatus='deploy'):
+    def __init__(self, name, device, role, mtu=0, deployStatus=None):
         super(InterfaceDefinition, self).__init__(name, device, deployStatus)
         self.mtu = mtu
         self.role = role

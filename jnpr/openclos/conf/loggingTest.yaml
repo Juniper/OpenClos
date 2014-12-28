@@ -1,0 +1,33 @@
+version: 1
+loggers:
+    l3Clos :
+        level: INFO
+        handlers: [console] 
+    report : 
+        level: INFO
+        handlers: [console] 
+    ztp : 
+        level: INFO
+        handlers: [console] 
+    rest : 
+        level: INFO
+        handlers: [console] 
+    writer : 
+        level: INFO
+        handlers: [console] 
+    devicePlugin : 
+        level: INFO
+        handlers: [console] 
+    trapd : 
+        level: INFO
+        handlers: [console] 
+    dao : 
+        level: INFO
+        handlers: [console] 
+formatters:
+    detailed:
+        format: '%(asctime)s [%(name)-12s] [%(levelname)-8s] [%(thread)8x] %(message)s'
+handlers:
+    console:
+        class: logging.StreamHandler
+        formatter: detailed
