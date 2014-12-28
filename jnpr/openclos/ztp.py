@@ -149,7 +149,7 @@ class ZtpServer():
         
         pod = self.dao.getObjectById(Pod, podId)
         for device in pod.devices:
-            if device.macAddress is None:
+            if device.macAddress is None or device.family == 'unknown':
                 continue
             
             if device.role == 'spine':

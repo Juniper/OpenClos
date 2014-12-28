@@ -461,14 +461,16 @@ class RestServer():
         return {'OpenClosConf' : confValues }
                     
     def createIpFabric(self):  
-        l3ClosMediation = L3ClosMediation(self.conf)
-        try:
-            pod = bottle.request.json['ipFabric']
+        if bottle.request.json is None:
+            logger.error("No json in request object")
+            raise bottle.HTTPError(400, exception = RestError(0, "No json in request object"))
+        else:
+            pod = bottle.request.json.get('ipFabric')
             if pod is None:
-                raise bottle.HTTPError(400, exception = RestError(0, "Invalid value in POST body."))
-        except ValueError:
-            raise bottle.HTTPError(400, exception = RestError(0, "POST body can not be empty."))
+                logger.error("POST body can not be empty")
+                raise bottle.HTTPError(400, exception = RestError(0, "POST body can not be empty"))
 
+        l3ClosMediation = L3ClosMediation(self.conf)
         ipFabric = self.getPodFromDict(pod)
         ipFabricName = ipFabric.pop('name')
         fabricDevices = self.getDevDictFromDict(pod)
@@ -476,6 +478,9 @@ class RestServer():
             fabricId =  l3ClosMediation.createPod(ipFabricName, ipFabric, fabricDevices).id
         except ValueError as e:
             raise bottle.HTTPError(400, exception = RestError(0, e.message))
+        except Exception as exc:
+            logger.error('Unknown error, %s' % (exc))
+            raise
         
         url = bottle.request.url + '/' + fabricId
         ipFabric = self.getIpFabric(fabricId, url)
@@ -505,15 +510,16 @@ class RestServer():
             raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
 
     def reconfigIpFabric(self, ipFabricId):
-        l3ClosMediation = L3ClosMediation(self.conf)
-
-        try:
-            inPod = bottle.request.json['ipFabric']
+        if bottle.request.json is None:
+            logger.error("No json in request object")
+            raise bottle.HTTPError(400, exception = RestError(0, "No json in request object"))
+        else:
+            inPod = bottle.request.json.get('ipFabric')
             if inPod is None:
-                raise bottle.HTTPError(400, exception = RestError(0, "Invalid value in POST body."))
-        except ValueError:
-            raise bottle.HTTPError(400, exception = RestError(0, "POST body can not be empty."))
+                logger.error("POST body can not be empty")
+                raise bottle.HTTPError(400, exception = RestError(0, "POST body can not be empty"))
 
+        l3ClosMediation = L3ClosMediation(self.conf)
         ipFabric = self.getPodFromDict(inPod)
         #ipFabric['id'] = ipFabricId
         #ipFabric['uri'] = bottle.request.url
@@ -522,9 +528,11 @@ class RestServer():
         try:
             l3ClosMediation.updatePod(ipFabricId, ipFabric, fabricDevices)
             return self.getIpFabric(ipFabricId)
-        except ValueError:
-            raise bottle.HTTPError(400, exception = RestError(0, "Invalid value in PUT body."))
-
+        except ValueError as e:
+            raise bottle.HTTPError(400, exception = RestError(0, e.message))
+        except Exception as exc:
+            logger.error('Unknown error, %s' % (exc))
+            raise
     
     def setOpenClosConfigParams(self):
         return bottle.HTTPResponse(status=200)

@@ -294,14 +294,14 @@ class TestRest(unittest.TestCase):
         
         response = restServerTestApp.post('/openclos/ip-fabrics', headers = {'Content-Type':'application/json'}, expect_errors = True)
         self.assertEqual(400, response.status_int)
-        self.assertTrue('POST body can not be empty' in response.json['errorMessage'] )
+        self.assertTrue('No json in request object' in response.json['errorMessage'] )
         
     def testReconfigureIpFabricWithPostBodyEmpty(self):
         restServerTestApp = self.setupRestWithTwoPods()
         
         response = restServerTestApp.put('/openclos/ip-fabrics/'+self.ipFabric1.id, headers = {'Content-Type':'application/json'}, expect_errors = True)
         self.assertEqual(400, response.status_int)
-        self.assertTrue('POST body can not be empty' in response.json['errorMessage'] )
+        self.assertTrue('No json in request object' in response.json['errorMessage'] )
         
     def testCreateIpFabricWithInvalidRole(self):
         restServerTestApp = self.setupRestWithTwoPods()
