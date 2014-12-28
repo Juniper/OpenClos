@@ -1,15 +1,15 @@
 {   "spines" : [
-       { "name" : "spine-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "deployStatus" : "deploy" },
-       { "name" : "spine-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "deployStatus" : "deploy" },
-       { "name" : "spine-03", "macAddress" : "aa:bb:cc:dd:ee:f3", "deployStatus" : "deploy" },
-       { "name" : "spine-04", "macAddress" : "aa:bb:cc:dd:ee:f4", "deployStatus" : "deploy" }
+       { "name" : "spine-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "deployStatus" : "deploy"},
+       { "name" : "spine-02", "macAddress" : "aa:bb:cc:dd:ee:f2", "deployStatus" : "deploy"},
+       { "name" : "spine-03", "macAddress" : "aa:bb:cc:dd:ee:f3"},
+       { "name" : "spine-04", "macAddress" : "aa:bb:cc:dd:ee:f4"}
     ],
     "leafs" : [
-       { "name" : "leaf-01", "macAddress" : "aa:bb:cc:dd:ee:e1", "deployStatus" : "deploy" },
-       { "name" : "leaf-02", "macAddress" : "aa:bb:cc:dd:ee:e2", "deployStatus" : "deploy" },
-       { "name" : "leaf-03", "macAddress" : "aa:bb:cc:dd:ee:e3", "deployStatus" : "deploy" },
-       { "name" : "leaf-04", "macAddress" : "aa:bb:cc:dd:ee:e4", "deployStatus" : "deploy" },
-       { "name" : "leaf-05", "macAddress" : "aa:bb:cc:dd:ee:e5", "deployStatus" : "deploy" },
-       { "name" : "leaf-06", "macAddress" : "aa:bb:cc:dd:ee:e6", "deployStatus" : "deploy" }
+       { "name" : "leaf-01", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e1", "deployStatus" : "deploy"},
+       { "name" : "leaf-02", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e2", "deployStatus" : "deploy"},
+       { "name" : "leaf-03", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e3", "deployStatus" : "deploy"},
+       { "name" : "leaf-04", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e4"},
+       { "name" : "leaf-05", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e5"},
+       { "name" : "leaf-06", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e6"}
     ]
 }

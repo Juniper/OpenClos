@@ -55,10 +55,11 @@ class ConfigWriter(WriterBase):
         if not self.writeInFile:
             return
         
-        fileName =  pod.leafDeviceType + '.conf'
-        logger.info('Writing leafGenericConfig file for : %s' % (fileName))
-        with open(os.path.join(self.outputDir, fileName), 'w') as f:
-            f.write(pod.leafGenericConfig)            
+        for leafConfig in pod.leafSettings:
+            fileName =  leafConfig.deviceFamily + '.conf'
+            logger.info('Writing leaf generic config file for : %s' % (fileName))
+            with open(os.path.join(self.outputDir, fileName), 'w') as f:
+                f.write(leafConfig.config)            
 
 class DhcpConfWriter(WriterBase):
     def __init__(self, conf, pod, dao):

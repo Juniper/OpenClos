@@ -115,6 +115,12 @@ class TestFunctions(unittest.TestCase):
         conf = loadConfig()
         self.assertEquals('99.99.99.99', conf['snmpTrap']['networkdirector_trap_group']['target'])
 
+    def testGetSupportedDeviceFamily(self):
+        deviceFamilyList = getSupportedDeviceFamily({'qfx5100-96s-8q': {}, 'qfx5100-48s-6q': {}})
+        self.assertEqual(2, len(deviceFamilyList))
+        
+        with self.assertRaises(ValueError):
+            getSupportedDeviceFamily(None)
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

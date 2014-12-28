@@ -10,6 +10,7 @@ import json
 from webtest import TestApp, AppError
 
 from jnpr.openclos.rest import RestServer, webServerRoot, junosImageRoot
+import jnpr.openclos.util
 
 configLocation = webServerRoot
 imageLocation = junosImageRoot
@@ -23,6 +24,7 @@ class TestRest(unittest.TestCase):
         
         if not os.path.exists(configLocation):
             os.makedirs(configLocation)
+        jnpr.openclos.util.loadLoggingConfigForTest()
 
 
     def tearDown(self):
@@ -189,13 +191,13 @@ class TestRest(unittest.TestCase):
         self.assertEqual(200, response.status_int)
         os.remove(os.path.join(imageLocation, 'efgh.tgz'))
         
-    def testGetgetIpFabric(self):
+    def testGetIpFabric(self):
         restServerTestApp = self.setupRestWithTwoPods()
 
         response = restServerTestApp.get('/openclos/ip-fabrics/' + self.ipFabric1.id)
         self.assertEqual(200, response.status_int)
         self.assertEqual(self.ipFabric1.name, response.json['ipFabric']['name'])
-        self.assertEqual(self.ipFabric1.leafDeviceType, response.json['ipFabric']['leafDeviceType'])
+        self.assertEqual(self.ipFabric1.spineDeviceType, response.json['ipFabric']['spineDeviceType'])
         self.assertTrue('/openclos/ip-fabrics/' + self.ipFabric1.id + '/cabling-plan' in response.json['ipFabric']['cablingPlan']['uri'])
         self.assertTrue('/openclos/ip-fabrics/' + self.ipFabric1.id + '/devices' in response.json['ipFabric']['devices']['uri'])
 
@@ -292,14 +294,14 @@ class TestRest(unittest.TestCase):
         
         response = restServerTestApp.post('/openclos/ip-fabrics', headers = {'Content-Type':'application/json'}, expect_errors = True)
         self.assertEqual(400, response.status_int)
-        self.assertTrue('POST body can not be empty' in response.json['errorMessage'] )
+        self.assertTrue('No json in request object' in response.json['errorMessage'] )
         
     def testReconfigureIpFabricWithPostBodyEmpty(self):
         restServerTestApp = self.setupRestWithTwoPods()
         
         response = restServerTestApp.put('/openclos/ip-fabrics/'+self.ipFabric1.id, headers = {'Content-Type':'application/json'}, expect_errors = True)
         self.assertEqual(400, response.status_int)
-        self.assertTrue('POST body can not be empty' in response.json['errorMessage'] )
+        self.assertTrue('No json in request object' in response.json['errorMessage'] )
         
     def testCreateIpFabricWithInvalidRole(self):
         restServerTestApp = self.setupRestWithTwoPods()
@@ -336,6 +338,38 @@ class TestRest(unittest.TestCase):
         self.assertEqual(400, response.status_int)
         self.assertTrue('Unexpected role value' in response.json['errorMessage'] )         
 
+    def testGetLeafGenericConfiguration404(self):
+        restServerTestApp = self.setupRestWithTwoPods()
+        podId = self.ipFabric1.id
+        
+        with self.assertRaises(AppError) as e:
+            restServerTestApp.get('/openclos/ip-fabrics/'+podId+'/leaf-generic-configurations/qfx5100-48s-6q')
+        self.assertTrue('404 Not Found' in e.exception.message)
+        self.assertTrue('IpFabric exists but no leaf generic config' in e.exception.message)
+        self.assertTrue('qfx5100-48s-6q' in e.exception.message)
+
+    def setupRestWithPodAndGenericConfig(self):
+        from test_model import createPod
+        from jnpr.openclos.model import LeafSetting
+
+        restServer = RestServer(self.conf)
+        session = restServer.dao.Session()
+        self.ipFabric1 = createPod("test1", session)
+        leafSetting = LeafSetting('qfx5100-48s-6q', self.ipFabric1.id, config = "testConfig abcd")
+        self.ipFabric1.leafSettings = [leafSetting]
+        session.merge(self.ipFabric1)
+        session.commit()
+
+        restServer.initRest()
+        return TestApp(restServer.app)
+
+    def testGetLeafGenericConfiguration(self):
+        restServerTestApp = self.setupRestWithPodAndGenericConfig()
+        podId = self.ipFabric1.id
+        
+        response = restServerTestApp.get('/openclos/ip-fabrics/'+podId+'/leaf-generic-configurations/qfx5100-48s-6q')
+        self.assertEqual(200, response.status_int) 
+        self.assertTrue('testConfig abcd' in response.body)
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

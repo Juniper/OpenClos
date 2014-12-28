@@ -93,6 +93,18 @@ def loadClosDefinition(closDefination = os.path.join(configLocation, 'closTempla
     finally:
         pass
 
+
+def getSupportedDeviceFamily(conf):
+    '''
+    :param dict: conf -- device family configuration in dict format, not the whole conf, conf['deviceFamily']
+    :returns list: device model/family (exactly as it is appeared on junos)
+
+    '''
+    if conf is None:
+        raise ValueError("Missing configuration data")
+    return conf.keys()
+    
+
 def getPortNamesForDeviceFamily(deviceFamily, conf):
     '''
     returns all port names for a device family grouped by uplink/downlink
@@ -301,6 +313,24 @@ def loadLoggingConfig(appName, confFile = 'logging.yaml'):
         confStream.close()
     return loggingInitialized
 
+def loadLoggingConfigForTest(confFile = 'loggingTest.yaml'):
+    '''
+    Loads global configuration for Test and creates hash 'conf'
+    '''
+    try:
+        confStream = open(os.path.join(configLocation, confFile), 'r')
+        conf = yaml.load(confStream)
+        if conf is not None:
+            logging.config.dictConfig(conf)
+            global loggingInitialized
+            loggingInitialized = True
+    except (OSError, IOError) as e:
+        print "File error:", e
+    except (yaml.scanner.ScannerError) as e:
+        print "YAML error:", e
+        confStream.close()
+    return loggingInitialized
+
 def getLogger(moduleName):
     '''
     Get logger based on module name
@@ -309,3 +339,14 @@ def getLogger(moduleName):
         raise ValueError("util.loadLoggingConfig needs to be called before util.getLogger")
         
     return logging.getLogger(moduleName)
+
+def getImageNameForDevice(pod, device):
+    if device.role == 'spine':
+        return pod.spineJunosImage
+    elif device.role == 'leaf':
+        for leafSetting in pod.leafSettings:
+            if leafSetting.deviceFamily == device.family:
+                return leafSetting.junosImage
+    
+    return None
+    

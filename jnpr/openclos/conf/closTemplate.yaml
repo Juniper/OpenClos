@@ -3,7 +3,7 @@ ztp:
     # if not placed under this dir, the file would not be accessible from http server
     # and ZTP process will be broken, can be overridden at each pod for Spine/Leaf
     # this field is optional
-    junosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
+    junosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
     dhcpSubnet : 10.0.2.0/24
     # This is the Gateway address for any out-of-band network including 
     # management network, this will get configured using static route
@@ -20,9 +20,18 @@ pods:
         spineCount : 4
         # possible options for leafDeviceType are qfx5100-24q-2p
         spineDeviceType : qfx5100-24q-2p
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+        # if not placed under this dir, the file would not be accessible from http server
+        # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
+        spineJunosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+
         leafCount : 6
         # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
-        leafDeviceType : qfx5100-48s-6q
+        # for complete list refer to openclos.yaml
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+        leafSettings :
+            - leafDeviceType : qfx5100-48s-6q
+              leafJunosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
         # Number of uplink from leaf must be properly connected and up to indicate
         # the leaf device as "good". If the leaf device is not in "good" state
         # it would not go through 2-stage ZTP/configuration process.
@@ -48,22 +57,26 @@ pods:
         # It overrides ztp:dhcpOptionRoute setting
         # outOfBandGateway : 1.2.3.254
         
-        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
-        # if not placed under this dir, the file would not be accessible from http server
-        # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
-        # these fields are optional
-        spineJunosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
-        leafJunosImage : jinstall-qfx-5-flex-13.2X51-D21.2-domestic-signed.tgz
-        
         # device default root password
         devicePassword: Embe1mpls
     anotherPod:
         spineCount : 2
         # possible options for leafDeviceType are qfx5100-24q-2p
         spineDeviceType : qfx5100-24q-2p
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+        # if not placed under this dir, the file would not be accessible from http server
+        # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
+        spineJunosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+
         leafCount : 4
         # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
-        leafDeviceType : qfx5100-96s-8q
+        # for complete list refer to openclos.yaml
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+        leafSettings :
+            - leafDeviceType : qfx5100-96s-8q
+              leafJunosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+            - leafDeviceType : ex4300-48p
+              leafJunosImage : jinstall-ex-4300-14.1X53-D10.4-domestic-signed.tgz
         # Number of uplink from leaf must be properly connected to indicate
         # the leaf device as "good". If the leaf device is not in "good" state
         # it would not go through 2-stage ZTP/configuration process.
@@ -89,13 +102,6 @@ pods:
         # Management network gateway address
         # It overrides ztp:dhcpOptionRoute setting
         outOfBandGateway : 192.168.48.254
-
-        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
-        # if not placed under this dir, the file would not be accessible from http server
-        # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
-        # these fields are optional
-        spineJunosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
-        leafJunosImage : jinstall-qfx-5-flex-13.2X51-D21.2-domestic-signed.tgz
         
         # device default root password
         devicePassword: Embe1mpls
