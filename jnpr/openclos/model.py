@@ -92,8 +92,8 @@ class Pod(ManagedElement, Base):
         if leafSettings is not None:
             self.leafSettings = []
             for leafSetting in leafSettings:
-                junosImage = leafSetting.get('leafJunosImage')
-                self.leafSettings.append(LeafSetting(leafSetting['leafDeviceType'], self.id, junosImage = junosImage))
+                junosImage = leafSetting.get('junosImage')
+                self.leafSettings.append(LeafSetting(leafSetting['deviceType'], self.id, junosImage = junosImage))
         
         self.leafUplinkcountMustBeUp = podDict.get('leafUplinkcountMustBeUp')
         if self.leafUplinkcountMustBeUp is None:

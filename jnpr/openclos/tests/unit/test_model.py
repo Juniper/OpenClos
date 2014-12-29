@@ -19,7 +19,7 @@ def createPodObj(name):
     pod['spineCount'] = '2'
     pod['spineDeviceType'] = 'qfx-5100-24q-2p'
     pod['leafCount'] = '2'
-    pod['leafSettings'] = [{'leafDeviceType':'qfx-5100-48s-6q'}]
+    pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
     pod['interConnectPrefix'] = '1.2.0.0'
     pod['vlanPrefix'] = '1.3.0.0'
     pod['hostOrVmCountPerLeaf'] = 100
@@ -89,7 +89,7 @@ class TestPod(TestOrm):
         pod['spineCount'] = '2'
         pod['spineDeviceType'] = 'qfx-5100-24q-2p'
         pod['leafCount'] = '2'
-        pod['leafSettings'] = [{'leafDeviceType':'qfx-5100-48s-6q'}]
+        pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
         pod['hostOrVmCountPerLeaf'] = 100
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
@@ -150,7 +150,7 @@ class TestPod(TestOrm):
         pod['spineCount'] = '2'
         pod['spineDeviceType'] = 'qfx-5100-24q-2p'
         pod['leafCount'] = '2'
-        pod['leafSettings'] = [{'leafDeviceType':'qfx-5100-48s-6q'}]
+        pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
@@ -174,7 +174,7 @@ class TestPod(TestOrm):
         pod['spineCount'] = '2'
         pod['spineDeviceType'] = 'qfx-5100-24q-2p'
         pod['leafCount'] = '2'
-        pod['leafSettings'] = [{'leafDeviceType':'qfx-5100-48s-6q'}]
+        pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'

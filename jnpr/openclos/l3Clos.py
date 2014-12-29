@@ -101,7 +101,7 @@ class L3ClosMediation():
             username = leaf.get('username')
             password = leaf.get('password') #default is Pod level pass, set on constructor
             macAddress = leaf.get('macAddress')
-            family = leaf.get('leafDeviceType') #default is 'unknown' set on DB
+            family = leaf.get('deviceType') #default is 'unknown' set on DB
             deployStatus = leaf.get('deployStatus') #default is 'provision' set on DB
             device = Device(leaf['name'], family, username, password, 'leaf', macAddress, None, pod, deployStatus)
             devices.append(device)

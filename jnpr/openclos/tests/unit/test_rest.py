@@ -312,7 +312,7 @@ class TestRest(unittest.TestCase):
                 "spineDeviceType": "qfx5100-24q-2p",
                 "spineCount": 2,
                 "spineAS": 100,
-                "leafDeviceType": "qfx5100-48s-6q",
+                "deviceType": "qfx5100-48s-6q",
                 "leafCount": 1,
                 "leafAS": 200,
                 "topologyType": "threeStage",

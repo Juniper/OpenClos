@@ -30,8 +30,8 @@ pods:
         # for complete list refer to openclos.yaml
         # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
         leafSettings :
-            - leafDeviceType : qfx5100-48s-6q
-              leafJunosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+            - deviceType : qfx5100-48s-6q
+              junosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
         # Number of uplink from leaf must be properly connected and up to indicate
         # the leaf device as "good". If the leaf device is not in "good" state
         # it would not go through 2-stage ZTP/configuration process.
@@ -73,10 +73,10 @@ pods:
         # for complete list refer to openclos.yaml
         # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
         leafSettings :
-            - leafDeviceType : qfx5100-96s-8q
-              leafJunosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
-            - leafDeviceType : ex4300-48p
-              leafJunosImage : jinstall-ex-4300-14.1X53-D10.4-domestic-signed.tgz
+            - deviceType : qfx5100-96s-8q
+              junosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+            - deviceType : ex4300-48p
+              junosImage : jinstall-ex-4300-14.1X53-D10.4-domestic-signed.tgz
         # Number of uplink from leaf must be properly connected to indicate
         # the leaf device as "good". If the leaf device is not in "good" state
         # it would not go through 2-stage ZTP/configuration process.
