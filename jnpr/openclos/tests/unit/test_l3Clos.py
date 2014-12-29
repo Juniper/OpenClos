@@ -37,7 +37,7 @@ class TestL3Clos(unittest.TestCase):
         shutil.rmtree(self.conf['outputDir'], ignore_errors=True)
 
     def createPod(self, l3ClosMediation):
-        podDict = {"devicePassword": "Embe1mpls", "leafCount": 3, "leafSettings": [{"leafDeviceType":"qfx5100-48s-6q"}], 
+        podDict = {"devicePassword": "Embe1mpls", "leafCount": 3, "leafSettings": [{"deviceType":"qfx5100-48s-6q"}], 
                    "spineAS": 100, "spineCount": 2, "spineDeviceType": "qfx5100-24q-2p", "interConnectPrefix": "192.168.0.0/24", 
                    "vlanPrefix": "172.16.0.0/22", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0/24", "leafAS": 200, 
                    "managementPrefix": "172.32.30.101/24", "hostOrVmCountPerLeaf": 254, "inventory" : "inventoryUnitTest.json"}
@@ -75,9 +75,9 @@ class TestL3Clos(unittest.TestCase):
                { "name" : "spine-02", "macAddress" : "10:0e:7e:af:50:c1" }
             ],
             "leafs" : [
-               { "name" : "leaf-01", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus": "deploy" },
-               { "name" : "leaf-02", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "10:0e:7e:b8:9d:01" },
-               { "name" : "leaf-03", "leafDeviceType" : "ex4300-24p", "macAddress" : "10:0e:7e:b8:9d:01" }
+               { "name" : "leaf-01", "deviceType" : "qfx5100-48s-6q", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus": "deploy" },
+               { "name" : "leaf-02", "deviceType" : "qfx5100-48s-6q", "macAddress" : "10:0e:7e:b8:9d:01" },
+               { "name" : "leaf-03", "deviceType" : "ex4300-24p", "macAddress" : "10:0e:7e:b8:9d:01" }
             ]
         }
         l3ClosMediation.updatePod(pod.id, podDict, inventoryDict)

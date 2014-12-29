@@ -188,7 +188,7 @@ class RestServer():
             outputDict['leafAS'] = ipFabric.leafAS
             outputDict['leafSettings'] = []
             for leafSetting in ipFabric.leafSettings:
-                outputDict['leafSettings'].append({'leafDeviceType': leafSetting.deviceFamily, 'leafJunosImage': leafSetting.junosImage})
+                outputDict['leafSettings'].append({'deviceType': leafSetting.deviceFamily, 'junosImage': leafSetting.junosImage})
             outputDict['leafCount'] = ipFabric.leafCount
             outputDict['loopbackPrefix'] = ipFabric.loopbackPrefix 
             outputDict['vlanPrefix'] = ipFabric.vlanPrefix

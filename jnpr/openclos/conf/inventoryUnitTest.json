@@ -3,8 +3,8 @@
        { "name" : "spine-02", "macAddress" : "10:0e:7e:af:50:c1", "deployStatus" : "deploy" }
     ],
     "leafs" : [
-       { "name" : "leaf-01", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus" : "deploy" },
-       { "name" : "leaf-02", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "10:0e:7e:b8:9d:01", "deployStatus" : "deploy" },
+       { "name" : "leaf-01", "deviceType" : "qfx5100-48s-6q", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus" : "deploy" },
+       { "name" : "leaf-02", "deviceType" : "qfx5100-48s-6q", "macAddress" : "10:0e:7e:b8:9d:01", "deployStatus" : "deploy" },
        { "name" : "leaf-03" }
     ]
 }

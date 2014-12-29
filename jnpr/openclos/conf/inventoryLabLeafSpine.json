@@ -5,11 +5,11 @@
        { "name" : "spine-04", "macAddress" : "aa:bb:cc:dd:ee:f4"}
     ],
     "leafs" : [
-       { "name" : "leaf-01", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e1", "deployStatus" : "deploy"},
-       { "name" : "leaf-02", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e2", "deployStatus" : "deploy"},
-       { "name" : "leaf-03", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e3", "deployStatus" : "deploy"},
-       { "name" : "leaf-04", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e4"},
-       { "name" : "leaf-05", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e5"},
-       { "name" : "leaf-06", "leafDeviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e6"}
+       { "name" : "leaf-01", "deviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e1", "deployStatus" : "deploy"},
+       { "name" : "leaf-02", "deviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e2", "deployStatus" : "deploy"},
+       { "name" : "leaf-03", "deviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e3", "deployStatus" : "deploy"},
+       { "name" : "leaf-04", "deviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e4"},
+       { "name" : "leaf-05", "deviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e5"},
+       { "name" : "leaf-06", "deviceType" : "qfx5100-48s-6q", "macAddress" : "aa:bb:cc:dd:ee:e6"}
     ]
 }
