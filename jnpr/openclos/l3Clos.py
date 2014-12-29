@@ -110,15 +110,15 @@ class L3ClosMediation():
                 # temporary uplink ports, names will get fixed after 2-stage ztp
                 for i in xrange(0, pod.spineCount):
                     interfaces.append(InterfaceDefinition('uplink-' + str(i), device, 'uplink'))
-                # no need to create downlink ports, will get created after 2-stage ztp
 
             else:
                 portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
                 for name in portNames['uplinkPorts']:   # all uplink IFDs towards spine
                     interfaces.append(InterfaceDefinition(name, device, 'uplink'))
-    
-                for name in portNames['downlinkPorts']:   # all downlink IFDs towards Access/Server
-                    interfaces.append(InterfaceDefinition(name, device, 'downlink'))
+
+                # leaf access/downlink ports are not used in app so far, no need to create them    
+                #for name in portNames['downlinkPorts']:   # all downlink IFDs towards Access/Server
+                #    interfaces.append(InterfaceDefinition(name, device, 'downlink'))
         
         self.dao.createObjects(devices)
         self.dao.createObjects(interfaces)

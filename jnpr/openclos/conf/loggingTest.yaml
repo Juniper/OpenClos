@@ -16,7 +16,7 @@ loggers:
         level: INFO
         handlers: [console] 
     devicePlugin : 
-        level: INFO
+        level: DEBUG
         handlers: [console] 
     trapd : 
         level: INFO
