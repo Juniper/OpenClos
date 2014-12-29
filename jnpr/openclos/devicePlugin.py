@@ -402,12 +402,16 @@ class TwoStageConfigurator(L2DataCollector):
             except Exception as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceIp, exc))
 
-            device = self.findMatchedDevice(lldpData, self.device.family)
+            uplinksWithIfd = self.filterRemotePortIfdInDb(lldpData, self.device.family)
+            device = self.findMatchedDevice(uplinksWithIfd, self.device.family)
             if device is None:
                 logger.info('Did not find good enough match for %s' % (self.deviceIp))
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
             
+            self.fixPlugNPlayDevice(device, self.device.family, uplinksWithIfd)
+            self.updateSelfDeviceContext(device)
+
             try:
                 self.updateDeviceConfigStatus('processing')
                 self.updateDeviceConfiguration()
@@ -424,8 +428,74 @@ class TwoStageConfigurator(L2DataCollector):
         else:
             logger.debug('Two stage configuration is already in progress for %s', (self.deviceLogStr))
 
+    def fixPlugNPlayDevice(self, device, deviceFamily, uplinksWithIfd):
+        '''
+        Fix all plug-n-play leaf stuff, not needed if deviceFamily is unchanged
+        :param Device device: matched device found in db
+        :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
+        :param dict uplinksWithIfd: lldp links for uplink
+        '''
+        if device.Family == deviceFamily:
+            logger.debug('DeviceFamily(%s) is not changed, nothing to fix' % (deviceFamily))
+            return
+        
+        logger.info('DeviceFamily is changed, from: %s, to: %s' % (device.Family, deviceFamily))
+        device.family = deviceFamily
+        self.dao.updateObjects([device])
+        self.fixAccessPorts(device)
+        self.fixUplinkPorts(uplinksWithIfd)
+
+    def fixAccessPorts(self, device):
+        # While leaf devices are created access ports are not created to save resources 
+        pass
+        
+    def fixUplinkPorts(self, lldpUplinksWithIfd):
+        '''
+        :param dict lldpUplinksWithIfd: lldp links for uplink
+            deivce1: local device (on which lldp was run)
+            port1: local interface (on device1)
+            device2: remote device
+            port2: remote interface
+            ifd2: remote IFD from db
+        '''
+        if lldpUplinksWithIfd is None or len(lldpUplinksWithIfd) == 0:
+            logger.warn('NO LLDP lldpUplinksWithIfd, skipping fixUplinkPorts')
+            return
+
+        updateList = []
+        for link in lldpUplinksWithIfd:
+            spineIfd = link['ifd2']
+            peerLeafIfd = spineIfd.peer 
+            # sanity check against links that are not according to the cabling plan
+            if peerLeafIfd is None:
+                continue
+            peerLeafIfd.name = link['port1']
+            updateList.append(peerLeafIfd)
+        
+        logger.debug('Number of uplink ports fixed: %d' % (len(updateList)))
+        self.dao.updateObjects(updateList)
+
     def filterRemotePortIfdInDb(self,lldpData, deviceFamily):
-        ''' filter only remote ports that are  IFD configured in the DB '''
+        ''' 
+        filter only uplink ports, get remote ports that are IFD configured in the DB 
+        :param dict lldpData:
+            deivce1: local device (on which lldp was run)
+            port1: local interface (on device1)
+            device2: remote device
+            port2: remote interface
+        :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
+
+        :returns dict: lldpData for uplinks only
+            deivce1: local device (on which lldp was run)
+            port1: local interface (on device1)
+            device2: remote device
+            port2: remote interface
+            ifd2: remote IFD from db
+        '''
+        if lldpData is None or len(lldpData) == 0:
+            logger.warn('NO LLDP data found for device: %s' % (self.deviceIp))
+            return
+
         uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['uplinkPorts']
         IfdLinks = []
         devicesToBeUpdated = []
@@ -443,14 +513,14 @@ class TwoStageConfigurator(L2DataCollector):
                         ifd2.device.l2Status = 'good'
                         ifd2.device.configStatus = 'good'
                     devicesToBeUpdated.append(ifd2.device)
-        logger.debug('Number of IFDs found from LLDP data is %d' % (len(IfdLinks)))
+        logger.debug('Number of uplink IFDs found from LLDP data is %d' % (len(IfdLinks)))
 
         if len(devicesToBeUpdated) > 0:
             self.dao.updateObjects(devicesToBeUpdated)
 
         return IfdLinks
         
-    def findMatchedDevice(self, lldpData, deviceFamily):
+    def findMatchedDevice(self, uplinksWithIfd, deviceFamily):
         '''
         Process the raw LLDP data from device and match to a IpFabric and a Device
         :param dict lldpData:
@@ -461,19 +531,19 @@ class TwoStageConfigurator(L2DataCollector):
         :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
         :returns Device: 
         '''
-        if lldpData is None:
-            return
             
-        matchedIfds = self.filterRemotePortIfdInDb(lldpData, deviceFamily)
-        if len(matchedIfds) < 2:
-            logger.info('Device: %s, number of matched IFD count is %d (too less), skipping findMatchedDevice' % (self.deviceIp, len(matchedIfds)))
+        if uplinksWithIfd is None:
+            logger.error('Device: %s, no matched uplink IFD, skipping findMatchedDevice' % (self.deviceIp, len(uplinksWithIfd)))
+            return
+        elif len(uplinksWithIfd) < 2:
+            logger.error('Device: %s, number of matched uplink IFD count: %d, too less to continue findMatchedDevice, skipping' % (self.deviceIp, len(uplinksWithIfd)))
             return
         
         # check if they belong to same IpFabric same Device
         # dict of probable fabric and device
         # key <device id> : value count of IFD found
         tentativeFabricDevice = {}
-        for link in matchedIfds:
+        for link in uplinksWithIfd:
             remoteIfd = link['ifd2']
             # sanity check against links that are not according to the cabling plan
             if remoteIfd.peer is None:
@@ -503,8 +573,7 @@ class TwoStageConfigurator(L2DataCollector):
         # Is BEST match good enough match
         effectiveLeafUplinkcountMustBeUp = device.pod.calculateEffectiveLeafUplinkcountMustBeUp()
         if maxCount >= effectiveLeafUplinkcountMustBeUp:
-            self.updateSelfDeviceContext(device)
-            return self.device
+            return device
         else:
             logger.info('Number of matched uplink count: %s, is less than required effectiveLeafUplinkcountMustBeUp: %d' % (maxCount, effectiveLeafUplinkcountMustBeUp))
         

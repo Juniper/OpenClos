@@ -6,7 +6,7 @@ Created on Oct 30, 2014
 import unittest
 #from flexmock import flexmock
 
-
+import jnpr.openclos.util
 from jnpr.openclos.devicePlugin import DeviceDataCollectorNetconf, L2DataCollector, DeviceOperationInProgressCache, TwoStageConfigurator 
 from jnpr.openclos.exception import DeviceError
 from jnpr.openclos.model import Device, InterfaceDefinition
@@ -21,6 +21,7 @@ class TestDeviceDataCollectorNetconf(unittest.TestCase):
     def setUp(self):
         self.conf = {'dbUrl': 'sqlite:///'}
         self.dao = Dao(self.conf)
+        jnpr.openclos.util.loadLoggingConfigForTest()
 
     def tearDown(self):
         pass
@@ -68,6 +69,8 @@ class TestL2DataCollector(unittest.TestCase):
         self.conf = {'dbUrl': 'sqlite:///'}
         self.dao = Dao(self.conf)
         self.session = self.dao.Session()
+        jnpr.openclos.util.loadLoggingConfigForTest()
+        
     def tearDown(self):
         pass
 
@@ -157,6 +160,9 @@ class TestL2DataCollector(unittest.TestCase):
         self.assertEqual("test reason", leaf.l2StatusReason)
 
 class TestDataCollectorInProgressCache(unittest.TestCase):
+    def setUp(self):
+        jnpr.openclos.util.loadLoggingConfigForTest()
+
     def testSingleton(self):
         cache1 = DeviceOperationInProgressCache.getInstance()
         cache2 = DeviceOperationInProgressCache.getInstance()
@@ -176,6 +182,8 @@ class TestTwoStageConfigurator(unittest.TestCase):
 
     def setUp(self):
         self.conf = {'dbUrl': 'sqlite:///'}
+        self.conf['deviceFamily'] = {"qfx5100-48s-6q": {"uplinkPorts": 'et-0/0/[48-53]', "downlinkPorts": 'xe-0/0/[0-47]'}}
+        jnpr.openclos.util.loadLoggingConfigForTest()
         self.dao = Dao(self.conf)
         self.session = self.dao.Session()
 
@@ -189,19 +197,103 @@ class TestTwoStageConfigurator(unittest.TestCase):
     def testCollectLldpAndMatchDevice(self):
         self.configurator.collectLldpAndMatchDevice()
 
-    def getLldpData(self):
+    def createTwoSpineTwoLeaf(self):
+        from test_model import createPod
+        pod = createPod('pod1', self.session)
+        from test_model import createPodDevice
+        spine1 = createPodDevice(self.session, 'spine1', pod)
+        spine2 = createPodDevice(self.session, 'spine2', pod)
+        leaf1 = createPodDevice(self.session, 'leaf1', pod)
+        leaf1.role = 'leaf'
+        leaf1.family = 'qfx5100-48s-6q'
+        leaf2 = createPodDevice(self.session, 'leaf2', pod)
+        leaf2.role = 'leaf'
+        leaf2.family = 'qfx5100-48s-6q'
+
+        IFDs = [InterfaceDefinition('et-0/0/0', spine1, 'downlink'), InterfaceDefinition('et-0/0/1', spine1, 'downlink'), 
+                InterfaceDefinition('et-0/0/0', spine2, 'downlink'), InterfaceDefinition('et-0/0/1', spine2, 'downlink'), 
+                InterfaceDefinition('et-0/0/48', leaf1, 'uplink'), InterfaceDefinition('et-0/0/49', leaf1, 'uplink'),
+                InterfaceDefinition('et-0/0/48', leaf2, 'uplink'), InterfaceDefinition('et-0/0/49', leaf2, 'uplink')]
+        self.session.add_all(IFDs)
+        
+        IFDs[4].peer = IFDs[0]
+        IFDs[0].peer = IFDs[4]
+        IFDs[5].peer = IFDs[2]
+        IFDs[2].peer = IFDs[5]
+        
+        IFDs[6].peer = IFDs[1]
+        IFDs[1].peer = IFDs[6]
+        IFDs[7].peer = IFDs[3]
+        IFDs[3].peer = IFDs[7]
+        
+        return IFDs
+        
+    def getLldpDataFromLeaf1(self):
         return [
-           {'device1': None, 'port1': 'et-0/0/96', 'device2': 'clos-spine-01', 'port2': 'et-0/0/1'},
-           {'device1': None, 'port1': 'et-0/0/97', 'device2': 'clos-spine-01', 'port2': 'et-0/0/1'},
-           {'device1': None, 'port1': 'xe-0/0/1', 'device2': 'clos-leaf-02', 'port2': 'xe-0/0/0'}, 
-           {'device1': None, 'port1': 'xe-0/0/0', 'device2': 'clos-leaf-02', 'port2': 'xe-0/0/1'},
-           {'device1': None, 'port1': 'xe-0/0/49', 'device2': 'clos-leaf-02', 'port2': 'xe-0/0/48'},
-           {'device1': None, 'port1': 'xe-0/0/48', 'device2': 'clos-leaf-02', 'port2': 'xe-0/0/49'}
+           {'device1': None, 'port1': 'et-0/0/48', 'device2': 'spine1', 'port2': 'et-0/0/0'},
+           {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine2', 'port2': 'et-0/0/0'},
+           {'device1': None, 'port1': 'xe-0/0/0', 'device2': 'server1', 'port2': 'eth0'},
+           {'device1': None, 'port1': 'xe-0/0/1', 'device2': 'server2', 'port2': 'eth1'}
         ]
 
-    @unittest.skip
+    def testFilterRemotePortIfdInDb(self):
+        IFDs = self.createTwoSpineTwoLeaf()
+        uplinksWithIfd = self.configurator.filterRemotePortIfdInDb(self.getLldpDataFromLeaf1(), 'qfx5100-48s-6q')
+        
+        self.assertEqual(2, len(uplinksWithIfd))
+        self.assertIsNotNone(uplinksWithIfd[0]['ifd2'])
+        self.assertEqual(IFDs[0], uplinksWithIfd[0]['ifd2'])
+        self.assertIsNotNone(uplinksWithIfd[1]['ifd2'])
+        self.assertEqual(IFDs[2], uplinksWithIfd[1]['ifd2'])
+
+    def createTwoSpineTwoLeafPlugNPlay(self):
+        from test_model import createPod
+        pod = createPod('pod1', self.session)
+        from test_model import createPodDevice
+        spine1 = createPodDevice(self.session, 'spine1', pod)
+        spine2 = createPodDevice(self.session, 'spine2', pod)
+        leaf1 = createPodDevice(self.session, 'leaf1', pod)
+        leaf1.role = 'leaf'
+        leaf1.family = 'qfx5100-48s-6q'
+        leaf2 = createPodDevice(self.session, 'leaf2', pod)
+        leaf2.role = 'leaf'
+
+        IFDs = [InterfaceDefinition('et-0/0/0', spine1, 'downlink'), InterfaceDefinition('et-0/0/1', spine1, 'downlink'), 
+                InterfaceDefinition('et-0/0/0', spine2, 'downlink'), InterfaceDefinition('et-0/0/1', spine2, 'downlink'), 
+                InterfaceDefinition('et-0/0/48', leaf1, 'uplink'), InterfaceDefinition('et-0/0/49', leaf1, 'uplink'),
+                InterfaceDefinition('uplink-1', leaf2, 'uplink'), InterfaceDefinition('uplink-2', leaf2, 'uplink')]
+        self.session.add_all(IFDs)
+        
+        IFDs[4].peer = IFDs[0]
+        IFDs[0].peer = IFDs[4]
+        IFDs[5].peer = IFDs[2]
+        IFDs[2].peer = IFDs[5]
+        
+        IFDs[6].peer = IFDs[1]
+        IFDs[1].peer = IFDs[6]
+        IFDs[7].peer = IFDs[3]
+        IFDs[3].peer = IFDs[7]
+        
+        return IFDs
+        
+    def testFfixUplinkPorts(self):
+        IFDs = self.createTwoSpineTwoLeafPlugNPlay()
+        lldpUplinksWithIfdFromLeaf2 = [
+           {'device1': None, 'port1': 'et-0/0/48', 'device2': 'spine1', 'port2': 'et-0/0/1', 'ifd2':IFDs[1]},
+           {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine2', 'port2': 'et-0/0/1', 'ifd2':IFDs[3]}
+        ]
+        self.assertEqual('uplink-1', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().name)
+        self.assertEqual('uplink-2', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().name)
+
+        self.configurator.fixUplinkPorts(lldpUplinksWithIfdFromLeaf2)
+
+        self.assertEqual('et-0/0/48', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().name)
+        self.assertEqual('et-0/0/49', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().name)
+
+    @unittest.skip("")
     def testMatchDevice(self):
         self.configurator.findMatchedDevice(self.getLldpData(), 'qfx5100-96s-8q')
+
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
