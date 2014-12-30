@@ -186,7 +186,7 @@ class ZtpServer():
                 else:
                     setting['leafImageUrl'] = None
                 # don't start url as /openclos/ip-fabrics/..., first / causes ZTP problem
-                setting['leafGenericConfigUrl'] = 'openclos/ip-fabrics/' + pod.id + '/leaf-generic-configuration/' + leafSetting.deviceFamily
+                setting['leafGenericConfigUrl'] = 'openclos/ip-fabrics/' + pod.id + '/leaf-generic-configurations/' + leafSetting.deviceFamily
                 '''
                 setting['substringLength'] is the last argument of substring on dhcpd.conf, 
                 should not be hardcoded, as it would change based on device family

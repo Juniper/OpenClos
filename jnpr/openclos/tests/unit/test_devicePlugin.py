@@ -9,7 +9,7 @@ import unittest
 import jnpr.openclos.util
 from jnpr.openclos.devicePlugin import DeviceDataCollectorNetconf, L2DataCollector, DeviceOperationInProgressCache, TwoStageConfigurator 
 from jnpr.openclos.exception import DeviceError
-from jnpr.openclos.model import Device, InterfaceDefinition
+from jnpr.openclos.model import Device, InterfaceDefinition, InterfaceLogical
 from jnpr.openclos.dao import Dao
 from jnpr.junos.exception import ConnectError
 
@@ -263,6 +263,13 @@ class TestTwoStageConfigurator(unittest.TestCase):
                 InterfaceDefinition('et-0/0/48', leaf1, 'uplink'), InterfaceDefinition('et-0/0/49', leaf1, 'uplink'),
                 InterfaceDefinition('uplink-1', leaf2, 'uplink'), InterfaceDefinition('uplink-2', leaf2, 'uplink')]
         self.session.add_all(IFDs)
+
+        IFLs = []
+        for ifd in IFDs:
+            ifl = InterfaceLogical(ifd.name + '.0', ifd.device)
+            ifd.layerAboves.append(ifl) 
+            IFLs.append(ifl)
+        self.session.add_all(IFLs)
         
         IFDs[4].peer = IFDs[0]
         IFDs[0].peer = IFDs[4]
@@ -274,21 +281,27 @@ class TestTwoStageConfigurator(unittest.TestCase):
         IFDs[7].peer = IFDs[3]
         IFDs[3].peer = IFDs[7]
         
-        return IFDs
+        return {'ifds': IFDs, 'ifls': IFLs}
         
     def testFfixUplinkPorts(self):
-        IFDs = self.createTwoSpineTwoLeafPlugNPlay()
+        ifdIfl = self.createTwoSpineTwoLeafPlugNPlay()
+        IFDs = ifdIfl['ifds']
+        IFLs = ifdIfl['ifls']
         lldpUplinksWithIfdFromLeaf2 = [
            {'device1': None, 'port1': 'et-0/0/48', 'device2': 'spine1', 'port2': 'et-0/0/1', 'ifd2':IFDs[1]},
            {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine2', 'port2': 'et-0/0/1', 'ifd2':IFDs[3]}
         ]
         self.assertEqual('uplink-1', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().name)
         self.assertEqual('uplink-2', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().name)
+        self.assertEqual('uplink-1.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[6].id).one().name)
+        self.assertEqual('uplink-2.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[7].id).one().name)
 
         self.configurator.fixUplinkPorts(lldpUplinksWithIfdFromLeaf2)
 
         self.assertEqual('et-0/0/48', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().name)
         self.assertEqual('et-0/0/49', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().name)
+        self.assertEqual('et-0/0/48.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[6].id).one().name)
+        self.assertEqual('et-0/0/49.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[7].id).one().name)
 
     @unittest.skip("")
     def testMatchDevice(self):

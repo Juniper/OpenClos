@@ -435,11 +435,11 @@ class TwoStageConfigurator(L2DataCollector):
         :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
         :param dict uplinksWithIfd: lldp links for uplink
         '''
-        if device.Family == deviceFamily:
+        if device.family == deviceFamily:
             logger.debug('DeviceFamily(%s) is not changed, nothing to fix' % (deviceFamily))
             return
         
-        logger.info('DeviceFamily is changed, from: %s, to: %s' % (device.Family, deviceFamily))
+        logger.info('DeviceFamily is changed, from: %s, to: %s' % (device.family, deviceFamily))
         device.family = deviceFamily
         self.dao.updateObjects([device])
         self.fixAccessPorts(device)
@@ -470,9 +470,15 @@ class TwoStageConfigurator(L2DataCollector):
             if peerLeafIfd is None:
                 continue
             peerLeafIfd.name = link['port1']
+            logger.debug("Fixed device: %s, uplink port: %s" % (peerLeafIfd.device.name, peerLeafIfd.name))
+
             updateList.append(peerLeafIfd)
-        
-        logger.debug('Number of uplink ports fixed: %d' % (len(updateList)))
+            for ifl in peerLeafIfd.layerAboves:
+                ifl.name = peerLeafIfd.name + '.0'
+                updateList.append(ifl)
+                logger.debug("Fixed device: %s, uplink port: %s" % (peerLeafIfd.device.name, ifl.name))
+
+        logger.debug('Number of uplink IFD + IFL fixed: %d' % (len(updateList)))
         self.dao.updateObjects(updateList)
 
     def filterRemotePortIfdInDb(self,lldpData, deviceFamily):
