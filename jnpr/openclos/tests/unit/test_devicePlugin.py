@@ -67,9 +67,10 @@ class TestL2DataCollector(unittest.TestCase):
 
     def setUp(self):
         self.conf = {'dbUrl': 'sqlite:///'}
+        self.conf['deviceFamily'] = {"qfx5100-48s-6q": {"uplinkPorts": 'et-0/0/[48-53]', "downlinkPorts": 'xe-0/0/[0-47]'}}
+        jnpr.openclos.util.loadLoggingConfigForTest()
         self.dao = Dao(self.conf)
         self.session = self.dao.Session()
-        jnpr.openclos.util.loadLoggingConfigForTest()
         
     def tearDown(self):
         pass
@@ -159,44 +160,6 @@ class TestL2DataCollector(unittest.TestCase):
         self.assertEqual("error", leaf.l2Status)
         self.assertEqual("test reason", leaf.l2StatusReason)
 
-class TestDataCollectorInProgressCache(unittest.TestCase):
-    def setUp(self):
-        jnpr.openclos.util.loadLoggingConfigForTest()
-
-    def testSingleton(self):
-        cache1 = DeviceOperationInProgressCache.getInstance()
-        cache2 = DeviceOperationInProgressCache.getInstance()
-        
-        self.assertEqual(cache1, cache2)
-
-    def testIsDeviceInProgress(self):
-        cache = DeviceOperationInProgressCache.getInstance()
-        self.assertTrue(cache.checkAndAddDevice("1234"))
-        self.assertFalse(cache.checkAndAddDevice("1234"))
-        self.assertTrue(cache.isDeviceInProgress("1234"))
-        self.assertFalse(cache.isDeviceInProgress("5678"))
-        self.assertIsNotNone(cache.doneDevice("1234"))
-        self.assertTrue(cache.checkAndAddDevice("1234"))
-
-class TestTwoStageConfigurator(unittest.TestCase):
-
-    def setUp(self):
-        self.conf = {'dbUrl': 'sqlite:///'}
-        self.conf['deviceFamily'] = {"qfx5100-48s-6q": {"uplinkPorts": 'et-0/0/[48-53]', "downlinkPorts": 'xe-0/0/[0-47]'}}
-        jnpr.openclos.util.loadLoggingConfigForTest()
-        self.dao = Dao(self.conf)
-        self.session = self.dao.Session()
-
-        self.configurator = TwoStageConfigurator('192.168.48.219', self.conf)
-        self.configurator.dao = self.dao
-        self.configurator.manualInit()
-    def tearDown(self):
-        pass
-
-    @unittest.skip("need physical device to test")
-    def testCollectLldpAndMatchDevice(self):
-        self.configurator.collectLldpAndMatchDevice()
-
     def createTwoSpineTwoLeaf(self):
         from test_model import createPod
         pod = createPod('pod1', self.session)
@@ -236,15 +199,85 @@ class TestTwoStageConfigurator(unittest.TestCase):
            {'device1': None, 'port1': 'xe-0/0/1', 'device2': 'server2', 'port2': 'eth1'}
         ]
 
-    def testFilterRemotePortIfdInDb(self):
+    def testFilterUplinkAppendRemotePortIfd(self):
         IFDs = self.createTwoSpineTwoLeaf()
-        uplinksWithIfd = self.configurator.filterRemotePortIfdInDb(self.getLldpDataFromLeaf1(), 'qfx5100-48s-6q')
+        dataCollector = L2DataCollector(IFDs[4].device.id, self.conf)
+        dataCollector.dao = self.dao
+        dataCollector.manualInit()
+
+        uplinksWithIfd = dataCollector.filterUplinkAppendRemotePortIfd(self.getLldpDataFromLeaf1(), 'qfx5100-48s-6q')
         
         self.assertEqual(2, len(uplinksWithIfd))
         self.assertIsNotNone(uplinksWithIfd[0]['ifd2'])
         self.assertEqual(IFDs[0], uplinksWithIfd[0]['ifd2'])
         self.assertIsNotNone(uplinksWithIfd[1]['ifd2'])
         self.assertEqual(IFDs[2], uplinksWithIfd[1]['ifd2'])
+        
+    def testUpdateSpineStatusFromLldpUplinkData(self):
+        IFDs = self.createTwoSpineTwoLeaf()
+        dataCollector = L2DataCollector(IFDs[4].device.id, self.conf)
+        dataCollector.dao = self.dao
+        dataCollector.manualInit()
+        
+        uplinkData = [
+           {'device1': None, 'port1': 'et-0/0/48', 'device2': 'spine1', 'port2': 'et-0/0/0', 'ifd2': IFDs[0]},
+           {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine2', 'port2': 'et-0/0/0', 'ifd2': IFDs[2]},
+           {'device1': None, 'port1': 'et-0/0/50', 'device2': 'leaf2', 'port2': 'et-0/0/48', 'ifd2': IFDs[6]}
+        ]
+        dataCollector.updateSpineStatusFromLldpUplinkData(uplinkData)
+        
+        spine = IFDs[0].device
+        self.assertEqual('deploy', spine.deployStatus)
+        self.assertEqual('good', spine.configStatus)
+        self.assertEqual('good', spine.l2Status)
+        
+        spine = IFDs[2].device
+        self.assertEqual('deploy', spine.deployStatus)
+        self.assertEqual('good', spine.configStatus)
+        self.assertEqual('good', spine.l2Status)
+
+        spine = IFDs[6].device
+        self.assertEqual('provision', spine.deployStatus)
+        self.assertEqual('unknown', spine.configStatus)
+        self.assertEqual('unknown', spine.l2Status)
+
+class TestDataCollectorInProgressCache(unittest.TestCase):
+    def setUp(self):
+        jnpr.openclos.util.loadLoggingConfigForTest()
+
+    def testSingleton(self):
+        cache1 = DeviceOperationInProgressCache.getInstance()
+        cache2 = DeviceOperationInProgressCache.getInstance()
+        
+        self.assertEqual(cache1, cache2)
+
+    def testIsDeviceInProgress(self):
+        cache = DeviceOperationInProgressCache.getInstance()
+        self.assertTrue(cache.checkAndAddDevice("1234"))
+        self.assertFalse(cache.checkAndAddDevice("1234"))
+        self.assertTrue(cache.isDeviceInProgress("1234"))
+        self.assertFalse(cache.isDeviceInProgress("5678"))
+        self.assertIsNotNone(cache.doneDevice("1234"))
+        self.assertTrue(cache.checkAndAddDevice("1234"))
+
+class TestTwoStageConfigurator(TestL2DataCollector):
+
+    def setUp(self):
+        self.conf = {'dbUrl': 'sqlite:///'}
+        self.conf['deviceFamily'] = {"qfx5100-48s-6q": {"uplinkPorts": 'et-0/0/[48-53]', "downlinkPorts": 'xe-0/0/[0-47]'}}
+        jnpr.openclos.util.loadLoggingConfigForTest()
+        self.dao = Dao(self.conf)
+        self.session = self.dao.Session()
+
+        self.configurator = TwoStageConfigurator('192.168.48.219', self.conf)
+        self.configurator.dao = self.dao
+        self.configurator.manualInit()
+    def tearDown(self):
+        pass
+
+    @unittest.skip("need physical device to test")
+    def testCollectLldpAndMatchDevice(self):
+        self.configurator.collectLldpAndMatchDevice()
 
     def createTwoSpineTwoLeafPlugNPlay(self):
         from test_model import createPod
