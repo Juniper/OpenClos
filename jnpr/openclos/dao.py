@@ -6,7 +6,6 @@ Created on Aug 26, 2014
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import exc
-import logging
 import util
 
 from model import Base, Device, InterfaceDefinition, LeafSetting
@@ -88,6 +87,8 @@ class Dao:
         session = self.Session()
         try:
             return session.query(objectType).filter_by(name = name).one()
+        except (exc.NoResultFound, exc.MultipleResultsFound) as ex:
+            logger.info(str(ex))
         finally:
             #self.Session.remove()
             pass

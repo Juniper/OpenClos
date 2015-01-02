@@ -71,6 +71,7 @@ class DeviceDataCollectorNetconf(object):
             self.conf = conf
 
         self.dao = None
+        self.pod = None
         self.deviceId = deviceId
         self.deviceConnectionHandle = None
 
@@ -80,6 +81,7 @@ class DeviceDataCollectorNetconf(object):
         if self.deviceId is not None:
             self.device = self.dao.getObjectById(Device, self.deviceId)
             self.deviceLogStr = 'device name: %s, ip: %s, id: %s' % (self.device.name, self.device.managementIp, self.device.id)
+            self.pod = self.device.pod
     
     def connectToDevice(self):
         '''
@@ -141,7 +143,9 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                 # use device level password for leaves that already went through staged configuration
                 self.connectToDevice()
                 lldpData = self.collectLldpFromDevice()
-                goodBadCount = self.processLlDpData(lldpData) 
+                uplinksWithIfd = self.filterUplinkAppendRemotePortIfd(lldpData, self.device.family)
+                self.updateSpineStatusFromLldpUplinkData(uplinksWithIfd)
+                goodBadCount = self.processLlDpData(uplinksWithIfd) 
 
                 self.validateDeviceL2Status(goodBadCount)
             except DeviceError as exc:
@@ -174,24 +178,11 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             table = lldpTable(self.deviceConnectionHandle)
             lldpData = table.get()
             links = []
-            devicesToBeUpdated = []
             for link in lldpData:
                 logger.debug('device1: %s, port1: %s, device2: %s, port2: %s' % (link.device1, link.port1, link.device2, link.port2))
                 links.append({'device1': link.device1, 'port1': link.port1, 'device2': link.device2, 'port2': link.port2})
                 
-                device2 = self.dao.getUniqueObjectByName(Device, link.device2)
-                if device2 is not None:
-                    device2.deployStatus = 'deploy'
-                    # only update l2Status for spine because leaf will get updated when we collect its L2 data
-                    if device2.role == 'spine':
-                        device2.l2Status = 'good'
-                        device2.configStatus = 'good'
-                    devicesToBeUpdated.append(device2)
-                    
             logger.debug('End LLDP data collector for %s' % (self.deviceLogStr))
-
-            if len(devicesToBeUpdated) > 0:
-                self.dao.updateObjects(devicesToBeUpdated)
 
             return links
         except RpcError as exc:
@@ -211,15 +202,73 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             self.device.l2Status = 'error'
             self.device.l2StatusReason = str(error.cause)
         self.dao.updateObjects([self.device])
-        
-    def processLlDpData(self, lldpData):
-        '''
-        Process the raw LLDP data from device and updates IFD lldp status for each uplink
+
+    def filterUplinkAppendRemotePortIfd(self,lldpData, deviceFamily):
+        ''' 
+        On local device find uplink port names, filter only uplink ports, 
+        get remote ports that has Device + IFD configured in the DB 
         :param dict lldpData:
             deivce1: local device (on which lldp was run)
             port1: local interface (on device1)
             device2: remote device
             port2: remote interface
+        :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
+
+        :returns dict: lldpData for uplinks only
+            deivce1: local device (on which lldp was run)
+            port1: local interface (on device1)
+            device2: remote device
+            port2: remote interface
+            ifd2: remote IFD from db
+        '''
+        if lldpData is None or len(lldpData) == 0:
+            logger.warn('NO LLDP data found for device: %s' % (self.deviceIp))
+            return
+
+        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['uplinkPorts']
+        upLinks = []
+        for link in lldpData:
+            if link['port1'] in uplinkNames:
+                ifd2 = self.dao.getIfdByDeviceNamePortName(link['device2'], link['port2'])
+                if ifd2 is not None:
+                    link['ifd2'] = ifd2
+                    upLinks.append(link)
+                    logger.debug('Found IFD deviceName: %s, portName: %s' % (link['device2'], link['port2']))
+        logger.debug('Number of uplink IFDs found from LLDP data is %d' % (len(upLinks)))
+        return upLinks
+
+    def updateSpineStatusFromLldpUplinkData(self,uplinksWithIfd):
+        '''
+        :param dict uplinksWithIfd:
+            deivce1: local device (on which lldp was run)
+            port1: local interface (on device1)
+            device2: remote device
+            port2: remote interface
+            ifd2: remote IFD
+        '''
+        devicesToBeUpdated = []
+        for link in uplinksWithIfd:
+            spineIfd = link['ifd2']
+            spineDevice = spineIfd.device
+            if spineDevice.role != 'spine' or spineDevice.deployStatus == 'deploy':
+                continue
+            spineDevice.deployStatus = 'deploy'
+            spineDevice.l2Status = 'good'
+            spineDevice.configStatus = 'good'
+            devicesToBeUpdated.append(spineDevice)
+
+        if len(devicesToBeUpdated) > 0:
+            self.dao.updateObjects(devicesToBeUpdated)
+    
+    def processLlDpData(self, lldpData):
+        '''
+        Process LLDP data from device and updates IFD lldp status for each uplink
+        :param dict uplinksWithIfd:
+            deivce1: local device (on which lldp was run)
+            port1: local interface (on device1)
+            device2: remote device
+            port2: remote interface
+            ifd2: remote IFD
         :returns dict: 
             goodUplinkCount: 
             badUplinkCount:
@@ -232,6 +281,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         badUplinkCount = 0
         additionalLinkCount = 0
         
+        #TODO: refactor 5 cases to smaller codes with unit-tests
         # check all the uplink ports connecting to spines according to cabling plan against lldp data.
         for uplinkPort in uplinkPorts:
             found = False
@@ -301,6 +351,8 @@ class TwoStageConfigurator(L2DataCollector):
         # at this point self.conf is initialized
         self.interval = util.getZtpStagedInterval(self.conf)
         self.attempt = util.getZtpStagedAttempt(self.conf)
+        self.vcpLldpDelay = util.getVcpLldpDelay(self.conf)
+        
         if stopEvent is not None:
             self.stopEvent = stopEvent
         else:
@@ -308,6 +360,13 @@ class TwoStageConfigurator(L2DataCollector):
             
     def manualInit(self):
         super(TwoStageConfigurator, self).manualInit()
+        
+        self.pod = self.findPodByMgmtIp(self.deviceIp)
+        if self.pod is None:
+            logger.error("Couldn't find any pod containing %s" % (self.deviceLogStr))
+            self.configurationInProgressCache.doneDevice(self.deviceIp)
+            return False
+        return True
 
     def updateSelfDeviceContext(self, device):
         self.device = device
@@ -336,8 +395,8 @@ class TwoStageConfigurator(L2DataCollector):
                 logger.info("ztpStagedAttempt is 0: two stage configuration is disabled")
                 return
                 
-            self.manualInit()
-            self.collectLldpAndMatchDevice()
+            if self.manualInit():
+                self.collectLldpAndMatchDevice()
         except Exception as exc:
             logger.error('Two stage configuration failed for %s, %s' % (self.deviceIp, exc))
             raise
@@ -359,14 +418,9 @@ class TwoStageConfigurator(L2DataCollector):
         
     def collectLldpAndMatchDevice(self):
         if (self.configurationInProgressCache.checkAndAddDevice(self.deviceIp)):
+            
             # for real device the password is coming from pod
-            pod = self.findPodByMgmtIp(self.deviceIp)
-            if pod is None:
-                logger.error("Couldn't find any pod containing %s" % (self.deviceLogStr))
-                self.configurationInProgressCache.doneDevice(self.deviceIp)
-                return
-                
-            tmpDevice = Device(self.deviceIp, None, 'root', pod.getCleartextPassword(), 'leaf', None, self.deviceIp, None)
+            tmpDevice = Device(self.deviceIp, None, 'root', self.pod.getCleartextPassword(), 'leaf', None, self.deviceIp, None)
             tmpDevice.id = self.deviceIp
             self.updateSelfDeviceContext(tmpDevice)
             
@@ -396,13 +450,16 @@ class TwoStageConfigurator(L2DataCollector):
                 
             try:
                 self.device.family = self.deviceConnectionHandle.facts['model'].lower()
+                self.deleteVcpPorts(self.device.family)
                 lldpData = self.collectLldpFromDevice()
             except DeviceError as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceIp, exc))
             except Exception as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceIp, exc))
 
-            uplinksWithIfd = self.filterRemotePortIfdInDb(lldpData, self.device.family)
+            uplinksWithIfd = self.filterUplinkAppendRemotePortIfd(lldpData, self.device.family)
+            self.updateSpineStatusFromLldpUplinkData(uplinksWithIfd)
+
             device = self.findMatchedDevice(uplinksWithIfd, self.device.family)
             if device is None:
                 logger.info('Did not find good enough match for %s' % (self.deviceIp))
@@ -427,6 +484,21 @@ class TwoStageConfigurator(L2DataCollector):
                 logger.debug('Ended two stage configuration for %s' % (self.deviceLogStr))
         else:
             logger.debug('Two stage configuration is already in progress for %s', (self.deviceLogStr))
+
+    def deleteVcpPorts(self, deviceFamily):
+        if 'ex4300-' not in deviceFamily:
+            return
+        for i in xrange(0, 4):
+            rsp = self.deviceConnectionHandle.rpc.request_virtual_chassis_vc_port_delete_pic_slot(pic_slot='1', port=str(i))
+            logger.debug('Deleted vcp slot: 1, port: %d, error: %s' % (i, rsp.find('.//multi-routing-engine-item/error/message')))
+        
+        # Wait for some time get lldp advertisement on et-* ports
+        # default advertisement interval 30secs
+        logger.debug('Wait for vcpLldpDelay: %d seconds...' % (self.vcpLldpDelay))
+        self.stopEvent.wait(self.vcpLldpDelay)
+        if self.stopEvent.is_set():
+            return
+        
 
     def fixPlugNPlayDevice(self, device, deviceFamily, uplinksWithIfd):
         '''
@@ -481,59 +553,15 @@ class TwoStageConfigurator(L2DataCollector):
         logger.debug('Number of uplink IFD + IFL fixed: %d' % (len(updateList)))
         self.dao.updateObjects(updateList)
 
-    def filterRemotePortIfdInDb(self,lldpData, deviceFamily):
-        ''' 
-        filter only uplink ports, get remote ports that are IFD configured in the DB 
-        :param dict lldpData:
-            deivce1: local device (on which lldp was run)
-            port1: local interface (on device1)
-            device2: remote device
-            port2: remote interface
-        :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
-
-        :returns dict: lldpData for uplinks only
-            deivce1: local device (on which lldp was run)
-            port1: local interface (on device1)
-            device2: remote device
-            port2: remote interface
-            ifd2: remote IFD from db
-        '''
-        if lldpData is None or len(lldpData) == 0:
-            logger.warn('NO LLDP data found for device: %s' % (self.deviceIp))
-            return
-
-        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['uplinkPorts']
-        IfdLinks = []
-        devicesToBeUpdated = []
-        for link in lldpData:
-            if link['port1'] in uplinkNames:
-                ifd2 = self.dao.getIfdByDeviceNamePortName(link['device2'], link['port2'])
-                if ifd2 is not None:
-                    link['ifd2'] = ifd2
-                    IfdLinks.append(link)
-                    logger.debug('Found IFD deviceName: %s, portName: %s' % (link['device2'], link['port2']))
-                    # in case remote is a plug-and-play leaf, we want to automatically turn its deployStatus to 'deploy'
-                    ifd2.device.deployStatus = 'deploy'
-                    # only update l2Status for spine because leaf will get updated when we collect its L2 data
-                    if ifd2.device.role == 'spine':
-                        ifd2.device.l2Status = 'good'
-                        ifd2.device.configStatus = 'good'
-                    devicesToBeUpdated.append(ifd2.device)
-        logger.debug('Number of uplink IFDs found from LLDP data is %d' % (len(IfdLinks)))
-
-        if len(devicesToBeUpdated) > 0:
-            self.dao.updateObjects(devicesToBeUpdated)
-
-        return IfdLinks
-        
     def findMatchedDevice(self, uplinksWithIfd, deviceFamily):
         '''
-        Process the raw LLDP data from device and match to a IpFabric and a Device
-        :param dict lldpData:
+        Process LLDP data from device and match to a Device
+        :param dict uplinksWithIfd:
             deivce1: local device (on which lldp was run)
             port1: local interface (on device1)
             device2: remote device
             port2: remote interface
+            ifd2: remote IFD
         :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
         :returns Device: 
         '''
@@ -575,6 +603,7 @@ class TwoStageConfigurator(L2DataCollector):
         # mark as 'deploy' automatically because this is a plug-and-play leaf
         device.deployStatus = 'deploy'
         self.dao.updateObjects([device])
+        logger.debug('updated deployStatus for name: %s, id:%s, deployStatus: %s' % (device.name, device.id, device.deployStatus))
         
         # Is BEST match good enough match
         effectiveLeafUplinkcountMustBeUp = device.pod.calculateEffectiveLeafUplinkcountMustBeUp()

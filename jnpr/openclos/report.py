@@ -32,10 +32,7 @@ class Report(object):
             self.dao = dao
 
     def getPod(self, podName):
-        try:
-            return self.dao.getUniqueObjectByName(Pod, podName)
-        except (exc.NoResultFound) as e:
-            logger.debug("No Pod found with pod name: '%s', exc.NoResultFound: %s" % (podName, e.message))
+        return self.dao.getUniqueObjectByName(Pod, podName)
 
     def getIpFabric(self, ipFabricId):
         try:

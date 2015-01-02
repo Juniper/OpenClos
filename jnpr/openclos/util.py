@@ -10,10 +10,9 @@ import yaml
 import platform
 import datetime
 import shutil
-from netaddr import IPAddress, IPNetwork, AddrFormatError
+from netaddr import IPNetwork
 import netifaces
 import fileinput
-import logging
 import logging.config
 from crypt import Cryptic
 
@@ -21,7 +20,8 @@ from crypt import Cryptic
 configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 
 TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT=5
-TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL=60 # in seconds
+TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL=30 # in seconds
+TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY=40 # in seconds
 
 loggingInitialized = False
 
@@ -228,6 +228,12 @@ def getZtpStagedInterval(conf):
 def getZtpStagedAttempt(conf):
     if isZtpStaged(conf) == True:
         return conf['deploymentMode'].get('ztpStagedAttempt', TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT)
+    else:
+        return None
+
+def getVcpLldpDelay(conf):
+    if isZtpStaged(conf) == True:
+        return conf['deploymentMode'].get('ztpVcpLldpDelay', TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY)
     else:
         return None
     
