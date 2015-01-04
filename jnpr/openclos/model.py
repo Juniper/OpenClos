@@ -244,7 +244,7 @@ class Device(ManagedElement, Base):
     __tablename__ = 'device'
     id = Column(String(60), primary_key=True)
     name = Column(String(100))
-    username = Column(String(100))
+    username = Column(String(100), default = 'root')
     encryptedPassword = Column(String(100)) # 2-way encrypted
     role = Column(String(32))
     macAddress = Column(String(32))
