@@ -3,7 +3,6 @@ Created on Oct 29, 2014
 
 @author: moloyc
 '''
-import logging
 import os
 import traceback
 from threading import RLock, Event
@@ -143,9 +142,8 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                 # use device level password for leaves that already went through staged configuration
                 self.connectToDevice()
                 lldpData = self.collectLldpFromDevice()
-                uplinksWithIfd = self.filterUplinkAppendRemotePortIfd(lldpData, self.device.family)
-                self.updateSpineStatusFromLldpUplinkData(uplinksWithIfd)
-                goodBadCount = self.processLlDpData(uplinksWithIfd) 
+                uplinkLdpData = self.filterUplinkFromLldpData(lldpData, self.device.family)
+                goodBadCount = self.processLlDpData(uplinkLdpData, self.getAllocatedConnectedUplinkIfds(self.device)) 
 
                 self.validateDeviceL2Status(goodBadCount)
             except DeviceError as exc:
@@ -177,13 +175,12 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             lldpTable = loadyaml(os.path.join(junosEzTableLocation, 'lldp.yaml'))['LLDPNeighborTable'] 
             table = lldpTable(self.deviceConnectionHandle)
             lldpData = table.get()
-            links = []
+            links = {}
             for link in lldpData:
                 logger.debug('device1: %s, port1: %s, device2: %s, port2: %s' % (link.device1, link.port1, link.device2, link.port2))
-                links.append({'device1': link.device1, 'port1': link.port1, 'device2': link.device2, 'port2': link.port2})
+                links[link.port1]({'device1': link.device1, 'port1': link.port1, 'device2': link.device2, 'port2': link.port2})
                 
             logger.debug('End LLDP data collector for %s' % (self.deviceLogStr))
-
             return links
         except RpcError as exc:
             logger.error('LLDP data collection failure, %s' % (exc))
@@ -203,52 +200,9 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             self.device.l2StatusReason = str(error.cause)
         self.dao.updateObjects([self.device])
 
-    def filterUplinkAppendRemotePortIfd(self,lldpData, deviceFamily):
-        ''' 
-        On local device find uplink port names, filter only uplink ports, 
-        get remote ports that has Device + IFD configured in the DB 
-        :param dict lldpData:
-            deivce1: local device (on which lldp was run)
-            port1: local interface (on device1)
-            device2: remote device
-            port2: remote interface
-        :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
-
-        :returns dict: lldpData for uplinks only
-            deivce1: local device (on which lldp was run)
-            port1: local interface (on device1)
-            device2: remote device
-            port2: remote interface
-            ifd2: remote IFD from db
-        '''
-        if lldpData is None or len(lldpData) == 0:
-            logger.warn('NO LLDP data found for device: %s' % (self.deviceIp))
-            return
-
-        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['uplinkPorts']
-        upLinks = []
-        for link in lldpData:
-            if link['port1'] in uplinkNames:
-                ifd2 = self.dao.getIfdByDeviceNamePortName(link['device2'], link['port2'])
-                if ifd2 is not None:
-                    link['ifd2'] = ifd2
-                    upLinks.append(link)
-                    logger.debug('Found IFD deviceName: %s, portName: %s' % (link['device2'], link['port2']))
-        logger.debug('Number of uplink IFDs found from LLDP data is %d' % (len(upLinks)))
-        return upLinks
-
-    def updateSpineStatusFromLldpUplinkData(self,uplinksWithIfd):
-        '''
-        :param dict uplinksWithIfd:
-            deivce1: local device (on which lldp was run)
-            port1: local interface (on device1)
-            device2: remote device
-            port2: remote interface
-            ifd2: remote IFD
-        '''
+    def updateSpineStatusFromLldpData(self, spineIfds):
         devicesToBeUpdated = []
-        for link in uplinksWithIfd:
-            spineIfd = link['ifd2']
+        for spineIfd in spineIfds:
             spineDevice = spineIfd.device
             if spineDevice.role != 'spine' or spineDevice.deployStatus == 'deploy':
                 continue
@@ -259,8 +213,36 @@ class L2DataCollector(DeviceDataCollectorNetconf):
 
         if len(devicesToBeUpdated) > 0:
             self.dao.updateObjects(devicesToBeUpdated)
-    
-    def processLlDpData(self, lldpData):
+
+    def getAllocatedConnectedUplinkIfds(self):
+        uplinkIfds = self.dao.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == self.device.id).\
+            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.name_order_num).all()
+        
+        logger.debug('%s, configured connected uplink count %s' % (self.deviceLogStr, len(uplinkIfds)))
+        return {ifd.name:ifd for ifd in uplinkIfds}
+        
+    def filterUplinkFromLldpData(self, lldpData, deviceFamily):
+        ''' 
+        On local device find uplink port names, filter only uplink ports, 
+        :param dict lldpData:
+            deivce1: local device (on which lldp was run)
+            port1: local interface (on device1)
+            device2: remote device
+            port2: remote interface
+        :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
+        '''
+        
+        if not lldpData:
+            return lldpData
+        
+        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['uplinkPorts']
+
+        filteredNames = set(uplinkNames).intersection(set(lldpData.keys()))
+        filteredUplinks = {name:lldpData[name] for name in filteredNames}
+        logger.debug('Number of uplink IFDs found from LLDP data is %d' % (len(filteredUplinks)))
+        return filteredUplinks
+
+    def processLlDpData(self, uplinkLldpData, allocatedConnectedUplinkIfds):
         '''
         Process LLDP data from device and updates IFD lldp status for each uplink
         :param dict uplinksWithIfd:
@@ -272,65 +254,72 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         :returns dict: 
             goodUplinkCount: 
             badUplinkCount:
+            additionalLinkCount
         '''
-        uplinkPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == self.device.id).\
-            filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.name_order_num).all()
 
-        modifiedObjects = []
-        goodUplinkCount = 0
-        badUplinkCount = 0
-        additionalLinkCount = 0
+        lldpPortNames = set(uplinkLldpData.keys())
+        allocatedConnectedPortNames = set(allocatedConnectedUplinkIfds.keys())
+        goodIfds = []
+        badIfds = []
         
-        #TODO: refactor 5 cases to smaller codes with unit-tests
-        # check all the uplink ports connecting to spines according to cabling plan against lldp data.
-        for uplinkPort in uplinkPorts:
-            found = False
-            peerPort = uplinkPort.peer
-            lldpDataRemaining = []
-            for link in lldpData:
-                if link['port1'] == uplinkPort.name:
-                    found = True
-                    # case 1 (normal case): lldp agrees with cabling plan about the peer port
-                    if peerPort is not None and peerPort.name == link['port2'] and peerPort.device.name == link['device2']:
-                        goodUplinkCount += 1
-                        uplinkPort.lldpStatus = 'good'
-                        peerPort.lldpStatus = 'good'
-                        modifiedObjects.append(uplinkPort)
-                        modifiedObjects.append(peerPort)
-                    # case 2: lldp says this port is connected to another port but cabling plan does not show this port connected to another port.
-                    else:
-                        badUplinkCount += 1
-                        uplinkPort.lldpStatus = 'error'
-                        modifiedObjects.append(uplinkPort)
-                else:
-                    # remove this found record because at the end of the outer loop
-                    # we need to count how many orphaned records are left. Those are "extra links"
-                    lldpDataRemaining.append(link)
-            # candidate for next iteration
-            lldpData = lldpDataRemaining
+        #case 1: link in lldp is not in allocatedConnected
+        additional = lldpPortNames.difference(allocatedConnectedPortNames)
+        self.persistAdditionalLinks([uplinkLldpData[name] for name in additional])
+        
+        #case 2: ifd in allocatedConnected is not in lldp
+        notConnected = allocatedConnectedPortNames.difference(lldpPortNames)
+        badIfds += [allocatedConnectedUplinkIfds[name] for name in notConnected]
+        
+        connected =  lldpPortNames.intersection(allocatedConnectedPortNames)
+        for name in connected:
+            link = uplinkLldpData[name]
+            ifd = allocatedConnectedUplinkIfds[name]
             
-            # case 3: lldp does not have this port but cabling plan shows this port connected to another port.
-            if found == False and peerPort is not None:
-                badUplinkCount += 1
-                uplinkPort.lldpStatus = 'error'
-                modifiedObjects.append(uplinkPort)
-            # case 4 (no-op): lldp does not have this port and cabling plan does not show this port is connected to another port.
+            if link['device2'] == ifd.peer.device.name and link['port2'] == ifd.peer.name:
+                #case 3: perfect match, connected as allocation logic
+                goodIfds.append(ifd)
             else:
-                pass
-                
-        self.dao.updateObjects(modifiedObjects)
+                #case 4: bad connected, lldp and allocatedConnected portName match, but remote ports does not
+                badIfds.append(ifd)
         
-        # case 5: lldp has this port but cabling plan does not have this port. this is the case of "additional links"
+        self.updateGoodIfdStatus(goodIfds)
+        self.updateBadIfdStatus(badIfds)
+        
+        logger.debug('Total uplink count: %d, good: %d, error: %d, additionalLink: %d', 
+                     len(allocatedConnectedUplinkIfds), len(goodIfds), len(badIfds), len(additional))
+        return {'goodUplinkCount': len(goodIfds), 'badUplinkCount': len(badIfds), 'additionalLinkCount': len(additional)};
+
+    def updateGoodIfdStatus(self, ifds):
+        modifiedObjects = []
+        goodSpines = []
+        for ifd in ifds:
+            ifd.lldpStatus = 'good'
+            ifd.peer.lldpStatus = 'good'
+            goodSpines.append(ifd.peer)
+            modifiedObjects.append(ifd)
+            modifiedObjects.append(ifd.peer)
+
+        self.dao.updateObjects(modifiedObjects)
+        self.updateSpineStatusFromLldpData(goodSpines)
+    
+    def updateBadIfdStatus(self, ifds):
+        modifiedObjects = []
+        for ifd in ifds:
+            ifd.lldpStatus = 'error'
+            modifiedObjects.append(ifd)
+
+        self.dao.updateObjects(modifiedObjects)
+
+    def persistAdditionalLinks(self, links):
+        '''
+        lldp has this port but cabling plan does not have this port.
+        '''
         self.dao.Session().query(AdditionalLink).filter(AdditionalLink.device1 == self.device.name).delete()
         self.dao.Session().commit()
         additionalLinks = []
-        for link in lldpData:
-            additionalLinkCount += 1
+        for link in links:
             additionalLinks.append(AdditionalLink(self.device.name, link['port1'], link['device2'], link['port2'], 'error'))
         self.dao.createObjects(additionalLinks)
-        
-        logger.debug('Total uplink count: %d, good: %d, error: %d, additionalLink: %d', len(uplinkPorts), goodUplinkCount, badUplinkCount, additionalLinkCount)
-        return {'goodUplinkCount': goodUplinkCount, 'badUplinkCount': badUplinkCount, 'additionalLinkCount': additionalLinkCount};
 
 class L3DataCollector(DeviceDataCollectorNetconf):
     pass
@@ -416,6 +405,33 @@ class TwoStageConfigurator(L2DataCollector):
                 logger.debug("Found pod[id='%s', name='%s']" % (pod.id, pod.name))
                 return pod
         
+    def filterUplinkAppendRemotePortIfd(self, lldpData, deviceFamily):
+        ''' 
+        On local device find uplink port names, filter only uplink ports, 
+        get remote ports that has Device + IFD configured in the DB 
+        :returns list of dict: lldpData for uplinks only
+            deivce1: local device (on which lldp was run)
+            port1: local interface (on device1)
+            device2: remote device
+            port2: remote interface
+            ifd2: remote IFD from db
+        '''
+        if not lldpData:
+            logger.debug('NO LLDP data found for device: %s' % (self.deviceIp))
+            return lldpData
+
+        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['uplinkPorts']
+        upLinks = []
+        for link in lldpData.values():
+            if link['port1'] in uplinkNames:
+                ifd2 = self.dao.getIfdByDeviceNamePortName(link['device2'], link['port2'])
+                if ifd2 is not None:
+                    link['ifd2'] = ifd2
+                    upLinks.append(link)
+                    logger.debug('Found IFD deviceName: %s, portName: %s' % (link['device2'], link['port2']))
+        logger.debug('Number of uplink IFDs found from LLDP data is %d' % (len(upLinks)))
+        return upLinks
+
     def collectLldpAndMatchDevice(self):
         if (self.configurationInProgressCache.checkAndAddDevice(self.deviceIp)):
             
@@ -457,16 +473,16 @@ class TwoStageConfigurator(L2DataCollector):
             except Exception as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceIp, exc))
 
-            uplinksWithIfd = self.filterUplinkAppendRemotePortIfd(lldpData, self.device.family)
-            self.updateSpineStatusFromLldpUplinkData(uplinksWithIfd)
+            uplinksWithIfds = self.filterUplinkAppendRemotePortIfd(lldpData, self.device.family)
+            self.updateSpineStatusFromLldpData([x['ifd2'] for x in uplinksWithIfds])
 
-            device = self.findMatchedDevice(uplinksWithIfd, self.device.family)
+            device = self.findMatchedDevice(uplinksWithIfds, self.device.family)
             if device is None:
                 logger.info('Did not find good enough match for %s' % (self.deviceIp))
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
             
-            self.fixPlugNPlayDevice(device, self.device.family, uplinksWithIfd)
+            self.fixPlugNPlayDevice(device, self.device.family, uplinksWithIfds)
             self.updateSelfDeviceContext(device)
 
             try:

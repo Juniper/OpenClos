@@ -86,47 +86,6 @@ class TestL2DataCollector(unittest.TestCase):
         dataCollector.connectToDevice("Embe1mpls")
         dataCollector.collectLldpFromDevice()
 
-    def testProcessLlDpData(self):
-        from test_model import createDevice
-        spine = createDevice(self.session, 'spine')
-        leaf = createDevice(self.session, 'leaf')
-        
-        dataCollector = L2DataCollector(leaf.id, self.conf)
-        dataCollector.dao = self.dao
-        dataCollector.manualInit()
-
-        IFDs = [InterfaceDefinition('et-0/0/0', spine, 'downlink'), InterfaceDefinition('et-0/0/1', spine, 'downlink'), 
-                InterfaceDefinition('et-0/0/2', spine, 'downlink'), InterfaceDefinition('et-0/0/3', spine, 'downlink'), 
-                InterfaceDefinition('et-0/0/48', leaf, 'uplink'), InterfaceDefinition('et-0/0/49', leaf, 'uplink'),
-                InterfaceDefinition('et-0/0/50', leaf, 'uplink'), InterfaceDefinition('et-0/0/51', leaf, 'uplink'),
-                InterfaceDefinition('xe-0/0/0', leaf, 'downlink'), InterfaceDefinition('xe-0/0/1', leaf, 'downlink')]
-        self.session.add_all(IFDs)
-        
-        IFDs[0].peer = IFDs[4]
-        IFDs[4].peer = IFDs[0]
-        IFDs[1].peer = IFDs[5]
-        IFDs[5].peer = IFDs[1]
-        
-        self.session.commit()
-
-        dataCollector.processLlDpData([
-           {'device1': '', 'port1': 'et-0/0/48', 'device2': 'spine', 'port2': 'et-0/0/0'},
-           {'device1': '', 'port1': 'et-0/0/49', 'device2': 'spine', 'port2': 'et-0/0/1'},
-           {'device1': '', 'port1': 'et-0/0/50', 'device2': 'spine-unknown', 'port2': 'et-0/0/0'}, # bad connection 
-           {'device1': '', 'port1': 'xe-0/0/0', 'device2': 'server', 'port2': 'eth0'},
-           {'device1': '', 'port1': 'xe-0/0/1', 'device2': 'server', 'port2': 'eth1'},
-        ])
-        
-        self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[0].id).one().lldpStatus)
-        self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[1].id).one().lldpStatus)
-        self.assertEqual('unknown', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[2].id).one().lldpStatus)
-        self.assertEqual('unknown', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[3].id).one().lldpStatus)
-
-        self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().lldpStatus)
-        self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().lldpStatus)
-        self.assertEqual('error', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().lldpStatus)
-        self.assertEqual('unknown', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().lldpStatus)
-
     def testUpdateDeviceL2StatusProcessing(self):
         from test_model import createDevice
         leaf = createDevice(self.session, 'leaf')
@@ -191,40 +150,14 @@ class TestL2DataCollector(unittest.TestCase):
         
         return IFDs
         
-    def getLldpDataFromLeaf1(self):
-        return [
-           {'device1': None, 'port1': 'et-0/0/48', 'device2': 'spine1', 'port2': 'et-0/0/0'},
-           {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine2', 'port2': 'et-0/0/0'},
-           {'device1': None, 'port1': 'xe-0/0/0', 'device2': 'server1', 'port2': 'eth0'},
-           {'device1': None, 'port1': 'xe-0/0/1', 'device2': 'server2', 'port2': 'eth1'}
-        ]
-
-    def testFilterUplinkAppendRemotePortIfd(self):
-        IFDs = self.createTwoSpineTwoLeaf()
-        dataCollector = L2DataCollector(IFDs[4].device.id, self.conf)
-        dataCollector.dao = self.dao
-        dataCollector.manualInit()
-
-        uplinksWithIfd = dataCollector.filterUplinkAppendRemotePortIfd(self.getLldpDataFromLeaf1(), 'qfx5100-48s-6q')
-        
-        self.assertEqual(2, len(uplinksWithIfd))
-        self.assertIsNotNone(uplinksWithIfd[0]['ifd2'])
-        self.assertEqual(IFDs[0], uplinksWithIfd[0]['ifd2'])
-        self.assertIsNotNone(uplinksWithIfd[1]['ifd2'])
-        self.assertEqual(IFDs[2], uplinksWithIfd[1]['ifd2'])
-        
-    def testUpdateSpineStatusFromLldpUplinkData(self):
+    def testUpdateSpineStatusFromLldpData(self):
         IFDs = self.createTwoSpineTwoLeaf()
         dataCollector = L2DataCollector(IFDs[4].device.id, self.conf)
         dataCollector.dao = self.dao
         dataCollector.manualInit()
         
-        uplinkData = [
-           {'device1': None, 'port1': 'et-0/0/48', 'device2': 'spine1', 'port2': 'et-0/0/0', 'ifd2': IFDs[0]},
-           {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine2', 'port2': 'et-0/0/0', 'ifd2': IFDs[2]},
-           {'device1': None, 'port1': 'et-0/0/50', 'device2': 'leaf2', 'port2': 'et-0/0/48', 'ifd2': IFDs[6]}
-        ]
-        dataCollector.updateSpineStatusFromLldpUplinkData(uplinkData)
+        uplinkData = [IFDs[0], IFDs[2], IFDs[6]]
+        dataCollector.updateSpineStatusFromLldpData(uplinkData)
         
         spine = IFDs[0].device
         self.assertEqual('deploy', spine.deployStatus)
@@ -240,6 +173,133 @@ class TestL2DataCollector(unittest.TestCase):
         self.assertEqual('provision', spine.deployStatus)
         self.assertEqual('unknown', spine.configStatus)
         self.assertEqual('unknown', spine.l2Status)
+
+    def testFilterUplinkAppendRemotePortIfd(self):
+        IFDs = self.createTwoSpineTwoLeaf()
+        dataCollector = L2DataCollector(IFDs[4].device.id, self.conf)
+        dataCollector.dao = self.dao
+        dataCollector.manualInit()
+        
+        lldpDataFromLeaf1 = {
+           'et-0/0/48': {'device1': None, 'port1': 'et-0/0/48', 'device2': 'spine1', 'port2': 'et-0/0/0'},
+           'et-0/0/49': {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine2', 'port2': 'et-0/0/0'},
+           'xe-0/0/0': {'device1': None, 'port1': 'xe-0/0/0', 'device2': 'server1', 'port2': 'eth0'},
+           'xe-0/0/1': {'device1': None, 'port1': 'xe-0/0/1', 'device2': 'server2', 'port2': 'eth1'},
+           'mo': {}
+        }
+
+        uplinks = dataCollector.filterUplinkFromLldpData(lldpDataFromLeaf1, 'qfx5100-48s-6q')
+        
+        self.assertEqual(2, len(uplinks))
+        self.assertIsNotNone(uplinks['et-0/0/48'])
+        self.assertIsNotNone(uplinks['et-0/0/49'])
+
+    def testGetAllocatedConnectedUplinkIfds(self):
+        from test_model import createDevice
+        leaf = createDevice(self.session, 'leaf')
+        dataCollector = L2DataCollector(leaf.id, self.conf)
+        dataCollector.dao = self.dao
+        dataCollector.manualInit()
+        flexmock(dataCollector.dao.Session).should_receive('query.filter.filter.filter.order_by.all').\
+            and_return([InterfaceDefinition("et-0/0/48", None, 'uplink'), InterfaceDefinition("et-0/0/49", None, 'uplink'), InterfaceDefinition("et-0/0/50", None, 'uplink')])
+
+        ifds = dataCollector.getAllocatedConnectedUplinkIfds()
+        self.assertIsNotNone(ifds['et-0/0/48'])
+        self.assertTrue(isinstance(ifds['et-0/0/48'], InterfaceDefinition))
+        self.assertIsNotNone(ifds['et-0/0/49'])
+        self.assertIsNotNone(ifds['et-0/0/50'])
+
+    def testUpdateBadIfdStatus(self):
+        IFDs = self.createTwoSpineTwoLeaf()
+        dataCollector = L2DataCollector(IFDs[4].device.id, self.conf)
+        dataCollector.dao = self.dao
+        dataCollector.manualInit()
+        
+        dataCollector.updateBadIfdStatus([IFDs[4], IFDs[5]])
+
+        self.assertEqual('error', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().lldpStatus)
+        self.assertEqual('error', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().lldpStatus)
+        self.assertEqual('unknown', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().lldpStatus)
+
+    def testUpdateGoodIfdStatus(self):
+        IFDs = self.createTwoSpineTwoLeaf()
+        dataCollector = L2DataCollector(IFDs[4].device.id, self.conf)
+        dataCollector.dao = self.dao
+        dataCollector.manualInit()
+        
+        dataCollector.updateGoodIfdStatus([IFDs[4], IFDs[5]])
+
+        self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().lldpStatus)
+        self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().lldpStatus)
+        self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[0].id).one().lldpStatus)
+        self.assertEqual('good', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[2].id).one().lldpStatus)
+        self.assertEqual('unknown', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().lldpStatus)
+        
+        spine = IFDs[0].device
+        self.assertEqual('deploy', spine.deployStatus)
+        self.assertEqual('good', spine.configStatus)
+        self.assertEqual('good', spine.l2Status)
+
+    def createTwoSpineTwoLeafWithDummyUplinksForEx4300(self):
+        from test_model import createPod
+        pod = createPod('pod1', self.session)
+        from test_model import createPodDevice
+        spine1 = createPodDevice(self.session, 'spine1', pod)
+        spine2 = createPodDevice(self.session, 'spine2', pod)
+        spine3 = createPodDevice(self.session, 'spine3', pod)
+        leaf1 = createPodDevice(self.session, 'leaf1', pod)
+        leaf1.role = 'leaf'
+        leaf1.family = 'qfx5100-48s-6q'
+        leaf2 = createPodDevice(self.session, 'leaf2', pod)
+        leaf2.role = 'leaf'
+        leaf2.family = 'qfx5100-48s-6q'
+
+        IFDs = [
+            InterfaceDefinition('et-0/0/0', spine1, 'downlink'), InterfaceDefinition('et-0/0/1', spine1, 'downlink'), 
+            InterfaceDefinition('et-0/0/0', spine2, 'downlink'), InterfaceDefinition('et-0/0/1', spine2, 'downlink'),
+            InterfaceDefinition('et-0/0/0', spine3, 'downlink'), InterfaceDefinition('et-0/0/1', spine3, 'downlink'),
+            InterfaceDefinition('et-0/0/48', leaf1, 'uplink'), InterfaceDefinition('et-0/0/49', leaf1, 'uplink'), InterfaceDefinition('et-0/0/50', leaf2, 'uplink'),
+            InterfaceDefinition('et-0/0/48', leaf2, 'uplink'), InterfaceDefinition('et-0/0/49', leaf2, 'uplink'), InterfaceDefinition('dummy', leaf2, 'uplink')]
+
+        self.session.add_all(IFDs)
+        
+        IFDs[6].peer = IFDs[0]
+        IFDs[0].peer = IFDs[6]
+        IFDs[7].peer = IFDs[2]
+        IFDs[2].peer = IFDs[7]
+        IFDs[8].peer = IFDs[4]
+        IFDs[4].peer = IFDs[8]
+        
+        IFDs[9].peer = IFDs[1]
+        IFDs[1].peer = IFDs[9]
+        IFDs[10].peer = IFDs[3]
+        IFDs[3].peer = IFDs[10]
+        IFDs[11].peer = IFDs[5]
+        IFDs[5].peer = IFDs[11]
+        
+        return IFDs
+
+    def testProcessLlDpData(self):
+        IFDs = self.createTwoSpineTwoLeafWithDummyUplinksForEx4300()
+        dataCollector = L2DataCollector(IFDs[11].device.id, self.conf)
+        dataCollector.dao = self.dao
+        dataCollector.manualInit()
+
+        lldpDataFromLeaf2 = {
+           'et-0/0/48': {'device1': None, 'port1': 'et-0/0/48', 'device2': 'spine1', 'port2': 'et-0/0/1'}, # perfect match
+           'et-0/0/49': {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine2', 'port2': 'et-0/0/99'}, # bad connect
+           'et-0/0/51': {'device1': None, 'port1': 'et-0/0/51', 'device2': 'spine9', 'port2': 'et-0/0/99'}, # additional
+        }
+        
+        flexmock(dataCollector).should_receive('persistAdditionalLinks').with_args([lldpDataFromLeaf2['et-0/0/51']]).times(1)
+        flexmock(dataCollector).should_receive('updateGoodIfdStatus').with_args([IFDs[9]]).times(1)
+        flexmock(dataCollector).should_receive('updateBadIfdStatus').with_args([IFDs[11], IFDs[10]]).times(1)
+
+        counts = dataCollector.processLlDpData(lldpDataFromLeaf2, {'et-0/0/48': IFDs[9], 'et-0/0/49': IFDs[10], 'dummy': IFDs[11]})
+        
+        self.assertEqual(1, counts['goodUplinkCount'])
+        self.assertEqual(2, counts['badUplinkCount'])
+        self.assertEqual(1, counts['additionalLinkCount'])
 
 class TestDataCollectorInProgressCache(unittest.TestCase):
     def setUp(self):
@@ -278,6 +338,22 @@ class TestTwoStageConfigurator(TestL2DataCollector):
     @unittest.skip("need physical device to test")
     def testCollectLldpAndMatchDevice(self):
         self.configurator.collectLldpAndMatchDevice()
+
+    def testFilterUplinkAppendRemotePortIfd(self):
+        IFDs = self.createTwoSpineTwoLeaf()
+        
+        lldpDataFromLeaf1 = {
+           'et-0/0/48': {'device1': None, 'port1': 'et-0/0/48', 'device2': 'spine1', 'port2': 'et-0/0/0'},
+           'et-0/0/49': {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine2', 'port2': 'et-0/0/0'},
+           'xe-0/0/0': {'device1': None, 'port1': 'xe-0/0/0', 'device2': 'server1', 'port2': 'eth0'},
+           'xe-0/0/1': {'device1': None, 'port1': 'xe-0/0/1', 'device2': 'server2', 'port2': 'eth1'}
+        }
+
+        uplinksWithIfd = self.configurator.filterUplinkAppendRemotePortIfd(lldpDataFromLeaf1, 'qfx5100-48s-6q')
+        
+        self.assertEqual(2, len(uplinksWithIfd))
+        self.assertIsNotNone(uplinksWithIfd[0]['ifd2'])
+        self.assertIsNotNone(uplinksWithIfd[1]['ifd2'])
 
     def createTwoSpineTwoLeafPlugNPlay(self):
         from test_model import createPod
