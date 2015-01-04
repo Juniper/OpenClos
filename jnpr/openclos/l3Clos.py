@@ -80,7 +80,7 @@ class L3ClosMediation():
         devices = []
         interfaces = []
         for spine in spines:
-            username = spine.get('username')
+            username = spine.get('username')    #default is 'root' set on DB
             password = spine.get('password')
             macAddress = spine.get('macAddress')
             deployStatus = spine.get('deployStatus')    #default is 'provision' set on DB

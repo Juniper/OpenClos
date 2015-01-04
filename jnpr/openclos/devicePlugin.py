@@ -143,7 +143,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                 self.connectToDevice()
                 lldpData = self.collectLldpFromDevice()
                 uplinkLdpData = self.filterUplinkFromLldpData(lldpData, self.device.family)
-                goodBadCount = self.processLlDpData(uplinkLdpData, self.getAllocatedConnectedUplinkIfds(self.device)) 
+                goodBadCount = self.processLlDpData(uplinkLdpData, self.getAllocatedConnectedUplinkIfds()) 
 
                 self.validateDeviceL2Status(goodBadCount)
             except DeviceError as exc:
@@ -178,7 +178,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             links = {}
             for link in lldpData:
                 logger.debug('device1: %s, port1: %s, device2: %s, port2: %s' % (link.device1, link.port1, link.device2, link.port2))
-                links[link.port1]({'device1': link.device1, 'port1': link.port1, 'device2': link.device2, 'port2': link.port2})
+                links[link.port1] = {'device1': link.device1, 'port1': link.port1, 'device2': link.device2, 'port2': link.port2}
                 
             logger.debug('End LLDP data collector for %s' % (self.deviceLogStr))
             return links
