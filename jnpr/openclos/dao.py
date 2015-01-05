@@ -118,3 +118,19 @@ class Dao:
             return session.query(LeafSetting).filter_by(pod_id = podId).filter_by(deviceFamily = deviceFamily).one()
         except (exc.NoResultFound) as ex:
             logger.info(str(ex))
+
+    def getConnectedInterconnectIFDsFilterFakeOnes(self, device):
+        '''
+        Get interconnect IFDs except following ..
+        1. no peer configured
+        2. port name is uplink-* for device with known family 
+        '''
+        interconnectPorts = self.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
+            .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
+
+        ports = []        
+        for port in interconnectPorts:
+            if device.family != 'unknown' and 'uplink-' in port.name:
+                continue
+            ports.append(port)
+        return ports

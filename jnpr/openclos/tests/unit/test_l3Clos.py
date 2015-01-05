@@ -27,6 +27,10 @@ class TestL3Clos(unittest.TestCase):
             "qfx5100-48s-6q": {
                 "uplinkPorts": 'et-0/0/[48-53]', 
                 "downlinkPorts": 'xe-0/0/[0-47]'
+            },
+            "ex4300-24p": {
+                "uplinkPorts": 'et-0/1/[0-3]', 
+                "downlinkPorts": 'ge-0/0/[0-23]'
             }
         }
         jnpr.openclos.util.loadLoggingConfigForTest()
@@ -146,6 +150,19 @@ class TestL3Clos(unittest.TestCase):
         self.assertEqual('uplink-1', spine02Port2.peer.name)
         self.assertEqual('leaf-03', spine02Port2.peer.device.name)
 
+    def testCreateLeafIfds(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        session = l3ClosMediation.dao.Session()
+        from test_model import createPod
+        pod = createPod('test', session)
+        pod.spineCount = 6
+        leaves = [{ "name" : "leaf-01", "deviceType" : "ex4300-24p", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus": "deploy" }]
+
+        l3ClosMediation.createLeafIfds(pod, leaves)
+        interfaces = session.query(InterfaceDefinition).all()
+        self.assertEqual(6, len(interfaces))
+        
+        
     def testGetLeafSpineFromPod(self):
         l3ClosMediation = L3ClosMediation(self.conf)
         pod = self.createPodSpineLeaf(l3ClosMediation)

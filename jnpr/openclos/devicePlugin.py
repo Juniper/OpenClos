@@ -218,8 +218,15 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         uplinkIfds = self.dao.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == self.device.id).\
             filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.name_order_num).all()
         
-        logger.debug('%s, configured connected uplink count %s' % (self.deviceLogStr, len(uplinkIfds)))
-        return {ifd.name:ifd for ifd in uplinkIfds}
+        allocatedUplinks = {}
+        for uplink in uplinkIfds:
+            # Hack plugNPlay-mixedLeaf:
+            if self.device.family != 'unknown' and 'uplink-' in uplink.name:
+                continue
+            allocatedUplinks[uplink.name] = uplink
+            
+        logger.debug('%s, configured connected uplink count %s' % (self.deviceLogStr, len(allocatedUplinks.keys())))
+        return allocatedUplinks
         
     def filterUplinkFromLldpData(self, lldpData, deviceFamily):
         ''' 

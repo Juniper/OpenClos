@@ -5,10 +5,11 @@ Created on Aug 26, 2014
 '''
 import unittest
 from sqlalchemy import exc
-import jnpr.openclos.util
+from flexmock import flexmock
 
+import jnpr.openclos.util
 from jnpr.openclos.dao import Dao
-from jnpr.openclos.model import Pod, Device, Interface, InterfaceLogical, InterfaceDefinition
+from jnpr.openclos.model import Pod, Device, Interface, InterfaceDefinition
 
 class TestDao(unittest.TestCase):
     def setUp(self):
@@ -86,3 +87,13 @@ class TestDao(unittest.TestCase):
         session = dao.Session()
         pod = createPod("test", session)
 
+    def testGetConnectedInterconnectIFDsFilterFakeOnes(self):
+        from test_model import createDevice
+        dao = Dao(self.conf)
+        device = createDevice(dao.Session, "test")
+        flexmock(dao.Session).should_receive('query.filter.filter.order_by.all').\
+            and_return([InterfaceDefinition("et-0/1/0", None, 'uplink'), InterfaceDefinition("et-0/1/1", None, 'uplink'), 
+                        InterfaceDefinition("uplink-2", None, 'uplink'), InterfaceDefinition("uplink-3", None, 'uplink')])
+        
+        filteredIfds = dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
+        self.assertEqual(2, len(filteredIfds))

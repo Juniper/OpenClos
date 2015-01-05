@@ -109,8 +109,7 @@ class CablingPlanWriter(WriterBase):
         for device in self.pod.devices:
             devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployStatus': device.deployStatus})
             if device.role == 'leaf':
-                leafPeerPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
-                .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
+                leafPeerPorts = self.dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
                 for port in leafPeerPorts:
                     leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
                     spinePeerPort = port.peer
@@ -144,8 +143,7 @@ class CablingPlanWriter(WriterBase):
             if device.deployStatus == 'deploy':
                 devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployStatus': device.deployStatus})
                 if device.role == 'leaf':
-                    leafPeerPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
-                    .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
+                    leafPeerPorts = self.dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
                     for port in leafPeerPorts:
                         leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
                         spinePeerPort = port.peer
