@@ -8,14 +8,13 @@ import yaml
 import os
 import json
 import math
-import logging
 import zlib
 import base64
 
 from netaddr import IPNetwork
 from sqlalchemy.orm import exc
 
-from model import Pod, LeafSetting, Device, InterfaceLogical, InterfaceDefinition
+from model import Pod, Device, InterfaceLogical, InterfaceDefinition
 from dao import Dao
 import util
 from writer import ConfigWriter, CablingPlanWriter
@@ -113,9 +112,18 @@ class L3ClosMediation():
 
             else:
                 portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
+                interfaceCount = 0
                 for name in portNames['uplinkPorts']:   # all uplink IFDs towards spine
                     interfaces.append(InterfaceDefinition(name, device, 'uplink'))
-
+                    interfaceCount += 1
+                
+                # Hack plugNPlay-mixedLeaf: Create additional uplinks when spine count is more than available uplink ports
+                # example: spine count=5, device=ex4300-24p
+                while interfaceCount < pod.spineCount:
+                    interfaces.append(InterfaceDefinition('uplink-' + str(interfaceCount), device, 'uplink'))
+                    interfaceCount += 1
+                
+                
                 # leaf access/downlink ports are not used in app so far, no need to create them    
                 #for name in portNames['downlinkPorts']:   # all downlink IFDs towards Access/Server
                 #    interfaces.append(InterfaceDefinition(name, device, 'downlink'))
@@ -581,17 +589,17 @@ class L3ClosMediation():
         config += mgmtStanza.render(mgmt_address=device.managementIp)
                 
         #loopback interface
-        loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
+        loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
         config += lo0Stanza.render(address=loopbackIfl.ipaddress)
         
         # For Leaf add IRB and server facing interfaces        
         if device.role == 'leaf':
-            irbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.id == device.id).one()
+            irbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'irb.1').one()
             config += rviStanza.render(address=irbIfl.ipaddress)
             config += self.createAccessPortInterfaces(device.family)
 
         # Interconnect interfaces
-        deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name_order_num).all()
+        deviceInterconnectIfds = self.dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
         for interconnectIfd in deviceInterconnectIfds:
             peerDevice = interconnectIfd.peer.device
             interconnectIfl = interconnectIfd.layerAboves[0]
@@ -633,7 +641,7 @@ class L3ClosMediation():
     def createRoutingOptionsBgp(self, device):
         routingOptions = self.templateEnv.get_template('routingOptionsBgp.txt')
 
-        loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
+        loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
         loopbackIpWithNoCidr = loopbackIfl.ipaddress.split('/')[0]
         
         return routingOptions.render(routerId=loopbackIpWithNoCidr, asn=str(device.asn))
@@ -642,7 +650,7 @@ class L3ClosMediation():
         template = self.templateEnv.get_template('protocolBgp.txt')
 
         neighborList = []
-        deviceInterconnectIfds = self.dao.Session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.peer != None).filter(Device.id == device.id).order_by(InterfaceDefinition.name_order_num).all()
+        deviceInterconnectIfds = self.dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
         for ifd in deviceInterconnectIfds:
             peerIfd = ifd.peer
             peerDevice = peerIfd.device
@@ -665,8 +673,8 @@ class L3ClosMediation():
         subnetDict['irb_in'] = pod.allocatedIrbBlock
         
         if device.role == 'leaf':
-            deviceLoopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.id == device.id).one()
-            deviceIrbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.id == device.id).one()
+            deviceLoopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
+            deviceIrbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'irb.1').one()
             subnetDict['lo0_out'] = deviceLoopbackIfl.ipaddress
             subnetDict['irb_out'] = deviceIrbIfl.ipaddress
         else:
