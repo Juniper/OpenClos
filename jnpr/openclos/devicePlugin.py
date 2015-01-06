@@ -201,15 +201,15 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         self.dao.updateObjects([self.device])
 
     def updateSpineStatusFromLldpData(self, spineIfds):
-        devicesToBeUpdated = []
+        devicesToBeUpdated = set()
         for spineIfd in spineIfds:
             spineDevice = spineIfd.device
-            if spineDevice.role != 'spine' or spineDevice.deployStatus == 'deploy':
+            if spineDevice.role != 'spine':
                 continue
             spineDevice.deployStatus = 'deploy'
             spineDevice.l2Status = 'good'
             spineDevice.configStatus = 'good'
-            devicesToBeUpdated.append(spineDevice)
+            devicesToBeUpdated.add(spineDevice)
 
         if len(devicesToBeUpdated) > 0:
             self.dao.updateObjects(devicesToBeUpdated)
