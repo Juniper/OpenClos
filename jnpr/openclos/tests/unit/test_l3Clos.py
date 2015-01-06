@@ -79,9 +79,9 @@ class TestL3Clos(unittest.TestCase):
                { "name" : "spine-02", "macAddress" : "10:0e:7e:af:50:c1" }
             ],
             "leafs" : [
-               { "name" : "leaf-01", "deviceType" : "qfx5100-48s-6q", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus": "deploy" },
-               { "name" : "leaf-02", "deviceType" : "qfx5100-48s-6q", "macAddress" : "10:0e:7e:b8:9d:01" },
-               { "name" : "leaf-03", "deviceType" : "ex4300-24p", "macAddress" : "10:0e:7e:b8:9d:01" }
+               { "name" : "leaf-01", "family" : "qfx5100-48s-6q", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus": "deploy" },
+               { "name" : "leaf-02", "family" : "qfx5100-48s-6q", "macAddress" : "10:0e:7e:b8:9d:01" },
+               { "name" : "leaf-03", "family" : "ex4300-24p", "macAddress" : "10:0e:7e:b8:9d:01" }
             ]
         }
         l3ClosMediation.updatePod(pod.id, podDict, inventoryDict)
@@ -156,7 +156,7 @@ class TestL3Clos(unittest.TestCase):
         from test_model import createPod
         pod = createPod('test', session)
         pod.spineCount = 6
-        leaves = [{ "name" : "leaf-01", "deviceType" : "ex4300-24p", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus": "deploy" }]
+        leaves = [{ "name" : "leaf-01", "family" : "ex4300-24p", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus": "deploy" }]
 
         l3ClosMediation.createLeafIfds(pod, leaves)
         interfaces = session.query(InterfaceDefinition).all()
