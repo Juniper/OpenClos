@@ -63,7 +63,7 @@ deviceFamily :
         uplinkPorts : 'et-0/0/[48-53]'
         downlinkPorts : 'xe-0/0/[0-47]'
         ports :
-    qfx5100-48t-6qf :
+    qfx5100-48t-6q :
         uplinkPorts : 'et-0/0/[48-53]' 
         downlinkPorts : 'xe-0/0/[0-47]'
         ports :  
