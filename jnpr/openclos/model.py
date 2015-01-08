@@ -9,7 +9,7 @@ import math
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, ForeignKey, Enum, BLOB, UniqueConstraint
 from sqlalchemy.orm import relationship, backref
-from netaddr import IPNetwork, AddrFormatError
+from netaddr import IPAddress, IPNetwork, AddrFormatError
 from crypt import Cryptic
 Base = declarative_base()
 
@@ -47,6 +47,8 @@ class Pod(ManagedElement, Base):
     vlanPrefix = Column(String(32))
     loopbackPrefix = Column(String(32))
     managementPrefix = Column(String(32))
+    managementStartingIP = Column(String(32))
+    managementMask = Column(Integer)
     spineAS = Column(Integer)
     leafAS = Column(Integer)
     topologyType = Column(Enum('threeStage', 'fiveStageRealEstate', 'fiveStagePerformance'))
@@ -103,6 +105,8 @@ class Pod(ManagedElement, Base):
         self.vlanPrefix = podDict.get('vlanPrefix')
         self.loopbackPrefix = podDict.get('loopbackPrefix')
         self.managementPrefix = podDict.get('managementPrefix')
+        self.managementStartingIP = podDict.get('managementStartingIP')
+        self.managementMask = podDict.get('managementMask')
         spineAS = podDict.get('spineAS')
         if spineAS is not None:
             self.spineAS = int(spineAS)
@@ -192,8 +196,8 @@ class Pod(ManagedElement, Base):
             error += 'vlanPrefix, '
         if self.loopbackPrefix is None:
             error += 'loopbackPrefix, '
-        if self.managementPrefix is None:
-            error += 'managementPrefix, '
+        if self.managementPrefix is None and (self.managementStartingIP is None or self.managementMask is None):
+            error += 'managementPrefix or (managementStartingIP, managementMask), '
         if self.spineAS is None:
             error += 'spineAS, '
         if self.leafAS is None:
@@ -221,9 +225,15 @@ class Pod(ManagedElement, Base):
         except AddrFormatError:
                 error += 'loopbackPrefix'
         try:
-            IPNetwork(self.managementPrefix)  
+            if self.managementPrefix is not None:
+                IPNetwork(self.managementPrefix)  
         except AddrFormatError:
                 error += 'managementPrefix'
+        try:
+            if self.managementStartingIP is not None:
+                IPAddress(self.managementStartingIP)  
+        except AddrFormatError:
+                error += 'managementStartingIP'
         if error != '':
             raise ValueError('invalid IP format: ' + error)
 
