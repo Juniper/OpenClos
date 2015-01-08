@@ -1,0 +1,24 @@
+---
+BGPNeighborTable:
+  rpc: get-bgp-neighbor-information
+  item: bgp-peer
+  view: BGPNeighborView
+
+BGPNeighborView:
+    fields:
+        peer_add    :   peer-address
+        peer_as     :   peer-as
+        peer_state  :   peer-state
+        local_add   :   local-address
+        local_as    :   local-as
+        state       :   peer-state
+        flap_count  :   flap-count
+        act_count   :   bgp-rib/active-prefix-count
+        rx_count    :   bgp-rib/received-prefix-count
+        acc_count   :   bgp-rib/accepted-prefix-count
+        sup_count   :   bgp-rib/suppressed-prefix-count
+        in_msg      :   input-messages
+        out_msg     :   output-messages
+        out_queue   :   bgp-output-queue/count
+
+
