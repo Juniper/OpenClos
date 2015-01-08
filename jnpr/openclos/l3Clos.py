@@ -200,7 +200,7 @@ class L3ClosMediation():
     
     def validateManagementPrefix(self, pod, podDict, inventoryData):
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
-        managementIps = util.getMgmtIps(podDict['managementPrefix'], inventoryDeviceCount)
+        managementIps = util.getMgmtIps(podDict.get('managementPrefix'), podDict.get('managementStartingIP'), podDict.get('managementMask'), inventoryDeviceCount)
         availableIps = len(managementIps)
         if availableIps < inventoryDeviceCount:
             raise ValueError("Pod[id='%s', name='%s']: managementPrefix avaiable IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
@@ -439,11 +439,11 @@ class L3ClosMediation():
         self.allocateIrb(pod, pod.vlanPrefix, leafSpineDict['leafs'])
         self.allocateInterconnect(pod.interConnectPrefix, leafSpineDict['spines'], leafSpineDict['leafs'])
         self.allocateAsNumber(pod.spineAS, pod.leafAS, leafSpineDict['spines'], leafSpineDict['leafs'])
-        self.allocateManagement(pod.managementPrefix, leafSpineDict['spines'], leafSpineDict['leafs'])
+        self.allocateManagement(pod.managementPrefix, pod.managementStartingIP, pod.managementMask, leafSpineDict['spines'], leafSpineDict['leafs'])
         
-    def allocateManagement(self, managementPrefix, spines, leaves):
+    def allocateManagement(self, managementPrefix, managementStartingIP, managementMask, spines, leaves):
         deviceCount = len(spines)+len(leaves)
-        managementIps = util.getMgmtIps(managementPrefix, deviceCount)
+        managementIps = util.getMgmtIps(managementPrefix, managementStartingIP, managementMask, deviceCount)
         # don't do partial allocation
         if len(managementIps) == deviceCount:
             for spine, managementIp in zip(spines, managementIps[:len(spines)]):
@@ -457,7 +457,7 @@ class L3ClosMediation():
                 self.dao.updateObjects(leaves)
         
     def allocateLoopback(self, pod, loopbackPrefix, devices):
-        loopbackIp = IPNetwork(loopbackPrefix).ip
+        loopbackIp = IPNetwork(loopbackPrefix).network
         numOfIps = len(devices) + 2 # +2 for network and broadcast
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
@@ -472,7 +472,7 @@ class L3ClosMediation():
         self.dao.createObjects(interfaces)
 
     def allocateIrb(self, pod, irbPrefix, leafs):
-        irbIp = IPNetwork(irbPrefix).ip
+        irbIp = IPNetwork(irbPrefix).network
         numOfHostIpsPerSwitch = pod.hostOrVmCountPerLeaf
         numOfSubnets = len(leafs)
         bitsPerSubnet = int(math.ceil(math.log(numOfHostIpsPerSwitch + 2, 2)))  # +2 for network and broadcast
@@ -494,7 +494,7 @@ class L3ClosMediation():
         self.dao.createObjects(interfaces)
 
     def allocateInterconnect(self, interConnectPrefix, spines, leafs):
-        interConnectIp = IPNetwork(interConnectPrefix).ip
+        interConnectIp = IPNetwork(interConnectPrefix).network
         numOfIpsPerInterconnect = 2
         numOfSubnets = len(spines) * len(leafs)
         # no need to add +2 for network and broadcast, as junos supports /31

@@ -187,7 +187,7 @@ def backupDatabase(conf):
                 backupDbFileName = dbFileName + '.' + timestamp
                 shutil.copyfile(dbFileName, backupDbFileName)
 
-def getMgmtIps(prefix, count):
+def getMgmtIps(prefix, startingIP, mask, count):
     '''
     returns list of management IP for given number of devices
     
@@ -196,13 +196,20 @@ def getMgmtIps(prefix, count):
     count -- number of devices
     '''
     mgmtIps = []
-    ipNetwork = IPNetwork(prefix)
-    ipNetworkList = list(ipNetwork)
-    start = ipNetworkList.index(ipNetwork.ip)
-    end = start + count
-    ipList = ipNetworkList[start:end]
-    for ip in ipList:
-        mgmtIps.append(str(ip) + '/' + str(ipNetwork.prefixlen))
+    cidr = None
+    if startingIP is not None and mask is not None:
+        cidr = startingIP + '/' + str(mask)
+    else:
+        cidr = prefix
+        
+    if cidr is not None:
+        ipNetwork = IPNetwork(cidr)
+        ipNetworkList = list(ipNetwork)
+        start = ipNetworkList.index(ipNetwork.ip)
+        end = start + count
+        ipList = ipNetworkList[start:end]
+        for ip in ipList:
+            mgmtIps.append(str(ip) + '/' + str(ipNetwork.prefixlen))
 
     return mgmtIps
 
