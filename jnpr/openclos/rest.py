@@ -9,6 +9,7 @@ import bottle
 from sqlalchemy.orm import exc
 import StringIO
 import zipfile
+import traceback
 
 import json
 import util
@@ -19,6 +20,7 @@ from dao import Dao
 from report import ResourceAllocationReport, L2Report
 from l3Clos import L3ClosMediation
 from ztp import ZtpServer
+from jnpr.openclos.util import isSqliteUsed
 
 moduleName = 'rest'
 logger = None
@@ -81,7 +83,11 @@ class RestServer():
 
     def start(self):
         logger.info('REST server started at %s:%d' % (self.host, self.port))
-        bottle.run(self.app, host=self.host, port=self.port, debug=self.conf.get('debugRest', False))
+        if util.isSqliteUsed(self.conf):
+            bottle.run(self.app, host=self.host, port=self.port, debug=self.conf.get('debugRest', False))
+        else:
+            bottle.run(self.app, host=self.host, port=self.port, debug=self.conf.get('debugRest', False), server='paste')
+
 
     @staticmethod
     @error(400)
@@ -172,10 +178,11 @@ class RestServer():
         ipFabricsData['uri'] = url 
         return {'ipFabrics' : ipFabricsData}
     
-    def getIpFabric(self, ipFabricId, requestUrl = None):
+    def getIpFabric(self, ipFabricId, ipFabric = None, requestUrl = None):
         if requestUrl is None:
             requestUrl = bottle.request.url
-        ipFabric = self.report.getIpFabric(ipFabricId)
+        if ipFabric is None:
+            ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
             outputDict = {} 
             devices = ipFabric.devices
@@ -475,15 +482,18 @@ class RestServer():
         ipFabricName = ipFabric.pop('name')
         fabricDevices = self.getDevDictFromDict(pod)
         try:
-            fabricId =  l3ClosMediation.createPod(ipFabricName, ipFabric, fabricDevices).id
+            fabric =  l3ClosMediation.createPod(ipFabricName, ipFabric, fabricDevices)
+            url = bottle.request.url + '/' + fabric.id
+            ipFabric = self.getIpFabric(fabric.id, fabric, url)
         except ValueError as e:
+            logger.error('ValueError , %s' % (e))
+            logger.debug('StackTrace: %s' % (traceback.format_exc()))
             raise bottle.HTTPError(400, exception = RestError(0, e.message))
         except Exception as exc:
             logger.error('Unknown error, %s' % (exc))
+            logger.debug('StackTrace: %s' % (traceback.format_exc()))
             raise
         
-        url = bottle.request.url + '/' + fabricId
-        ipFabric = self.getIpFabric(fabricId, url)
         bottle.response.set_header('Location', url)
         bottle.response.status = 201
 
@@ -526,8 +536,9 @@ class RestServer():
         fabricDevices = self.getDevDictFromDict(inPod)
         # Pass the ipFabric and fabricDevices dictionaries to config/update API, then return
         try:
-            l3ClosMediation.updatePod(ipFabricId, ipFabric, fabricDevices)
-            return self.getIpFabric(ipFabricId)
+            updatedFabric = l3ClosMediation.updatePod(ipFabricId, ipFabric, fabricDevices)
+            url = bottle.request.url + '/' + updatedFabric.id
+            return self.getIpFabric(ipFabricId, updatedFabric, url)
         except ValueError as e:
             raise bottle.HTTPError(400, exception = RestError(0, e.message))
         except Exception as exc:

@@ -355,4 +355,6 @@ def getImageNameForDevice(pod, device):
                 return leafSetting.junosImage
     
     return None
-    
+
+def isSqliteUsed(conf):
+    return 'sqlite' in conf.get('dbUrl')

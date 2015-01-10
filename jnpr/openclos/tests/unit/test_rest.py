@@ -295,7 +295,58 @@ class TestRest(unittest.TestCase):
         response = restServerTestApp.post('/openclos/ip-fabrics', headers = {'Content-Type':'application/json'}, expect_errors = True)
         self.assertEqual(400, response.status_int)
         self.assertTrue('No json in request object' in response.json['errorMessage'] )
+
+    def testCreateIpFabricWithPost(self):
+        self.conf['deviceFamily'] = {
+            "qfx5100-24q-2p": {
+                "ports": 'et-0/0/[0-23]'
+            },
+            "qfx5100-48s-6q": {
+                "uplinkPorts": 'et-0/0/[48-53]', 
+                "downlinkPorts": 'xe-0/0/[0-47]'
+            },
+            "ex4300-24p": {
+                "uplinkPorts": 'et-0/1/[0-3]', 
+                "downlinkPorts": 'ge-0/0/[0-23]'
+            }
+        }
+
+        restServer = RestServer(self.conf)
+        restServer.initRest()
+        restServerTestApp = TestApp(restServer.app)
         
+        ipFabric = {
+            "ipFabric": {
+                "name": "test12321",
+                "spineDeviceType": "qfx5100-24q-2p",
+                "spineCount": 2,
+                "spineAS": 5,
+                "leafSettings": [{"deviceType": "ex4300-24p"},{"deviceType": "qfx5100-48s-6q"}],
+                "leafCount": 3,
+                "leafAS": 10,
+                "topologyType": "threeStage",
+                "loopbackPrefix": "12.1.1.1/21",
+                "vlanPrefix": "15.1.1.1/21",
+                "interConnectPrefix": "14.1.1.1/21",
+                "outOfBandAddressList": "10.204.244.95",
+                "managementPrefix": "192.168.2.1/24",
+                "description": "test12321",
+                "hostOrVmCountPerLeaf": 254,
+                "devicePassword": "viren123",
+                "outOfBandGateway": "192.168.2.1",
+                "devices": [
+                  {"role": "spine", "family": "qfx5100-24q-2p", "name": "test12321-spine-0", "username": "root", "password": "viren123", "deployStatus": "deploy"},
+                  {"role": "spine", "family": "qfx5100-24q-2p", "name": "test12321-spine-1"},
+                  {"role": "leaf", "family": "qfx5100-48s-6q", "name": "test12321-leaf-0", "deployStatus": "deploy"},
+                  {"role": "leaf", "family": "qfx5100-48s-6q", "name": "test12321-leaf-1", "deployStatus": "deploy"},
+                  {"role": "leaf", "name": "test12321-leaf-2"}
+                ]
+            }
+        }
+
+        response = restServerTestApp.post('/openclos/ip-fabrics', headers = {'Content-Type':'application/json'}, params=json.dumps(ipFabric))
+        self.assertEqual(201, response.status_int)
+
     def testReconfigureIpFabricWithPostBodyEmpty(self):
         restServerTestApp = self.setupRestWithTwoPods()
         
