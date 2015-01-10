@@ -19,7 +19,11 @@ class Dao:
         logger = util.getLogger(moduleName)
             
         if conf is not None and 'dbUrl' in conf:
-            engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={}, echo = conf.get('debugSql', False))  
+            if util.isSqliteUsed(conf):
+                engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={}, echo = conf.get('debugSql', False))
+            else:
+                engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={}, echo = conf.get('debugSql', False),
+                        isolation_level="READ COMMITTED")  
             Base.metadata.create_all(engine) 
             session_factory = sessionmaker(bind=engine)
             self.Session = scoped_session(session_factory)
