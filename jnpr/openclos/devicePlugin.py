@@ -149,9 +149,11 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             except DeviceError as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL2Status(None, error = exc)
+                self.updateBadIfdStatus(self.device.interfaces)
             except Exception as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL2Status('error', str(exc))
+                self.updateBadIfdStatus(self.device.interfaces)
             finally:
                 self.collectionInProgressCache.doneDevice(self.deviceId)
                 logger.debug('Ended L2 data collection for %s' % (self.deviceLogStr))
