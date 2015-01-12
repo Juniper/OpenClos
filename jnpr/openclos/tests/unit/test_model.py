@@ -243,9 +243,9 @@ class TestDevice(TestOrm):
         self.session.add(deviceOne)
            
         podTwo = createPod('testpodTwo', self.session)
-        deviceTwo = Device('testDeviceOne', 'qfx-5100-48s-6q', 'admin', 'admin',  "spine", "", "", podTwo)
+        deviceTwo = Device('testDeviceTwo', 'qfx-5100-48s-6q', 'admin', 'admin',  "spine", "", "", podTwo)
         self.session.add(deviceTwo)
-        deviceThree = Device('testDeviceOne', 'qfx-5100-48s-6q', 'admin', 'admin',  "spine", "", "", podTwo)
+        deviceThree = Device('testDeviceThree', 'qfx-5100-48s-6q', 'admin', 'admin',  "spine", "", "", podTwo)
         self.session.add(deviceThree)
         self.session.commit()
 
@@ -392,7 +392,7 @@ class TestInterfaceDefinition(TestOrm):
         self.session.add_all(IFDs)
         self.session.commit()
         
-        fetchedIfds = self.session.query(InterfaceDefinition).order_by(InterfaceDefinition.name_order_num).all()
+        fetchedIfds = self.session.query(InterfaceDefinition).order_by(InterfaceDefinition.sequenceNum).all()
         self.assertEqual('et-0/0/0', fetchedIfds[0].name)
         self.assertEqual('et-0/0/1', fetchedIfds[1].name)
         self.assertEqual('et-0/0/2', fetchedIfds[2].name)

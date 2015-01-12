@@ -92,6 +92,11 @@ from - http://www.voidspace.org.uk/python/modules.shtml#pycrypto, then install o
 Configuration on the Management Server
 --------------------------------------
 
+**Database**  
+
+* sqlite3 is the default database with file based DB, for better performance use traditional DBs
+* mysql database: install 'sudo apt-get install -y python-mysqldb', then set DB connection parameters in openclos.yaml file
+
 **Junos OS image**
 Copy the Junos OS image file to OpenClos-<version>/jnpr/openclos/conf/ztp/
 This image is pushed to the fabric devices in addition to the auto-generated configuration.

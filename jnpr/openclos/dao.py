@@ -130,7 +130,7 @@ class Dao:
         2. port name is uplink-* for device with known family 
         '''
         interconnectPorts = self.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
-            .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
+            .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.sequenceNum).all()
 
         ports = []        
         for port in interconnectPorts:

@@ -121,6 +121,45 @@ class TestFunctions(unittest.TestCase):
         
         with self.assertRaises(ValueError):
             getSupportedDeviceFamily(None)
+
+    def testInterfaceNameToUniqueSequenceNumber(self):
+        self.assertEqual(0, interfaceNameToUniqueSequenceNumber('et-0/0/0'))
+        self.assertEqual(1, interfaceNameToUniqueSequenceNumber('et-0/0/1'))
+        self.assertEqual(2, interfaceNameToUniqueSequenceNumber('et-0/0/2'))
+        self.assertEqual(11, interfaceNameToUniqueSequenceNumber('et-0/0/11'))
+        self.assertEqual(100, interfaceNameToUniqueSequenceNumber('et-0/0/100'))
+        self.assertEqual(1000, interfaceNameToUniqueSequenceNumber('et-0/1/0'))
+        self.assertEqual(1100, interfaceNameToUniqueSequenceNumber('et-0/1/100'))
+        self.assertEqual(10000, interfaceNameToUniqueSequenceNumber('et-1/0/0'))
+        
+        self.assertEqual(10000000, interfaceNameToUniqueSequenceNumber('et-0/0/0.0'))
+        self.assertEqual(10000001, interfaceNameToUniqueSequenceNumber('et-0/0/0.1'))
+        self.assertEqual(10010000, interfaceNameToUniqueSequenceNumber('et-0/0/100.0'))
+        self.assertEqual(10010001, interfaceNameToUniqueSequenceNumber('et-0/0/100.1'))
+        self.assertEqual(10100000, interfaceNameToUniqueSequenceNumber('et-0/1/0.0'))
+        self.assertEqual(10100001, interfaceNameToUniqueSequenceNumber('et-0/1/0.1'))
+        self.assertEqual(11000001, interfaceNameToUniqueSequenceNumber('et-1/0/0.1'))
+
+        self.assertEqual(20000000, interfaceNameToUniqueSequenceNumber('uplink-0'))
+        self.assertEqual(20000001, interfaceNameToUniqueSequenceNumber('uplink-1'))
+        self.assertEqual(21000000, interfaceNameToUniqueSequenceNumber('uplink-0.0'))
+        self.assertEqual(21000001, interfaceNameToUniqueSequenceNumber('uplink-0.1'))
+        self.assertEqual(21000100, interfaceNameToUniqueSequenceNumber('uplink-1.0'))
+        self.assertEqual(21000101, interfaceNameToUniqueSequenceNumber('uplink-1.1'))
+
+    def testLo0IrbVmeToUniqueSequenceNumber(self):
+        seqNumSet = set()
+        
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('lo0'))
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('lo0.0'))
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('vme'))
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('vme.0'))
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('irb'))
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('irb.1'))
+        
+        self.assertEqual(6, len(seqNumSet))
+
+
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

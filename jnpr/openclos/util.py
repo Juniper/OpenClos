@@ -358,3 +358,55 @@ def getImageNameForDevice(pod, device):
 
 def isSqliteUsed(conf):
     return 'sqlite' in conf.get('dbUrl')
+
+
+fpcPicPortRegx = re.compile(r"[a-z]+-(\d)\/(\d)\/(\d{1,3})\.?(\d{0,2})")
+fakeNameRegx = re.compile(r"uplink-(\d{1,3})\.?(\d{0,2})")
+otherPortRegx = re.compile(r"[0-9A-Za-z]+\.?(\d{0,2})")
+
+def interfaceNameToUniqueSequenceNumber(interfaceName):
+    '''    
+    :param str: name, examples: 
+        IFD: et-0/0/1, et-0/0/0, et-0/0/101, lo0, irb, vme
+        IFL: et-0/0/1.0, et-0/0/0.0, et-0/0/0.99, lo0.0
+        IFD with fake name: uplink-0, uplink-1
+        IFL with fake name: uplink-0.0, uplink-1.0, uplink-1.99
+    '''
+    if interfaceName is None or interfaceName == '':
+        return None
+    
+    match = fpcPicPortRegx.match(interfaceName)
+    if match is not None:
+        fpc = match.group(1)
+        pic = match.group(2)
+        port = match.group(3)
+        unit = match.group(4)
+        if not unit:
+            unit = 0
+        
+        sequenceNum = 10000 * int(fpc) + 1000 * int(pic) + int(port)
+        
+        if unit != 0:
+            sequenceNum = 10000000 + 100 * sequenceNum + int(unit)
+        
+        return sequenceNum
+
+    match = fakeNameRegx.match(interfaceName)
+    if match is not None:
+        port = match.group(1)
+        unit = match.group(2)
+        if not unit:
+            unit = 0
+        
+        sequenceNum = 20000000 + int(port)
+        
+        if unit != 0:
+            sequenceNum = 21000000 + 100 * int(port) + int(unit)
+        
+        return sequenceNum
+
+    match = otherPortRegx.match(interfaceName)
+    if match is not None:
+        return int(interfaceName.encode('hex'), 16)
+    
+    

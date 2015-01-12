@@ -59,8 +59,6 @@ class TestZtp(unittest.TestCase):
         dev2 = createPodDevice(self.session, 'dev2', pod)
         dev3 = createPodDevice(self.session, 'dev3', pod)
         dev3.role = 'leaf'
-        dev4 = createPodDevice(self.session, 'dev4', pod)
-        dev4.role = 'unknown'
       
         dhcpConf = self.ztpServer.generatePodSpecificDhcpConf(pod.id)
         self.assertEquals(2, dhcpConf.count('testSpineImage'))

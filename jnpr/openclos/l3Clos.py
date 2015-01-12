@@ -396,10 +396,10 @@ class L3ClosMediation():
         spines = []
         for device in pod.devices:
             if (device.role == 'leaf'):
-                leafUplinkPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.name_order_num).all()
+                leafUplinkPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.sequenceNum).all()
                 leaves.append({'leaf': device, 'leafUplinkPorts': leafUplinkPorts})
             elif (device.role == 'spine'):
-                spinePorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).order_by(InterfaceDefinition.name_order_num).all()
+                spinePorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).order_by(InterfaceDefinition.sequenceNum).all()
                 spines.append({'spine': device, 'ports': spinePorts})
         
         leafIndex = 0
@@ -512,7 +512,7 @@ class L3ClosMediation():
         spines[0].pod.allocatedInterConnectBlock = str(interconnectBlock.cidr)
 
         for spine in spines:
-            ifdsHasPeer = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == spine.id).filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.name_order_num).all()
+            ifdsHasPeer = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == spine.id).filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.sequenceNum).all()
             for spineIfdHasPeer in ifdsHasPeer:
                 subnet =  interconnectSubnets.pop(0)
                 ips = list(subnet)
