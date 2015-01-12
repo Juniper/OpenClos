@@ -216,7 +216,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
 
     def getAllocatedConnectedUplinkIfds(self):
         uplinkIfds = self.dao.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == self.device.id).\
-            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.name_order_num).all()
+            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.sequenceNum).all()
         
         allocatedUplinks = {}
         for uplink in uplinkIfds:

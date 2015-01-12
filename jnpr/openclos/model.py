@@ -7,10 +7,12 @@ Created on Jul 8, 2014
 import uuid
 import math
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum, BLOB, UniqueConstraint
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Enum, BLOB, UniqueConstraint, Index
 from sqlalchemy.orm import relationship, backref
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 from crypt import Cryptic
+import util
+
 Base = declarative_base()
 
 class ManagedElement(object):
@@ -34,7 +36,7 @@ class ManagedElement(object):
 class Pod(ManagedElement, Base):
     __tablename__ = 'pod'
     id = Column(String(60), primary_key=True)
-    name = Column(String(100))
+    name = Column(String(100), index=True, nullable = False)
     description = Column(String(256))
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
@@ -253,10 +255,10 @@ class LeafSetting(ManagedElement, Base):
 class Device(ManagedElement, Base):
     __tablename__ = 'device'
     id = Column(String(60), primary_key=True)
-    name = Column(String(100))
+    name = Column(String(100), nullable = False)
     username = Column(String(100), default = 'root')
     encryptedPassword = Column(String(100)) # 2-way encrypted
-    role = Column(String(32))
+    role = Column(Enum('spine', 'leaf'))
     macAddress = Column(String(32))
     managementIp = Column(String(32))
     family = Column(String(100), default = 'unknown')
@@ -272,6 +274,10 @@ class Device(ManagedElement, Base):
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
     deployStatus = Column(Enum('deploy', 'provision'), default = 'provision')
     cryptic = Cryptic()
+    __table_args__ = (
+        Index('pod_id_name_uindex', 'pod_id', 'name', unique=True),
+    )
+    
                 
     def __init__(self, name, family, username, password, role, macAddress, managementIp, pod, deployStatus=None):
         '''
@@ -329,19 +335,18 @@ class Interface(ManagedElement, Base):
     # getting list of interface order by name returns 
     # et-0/0/0, et-0/0/1, et-0/0/11, et/0/0/12, to fix this sequencing
     # adding order_number, so that the list would be et-0/0/0, et-0/0/1, et-0/0/2, et/0/0/3    
-    name = Column(String(100))
-    name_order_num = Column(Integer)
+    name = Column(String(100), nullable = False)
+    sequenceNum = Column(BigInteger, nullable = False)
     type = Column(String(100))
     device_id = Column(String(60), ForeignKey('device.id'), nullable = False)
-    device = relationship("Device",backref=backref('interfaces', order_by=name, cascade='all, delete, delete-orphan'))
+    device = relationship("Device",backref=backref('interfaces', order_by=sequenceNum, cascade='all, delete, delete-orphan'))
     peer_id = Column(String(60), ForeignKey('interface.id'))
     peer = relationship('Interface', foreign_keys=[peer_id], uselist=False, post_update=True, )
     layer_below_id = Column(String(60), ForeignKey('interface.id'))
     layerAboves = relationship('Interface', foreign_keys=[layer_below_id])
     deployStatus = Column(Enum('deploy', 'provision'), default = 'provision')
     __table_args__ = (
-        UniqueConstraint('device_id', 'name', name='_device_id_name_uc'),
-        UniqueConstraint('device_id', 'name_order_num', name='_device_id_name_order_num_uc'),
+        Index('device_id_sequence_num_uindex', 'device_id', 'sequenceNum', unique=True),
     )
 
     __mapper_args__ = {
@@ -353,20 +358,8 @@ class Interface(ManagedElement, Base):
         self.id = str(uuid.uuid4())
         self.name = name
         self.device = device
-        
-        if name.count('/') == 3:
-            self.name_order_num = 0
-            nameSplit = name.split('/') 
-            fpc = nameSplit[-3]
-            pic = nameSplit[-2]
-            port = nameSplit[-1]
-            if fpc.isdigit():
-                self.name_order_num += int(fpc) * 10000
-            if pic.isdigit():
-                self.name_order_num += int(pic) * 100
-            if port.isdigit():
-                self.name_order_num += int(port)
         self.deployStatus = deployStatus
+        self.sequenceNum = util.interfaceNameToUniqueSequenceNumber(self.name)
         
 class InterfaceLogical(Interface):
     __tablename__ = 'IFL'
@@ -413,7 +406,7 @@ class AdditionalLink(ManagedElement, Base):
     port2 = Column(String(100))
     lldpStatus = Column(Enum('unknown', 'good', 'error'), default = 'unknown') 
     __table_args__ = (
-        UniqueConstraint('device1', 'port1', 'device2', 'port2', name='_device1_port1_device2_port2_uc'),
+        UniqueConstraint('device1', 'port1', name='device1_port1_uc'),
     )
         
     def __init__(self, device1, port1, device2, port2, lldpStatus='unknown'):

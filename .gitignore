@@ -3,6 +3,7 @@
 *.bak
 *.orig
 *.log
+*.csv
 
 # Packages
 *.egg
