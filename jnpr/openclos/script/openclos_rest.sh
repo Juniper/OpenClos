@@ -24,13 +24,20 @@ PID_FILE=/var/run/openclos_rest.pid
 REST_PATH=/opt/python2.7/lib/python2.7/site-packages/OpenClos-*.egg/jnpr/openclos/
 
 SERVICE_NAME=openclos_rest
-LOG_FILE=/var/log/$SERVICE_NAME
+
+if [ ! -d /var/log/openclos ]; then
+    /bin/mkdir -p /var/log/openclos
+    chmod 777 /var/log/openclos
+    /bin/sync
+fi
+
+LOG_FILE=/var/log/openclos/$SERVICE_NAME
 
 PYTHON_BIN=/opt/python2.7/bin/python2.7
 
 if [ ! -f $LOG_FILE ]; then
     touch $LOG_FILE
-    sync
+    /bin/sync
 fi
 
 echo_log() {
