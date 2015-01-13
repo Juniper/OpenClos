@@ -16,13 +16,15 @@ class TestFunctions(unittest.TestCase):
         pass
 
     def tearDown(self):
-        pass
+        conf = None
 
     def testLoadDefaultConfig(self):
         self.assertIsNotNone(loadConfig())
+    '''
     def testLoadNonExistingConfig(self):
-        self.assertIsNone(loadConfig('non-existing.yaml'))
-
+        conf = None
+        self.assertIsNone(loadConfig(confFile = 'non-existing.yaml'))
+    '''
     def testGetPortNamesForDeviceFamilyNullConf(self):
         with self.assertRaises(ValueError) as ve:
             getPortNamesForDeviceFamily(None, None)
@@ -112,8 +114,8 @@ class TestFunctions(unittest.TestCase):
 
     def testModifyConfigTrapTarget(self):
         modifyConfigTrapTarget('99.99.99.99')
-        conf = loadConfig()
-        self.assertEquals('99.99.99.99', conf['snmpTrap']['networkdirector_trap_group']['target'])
+        conf1 = loadConfig()
+        self.assertEquals('99.99.99.99', conf1['snmpTrap']['networkdirector_trap_group']['target'])
 
     def testGetSupportedDeviceFamily(self):
         deviceFamilyList = getSupportedDeviceFamily({'qfx5100-96s-8q': {}, 'qfx5100-48s-6q': {}})
@@ -159,7 +161,28 @@ class TestFunctions(unittest.TestCase):
         
         self.assertEqual(6, len(seqNumSet))
 
+    def testLoadLoggingConfig(self):
+        loadLoggingConfig({}, appName='rest')
+        import logging
+        self.assertEquals(0, len(logging.getLogger('unknown').handlers))
+        self.assertEquals(2, len(logging.getLogger('rest').handlers))
+        self.assertTrue('openclos-rest.log' in logging.getLogger('rest').handlers[1].baseFilename)
 
+    @unittest.skip("require root access")
+    def testLoadLoggingConfigWithNd(self):
+        if not os.path.exists('/var/log/openclos'):
+            os.makedirs('/var/log/openclos')
+        loadLoggingConfig({'deploymentMode': {'ndIntegrated' : True}}, appName='rest')
+        import logging
+        self.assertEquals(0, len(logging.getLogger('unknown').handlers))
+        self.assertEquals(1, len(logging.getLogger('rest').handlers))
+        shutil.rmtree(self.conf['outputDir'], ignore_errors=True)
+
+    def testLoadLoggingForTest(self):
+        loadLoggingConfig({})
+        import logging
+        self.assertEquals(0, len(logging.getLogger('unknown').handlers))
+        self.assertEquals(1, len(logging.getLogger('rest').handlers))
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

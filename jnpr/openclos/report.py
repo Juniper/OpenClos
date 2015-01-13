@@ -20,12 +20,12 @@ maxThreads = 10
 class Report(object):
     def __init__(self, conf = {}, dao = None):
         global logger
-        logger = util.getLogger(moduleName)
         if any(conf) == False:
-            self.conf = util.loadConfig()
+            self.conf = util.loadConfig(appName = moduleName)
         else:
             self.conf = conf
 
+        logger = logging.getLogger(moduleName)
         if dao is None:
             self.dao = Dao(self.conf)
         else:
@@ -150,8 +150,6 @@ class L3Report(Report):
     
 
 if __name__ == '__main__':
-    util.loadLoggingConfig(moduleName)
-
     report = ResourceAllocationReport()
     print report.getPods();
     print report.getInterconnectAllocation('labLeafSpine')

@@ -7,6 +7,7 @@ import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import exc
 import util
+import logging 
 
 from model import Base, Device, InterfaceDefinition, LeafSetting
 
@@ -16,7 +17,7 @@ logger = None
 class Dao:
     def __init__(self, conf):
         global logger
-        logger = util.getLogger(moduleName)
+        logger = logging.getLogger(moduleName)
             
         if conf is not None and 'dbUrl' in conf:
             if util.isSqliteUsed(conf):

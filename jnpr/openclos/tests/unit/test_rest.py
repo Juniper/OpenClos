@@ -24,7 +24,7 @@ class TestRest(unittest.TestCase):
         
         if not os.path.exists(configLocation):
             os.makedirs(configLocation)
-        jnpr.openclos.util.loadLoggingConfigForTest()
+        jnpr.openclos.util.loadLoggingConfig()
 
 
     def tearDown(self):

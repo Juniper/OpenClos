@@ -7,6 +7,7 @@ import os
 import traceback
 from threading import RLock, Event
 import time
+import logging
 
 from jnpr.junos import Device as DeviceConnection
 from jnpr.junos.factory import loadyaml
@@ -63,11 +64,11 @@ class DeviceDataCollectorNetconf(object):
     '''
     def __init__(self, deviceId, conf = {}):
         global logger
-        logger = util.getLogger(moduleName)
         if any(conf) == False:
-            self.conf = util.loadConfig()
+            self.conf = util.loadConfig(appName = moduleName)
         else:
             self.conf = conf
+        logger = logging.getLogger(moduleName)
 
         self.dao = None
         self.pod = None
@@ -692,7 +693,6 @@ if __name__ == "__main__":
     #configurator = TwoStageConfigurator('192.168.48.219')
     #configurator.start2StageConfiguration()
     #### TEST CODE, should not be executed
-    util.loadLoggingConfig(moduleName)
     
     l3ClosMediation = L3ClosMediation()
     pods = l3ClosMediation.loadClosDefinition()

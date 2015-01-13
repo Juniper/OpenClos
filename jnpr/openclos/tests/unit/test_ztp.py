@@ -18,7 +18,7 @@ class TestZtp(unittest.TestCase):
         self.conf = {}
         self.conf['dbUrl'] = 'sqlite:///'
         self.conf['httpServer'] = {'ipAddr': '127.0.0.1'}
-        jnpr.openclos.util.loadLoggingConfigForTest()
+        jnpr.openclos.util.loadLoggingConfig()
 
         self.ztpServer = ZtpServer(self.conf)
         

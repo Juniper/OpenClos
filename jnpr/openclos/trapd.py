@@ -80,12 +80,12 @@ def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
 class TrapReceiver():
     def __init__(self, conf = {}):
         global logger
-        logger = util.getLogger(moduleName)
         if conf is None or any(conf) == False:
-            self.conf = util.loadConfig()
+            self.conf = util.loadConfig(appName = moduleName)
         else:
             self.conf = conf
 
+        logger = logging.getLogger(moduleName)
         # default value
         self.target = DEFAULT_HOST
         self.port = DEFAULT_PORT
@@ -151,8 +151,6 @@ def trap_receiver_signal_handler(signal, frame):
     sys.exit(0)
         
 if __name__ == '__main__':
-    util.loadLoggingConfig(moduleName)
-
     signal.signal(signal.SIGINT, trap_receiver_signal_handler)
     signal.signal(signal.SIGTERM, trap_receiver_signal_handler)
     trapReceiver = TrapReceiver()

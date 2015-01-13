@@ -21,7 +21,7 @@ class TestDeviceDataCollectorNetconf(unittest.TestCase):
     def setUp(self):
         self.conf = {'dbUrl': 'sqlite:///'}
         self.dao = Dao(self.conf)
-        jnpr.openclos.util.loadLoggingConfigForTest()
+        jnpr.openclos.util.loadLoggingConfig()
 
     def tearDown(self):
         pass
@@ -68,7 +68,7 @@ class TestL2DataCollector(unittest.TestCase):
     def setUp(self):
         self.conf = {'dbUrl': 'sqlite:///'}
         self.conf['deviceFamily'] = {"qfx5100-48s-6q": {"uplinkPorts": 'et-0/0/[48-53]', "downlinkPorts": 'xe-0/0/[0-47]'}}
-        jnpr.openclos.util.loadLoggingConfigForTest()
+        jnpr.openclos.util.loadLoggingConfig()
         self.dao = Dao(self.conf)
         self.session = self.dao.Session()
         
@@ -303,7 +303,7 @@ class TestL2DataCollector(unittest.TestCase):
 
 class TestDataCollectorInProgressCache(unittest.TestCase):
     def setUp(self):
-        jnpr.openclos.util.loadLoggingConfigForTest()
+        jnpr.openclos.util.loadLoggingConfig()
 
     def testSingleton(self):
         cache1 = DeviceOperationInProgressCache.getInstance()
@@ -325,7 +325,7 @@ class TestTwoStageConfigurator(TestL2DataCollector):
     def setUp(self):
         self.conf = {'dbUrl': 'sqlite:///'}
         self.conf['deviceFamily'] = {"qfx5100-48s-6q": {"uplinkPorts": 'et-0/0/[48-53]', "downlinkPorts": 'xe-0/0/[0-47]'}}
-        jnpr.openclos.util.loadLoggingConfigForTest()
+        jnpr.openclos.util.loadLoggingConfig()
         self.dao = Dao(self.conf)
         self.session = self.dao.Session()
 
