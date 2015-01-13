@@ -293,6 +293,7 @@ def modifyConfigTrapTarget(target, confFile = 'openclos.yaml'):
     '''
     Modify openclos.yaml, sets trap target for ND only
     '''
+    global conf
     try:
         lineIterator = fileinput.input(os.path.join(configLocation, confFile), inplace=True) 
         for line in lineIterator:
@@ -303,7 +304,7 @@ def modifyConfigTrapTarget(target, confFile = 'openclos.yaml'):
                 print '        target : %s' %(target)
             else:
                 print line,
-        
+        conf = None    
     except (OSError, IOError) as e:
         print "File error:", e
         return None
