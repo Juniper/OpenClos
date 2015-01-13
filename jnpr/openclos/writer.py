@@ -7,7 +7,9 @@ import pydot
 import os
 import logging
 from jinja2 import Environment, PackageLoader
+
 from model import InterfaceDefinition, AdditionalLink
+import util
 
 cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
 
@@ -24,18 +26,9 @@ class WriterBase():
         
         # this writer is specific for this pod
         self.pod = pod
-        
         self.conf = conf
+        self.outputDir = util.createOutFolder(self.conf, self.pod)       
         
-        # resolve output directory
-        if 'outputDir' in conf:
-            outputPath = conf['outputDir']
-            self.outputDir = os.path.join(outputPath, pod.id+'-'+pod.name)
-        else:
-            self.outputDir = os.path.join('out', pod.id+'-'+pod.name)
-        if not os.path.exists(self.outputDir):
-            os.makedirs(self.outputDir)
-
 class ConfigWriter(WriterBase):
     def __init__(self, conf, pod, dao):
         WriterBase.__init__(self, conf, pod, dao)

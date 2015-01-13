@@ -553,6 +553,7 @@ class RestServer():
         ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
             self.report.dao.deleteObject(ipFabric)
+            util.deleteOutFolder(self.conf, ipFabric)
             logger.debug("IpFabric with id: %s deleted" % (ipFabricId))
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))

@@ -415,3 +415,24 @@ def interfaceNameToUniqueSequenceNumber(interfaceName):
         return int(interfaceName.encode('hex'), 16)
     
     
+def getOutFolderPath(conf, ipFabric):
+    if 'outputDir' in conf:
+        outputDir = os.path.join(conf['outputDir'], ipFabric.id+'-'+ipFabric.name)
+    else:
+        outputDir = os.path.join('out', ipFabric.id+'-'+ipFabric.name)
+    
+    return outputDir
+
+def createOutFolder(conf, ipFabric):
+    path = getOutFolderPath(conf, ipFabric)
+    if not os.path.exists(path):
+        os.makedirs(path)
+    
+    return path
+
+def deleteOutFolder(conf, ipFabric):
+    path = getOutFolderPath(conf, ipFabric)
+    shutil.rmtree(path, ignore_errors=True)
+    
+
+        

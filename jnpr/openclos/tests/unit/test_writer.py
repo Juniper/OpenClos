@@ -9,15 +9,11 @@ import shutil
 sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #trick to make it run from CLI
 
 import unittest
-import sqlalchemy
-from sqlalchemy.orm import sessionmaker
 import pydot
-from jnpr.openclos.model import Pod, Device, InterfaceDefinition, InterfaceLogical, Interface, Base
-from jnpr.openclos.writer import WriterBase, ConfigWriter, CablingPlanWriter
-from jnpr.openclos.util import configLocation
+from jnpr.openclos.model import Device, InterfaceDefinition
+from jnpr.openclos.writer import ConfigWriter, CablingPlanWriter
 from jnpr.openclos.dao import Dao
 from test_model import createPod, createPodDevice
-from flexmock import flexmock
 
 class TestWriterBase(unittest.TestCase):
 
