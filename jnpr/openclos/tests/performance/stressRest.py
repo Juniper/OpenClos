@@ -15,14 +15,13 @@ Running the test:
 '''
 
 from jnpr.openclos.rest import RestServer, moduleName
-from jnpr.openclos.util import getLogger, loadLoggingConfig,\
-    loadLoggingConfigForTest
+from jnpr.openclos.util import loadLoggingConfig
 
 from locust import HttpLocust, TaskSet, task
-import threading
 import json
 import random
 import time
+import logging
 
 def getFabricPostBody(name):
     ipFabric = {
@@ -66,8 +65,8 @@ def getFabricPostBody(name):
 
 class MyTaskSet(TaskSet):
     def on_start(self):
-        loadLoggingConfigForTest()
-        self.logger = getLogger(moduleName)
+        loadLoggingConfig()
+        self.logger = logging.getLogger(moduleName)
         self.fabricCount = 0
         '''
         restServer = RestServer()

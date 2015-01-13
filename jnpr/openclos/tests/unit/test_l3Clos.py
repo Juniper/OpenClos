@@ -33,7 +33,7 @@ class TestL3Clos(unittest.TestCase):
                 "downlinkPorts": 'ge-0/0/[0-23]'
             }
         }
-        jnpr.openclos.util.loadLoggingConfigForTest()
+        jnpr.openclos.util.loadLoggingConfig()
 
     
     def tearDown(self):

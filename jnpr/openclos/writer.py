@@ -8,7 +8,6 @@ import os
 import logging
 from jinja2 import Environment, PackageLoader
 from model import InterfaceDefinition, AdditionalLink
-import util
 
 cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
 
@@ -18,7 +17,7 @@ logger = None
 class WriterBase():
     def __init__(self, conf, pod, dao):
         global logger
-        logger = util.getLogger(moduleName)
+        logger = logging.getLogger(moduleName)
        
         # use dao to generate various output
         self.dao = dao

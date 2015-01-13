@@ -19,6 +19,7 @@ from dao import Dao
 import util
 from writer import ConfigWriter, CablingPlanWriter
 from jinja2 import Environment, PackageLoader
+import logging
 
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 
@@ -28,12 +29,12 @@ logger = None
 class L3ClosMediation():
     def __init__(self, conf = {}, dao = None):
         global logger
-        logger = util.getLogger(moduleName)
         if any(conf) == False:
-            self.conf = util.loadConfig()
+            self.conf = util.loadConfig(appName = moduleName)
         else:
             self.conf = conf
 
+        logger = logging.getLogger(moduleName)
         if dao is None:
             self.dao = Dao(self.conf)
         else:
@@ -100,7 +101,7 @@ class L3ClosMediation():
             username = leaf.get('username')
             password = leaf.get('password') #default is Pod level pass, set on constructor
             macAddress = leaf.get('macAddress')
-            family = leaf.get('deviceType') #default is 'unknown' set on DB
+            family = leaf.get('family') #default is 'unknown' set on DB
             deployStatus = leaf.get('deployStatus') #default is 'provision' set on DB
             device = Device(leaf['name'], family, username, password, 'leaf', macAddress, None, pod, deployStatus)
             devices.append(device)
@@ -817,8 +818,6 @@ class L3ClosMediation():
         return config
         
 if __name__ == '__main__':
-    util.loadLoggingConfig(moduleName)
-    
     l3ClosMediation = L3ClosMediation()
     pods = l3ClosMediation.loadClosDefinition()
 

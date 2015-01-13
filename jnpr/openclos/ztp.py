@@ -25,12 +25,12 @@ ztpTemplateLocation = os.path.join('conf', 'ztp')
 class ZtpServer():
     def __init__(self, conf = {}, templateEnv = None):
         global logger
-        logger = util.getLogger(moduleName)
         if any(conf) == False:
-            self.conf = util.loadConfig()
-
+            self.conf = util.loadConfig(appName = moduleName)
         else:
             self.conf = conf
+
+        logger = logging.getLogger(moduleName)
         self.dao = Dao(self.conf)
 
         if templateEnv is None:
@@ -199,8 +199,6 @@ class ZtpServer():
         return ztp
 
 if __name__ == '__main__':
-    util.loadLoggingConfig(moduleName)
-    
     ztpServer = ZtpServer()
     pods = ztpServer.dao.getAll(Pod)
     ztpServer.createPodSpecificDhcpConfFile(pods[0].id)

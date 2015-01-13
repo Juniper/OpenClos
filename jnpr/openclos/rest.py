@@ -13,6 +13,7 @@ import traceback
 
 import json
 import util
+import logging
 from bottle import error, request, response
 from exception import RestError
 from model import Pod, Device
@@ -50,13 +51,13 @@ class ResourceLink():
 class RestServer():
     def __init__(self, conf = {}):
         global logger
-        logger = util.getLogger(moduleName)
         if any(conf) == False:
-            self.conf = util.loadConfig()
+            self.conf = util.loadConfig(appName = moduleName)
             global webServerRoot
             webServerRoot = self.conf['outputDir']
         else:
             self.conf = conf
+        logger = logging.getLogger(moduleName)
         self.dao = Dao(self.conf)
 
         if 'httpServer' in self.conf and 'ipAddr' in self.conf['httpServer'] and self.conf['httpServer']['ipAddr'] is not None:
@@ -427,7 +428,7 @@ class RestServer():
         # adding this check to make sure trap target does not changed by other REST clients, ex browser
         if clientIp is not None and 'Jakarta Commons-HttpClient' in clientUserAgent:
             util.modifyConfigTrapTarget(clientIp)
-            self.conf = util.loadConfig()
+            self.conf = util.loadConfig(appName = moduleName)
             logger.debug("Updated SNMP trap target for ND: %s" % (self.conf['snmpTrap']['networkdirector_trap_group']['target']))
              
         # hack for ND trap target ends
@@ -659,8 +660,6 @@ class RestServer():
 
 
 if __name__ == '__main__':
-    util.loadLoggingConfig(moduleName)
-
     restServer = RestServer()
     restServer.initRest()
     restServer.start()

@@ -23,12 +23,17 @@ TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT=5
 TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL=30 # in seconds
 TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY=40 # in seconds
 
-loggingInitialized = False
+conf = None
 
-def loadConfig(confFile = 'openclos.yaml'):
+def loadConfig(confFile = 'openclos.yaml', appName = None):
     '''
     Loads global configuration and creates hash 'conf'
     '''
+    global conf
+    
+    if conf:
+        return conf
+    
     try:
         confStream = open(os.path.join(configLocation, confFile), 'r')
         conf = yaml.load(confStream)
@@ -53,6 +58,8 @@ def loadConfig(confFile = 'openclos.yaml'):
         return None
     finally:
         pass
+    
+    loadLoggingConfig(conf, appName = appName)
     return conf
 
 def fixOutputDirForRelativePath(outputDir):
@@ -301,57 +308,47 @@ def modifyConfigTrapTarget(target, confFile = 'openclos.yaml'):
         print "File error:", e
         return None
 
-def loadLoggingConfig(appName, confFile = 'logging.yaml'):
+def loadLoggingConfig(conf = {}, logConfFile = 'logging.yaml', appName = None):
     '''
-    Loads global configuration and creates hash 'conf'
+    Loads global configuration and creates hash 'logConf'
     '''
     try:
-        confStream = open(os.path.join(configLocation, confFile), 'r')
-        conf = yaml.load(confStream)
-        if conf is not None:
-            handlers = conf.get('handlers')
+        logConfStream = open(os.path.join(configLocation, logConfFile), 'r')
+        logConf = yaml.load(logConfStream)
+
+        if logConf is not None:
+            handlers = logConf.get('handlers')
             if handlers is not None:
+                
+                if isIntegratedWithND(conf):
+                    removeLoggingHandler('console', logConf)
+
+                if appName is None:
+                    removeLoggingHandler('file', logConf)
+                                                        
                 for handlerName, handlerDict in handlers.items():
                     filename = handlerDict.get('filename')
                     if filename is not None:
-                        handlerDict['filename'] = filename.replace('%(appName)', appName)
+                        filename = filename.replace('%(appName)', appName)
+                        if isIntegratedWithND(conf):
+                            handlerDict['filename'] = '/var/log/openclos/' + filename
+                        else:
+                            handlerDict['filename'] = filename
+                            
             # now we are done with substitution, we are ready to start the logging
-            logging.config.dictConfig(conf)
-            global loggingInitialized
-            loggingInitialized = True
+            logging.config.dictConfig(logConf)
     except (OSError, IOError) as e:
         print "File error:", e
     except (yaml.scanner.ScannerError) as e:
         print "YAML error:", e
-        confStream.close()
-    return loggingInitialized
-
-def loadLoggingConfigForTest(confFile = 'loggingTest.yaml'):
-    '''
-    Loads global configuration for Test and creates hash 'conf'
-    '''
-    try:
-        confStream = open(os.path.join(configLocation, confFile), 'r')
-        conf = yaml.load(confStream)
-        if conf is not None:
-            logging.config.dictConfig(conf)
-            global loggingInitialized
-            loggingInitialized = True
-    except (OSError, IOError) as e:
-        print "File error:", e
-    except (yaml.scanner.ScannerError) as e:
-        print "YAML error:", e
-        confStream.close()
-    return loggingInitialized
-
-def getLogger(moduleName):
-    '''
-    Get logger based on module name
-    '''
-    if loggingInitialized == False:
-        raise ValueError("util.loadLoggingConfig needs to be called before util.getLogger")
+    finally:
+        logConfStream.close()
         
-    return logging.getLogger(moduleName)
+def removeLoggingHandler(name, logConf):
+    for key, logger in logConf['loggers'].iteritems():
+        logger['handlers'].remove(name)
+
+    logConf['handlers'].pop(name)
 
 def getImageNameForDevice(pod, device):
     if device.role == 'spine':
