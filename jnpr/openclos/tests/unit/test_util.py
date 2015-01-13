@@ -183,7 +183,21 @@ class TestFunctions(unittest.TestCase):
         import logging
         self.assertEquals(0, len(logging.getLogger('unknown').handlers))
         self.assertEquals(1, len(logging.getLogger('rest').handlers))
+
+    def testGetOutFolderPath(self):
+        from test_model import createPodObj
+        pod = createPodObj('testPod')
+        path = getOutFolderPath({}, pod)
         
+        self.assertEquals('out/'+pod.id+'-'+pod.name, path)
+        
+    def testGetOutFolderPathFromConf(self):
+        from test_model import createPodObj
+        pod = createPodObj('testPod')
+        path = getOutFolderPath({'outputDir': '/var/lib/openclos'}, pod)
+        
+        self.assertEquals('/var/lib/openclos/'+pod.id+'-'+pod.name, path)
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
