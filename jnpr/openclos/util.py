@@ -150,24 +150,32 @@ def expandPortName(portName):
     Currently it does not expands all junos regex, only few limited 
 
     Keyword arguments:
-    portName -- port name in junos regular expression, example: xe-0/0/[0-10]
+    portName -- port name in junos regular expression. 
+                it could be a single string in format: xe-0/0/[0-10]
+                or it could be a list of strings where each string is in format: ['xe-0/0/[0-10]', 'et-0/0/[0-3]']
     '''
-    if portName is None or portName == '':
+    if not portName or portName == '':
         return []
     
-    error = "Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (portName)
-    match = re.match(r"([a-z]+-\d\/\d\/\[)(\d{1,3})-(\d{1,3})(\])", portName)
-    if match is None:
-        raise ValueError(error)
+    portList = []
+    if isinstance(portName, list) == True:
+        portList = portName
+    else:
+        portList.append(portName)
     
     portNames = []
-    preRegx = match.group(1)    # group index starts with 1, NOT 0
-    postRegx = match.group(4)
-    startNum = int(match.group(2))
-    endNum = int(match.group(3))
-    
-    for id in range(startNum, endNum + 1):
-        portNames.append(preRegx[:-1] + str(id) + postRegx[1:])
+    for port in portList:
+        match = re.match(r"([a-z]+-\d\/\d\/\[)(\d{1,3})-(\d{1,3})(\])", port)
+        if match is None:
+            raise ValueError("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (port))
+        
+        preRegx = match.group(1)    # group index starts with 1, NOT 0
+        postRegx = match.group(4)
+        startNum = int(match.group(2))
+        endNum = int(match.group(3))
+        
+        for id in range(startNum, endNum + 1):
+            portNames.append(preRegx[:-1] + str(id) + postRegx[1:])
         
     return portNames
 

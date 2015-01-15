@@ -58,18 +58,18 @@ deviceFamily :
     qfx5100-24q-2p :
         uplinkPorts : 
         downlinkPorts : 
-        ports : 'et-0/0/[0-31]'
+        ports : ['et-0/0/[0-23]', 'et-0/1/[0-3]', 'et-0/2/[0-3]']
     qfx5100-48s-6q :
         uplinkPorts : 'et-0/0/[48-53]'
-        downlinkPorts : 'xe-0/0/[0-47]'
+        downlinkPorts : ['xe-0/0/[0-47]', 'ge-0/0/[0-47]']
         ports :
     qfx5100-48t-6q :
         uplinkPorts : 'et-0/0/[48-53]' 
-        downlinkPorts : 'xe-0/0/[0-47]'
+        downlinkPorts : ['xe-0/0/[0-47]', 'ge-0/0/[0-47]']
         ports :  
     qfx5100-96s-8q :
         uplinkPorts : 'et-0/0/[96-103]'
-        downlinkPorts : 'xe-0/0/[0-95]'
+        downlinkPorts : ['xe-0/0/[0-47]', 'ge-0/0/[0-47]']
         ports :
     ex4300-24p :
         uplinkPorts : 'et-0/1/[0-3]'
@@ -80,7 +80,7 @@ deviceFamily :
         downlinkPorts : 'ge-0/0/[0-23]'
         ports :
     ex4300-32f :
-        uplinkPorts : 'et-0/1/[0-3]'
+        uplinkPorts : ['et-0/1/[0-1]', 'et-0/2/[0-1]']
         downlinkPorts : 'ge-0/0/[0-31]'
         ports :
     ex4300-48p :

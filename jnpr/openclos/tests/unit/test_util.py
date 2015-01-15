@@ -73,6 +73,14 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(10, len(portNames))
         self.assertEqual('xe-0/0/1', portNames[0])
         self.assertEqual('xe-0/0/10', portNames[9])        
+        
+    def testExpandPortNameList(self):
+        portNames = expandPortName(['xe-0/0/[1-10]', 'et-0/0/[0-3]'])
+        self.assertEqual(14, len(portNames))
+        self.assertEqual('xe-0/0/1', portNames[0])
+        self.assertEqual('xe-0/0/10', portNames[9])        
+        self.assertEqual('et-0/0/0', portNames[10])        
+        self.assertEqual('et-0/0/3', portNames[13])        
 
     def testFixSqlliteDbUrlForRelativePath(self):
         dbUrl = fixSqlliteDbUrlForRelativePath('sqlite:////absolute-path/sqllite3.db')
