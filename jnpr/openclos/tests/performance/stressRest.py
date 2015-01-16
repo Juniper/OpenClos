@@ -210,8 +210,7 @@ ipFabrics = [
 
 
 class MyLocust(HttpLocust):
-    #host = "http://localhost:80"
-    host = "http://192.168.48.201:80"
+    host = "http://localhost:80"
     min_wait = 250
     max_wait = 500
     stop_timeout = 15000
