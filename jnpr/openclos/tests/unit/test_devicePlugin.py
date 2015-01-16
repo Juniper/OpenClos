@@ -324,7 +324,8 @@ class TestTwoStageConfigurator(TestL2DataCollector):
 
     def setUp(self):
         self.conf = {'dbUrl': 'sqlite:///'}
-        self.conf['deviceFamily'] = {"qfx5100-48s-6q": {"uplinkPorts": 'et-0/0/[48-53]', "downlinkPorts": 'xe-0/0/[0-47]'}}
+        self.conf['deviceFamily'] = {"qfx5100-48s-6q": {"uplinkPorts": 'et-0/0/[48-53]', "downlinkPorts": 'xe-0/0/[0-47]'},
+                                     "ex4300-24p": {"uplinkPorts": 'et-0/1/[0-3]', "downlinkPorts": 'ge-0/0/[0-23]'}}
         jnpr.openclos.util.loadLoggingConfig()
         self.dao = Dao(self.conf)
         self.session = self.dao.Session()
@@ -355,6 +356,265 @@ class TestTwoStageConfigurator(TestL2DataCollector):
         self.assertIsNotNone(uplinksWithIfd[0]['ifd2'])
         self.assertIsNotNone(uplinksWithIfd[1]['ifd2'])
 
+    def createIfls(self, ifds):
+        IFLs = []
+        for ifd in ifds:
+            ifl = InterfaceLogical(ifd.name + '.0', ifd.device)
+            ifd.layerAboves.append(ifl) 
+            IFLs.append(ifl)
+        self.session.add_all(IFLs)
+        return IFLs
+    
+    def createSixSpineOneLeafUnknownPlugNPlay(self):
+        from test_model import createPod
+        pod = createPod('pod1', self.session)
+        from test_model import createPodDevice
+        spine1 = createPodDevice(self.session, 'spine1', pod)
+        spine2 = createPodDevice(self.session, 'spine2', pod)
+        spine3 = createPodDevice(self.session, 'spine3', pod)
+        spine4 = createPodDevice(self.session, 'spine4', pod)
+        spine5 = createPodDevice(self.session, 'spine5', pod)
+        spine6 = createPodDevice(self.session, 'spine6', pod)
+        leaf1 = createPodDevice(self.session, 'leaf1', pod)
+        leaf1.role = 'leaf'
+        leaf1.family = 'unknown'
+
+        IFDs = [InterfaceDefinition('et-0/0/0', spine1, 'downlink'), InterfaceDefinition('et-0/0/0', spine2, 'downlink'), 
+                InterfaceDefinition('et-0/0/0', spine3, 'downlink'), InterfaceDefinition('et-0/0/0', spine4, 'downlink'), 
+                InterfaceDefinition('et-0/0/0', spine5, 'downlink'), InterfaceDefinition('et-0/0/0', spine6, 'downlink'), 
+                InterfaceDefinition('uplink-0', leaf1, 'uplink'), InterfaceDefinition('uplink-1', leaf1, 'uplink'),
+                InterfaceDefinition('uplink-2', leaf1, 'uplink'), InterfaceDefinition('uplink-3', leaf1, 'uplink'),
+                InterfaceDefinition('uplink-4', leaf1, 'uplink'), InterfaceDefinition('uplink-5', leaf1, 'uplink')]
+        self.session.add_all(IFDs)
+
+        IFLs = self.createIfls(IFDs)
+        
+        IFDs[6].peer = IFDs[0]
+        IFDs[0].peer = IFDs[6]
+        IFDs[7].peer = IFDs[1]
+        IFDs[1].peer = IFDs[7]
+        IFDs[8].peer = IFDs[2]
+        IFDs[2].peer = IFDs[8]
+        IFDs[9].peer = IFDs[3]
+        IFDs[3].peer = IFDs[9]
+        IFDs[10].peer = IFDs[4]
+        IFDs[4].peer = IFDs[10]
+        IFDs[11].peer = IFDs[5]
+        IFDs[5].peer = IFDs[11]
+        
+        return {'ifds': IFDs, 'ifls': IFLs}
+
+    def testFixUplinkPortsUnknownToEx4300SpineCount2(self):
+        ifdIfl = self.createSixSpineOneLeafUnknownPlugNPlay()
+        IFDs = ifdIfl['ifds']
+        IFLs = ifdIfl['ifls']
+        lldpUplinksWithIfdFromLeaf2 = [
+           {'device1': None, 'port1': 'et-0/1/0', 'device2': 'spine1', 'port2': 'et-0/0/0', 'ifd2':IFDs[0]},
+           {'device1': None, 'port1': 'et-0/1/1', 'device2': 'spine2', 'port2': 'et-0/0/0', 'ifd2':IFDs[1]}
+        ]
+        self.assertEqual('uplink-0', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().name)
+        self.assertEqual('uplink-1', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().name)
+        self.assertEqual('uplink-0.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[6].id).one().name)
+        self.assertEqual('uplink-1.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[7].id).one().name)
+
+        IFDs[6].device.family = 'ex4300-24p'
+        self.configurator.fixUplinkPorts(IFDs[6].device, lldpUplinksWithIfdFromLeaf2)
+
+        IFDs = self.session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == IFDs[6].device.id).filter(InterfaceDefinition.role == 'uplink').all()
+        self.assertEqual('et-0/1/0', IFDs[0].name)
+        self.assertEqual('et-0/1/1', IFDs[1].name)
+        self.assertEqual('et-0/1/0.0', IFDs[0].layerAboves[0].name)
+        self.assertEqual('et-0/1/1.0', IFDs[1].layerAboves[0].name)
+
+        self.assertEqual('et-0/1/2', IFDs[2].name)
+        self.assertEqual('et-0/1/3', IFDs[3].name)
+        self.assertEqual('uplink-4', IFDs[4].name)
+        self.assertEqual('uplink-5', IFDs[5].name)
+
+    def testFixUplinkPortsUnknownToEx4300SpineCount2RandomPorts(self):
+        ifdIfl = self.createSixSpineOneLeafUnknownPlugNPlay()
+        IFDs = ifdIfl['ifds']
+        IFLs = ifdIfl['ifls']
+        lldpUplinksWithIfdFromLeaf2 = [
+           {'device1': None, 'port1': 'et-0/1/1', 'device2': 'spine1', 'port2': 'et-0/0/0', 'ifd2':IFDs[0]},
+           {'device1': None, 'port1': 'et-0/1/3', 'device2': 'spine2', 'port2': 'et-0/0/0', 'ifd2':IFDs[1]}
+        ]
+        self.assertEqual('uplink-1', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().name)
+        self.assertEqual('uplink-3', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[9].id).one().name)
+        self.assertEqual('uplink-1.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[7].id).one().name)
+        self.assertEqual('uplink-3.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[9].id).one().name)
+
+        IFDs[6].device.family = 'ex4300-24p'
+        self.configurator.fixUplinkPorts(IFDs[6].device, lldpUplinksWithIfdFromLeaf2)
+
+        IFDs = self.session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == IFDs[6].device.id).filter(InterfaceDefinition.role == 'uplink').all()
+        self.assertEqual('et-0/1/1', IFDs[1].name)
+        self.assertEqual('et-0/1/3', IFDs[3].name)
+        self.assertEqual('et-0/1/1.0', IFDs[1].layerAboves[0].name)
+        self.assertEqual('et-0/1/3.0', IFDs[3].layerAboves[0].name)
+
+        self.assertEqual('et-0/1/0', IFDs[0].name)
+        self.assertEqual('et-0/1/2', IFDs[2].name)
+        self.assertEqual('uplink-4', IFDs[4].name)
+        self.assertEqual('uplink-5', IFDs[5].name)
+
+    def testFixUplinkPortsUnknownToEx4300SpineCount4RandomPorts(self):
+        ifdIfl = self.createSixSpineOneLeafUnknownPlugNPlay()
+        IFDs = ifdIfl['ifds']
+        lldpUplinksWithIfdFromLeaf2 = [
+           {'device1': None, 'port1': 'et-0/1/0', 'device2': 'spine1', 'port2': 'et-0/0/3', 'ifd2':IFDs[3]},
+           {'device1': None, 'port1': 'et-0/1/1', 'device2': 'spine2', 'port2': 'et-0/0/2', 'ifd2':IFDs[2]},
+           {'device1': None, 'port1': 'et-0/1/2', 'device2': 'spine1', 'port2': 'et-0/0/1', 'ifd2':IFDs[1]},
+           {'device1': None, 'port1': 'et-0/1/3', 'device2': 'spine2', 'port2': 'et-0/0/0', 'ifd2':IFDs[0]}
+        ]
+        self.assertEqual('uplink-1', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().name)
+        self.assertEqual('uplink-2', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[8].id).one().name)
+        self.assertEqual('uplink-3', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[9].id).one().name)
+        self.assertEqual('uplink-4', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[10].id).one().name)
+
+        IFDs[6].device.family = 'ex4300-24p'
+        self.configurator.fixUplinkPorts(IFDs[6].device, lldpUplinksWithIfdFromLeaf2)
+
+        IFDs = self.session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == IFDs[6].device.id).filter(InterfaceDefinition.role == 'uplink').all()
+        self.assertEqual('et-0/1/0', IFDs[0].name)
+        self.assertEqual('et-0/1/1', IFDs[1].name)
+        self.assertEqual('et-0/1/2', IFDs[2].name)
+        self.assertEqual('et-0/1/3', IFDs[3].name)
+        self.assertEqual('uplink-4', IFDs[4].name)
+        self.assertEqual('uplink-5', IFDs[5].name)
+        
+    def createSixSpineOneLeafEx4300_24pPlugNPlay(self):
+        from test_model import createPod
+        pod = createPod('pod1', self.session)
+        from test_model import createPodDevice
+        spine1 = createPodDevice(self.session, 'spine1', pod)
+        spine2 = createPodDevice(self.session, 'spine2', pod)
+        spine3 = createPodDevice(self.session, 'spine3', pod)
+        spine4 = createPodDevice(self.session, 'spine4', pod)
+        spine5 = createPodDevice(self.session, 'spine5', pod)
+        spine6 = createPodDevice(self.session, 'spine6', pod)
+        leaf1 = createPodDevice(self.session, 'leaf1', pod)
+        leaf1.role = 'leaf'
+        leaf1.family = 'ex4300-24p'
+
+        IFDs = [InterfaceDefinition('et-0/0/0', spine1, 'downlink'), InterfaceDefinition('et-0/0/0', spine2, 'downlink'), 
+                InterfaceDefinition('et-0/0/0', spine3, 'downlink'), InterfaceDefinition('et-0/0/0', spine4, 'downlink'), 
+                InterfaceDefinition('et-0/0/0', spine5, 'downlink'), InterfaceDefinition('et-0/0/0', spine6, 'downlink'), 
+                InterfaceDefinition('et-0/1/0', leaf1, 'uplink'), InterfaceDefinition('et-0/1/1', leaf1, 'uplink'),
+                InterfaceDefinition('et-0/1/2', leaf1, 'uplink'), InterfaceDefinition('et-0/1/3', leaf1, 'uplink'),
+                InterfaceDefinition('uplink-4', leaf1, 'uplink'), InterfaceDefinition('uplink-5', leaf1, 'uplink')]
+        self.session.add_all(IFDs)
+
+        IFLs = self.createIfls(IFDs)
+        
+        IFDs[6].peer = IFDs[0]
+        IFDs[0].peer = IFDs[6]
+        IFDs[7].peer = IFDs[1]
+        IFDs[1].peer = IFDs[7]
+        IFDs[8].peer = IFDs[2]
+        IFDs[2].peer = IFDs[8]
+        IFDs[9].peer = IFDs[3]
+        IFDs[3].peer = IFDs[9]
+        IFDs[10].peer = IFDs[4]
+        IFDs[4].peer = IFDs[10]
+        IFDs[11].peer = IFDs[5]
+        IFDs[5].peer = IFDs[11]
+        
+        return {'ifds': IFDs, 'ifls': IFLs}
+
+    def testFixUplinkPortsEx4300ToQfx5100_48sSpineCount2RandomPorts(self):
+        ifdIfl = self.createSixSpineOneLeafEx4300_24pPlugNPlay()
+        IFDs = ifdIfl['ifds']
+        IFLs = ifdIfl['ifls']
+        lldpUplinksWithIfdFromLeaf2 = [
+           {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine1', 'port2': 'et-0/0/0', 'ifd2':IFDs[0]},
+           {'device1': None, 'port1': 'et-0/0/52', 'device2': 'spine2', 'port2': 'et-0/0/0', 'ifd2':IFDs[1]}
+        ]
+        self.assertEqual('et-0/1/1', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().name)
+        self.assertEqual('uplink-4', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[10].id).one().name)
+        self.assertEqual('et-0/1/1.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[7].id).one().name)
+        self.assertEqual('uplink-4.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[10].id).one().name)
+
+        IFDs[6].device.family = 'qfx5100-48s-6q'
+        self.configurator.fixUplinkPorts(IFDs[6].device, lldpUplinksWithIfdFromLeaf2)
+
+        IFDs = self.session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == IFDs[6].device.id).filter(InterfaceDefinition.role == 'uplink').all()
+        self.assertEqual('et-0/0/49', IFDs[1].name)
+        self.assertEqual('et-0/0/52', IFDs[4].name)
+        self.assertEqual('et-0/0/49.0', IFDs[1].layerAboves[0].name)
+        self.assertEqual('et-0/0/52.0', IFDs[4].layerAboves[0].name)
+
+        self.assertEqual('et-0/0/48', IFDs[0].name)
+        self.assertEqual('et-0/0/50', IFDs[2].name)
+        self.assertEqual('et-0/0/51', IFDs[3].name)
+        self.assertEqual('et-0/0/53', IFDs[5].name)
+
+    def createSixSpineOneLeafqfx5100_48sPlugNPlay(self):
+        from test_model import createPod
+        pod = createPod('pod1', self.session)
+        from test_model import createPodDevice
+        spine1 = createPodDevice(self.session, 'spine1', pod)
+        spine2 = createPodDevice(self.session, 'spine2', pod)
+        spine3 = createPodDevice(self.session, 'spine3', pod)
+        spine4 = createPodDevice(self.session, 'spine4', pod)
+        spine5 = createPodDevice(self.session, 'spine5', pod)
+        spine6 = createPodDevice(self.session, 'spine6', pod)
+        leaf1 = createPodDevice(self.session, 'leaf1', pod)
+        leaf1.role = 'leaf'
+        leaf1.family = 'qfx5100-48s-6q'
+
+        IFDs = [InterfaceDefinition('et-0/0/0', spine1, 'downlink'), InterfaceDefinition('et-0/0/0', spine2, 'downlink'), 
+                InterfaceDefinition('et-0/0/0', spine3, 'downlink'), InterfaceDefinition('et-0/0/0', spine4, 'downlink'), 
+                InterfaceDefinition('et-0/0/0', spine5, 'downlink'), InterfaceDefinition('et-0/0/0', spine6, 'downlink'), 
+                InterfaceDefinition('et-0/0/48', leaf1, 'uplink'), InterfaceDefinition('et-0/0/49', leaf1, 'uplink'),
+                InterfaceDefinition('et-0/0/50', leaf1, 'uplink'), InterfaceDefinition('et-0/0/51', leaf1, 'uplink'),
+                InterfaceDefinition('et-0/0/52', leaf1, 'uplink'), InterfaceDefinition('et-0/0/53', leaf1, 'uplink')]
+        self.session.add_all(IFDs)
+
+        IFLs = self.createIfls(IFDs)
+        
+        IFDs[6].peer = IFDs[0]
+        IFDs[0].peer = IFDs[6]
+        IFDs[7].peer = IFDs[1]
+        IFDs[1].peer = IFDs[7]
+        IFDs[8].peer = IFDs[2]
+        IFDs[2].peer = IFDs[8]
+        IFDs[9].peer = IFDs[3]
+        IFDs[3].peer = IFDs[9]
+        IFDs[10].peer = IFDs[4]
+        IFDs[4].peer = IFDs[10]
+        IFDs[11].peer = IFDs[5]
+        IFDs[5].peer = IFDs[11]
+        
+        return {'ifds': IFDs, 'ifls': IFLs}
+
+    def testFixUplinkPortsQfx5100_48sToEx4300SpineCount2RandomPorts(self):
+        ifdIfl = self.createSixSpineOneLeafqfx5100_48sPlugNPlay()
+        IFDs = ifdIfl['ifds']
+        IFLs = ifdIfl['ifls']
+        lldpUplinksWithIfdFromLeaf2 = [
+           {'device1': None, 'port1': 'et-0/1/3', 'device2': 'spine1', 'port2': 'et-0/0/0', 'ifd2':IFDs[0]},
+           {'device1': None, 'port1': 'et-0/1/2', 'device2': 'spine2', 'port2': 'et-0/0/0', 'ifd2':IFDs[1]}
+        ]
+        self.assertEqual('et-0/0/51', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[9].id).one().name)
+        self.assertEqual('et-0/0/50', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[8].id).one().name)
+        self.assertEqual('et-0/0/51.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[9].id).one().name)
+        self.assertEqual('et-0/0/50.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[8].id).one().name)
+
+        IFDs[6].device.family = 'ex4300-24p'
+        self.configurator.fixUplinkPorts(IFDs[6].device, lldpUplinksWithIfdFromLeaf2)
+
+        IFDs = self.session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == IFDs[6].device.id).filter(InterfaceDefinition.role == 'uplink').all()
+        self.assertEqual('et-0/1/3', IFDs[3].name)
+        self.assertEqual('et-0/1/2', IFDs[2].name)
+        self.assertEqual('et-0/1/3.0', IFDs[3].layerAboves[0].name)
+        self.assertEqual('et-0/1/2.0', IFDs[2].layerAboves[0].name)
+
+        self.assertEqual('et-0/1/0', IFDs[0].name)
+        self.assertEqual('et-0/1/1', IFDs[1].name)
+        self.assertEqual('uplink-4', IFDs[4].name)
+        self.assertEqual('uplink-5', IFDs[5].name)
+
     def createTwoSpineTwoLeafPlugNPlay(self):
         from test_model import createPod
         pod = createPod('pod1', self.session)
@@ -366,6 +626,7 @@ class TestTwoStageConfigurator(TestL2DataCollector):
         leaf1.family = 'qfx5100-48s-6q'
         leaf2 = createPodDevice(self.session, 'leaf2', pod)
         leaf2.role = 'leaf'
+        leaf2.family = 'unknown'
 
         IFDs = [InterfaceDefinition('et-0/0/0', spine1, 'downlink'), InterfaceDefinition('et-0/0/1', spine1, 'downlink'), 
                 InterfaceDefinition('et-0/0/0', spine2, 'downlink'), InterfaceDefinition('et-0/0/1', spine2, 'downlink'), 
@@ -373,12 +634,7 @@ class TestTwoStageConfigurator(TestL2DataCollector):
                 InterfaceDefinition('uplink-1', leaf2, 'uplink'), InterfaceDefinition('uplink-2', leaf2, 'uplink')]
         self.session.add_all(IFDs)
 
-        IFLs = []
-        for ifd in IFDs:
-            ifl = InterfaceLogical(ifd.name + '.0', ifd.device)
-            ifd.layerAboves.append(ifl) 
-            IFLs.append(ifl)
-        self.session.add_all(IFLs)
+        IFLs = self.createIfls(IFDs)
         
         IFDs[4].peer = IFDs[0]
         IFDs[0].peer = IFDs[4]
@@ -392,7 +648,7 @@ class TestTwoStageConfigurator(TestL2DataCollector):
         
         return {'ifds': IFDs, 'ifls': IFLs}
         
-    def testFfixUplinkPorts(self):
+    def testFixUplinkPortsUnknownToQfx5100_48s(self):
         ifdIfl = self.createTwoSpineTwoLeafPlugNPlay()
         IFDs = ifdIfl['ifds']
         IFLs = ifdIfl['ifls']
@@ -405,7 +661,8 @@ class TestTwoStageConfigurator(TestL2DataCollector):
         self.assertEqual('uplink-1.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[6].id).one().name)
         self.assertEqual('uplink-2.0', self.session.query(InterfaceLogical).filter(InterfaceLogical.id == IFLs[7].id).one().name)
 
-        self.configurator.fixUplinkPorts(lldpUplinksWithIfdFromLeaf2)
+        IFDs[6].device.family = 'qfx5100-48s-6q'
+        self.configurator.fixUplinkPorts(IFDs[6].device, lldpUplinksWithIfdFromLeaf2)
 
         self.assertEqual('et-0/0/48', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().name)
         self.assertEqual('et-0/0/49', self.session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[7].id).one().name)

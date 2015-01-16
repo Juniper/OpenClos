@@ -143,6 +143,8 @@ def getPortNamesForDeviceFamily(deviceFamily, conf):
         portNames['ports'] = expandPortName(portMapping['ports'])
     return portNames
 
+
+portNameRegx = re.compile(r"([a-z]+-\d\/\d\/\[)(\d{1,3})-(\d{1,3})(\])")
 def expandPortName(portName):
     '''    
     Expands portname regular expression to a list
@@ -165,7 +167,7 @@ def expandPortName(portName):
     
     portNames = []
     for port in portList:
-        match = re.match(r"([a-z]+-\d\/\d\/\[)(\d{1,3})-(\d{1,3})(\])", port)
+        match = portNameRegx.match(port)
         if match is None:
             raise ValueError("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (port))
         

@@ -360,6 +360,11 @@ class Interface(ManagedElement, Base):
         self.device = device
         self.deployStatus = deployStatus
         self.sequenceNum = util.interfaceNameToUniqueSequenceNumber(self.name)
+
+    def updateName(self, name):
+        self.name = name
+        self.sequenceNum = util.interfaceNameToUniqueSequenceNumber(self.name)
+        
         
 class InterfaceLogical(Interface):
     __tablename__ = 'IFL'
