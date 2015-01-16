@@ -541,13 +541,13 @@ class TwoStageConfigurator(L2DataCollector):
         device.family = deviceFamily
         self.dao.updateObjects([device])
         self.fixAccessPorts(device)
-        self.fixUplinkPorts(uplinksWithIfd)
+        self.fixUplinkPorts(device, uplinksWithIfd)
 
     def fixAccessPorts(self, device):
         # While leaf devices are created access ports are not created to save resources 
         pass
         
-    def fixUplinkPorts(self, lldpUplinksWithIfd):
+    def fixUplinkPorts(self, device, lldpUplinksWithIfd):
         '''
         :param dict lldpUplinksWithIfd: lldp links for uplink
             deivce1: local device (on which lldp was run)
@@ -561,24 +561,63 @@ class TwoStageConfigurator(L2DataCollector):
             return
 
         updateList = []
+        uplinkNamesBasedOnDeviceFamily = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])['uplinkPorts']
+        # hack :( needed to keep the sequence proper in case2, if device changed from ex to qfx
+        self.markAllUplinkIfdsToUplink_x(device)
+        
+        # case1: fix IFDs based on lldp data
+        fixedIfdIds = {}
         for link in lldpUplinksWithIfd:
             spineIfd = link['ifd2']
             peerLeafIfd = spineIfd.peer 
             # sanity check against links that are not according to the cabling plan
             if peerLeafIfd is None:
                 continue
-            peerLeafIfd.name = link['port1']
-            logger.debug("Fixed device: %s, uplink port: %s" % (peerLeafIfd.device.name, peerLeafIfd.name))
-
-            updateList.append(peerLeafIfd)
-            for ifl in peerLeafIfd.layerAboves:
-                ifl.name = peerLeafIfd.name + '.0'
-                updateList.append(ifl)
-                logger.debug("Fixed device: %s, uplink port: %s" % (peerLeafIfd.device.name, ifl.name))
-
+            updateList += self.fixIfdIflName(peerLeafIfd, link['port1'])
+            fixedIfdIds[peerLeafIfd.id] = True 
+            uplinkNamesBasedOnDeviceFamily.remove(peerLeafIfd.name)
+            
+        # case2: fix remaining IFDs based on device family
+        allocatedUplinkIfds = self.dao.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
+            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.sequenceNum).all()
+        
+        listIndex = 0
+        for allocatedIfd in allocatedUplinkIfds:
+            if not fixedIfdIds.get(allocatedIfd.id):
+                if uplinkNamesBasedOnDeviceFamily:
+                    updateList += self.fixIfdIflName(allocatedIfd, uplinkNamesBasedOnDeviceFamily.pop(0))
+                else:
+                    updateList += self.fixIfdIflName(allocatedIfd, 'uplink-' + str(listIndex))
+            listIndex += 1
+        
         logger.debug('Number of uplink IFD + IFL fixed: %d' % (len(updateList)))
         self.dao.updateObjects(updateList)
 
+    def markAllUplinkIfdsToUplink_x(self, device):
+        if device is None:
+            return
+        allocatedUplinkIfds = self.dao.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
+            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.sequenceNum).all()
+        
+        listIndex = 0
+        for allocatedIfd in allocatedUplinkIfds:
+            allocatedIfd.updateName('uplink-' + str(listIndex))
+            listIndex += 1
+            
+    def fixIfdIflName(self, ifd, name):
+        if ifd is None:
+            return []
+        ifd.updateName(name)
+        logger.debug("Fixed device: %s, uplink port: %s" % (ifd.device.name, ifd.name))
+        updateList = [ifd]
+
+        for ifl in ifd.layerAboves:
+            ifl.updateName(ifd.name + '.0')
+            updateList.append(ifl)
+            logger.debug("Fixed device: %s, uplink port: %s" % (ifd.device.name, ifl.name))
+        
+        return updateList
+        
     def findMatchedDevice(self, uplinksWithIfd, deviceFamily):
         '''
         Process LLDP data from device and match to a Device
