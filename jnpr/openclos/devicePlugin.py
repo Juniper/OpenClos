@@ -151,17 +151,17 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                     # for some reason, we can't match the plug-n-play leaf to our inventory. so inventory doesn't have
                     # ip address for this leaf. in this case the leaf and all its links should be marked 'unknown'
                     self.updateDeviceL2Status('unknown')
-                    self.updateIfdStatus(self.device.interfaces, 'unknown')
+                    self.updateUnknownIfdStatus(self.device.interfaces)
             except DeviceError as exc:
                 logger.error('Encountered device error for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL2Status(None, error = exc)
                 # when we can't connect, mark the links 'unknown' because it is possible the data network is 
                 # still working so we can't mark the links 'error'
-                self.updateIfdStatus(self.device.interfaces, 'unknown')
+                self.updateUnknownIfdStatus(self.device.interfaces)
             except Exception as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL2Status('error', str(exc))
-                self.updateIfdStatus(self.device.interfaces, 'error')
+                self.updateBadIfdStatus(self.device.interfaces)
             finally:
                 self.collectionInProgressCache.doneDevice(self.deviceId)
                 logger.debug('Ended L2 data collection for %s' % (self.deviceLogStr))
@@ -300,7 +300,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                 badIfds.append(ifd)
         
         self.updateGoodIfdStatus(goodIfds)
-        self.updateIfdStatus(badIfds, 'error')
+        self.updateBadIfdStatus(badIfds)
         
         logger.debug('Total uplink count: %d, good: %d, error: %d, additionalLink: %d', 
                      len(allocatedConnectedUplinkIfds), len(goodIfds), len(badIfds), len(additional))
@@ -326,6 +326,12 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             modifiedObjects.append(ifd)
 
         self.dao.updateObjects(modifiedObjects)
+
+    def updateBadIfdStatus(self, ifds):
+        self.updateIfdStatus(ifds, 'error')
+
+    def updateUnknownIfdStatus(self, ifds):
+        self.updateIfdStatus(ifds, 'unknown')
 
     def persistAdditionalLinks(self, links):
         '''
