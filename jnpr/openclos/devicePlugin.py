@@ -139,18 +139,25 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         if (self.collectionInProgressCache.checkAndAddDevice(self.device.id)):
             logger.debug('Started L2 data collection for %s' % (self.deviceLogStr))
             try:
-                self.updateDeviceL2Status('processing')
-                # use device level password for leaves that already went through staged configuration
-                self.connectToDevice()
-                lldpData = self.collectLldpFromDevice()
-                uplinkLdpData = self.filterUplinkFromLldpData(lldpData, self.device.family)
-                goodBadCount = self.processLlDpData(uplinkLdpData, self.getAllocatedConnectedUplinkIfds()) 
-
-                self.validateDeviceL2Status(goodBadCount)
+                if self.device.managementIp is not None:
+                    self.updateDeviceL2Status('processing')
+                    # use device level password for leaves that already went through staged configuration
+                    self.connectToDevice()
+                    lldpData = self.collectLldpFromDevice()
+                    uplinkLdpData = self.filterUplinkFromLldpData(lldpData, self.device.family)
+                    goodBadCount = self.processLlDpData(uplinkLdpData, self.getAllocatedConnectedUplinkIfds()) 
+                    self.validateDeviceL2Status(goodBadCount)
+                else:
+                    # for some reason, we can't match the plug-n-play leaf to our inventory. so inventory doesn't have
+                    # ip address for this leaf. in this case the leaf and all its links should be marked 'unknown'
+                    self.updateDeviceL2Status('unknown')
+                    self.updateUnknownIfdStatus(self.device.interfaces)
             except DeviceError as exc:
-                logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
+                logger.error('Encountered device error for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL2Status(None, error = exc)
-                self.updateBadIfdStatus(self.device.interfaces)
+                # when we can't connect, mark the links 'unknown' because it is possible the data network is 
+                # still working so we can't mark the links 'error'
+                self.updateUnknownIfdStatus(self.device.interfaces)
             except Exception as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL2Status('error', str(exc))
@@ -312,13 +319,19 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         self.dao.updateObjects(modifiedObjects)
         self.updateSpineStatusFromLldpData(goodSpines)
     
-    def updateBadIfdStatus(self, ifds):
+    def updateIfdStatus(self, ifds, status):
         modifiedObjects = []
         for ifd in ifds:
-            ifd.lldpStatus = 'error'
+            ifd.lldpStatus = status
             modifiedObjects.append(ifd)
 
         self.dao.updateObjects(modifiedObjects)
+
+    def updateBadIfdStatus(self, ifds):
+        self.updateIfdStatus(ifds, 'error')
+
+    def updateUnknownIfdStatus(self, ifds):
+        self.updateIfdStatus(ifds, 'unknown')
 
     def persistAdditionalLinks(self, links):
         '''
