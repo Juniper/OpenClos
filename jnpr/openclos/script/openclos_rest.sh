@@ -115,7 +115,7 @@ start_rest() {
 
     echo "Starting OpenCLOS Server"
 
-    $PYTHON_BIN $REST_PATH/rest.py & > $LOG_FILE
+    $PYTHON_BIN $REST_PATH/rest.py > $LOG_FILE 2>&1 &
     RETVAL=$?
     PID=$!
 
