@@ -41,7 +41,7 @@ class ConfigWriter(WriterBase):
         fileName = device.id + '__' + device.name
         logger.info('Writing config file for device: %s' % (fileName))
         with open(os.path.join(self.outputDir, fileName + '.conf'), 'w') as f:
-            f.write(device.config)
+            f.write(device.config.config)
             
     def writeGenericLeaf(self, pod):
         if not self.writeInFile:
@@ -127,6 +127,8 @@ class CablingPlanWriter(WriterBase):
         logger.info('Writing cabling plan: %s' % (path))
         with open(path, 'w') as f:
                 f.write(cablingPlanJson)
+        
+        return cablingPlanJson
 
     def getDataFor3StageL2Report(self):            
         devices = []
