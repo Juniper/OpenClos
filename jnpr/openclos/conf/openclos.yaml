@@ -65,11 +65,11 @@ deviceFamily :
         ports :
     qfx5100-48t-6q :
         uplinkPorts : 'et-0/0/[48-53]' 
-        downlinkPorts : ['xe-0/0/[0-47]', 'ge-0/0/[0-47]']
+        downlinkPorts : 'xe-0/0/[0-47]'
         ports :  
     qfx5100-96s-8q :
         uplinkPorts : 'et-0/0/[96-103]'
-        downlinkPorts : ['xe-0/0/[0-47]', 'ge-0/0/[0-47]']
+        downlinkPorts : ['xe-0/0/[0-95]', 'ge-0/0/[0-95]']
         ports :
     ex4300-24p :
         uplinkPorts : 'et-0/1/[0-3]'
