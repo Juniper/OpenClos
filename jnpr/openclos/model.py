@@ -64,7 +64,8 @@ class Pod(ManagedElement, Base):
     inventoryData = Column(String(2048))
     encryptedPassword = Column(String(100)) # 2-way encrypted
     cryptic = Cryptic()
-        
+    cablingPlan = relationship("CablingPlan", uselist=False, cascade='all, delete, delete-orphan')
+
     def __init__(self, name, podDict):
         '''
         Creates a Pod object from dict
@@ -252,6 +253,17 @@ class LeafSetting(ManagedElement, Base):
         self.junosImage = junosImage
         self.config = config
     
+class CablingPlan(ManagedElement, Base):
+    __tablename__ = 'cablingPlan'
+    pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False, primary_key=True)
+    json = Column(BLOB)
+    dot = Column(BLOB)
+
+    def __init__(self, podId, json = None, dot = None):
+        self.pod_id = podId
+        self.json = json
+        self.dot = dot
+
 class Device(ManagedElement, Base):
     __tablename__ = 'device'
     id = Column(String(60), primary_key=True)

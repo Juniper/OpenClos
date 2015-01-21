@@ -230,20 +230,28 @@ class RestServer():
         ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is not None:
             logger.debug('IpFabric name: %s' % (ipFabric.name))
-            ipFabricFolder = ipFabric.id + '-' + ipFabric.name
+            
             if header == 'application/json':
-                fileName = os.path.join(ipFabricFolder, "cablingPlan.json")
-                logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
+                cablingPlan = ipFabric.cablingPlan
+                if cablingPlan is not None and cablingPlan.json is not None:
+                    logger.debug('CablingPlan found in DB')
+                    return cablingPlan.json
+                else:
+                    logger.debug("IpFabric: %s exists but no CablingPlan found in DB" % (ipFabric.id))
+                    raise bottle.HTTPError(404, "IpFabric: %s exists but no CablingPlan found in DB" % (ipFabric.id))
+                    
             else:
+                ipFabricFolder = ipFabric.id + '-' + ipFabric.name
                 fileName = os.path.join(ipFabricFolder, 'cablingPlan.dot')
                 logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
-            logger.debug('Cabling file name: %s' % (fileName))                
+                logger.debug('Cabling file name: %s' % (fileName))                
+                cablingPlan = bottle.static_file(fileName, root=webServerRoot)
 
-            cablingPlan = bottle.static_file(fileName, root=webServerRoot)
-            if isinstance(cablingPlan, bottle.HTTPError):
-                logger.debug("IpFabric exists but no CablingPlan found. IpFabric: '%s" % (ipFabricFolder))
-                raise bottle.HTTPError(404, "IpFabric exists but no CablingPlan found. IpFabric: '%s " % (ipFabricFolder))
-            return cablingPlan
+                if isinstance(cablingPlan, bottle.HTTPError):
+                    logger.debug("IpFabric exists but no CablingPlan found. IpFabric: '%s" % (ipFabricFolder))
+                    raise bottle.HTTPError(404, "IpFabric exists but no CablingPlan found. IpFabric: '%s " % (ipFabricFolder))
+                return cablingPlan
+        
         else:
             logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))

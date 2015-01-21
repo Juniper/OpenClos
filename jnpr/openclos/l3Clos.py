@@ -14,7 +14,7 @@ import base64
 from netaddr import IPNetwork
 from sqlalchemy.orm import exc
 
-from model import Pod, Device, InterfaceLogical, InterfaceDefinition
+from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan
 from dao import Dao
 import util
 from writer import ConfigWriter, CablingPlanWriter
@@ -360,9 +360,11 @@ class L3ClosMediation():
             if len(pod.devices) > 0:
                 cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
                 # create cabling plan in JSON format
-                cablingPlanWriter.writeJSON()
+                cablingPlanJson = cablingPlanWriter.writeJSON()
+                pod.cablingPlan = CablingPlan(pod.id, cablingPlanJson)
                 # create cabling plan in DOT format
                 cablingPlanWriter.writeDOT()
+                self.dao.updateObjects([pod])
                 
                 return True
             else:

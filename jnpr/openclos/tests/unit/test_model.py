@@ -12,7 +12,7 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #t
 import unittest
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-from jnpr.openclos.model import ManagedElement, Pod, LeafSetting, Device, Interface, InterfaceLogical, InterfaceDefinition, Base, AdditionalLink
+from jnpr.openclos.model import ManagedElement, Pod, LeafSetting, Device, Interface, InterfaceLogical, InterfaceDefinition, Base, AdditionalLink, CablingPlan
 
 def createPodObj(name):  
     pod = {}
@@ -218,6 +218,29 @@ class TestLeafSetting(TestOrm):
         self.session.delete(podOne)
         self.session.commit()
         self.assertEqual(0, self.session.query(LeafSetting).count())
+
+class TestCablingPlan(TestOrm):
+    def testConstructorPass(self):
+        podOne = createPod('testpod', self.session)
+        self.assertTrue(CablingPlan(podOne.id, 'cabling json', 'cabling dot') is not None)    
+
+    def testOrm(self):
+        podOne = createPod('testpod', self.session)
+        cablingPlan = CablingPlan(podOne.id, 'cabling json', 'cabling dot')
+        podOne.cablingPlan = cablingPlan
+        self.session.merge(podOne)
+        self.session.commit()
+        
+        fetched = self.session.query(CablingPlan).one()
+        self.assertEqual(cablingPlan, fetched)
+        
+        fetched = self.session.query(Pod).one()
+        self.assertIsNotNone(fetched.cablingPlan)
+
+        #delete object
+        self.session.delete(podOne)
+        self.session.commit()
+        self.assertEqual(0, self.session.query(CablingPlan).count())
 
 class TestDevice(TestOrm):
     def testConstructorPass(self):

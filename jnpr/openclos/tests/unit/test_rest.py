@@ -217,16 +217,14 @@ class TestRest(unittest.TestCase):
         self.assertTrue('404 Not Found' in e.exception.message)
     
     def testGetCablingPlanJson(self):
+        from jnpr.openclos.model import CablingPlan
         restServerTestApp = self.setupRestWithTwoPods()
-        cablingPlanLocation = os.path.join(configLocation, self.ipFabric1.id+'-'+self.ipFabric1.name)
-        if not os.path.exists(os.path.join(cablingPlanLocation)):
-            os.makedirs((os.path.join(cablingPlanLocation)))
-        ls = open(os.path.join(cablingPlanLocation, 'cablingPlan.json'), "a+")
-       
+        cablingPlan = CablingPlan(self.ipFabric1.id, 'cabling json')
+        self.ipFabric1.cablingPlan = cablingPlan
+
         response = restServerTestApp.get('/openclos/ip-fabrics/'+self.ipFabric1.id+'/cabling-plan',headers = {'Accept':'application/json'})
         self.assertEqual(200, response.status_int)
-        ls.close()
-        shutil.rmtree(cablingPlanLocation, ignore_errors=True)
+        self.assertEqual('cabling json', response.body)
         
     def testGetCablingPlanDot(self):
         restServerTestApp = self.setupRestWithTwoPods()

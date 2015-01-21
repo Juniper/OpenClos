@@ -127,6 +127,8 @@ class CablingPlanWriter(WriterBase):
         logger.info('Writing cabling plan: %s' % (path))
         with open(path, 'w') as f:
                 f.write(cablingPlanJson)
+        
+        return cablingPlanJson
 
     def getDataFor3StageL2Report(self):            
         devices = []
