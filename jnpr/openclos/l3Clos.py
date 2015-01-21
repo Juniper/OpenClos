@@ -14,7 +14,7 @@ import base64
 from netaddr import IPNetwork
 from sqlalchemy.orm import exc
 
-from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan
+from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig
 from dao import Dao
 import util
 from writer import ConfigWriter, CablingPlanWriter
@@ -564,7 +564,7 @@ class L3ClosMediation():
             config += self.createPolicyOption(device)
             config += self.createSnmpTrapAndEvent(device)
             config += self.createVlan(device)
-            device.config = config
+            device.config = DeviceConfig(device.id, config)
             modifiedObjects.append(device)
             logger.debug('Generated config for device name: %s, id: %s, storing in DB' % (device.name, device.id))
             configWriter.write(device)
@@ -813,7 +813,7 @@ class L3ClosMediation():
         config += self.createPolicyOption(device)
         config += self.createSnmpTrapAndEventForLeafFor2ndStage(device)
         config += self.createVlan(device)
-        device.config = config
+        device.config = DeviceConfig(device.id, config)
         self.dao.updateObjects([device])
         logger.debug('Generated config for device name: %s, id: %s, storing in DB' % (device.name, device.id))
         configWriter.write(device)

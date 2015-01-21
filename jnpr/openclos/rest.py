@@ -295,7 +295,7 @@ class RestServer():
         for device in ipFabric.devices:
             fileName = device.id + '__' + device.name + '.conf'
             if device.config is not None:
-                zipArchive.writestr(fileName, device.config)
+                zipArchive.writestr(fileName, device.config.config)
                 
         if ipFabric.leafSettings is not None:
             for leafSetting in ipFabric.leafSettings:
@@ -384,7 +384,7 @@ class RestServer():
             raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
         
         bottle.response.headers['Content-Type'] = 'application/json'
-        return config
+        return config.config
 
     
     def getZtpConfig(self, ipFabricId):

@@ -143,16 +143,19 @@ class TestRest(unittest.TestCase):
         self.assertTrue('Device exists but no config found' in e.exception.message)
 
     def testGetConfig(self):
+        from jnpr.openclos.model import DeviceConfig
         restServerTestApp = self.setupRestWithTwoDevices()
         
-        self.device1.config = "testconfig"
+        self.device1.config = DeviceConfig(self.device1.id, "testconfig")
         response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/devices/'+self.device1.id+'/config')
         self.assertEqual(200, response.status_int)
+        self.assertEqual("testconfig", response.body)
         
     def testGetDeviceConfigsInZip(self):
+        from jnpr.openclos.model import DeviceConfig
         restServerTestApp = self.setupRestWithTwoDevices()
 
-        self.device1.config = "testconfig"
+        self.device1.config = DeviceConfig(self.device1.id, "testconfig")
         response = restServerTestApp.get('/openclos/ip-fabrics/'+self.device1.pod_id+'/device-configuration')
         self.assertEqual(200, response.status_int)
         self.assertEqual('application/zip', response.headers.get('Content-Type'))

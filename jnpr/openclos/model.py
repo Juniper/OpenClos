@@ -281,7 +281,7 @@ class Device(ManagedElement, Base):
     l3StatusReason = Column(String(256)) # will be populated only when status is error
     configStatus = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
     configStatusReason = Column(String(256)) # will be populated only when status is error
-    config = Column(BLOB)
+    config = relationship("DeviceConfig", uselist=False, cascade='all, delete, delete-orphan')
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
     deployStatus = Column(Enum('deploy', 'provision'), default = 'provision')
@@ -340,6 +340,15 @@ class Device(ManagedElement, Base):
             return self.cryptic.hashify(cleartext)
         else:
             return None
+
+class DeviceConfig(ManagedElement, Base):
+    __tablename__ = 'deviceConfig'
+    device_id = Column(String(60), ForeignKey('device.id'), nullable = False, primary_key=True)
+    config = Column(BLOB)
+
+    def __init__(self, deviceId, config):
+        self.device_id = deviceId
+        self.config = config
             
 class Interface(ManagedElement, Base):
     __tablename__ = 'interface'
