@@ -121,7 +121,7 @@ start_trap() {
 
     echo "Starting OpenCLOS Trap Server"
 
-    $PYTHON_BIN $TRAP_PATH/trapd.py & > $LOG_FILE
+    $PYTHON_BIN $TRAP_PATH/trapd.py > $LOG_FILE 2>&1 &
     RETVAL=$?
     PID=$!
 
