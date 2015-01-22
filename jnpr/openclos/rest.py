@@ -426,6 +426,7 @@ class RestServer():
         return config
     
     def getOpenClosConfigParams(self):
+        '''
         # hack for ND trap target starts
         clientIp = bottle.request.remote_addr
         logger.debug("Client IP: %s" % (clientIp))
@@ -440,7 +441,7 @@ class RestServer():
             logger.debug("Updated SNMP trap target for ND: %s" % (self.conf['snmpTrap']['networkdirector_trap_group']['target']))
              
         # hack for ND trap target ends
-
+        '''
         supportedDevices = []
         for device in self.conf['deviceFamily']:
             port = util.getPortNamesForDeviceFamily(device, self.conf['deviceFamily'])
