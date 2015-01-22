@@ -21,6 +21,16 @@ interfaces {
 }
 {% include 'routingOptionsStatic.txt' %}
 {% include 'protocolLldp.txt' %}
-{% include 'eventOptionForTrap.txt' %}
+event-options {
+    generate-event openclos-trap-trigger {
+        time-interval 60;
+    }
+    policy trap-retry {
+        events openclos-trap-trigger;
+        then {
+            raise-trap;
+        }
+    }
+}
 {% include 'snmpTrap.txt' %}
 {% include 'vlans.txt' %}
