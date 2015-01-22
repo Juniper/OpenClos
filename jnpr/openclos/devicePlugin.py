@@ -98,7 +98,7 @@ class DeviceDataCollectorNetconf(object):
         try:
             deviceIp = self.device.managementIp.split('/')[0]
             devicePassword = self.device.getCleartextPassword()
-            deviceConnection = DeviceConnection(host=deviceIp, user=self.device.username, password=devicePassword)
+            deviceConnection = DeviceConnection(host=deviceIp, user=self.device.username, password=devicePassword, port=22)
             deviceConnection.open()
             logger.debug('Connected to device: %s' % (self.device.managementIp))
             self.deviceConnectionHandle = deviceConnection
