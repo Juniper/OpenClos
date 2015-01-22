@@ -444,5 +444,20 @@ def deleteOutFolder(conf, ipFabric):
     path = getOutFolderPath(conf, ipFabric)
     shutil.rmtree(path, ignore_errors=True)
     
-
-        
+def getSnmpTrapTargets(conf):
+    targets = []
+    trap = conf.get('snmpTrap')
+    if trap:
+        trapGroup = trap.get('networkdirector_trap_group')
+        if trapGroup:
+            target = trapGroup.get('target')
+            if target != '0.0.0.0':
+                targets.append(target + '/32')
+            
+        trapGroup = trap.get('openclos_trap_group')
+        if trapGroup:
+            target = trapGroup.get('target')
+            if target != '0.0.0.0':
+                targets.append(target + '/32')
+    
+    return targets

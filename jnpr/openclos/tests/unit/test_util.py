@@ -206,6 +206,14 @@ class TestFunctions(unittest.TestCase):
         
         self.assertEquals('/var/lib/openclos/'+pod.id+'-'+pod.name, path)
 
+    def testGetSnmpTrapTargets(self):
+        self.assertEqual(0, len(getSnmpTrapTargets({})))
+        self.assertEqual(0, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': '0.0.0.0'}}})))
+        self.assertEqual(1, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': '1.2.3.4'}}})))
+        self.assertEqual(1, len(getSnmpTrapTargets({'snmpTrap': {'openclos_trap_group': {'target': '1.2.3.4'}}})))
+        self.assertEqual(2, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': '1.2.3.4'}, 'openclos_trap_group': {'target': '1.2.3.5'}}})))
+        
+        
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
