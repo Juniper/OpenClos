@@ -625,15 +625,23 @@ class L3ClosMediation():
         return accessInterface.render(ifdNames=ifdNames)
 
     def getParamsForOutOfBandNetwork(self, pod):
+        '''
+        add all trap-target to the OOB list
+        '''
+        oobList = util.getSnmpTrapTargets(self.conf)
+        gateway = None
+        
         oobNetworks = pod.outOfBandAddressList
         if oobNetworks is not None and len(oobNetworks) > 0:
-            oobNetworkList = oobNetworks.split(',')
-            
+            oobList += oobNetworks.split(',')
+
             gateway = pod.outOfBandGateway
             if gateway is None:
                 gateway = util.loadClosDefinition()['ztp']['dhcpOptionRoute']
        
-            return {'networks': oobNetworkList, 'gateway': gateway}
+        oobList = set(oobList)
+        if len(oobList) > 0:
+            return {'networks': oobList, 'gateway': gateway}
         else:
             return {}
     

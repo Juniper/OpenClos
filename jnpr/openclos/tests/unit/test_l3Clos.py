@@ -367,7 +367,7 @@ class TestL3Clos(unittest.TestCase):
         self.assertTrue('' != configlet)
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertEquals(1, configlet.count('static'))
-        self.assertEquals(1, configlet.count('route'))
+        self.assertEquals(3, configlet.count('route'))
 
     def testCreateLeafGenericConfigWithNd(self):
         self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
@@ -388,7 +388,7 @@ class TestL3Clos(unittest.TestCase):
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
         self.assertEquals(1, configlet.count('static'))
-        self.assertEquals(1, configlet.count('route'))
+        self.assertEquals(3, configlet.count('route'))
 
 if __name__ == '__main__':
     unittest.main()
