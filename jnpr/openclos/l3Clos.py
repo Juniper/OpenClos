@@ -67,12 +67,17 @@ class L3ClosMediation():
         '''
         pod = Pod(podName, podDict)
         pod.validate()
+        # inventory can come from either podDict or inventoryDict
+        inventoryData = self.resolveInventory(podDict, inventoryDict)
+        # check inventory contains correct number of devices
+        self.validatePod(pod, podDict, inventoryData)
+
         self.dao.createObjects([pod])
         logger.info("Pod[id='%s', name='%s']: created" % (pod.id, podName)) 
 
         # shortcut for updating in createPod
         # this use case is typical in script invocation but not in ND REST invocation
-        self.updatePodData(pod, podDict, inventoryDict)
+        self.updatePodData(pod, podDict, inventoryData)
         
         return pod
 
@@ -279,13 +284,7 @@ class L3ClosMediation():
         else:
             return False
             
-    def updatePodData(self, pod, podDict, inventoryDict):
-        # inventory can come from either podDict or inventoryDict
-        inventoryData = self.resolveInventory(podDict, inventoryDict)
-        
-        # check inventory contains correct number of devices
-        self.validatePod(pod, podDict, inventoryData)
-        
+    def updatePodData(self, pod, podDict, inventoryData):
         # if following data changed we need to reallocate resource
         if self.needToRebuild(pod, podDict) == True:
             logger.debug("Pod[id='%s', name='%s']: rebuilding required" % (pod.id, pod.name))
@@ -322,8 +321,13 @@ class L3ClosMediation():
             except (exc.NoResultFound):
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
             else:
+                # inventory can come from either podDict or inventoryDict
+                inventoryData = self.resolveInventory(podDict, inventoryDict)
+                # check inventory contains correct number of devices
+                self.validatePod(pod, podDict, inventoryData)
+        
                 # update other fields
-                self.updatePodData(pod, podDict, inventoryDict)
+                self.updatePodData(pod, podDict, inventoryData)
                 logger.info("Pod[id='%s', name='%s']: updated" % (pod.id, pod.name)) 
         else:
             raise ValueError("Pod id cannot be None")
