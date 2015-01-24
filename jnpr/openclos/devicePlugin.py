@@ -276,15 +276,20 @@ class L2DataCollector(DeviceDataCollectorNetconf):
 
         lldpPortNames = set(uplinkLldpData.keys())
         allocatedConnectedPortNames = set(allocatedConnectedUplinkIfds.keys())
+        logger.debug('lldpPortNames: %s' % lldpPortNames)
+        logger.debug('allocatedConnectedPortNames: %s' % allocatedConnectedPortNames)
+        
         goodIfds = []
         badIfds = []
         
         #case 1: link in lldp is not in allocatedConnected
         additional = lldpPortNames.difference(allocatedConnectedPortNames)
         self.persistAdditionalLinks([uplinkLldpData[name] for name in additional])
+        logger.debug('additional: %s' % additional)
         
         #case 2: ifd in allocatedConnected is not in lldp
         notConnected = allocatedConnectedPortNames.difference(lldpPortNames)
+        logger.debug('not connected: %s' % notConnected)
         badIfds += [allocatedConnectedUplinkIfds[name] for name in notConnected]
         
         connected =  lldpPortNames.intersection(allocatedConnectedPortNames)
@@ -294,11 +299,14 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             
             if link['device2'] == ifd.peer.device.name and link['port2'] == ifd.peer.name:
                 #case 3: perfect match, connected as allocation logic
+                logger.debug('connected: good: remote peer match: (%s, %s)'% (link['device2'], link['port2']))
                 goodIfds.append(ifd)
             else:
                 #case 4: bad connected, lldp and allocatedConnected portName match, but remote ports does not
+                logger.debug('connected: bad: remote peer mismatch: (%s, %s) vs (%s, %s)' % (link['device2'], link['port2'], ifd.peer.device.name, ifd.peer.name))
                 badIfds.append(ifd)
         
+        self.resetSpineStatus(self.device.pod.devices)
         self.updateGoodIfdStatus(goodIfds)
         self.updateBadIfdStatus(badIfds)
         
@@ -306,6 +314,22 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                      len(allocatedConnectedUplinkIfds), len(goodIfds), len(badIfds), len(additional))
         return {'goodUplinkCount': len(goodIfds), 'badUplinkCount': len(badIfds), 'additionalLinkCount': len(additional)};
 
+    def resetSpineStatus(self, devices):
+        devicesToBeUpdated = set()
+        for device in devices:
+            if device.role != 'spine':
+                continue
+            device.l2Status = 'unknown'
+            device.l2StatusReason = None
+            device.configStatus = 'unknown'
+            device.configStatusReason = None
+            device.l3Status = 'unknown'
+            device.l3StatusReason = None
+            devicesToBeUpdated.add(device)
+            
+        if len(devicesToBeUpdated) > 0:
+            self.dao.updateObjects(devicesToBeUpdated)
+            
     def updateGoodIfdStatus(self, ifds):
         modifiedObjects = []
         goodSpines = []
