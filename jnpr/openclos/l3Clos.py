@@ -43,6 +43,9 @@ class L3ClosMediation():
         self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
         self.templateEnv.keep_trailing_newline = True
         self.isZtpStaged = util.isZtpStaged(self.conf)
+
+    def __del__(self):
+        self.dao.__del__()
         
     def loadClosDefinition(self, closDefination = os.path.join(util.configLocation, 'closTemplate.yaml')):
         '''
