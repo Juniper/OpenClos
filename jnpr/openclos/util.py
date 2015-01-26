@@ -450,9 +450,13 @@ def getSnmpTrapTargets(conf):
     if trap:
         trapGroup = trap.get('networkdirector_trap_group')
         if trapGroup:
-            target = trapGroup.get('target')
-            if target != '0.0.0.0':
-                targets.append(target + '/32')
+            if isinstance(trapGroup.get('target'), list) == True:
+                targetList = trapGroup['target']
+            else:
+                targetList = [trapGroup['target']]
+            for target in targetList:
+                if target != '0.0.0.0':
+                    targets.append(target + '/32')
             
         trapGroup = trap.get('openclos_trap_group')
         if trapGroup:

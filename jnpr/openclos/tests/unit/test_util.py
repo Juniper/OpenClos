@@ -210,6 +210,8 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(0, len(getSnmpTrapTargets({})))
         self.assertEqual(0, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': '0.0.0.0'}}})))
         self.assertEqual(1, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': '1.2.3.4'}}})))
+        self.assertEqual(1, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': ['1.2.3.4']}}})))
+        self.assertEqual(2, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': ['1.2.3.4', '1.2.3.5']}}})))
         self.assertEqual(1, len(getSnmpTrapTargets({'snmpTrap': {'openclos_trap_group': {'target': '1.2.3.4'}}})))
         self.assertEqual(2, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': '1.2.3.4'}, 'openclos_trap_group': {'target': '1.2.3.5'}}})))
         

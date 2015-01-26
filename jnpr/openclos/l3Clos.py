@@ -646,6 +646,11 @@ class L3ClosMediation():
             if gateway is None:
                 gateway = util.loadClosDefinition()['ztp']['dhcpOptionRoute']
        
+        # hack to make sure all address has cidr notation
+        for i in xrange(len(oobList)):
+            if '/' not in oobList[i]:
+                oobList[i] += '/32'
+                
         oobList = set(oobList)
         if len(oobList) > 0:
             return {'networks': oobList, 'gateway': gateway}

@@ -36,8 +36,9 @@ class Dao:
 
     def __del__(self):
         if self.engine:
-            self.Session.close_all()
-            self.engine.dispose()
+            #self.Session.close_all()
+            #self.engine.dispose()
+            pass
         
         
     # Don't remove session after each operation, it detaches the object from ORM,
