@@ -97,3 +97,38 @@ class TestDao(unittest.TestCase):
         
         filteredIfds = dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
         self.assertEqual(2, len(filteredIfds))
+
+    @unittest.skip('manual test')        
+    def testConnectionCleanup(self):
+        import threading
+        import time
+
+        self.conf['dbUrl'] = 'mysql://root:<pass>@localhost/openclos' 
+        dao = Dao(self.conf)
+
+        def getPods():
+            return dao.getAll(Pod)
+        
+        threads = []
+        for i in xrange(10):
+            threads.append(threading.Thread(target = getPods))
+            threads[i].start()
+            
+        for thread in threads:
+            thread.join()
+        
+        print 'done 10 threads'
+        time.sleep(30)
+        dao.cleanup()
+        print 'done dao.cleanup()'
+        time.sleep(30)
+        getPods()
+        print 'done fresh getPods()'
+        time.sleep(30)
+        dao.cleanup()
+        print 'done final dao.cleanup()'
+        time.sleep(30)
+         
+       
+        
+        

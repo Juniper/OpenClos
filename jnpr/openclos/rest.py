@@ -31,14 +31,30 @@ junosImageRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf'
 
 def loggingPlugin(callback):
     def wrapper(*args, **kwargs):
-        body = callback(*args, **kwargs)
-        msg = '"{} {} {}" {}'.format(request.method, 
-                                        request.path, 
-                                        request.environ.get('SERVER_PROTOCOL', ''),
-                                        response.status_code)
-        logger.info(msg)
-        logger.debug('%s: %s' % (msg, body))
-        return body
+        msg = '"{} {} {}"'.format(request.method, request.path, 
+                                        request.environ.get('SERVER_PROTOCOL', ''))
+        
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug('%s REQUEST: %s' % (msg, request._get_body_string()))
+        else:
+            logger.info('%s REQUEST:' % (msg))
+        
+        try:
+            responseBody = callback(*args, **kwargs)
+        except bottle.HTTPError as exc:
+            logger.error('HTTPError: status: %s, body: %s, exception: %s' % (exc.status, exc.body, exc.exception))
+            raise
+        except Exception as exc:
+            logger.error('Unknown error: %s' % (exc))
+            logger.info('StackTrace: %s' % (traceback.format_exc()))
+            raise
+       
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug('%s RESPONSE %s: %s' % (msg, response.status_code, responseBody))
+        else:
+            logger.info('%s RESPONSE %s:' % (msg, response.status_code))
+            
+        return responseBody
     return wrapper
 
 class ResourceLink():
@@ -219,7 +235,6 @@ class RestServer():
          
             return {'ipFabric': outputDict}
         else:
-            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
     
     def getCablingPlan(self, ipFabricId):
@@ -237,7 +252,6 @@ class RestServer():
                     logger.debug('CablingPlan found in DB')
                     return cablingPlan.json
                 else:
-                    logger.debug("IpFabric: %s exists but no CablingPlan found in DB" % (ipFabric.id))
                     raise bottle.HTTPError(404, "IpFabric: %s exists but no CablingPlan found in DB" % (ipFabric.id))
                     
             else:
@@ -248,25 +262,21 @@ class RestServer():
                 cablingPlan = bottle.static_file(fileName, root=webServerRoot)
 
                 if isinstance(cablingPlan, bottle.HTTPError):
-                    logger.debug("IpFabric exists but no CablingPlan found. IpFabric: '%s" % (ipFabricFolder))
                     raise bottle.HTTPError(404, "IpFabric exists but no CablingPlan found. IpFabric: '%s " % (ipFabricFolder))
                 return cablingPlan
         
         else:
-            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
 
     def getLeafGenericConfiguration(self, ipFabricId, deviceModel):
         ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is None:
-            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
         
         logger.debug('IpFabric name: %s, id: %s' % (ipFabric.name, ipFabricId))
         
         leafSetting = self.dao.getLeafSetting(ipFabricId, deviceModel)
         if leafSetting is None or leafSetting.config is None:
-            logger.debug("IpFabric exists but no leaf generic config found for %s, ipFabricId: '%s'" % (deviceModel, ipFabricId))
             raise bottle.HTTPError(404, "IpFabric exists but no leaf generic config found, probably configuration \
                 was not created. deviceModel: %s, ipFabric name: '%s', id: '%s'" % (deviceModel, ipFabric.name, ipFabricId))
         
@@ -276,7 +286,6 @@ class RestServer():
     def getDeviceConfigsInZip(self, ipFabricId):
         ipFabric = self.report.getIpFabric(ipFabricId)
         if ipFabric is None:
-            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
         
         logger.debug('IpFabric name: %s' % (ipFabric.name))
@@ -331,7 +340,6 @@ class RestServer():
             devices['total'] = len(ipFabric.devices)
             return {'devices' : devices}
         else:
-            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
         
     def getDevice(self, ipFabricId, deviceId):
@@ -368,7 +376,6 @@ class RestServer():
             
             return {'device': outputDict}
         else:
-            logger.debug("device with id: %s not found" % (deviceId))
             raise bottle.HTTPError(404, "device with id: %s not found" % (deviceId))  
         
          
@@ -380,7 +387,6 @@ class RestServer():
 
         config = device.config
         if config is None:
-            logger.debug("Device exists but no config found. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
             raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
         
         bottle.response.headers['Content-Type'] = 'application/json'
@@ -398,11 +404,9 @@ class RestServer():
             logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))         
             ztpConf = bottle.static_file(fileName, root=webServerRoot)
             if isinstance(ztpConf, bottle.HTTPError):
-                logger.debug("Pod exists but no ztp Config found. Pod name: '%s" % (ipFabric.name))
                 raise bottle.HTTPError(404, "Pod exists but no ztp Config found. Pod name: '%s " % (ipFabric.name))
             return ztpConf
         else:
-            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
     
 
@@ -411,7 +415,6 @@ class RestServer():
             device = self.dao.Session.query(Device).join(Pod).filter(Device.id == deviceId).filter(Pod.id == ipFabricId).one()
             return device
         except (exc.NoResultFound):
-            logger.debug("No device found with IpFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
             raise bottle.HTTPError(404, "No device found with ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
 
     def getJunosImage(self, junosImageName):
@@ -421,7 +424,6 @@ class RestServer():
 
         config = bottle.static_file(junosImageName, root=junosImageRoot)
         if isinstance(config, bottle.HTTPError):
-            logger.debug("Junos image file found. name: '%s'" % (junosImageName))
             raise bottle.HTTPError(404, "Junos image file not found. name: '%s'" % (junosImageName))
         return config
     
@@ -479,12 +481,10 @@ class RestServer():
                     
     def createIpFabric(self):  
         if bottle.request.json is None:
-            logger.error("No json in request object")
             raise bottle.HTTPError(400, exception = RestError(0, "No json in request object"))
         else:
             pod = bottle.request.json.get('ipFabric')
             if pod is None:
-                logger.error("POST body can not be empty")
                 raise bottle.HTTPError(400, exception = RestError(0, "POST body can not be empty"))
 
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -496,14 +496,10 @@ class RestServer():
             url = bottle.request.url + '/' + fabric.id
             ipFabric = self.getIpFabric(fabric.id, fabric, url)
         except ValueError as e:
-            logger.error('ValueError , %s' % (e))
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
             raise bottle.HTTPError(400, exception = RestError(0, e.message))
-        except Exception as exc:
-            logger.error('Unknown error, %s' % (exc))
-            logger.debug('StackTrace: %s' % (traceback.format_exc()))
-            raise
-        
+        finally:
+            l3ClosMediation.__del__()
         bottle.response.set_header('Location', url)
         bottle.response.status = 201
 
@@ -511,17 +507,23 @@ class RestServer():
         
     def createCablingPlan(self, ipFabricId):
         try:
-            if L3ClosMediation(self.conf).createCablingPlan(ipFabricId) is True:
+            l3ClosMediation = L3ClosMediation(self.conf)
+            if l3ClosMediation.createCablingPlan(ipFabricId) is True:
                 return bottle.HTTPResponse(status=200)
         except ValueError:
             raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
+        finally:
+            l3ClosMediation.__del__()
 
     def createDeviceConfiguration(self, ipFabricId):
         try:
-            if L3ClosMediation(self.conf).createDeviceConfig(ipFabricId) is True:
+            l3ClosMediation = L3ClosMediation(self.conf)
+            if l3ClosMediation.createDeviceConfig(ipFabricId) is True:
                 return bottle.HTTPResponse(status=200)
         except ValueError:
             raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
+        finally:
+            l3ClosMediation.__del__()
             
     def createZtpConfiguration(self, ipFabricId):
         try:
@@ -531,12 +533,10 @@ class RestServer():
 
     def reconfigIpFabric(self, ipFabricId):
         if bottle.request.json is None:
-            logger.error("No json in request object")
             raise bottle.HTTPError(400, exception = RestError(0, "No json in request object"))
         else:
             inPod = bottle.request.json.get('ipFabric')
             if inPod is None:
-                logger.error("POST body can not be empty")
                 raise bottle.HTTPError(400, exception = RestError(0, "POST body can not be empty"))
 
         l3ClosMediation = L3ClosMediation(self.conf)
@@ -551,9 +551,8 @@ class RestServer():
             return self.getIpFabric(ipFabricId, updatedFabric, url)
         except ValueError as e:
             raise bottle.HTTPError(400, exception = RestError(0, e.message))
-        except Exception as exc:
-            logger.error('Unknown error, %s' % (exc))
-            raise
+        finally:
+            l3ClosMediation.__del__()
     
     def setOpenClosConfigParams(self):
         return bottle.HTTPResponse(status=200)
@@ -565,7 +564,6 @@ class RestServer():
             util.deleteOutFolder(self.conf, ipFabric)
             logger.debug("IpFabric with id: %s deleted" % (ipFabricId))
         else:
-            logger.debug("IpFabric with id: %s not found" % (ipFabricId))
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
         return bottle.HTTPResponse(status=204)
 
@@ -577,7 +575,6 @@ class RestServer():
         ipFabric = Pod(**inPod)
         '''
         if podDict is None:
-            logger.debug("Invalid empty podDict")
             raise bottle.HTTPError(400, exception = RestError(0, "Invalid value in POST/PUT body."))
         ipFabric['name'] = podDict.get('name')
         ipFabric['fabricDeviceType'] = podDict.get('fabricDeviceType')

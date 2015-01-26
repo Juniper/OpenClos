@@ -19,17 +19,26 @@ class Dao:
         global logger
         logger = logging.getLogger(moduleName)
             
+        self.engine = None
+        self.Session = None
+
         if conf is not None and 'dbUrl' in conf:
             if util.isSqliteUsed(conf):
-                engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={}, echo = conf.get('debugSql', False))
+                self.engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={}, echo = conf.get('debugSql', False))
             else:
-                engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={}, echo = conf.get('debugSql', False),
+                self.engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={}, echo = conf.get('debugSql', False),
                         pool_recycle=7200, isolation_level="READ COMMITTED")
-            Base.metadata.create_all(engine) 
-            session_factory = sessionmaker(bind=engine)
+            Base.metadata.create_all(self.engine) 
+            session_factory = sessionmaker(bind=self.engine)
             self.Session = scoped_session(session_factory)
         else:
             raise ValueError("Missing configuration parameter:'dbUrl'")
+
+    def __del__(self):
+        if self.engine:
+            self.Session.close_all()
+            self.engine.dispose()
+        
         
     # Don't remove session after each operation, it detaches the object from ORM,
     # which disables further operations on the object like lazy load of collection.
@@ -39,6 +48,10 @@ class Dao:
         try:
             session.add_all(objects)
             session.commit()
+        except Exception as ex:
+            logger.error(ex)
+            session.rollback()
+            raise
         finally:
             #self.Session.remove()
             pass
@@ -48,6 +61,10 @@ class Dao:
         try:
             session.delete(obj)
             session.commit()
+        except Exception as ex:
+            logger.error(ex)
+            session.rollback()
+            raise
         finally:
             #self.Session.remove()
             pass
@@ -58,6 +75,10 @@ class Dao:
             for obj in objects:
                 session.delete(obj)
             session.commit()
+        except Exception as ex:
+            logger.error(ex)
+            session.rollback()
+            raise
         finally:
             #self.Session.remove()
             pass
@@ -68,9 +89,14 @@ class Dao:
             for obj in objects:
                 session.merge(obj)
             session.commit()
+        except Exception as ex:
+            logger.error(ex)
+            session.rollback()
+            raise
         finally:
             #self.Session.remove()
             pass
+
     def getAll(self, objectType):
         session = self.Session()
         try:

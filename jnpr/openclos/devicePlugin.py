@@ -83,6 +83,10 @@ class DeviceDataCollectorNetconf(object):
             self.deviceLogStr = 'device name: %s, ip: %s, id: %s' % (self.device.name, self.device.managementIp, self.device.id)
             self.pod = self.device.pod
     
+    def __del__(self):
+        if self.dao:
+            self.dao.__del__()
+        
     def connectToDevice(self):
         '''
         :param dict deviceInfo:
@@ -123,6 +127,9 @@ class L2DataCollector(DeviceDataCollectorNetconf):
     def __init__(self, deviceId, conf = {}, dao = None):
         self.collectionInProgressCache = L2DataCollectorInProgressCache.getInstance()
         super(L2DataCollector, self).__init__(deviceId, conf)
+
+    def __del__(self):
+        super(L2DataCollector, self).__del__()
 
     def manualInit(self):
         super(L2DataCollector, self).manualInit()
@@ -394,6 +401,9 @@ class TwoStageConfigurator(L2DataCollector):
         else:
             self.stopEvent = Event()
             
+    def __del__(self):
+        super(TwoStageConfigurator, self).__del__()
+
     def manualInit(self):
         super(TwoStageConfigurator, self).manualInit()
         
