@@ -137,8 +137,8 @@ class NDConfMgr:
             for line in lineIter:
                 if 'httpServer :' in line:
                     print line,
-                    print '    ipAddr : ' + self.cmd_args.nodeip
-                    lineIter.next (),
+                    # print '    ipAddr : ' + self.cmd_args.nodeip
+                    print lineIter.next(),
                     print '    port : ' + self.cmd_args.restport
                     lineIter.next (),
                 elif '    networkdirector_trap_group :' in line:
