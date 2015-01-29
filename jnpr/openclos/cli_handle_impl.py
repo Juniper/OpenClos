@@ -195,19 +195,53 @@ class CLIImplementor:
     def handle_create_ztp_config ( self, pod_name ):
         ztpServer = ZtpServer()
         ztpServer.createPodSpecificDhcpConfFile ( pod_name )
+
+#------------------------------------------------------------------------------
+    def handle_deploy_ztp_config ( self, pod_id ):
+        
+        ## Find the Pod Object
+        l3ClosMediation = L3ClosMediation ()
+        pod = l3ClosMediation.dao.getObjectById ( Pod, pod_id )
+        
         installedDhcpConf = "/etc/dhcp/dhcpd.conf"
-        generatedDhcpConf = "/home/regress/OpenClos-R1.0.dev1/jnpr/openclos/out/anotherPod/dhcpd.conf"
+        
+        ## Generate the path to the dhcp conf
+        podDirectoryName = "%s-%s" % ( pod_id, pod.name )
+        generatedDhcpConf = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out', podDirectoryName, "dhcpd.conf" )
+        
+        if not os.path.isfile(generatedDhcpConf):
+            print "DHCP configuration file has not been generated for Pod %s yet, will generate it first" % pod.id
+            ztpServer = ZtpServer()
+            ztpServer.createPodSpecificDhcpConfFile ( pod.id )
 
         if util.isPlatformUbuntu():
-            os.system('sudo apt-get -y install isc-dhcp-server')
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
+            print "New configuration file copied to %s " % installedDhcpConf
             os.system("/etc/init.d/isc-dhcp-server restart")
 
         elif util.isPlatformCentos():
-            os.system('yum -y install dhcp')
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
+            print "New configuration file copied to %s " % installedDhcpConf
             os.system("/etc/rc.d/init.d/dhcpd restart")
-
+        
+#------------------------------------------------------------------------------
+    def handle_update_pods ( self, pod_id ):
+        l3ClosMediation = L3ClosMediation ()
+        
+        ## Get Object for this Pod based on ID
+        ## Get Data from config file
+        pod = l3ClosMediation.dao.getObjectById ( Pod, pod_id )
+        pods_from_conf = l3ClosMediation.loadClosDefinition()
+        
+        l3ClosMediation.updatePod( pod.id, pods_from_conf[pod.name] )
+        
+        ## Regenerate devices configuration, cabling plan and ZTP configuration
+        l3ClosMediation.createCablingPlan( pod.id )
+        l3ClosMediation.createDeviceConfig( pod.id )
+        
+        ztpServer = ZtpServer()
+        ztpServer.createPodSpecificDhcpConfFile ( pod.id )
+    
 #------------------------------------------------------------------------------
     def handle_update_password ( self, *args ):
         print "TODO: handle_update_password"
