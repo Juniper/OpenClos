@@ -36,6 +36,13 @@ update:
                     Desc: Update password for all devices in all PODs
                     Macro: list_all_pods_from_db
                     Handle: handle_update_password
+        pods:
+            Args:
+                for-pod:
+                    Desc: Update POD configuration
+                    Macro: list_all_pods_from_db
+                    Handle: handle_update_pods
+                    
 run:
     Access: READ-WRITE
     Args:

@@ -209,6 +209,24 @@ class CLIImplementor:
             os.system("/etc/rc.d/init.d/dhcpd restart")
 
 #------------------------------------------------------------------------------
+    def handle_update_pods ( self, pod_id ):
+        l3ClosMediation = L3ClosMediation ()
+        
+        ## Get Object for this Pod based on ID
+        ## Get Data from config file
+        pod = l3ClosMediation.dao.getObjectById ( Pod, pod_id )
+        pods_from_conf = l3ClosMediation.loadClosDefinition()
+        
+        l3ClosMediation.updatePod( pod.id, pods_from_conf[pod.name] )
+        
+        ## Regenerate devices configuration, cabling plan and ZTP configuration
+        l3ClosMediation.createCablingPlan( pod.id )
+        l3ClosMediation.createDeviceConfig( pod.id )
+        
+        ztpServer = ZtpServer()
+        ztpServer.createPodSpecificDhcpConfFile ( pod.id )
+    
+#------------------------------------------------------------------------------
     def handle_update_password ( self, *args ):
         print "TODO: handle_update_password"
 
