@@ -195,18 +195,6 @@ class CLIImplementor:
     def handle_create_ztp_config ( self, pod_name ):
         ztpServer = ZtpServer()
         ztpServer.createPodSpecificDhcpConfFile ( pod_name )
-        installedDhcpConf = "/etc/dhcp/dhcpd.conf"
-        generatedDhcpConf = "/home/regress/OpenClos-R1.0.dev1/jnpr/openclos/out/anotherPod/dhcpd.conf"
-
-        if util.isPlatformUbuntu():
-            os.system('sudo apt-get -y install isc-dhcp-server')
-            os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
-            os.system("/etc/init.d/isc-dhcp-server restart")
-
-        elif util.isPlatformCentos():
-            os.system('yum -y install dhcp')
-            os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
-            os.system("/etc/rc.d/init.d/dhcpd restart")
 
 #------------------------------------------------------------------------------
     def handle_update_pods ( self, pod_id ):
