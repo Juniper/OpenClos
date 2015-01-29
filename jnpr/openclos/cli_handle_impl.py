@@ -197,6 +197,34 @@ class CLIImplementor:
         ztpServer.createPodSpecificDhcpConfFile ( pod_name )
 
 #------------------------------------------------------------------------------
+    def handle_deploy_ztp_config ( self, pod_id ):
+        
+        ## Find the Pod Object
+        l3ClosMediation = L3ClosMediation ()
+        pod = l3ClosMediation.dao.getObjectById ( Pod, pod_id )
+        
+        installedDhcpConf = "/etc/dhcp/dhcpd.conf"
+        
+        ## Generate the path to the dhcp conf
+        podDirectoryName = "%s-%s" % ( pod_id, pod.name )
+        generatedDhcpConf = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out', podDirectoryName, "dhcpd.conf" )
+        
+        if not os.path.isfile(generatedDhcpConf):
+            print "DHCP configuration file has not been generated for Pod %s yet, will generate it first" % pod.id
+            ztpServer = ZtpServer()
+            ztpServer.createPodSpecificDhcpConfFile ( pod.id )
+
+        if util.isPlatformUbuntu():
+            os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
+            print "New configuration file copied to %s " % installedDhcpConf
+            os.system("/etc/init.d/isc-dhcp-server restart")
+
+        elif util.isPlatformCentos():
+            os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
+            print "New configuration file copied to %s " % installedDhcpConf
+            os.system("/etc/rc.d/init.d/dhcpd restart")
+        
+#------------------------------------------------------------------------------
     def handle_update_pods ( self, pod_id ):
         l3ClosMediation = L3ClosMediation ()
         
