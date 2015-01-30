@@ -5,6 +5,10 @@ import re
 
 import util
 from crypt import Cryptic
+from model import TrapTarget
+from dao import Dao
+from l3Clos import L3ClosMediation
+
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
@@ -15,8 +19,8 @@ parser.add_argument ( '--ndvip',
 parser.add_argument ( '--restport',
                       action = 'store',
                       help   = 'Port number to which REST server will bind' )
-parser.add_argument ( '--nodeip',
-                      action = 'store',
+parser.add_argument ( '--traptgt',
+                      action = 'append',
                       help   = 'Node IP address for Network Director' )
 parser.add_argument ( '--dbuser',
                       action = 'store',
@@ -46,8 +50,8 @@ class NDConfMgr:
         if ( self.cmd_args.restport == None ):
             error_str += "- REST Port number (--restport) not provided\n"
 
-        if ( self.cmd_args.nodeip == None ):
-            error_str += "- Node IP address (--nodeip) not provided\n"
+        if ( self.cmd_args.traptgt == None ):
+            error_str += "- Trap Target address(es) (--traptgt) not provided\n"
 
         if ( self.cmd_args.dbuser == None ):
             error_str += "- DB User name (--dbuser) not provided\n"
@@ -64,8 +68,9 @@ class NDConfMgr:
             if ip_format.match ( self.cmd_args.ndvip ) is None:
                 error_str += "- Network Director VIP address is not valid\n"
 
-            if ip_format.match ( self.cmd_args.nodeip ) is None:
-                error_str += "- Node IP address is not valid\n"
+            for ip_address in ( self.cmd_args.traptgt ):
+                if ip_format.match ( ip_address ) is None:
+                    error_str += "- Trap Target address " + ip_address + " is not valid\n"
         else:
             error_str += "\nPlease use -h option to view all command arguments"
 
@@ -122,13 +127,16 @@ class NDConfMgr:
             return None
 
         print "Configuring OpenCLOS with following parameters:"
-        print "ND VIP       : " + self.cmd_args.ndvip
-        print "REST Port    : " + self.cmd_args.restport
-        print "Node IP      : " + self.cmd_args.nodeip
-        print "DB User      : " + self.cmd_args.dbuser
+        print "ND VIP         : " + self.cmd_args.ndvip
+        print "REST Port      : " + self.cmd_args.restport
+        print "DB User        : " + self.cmd_args.dbuser
         self.db_pass_crypt = Cryptic ().encrypt ( self.cmd_args.dbpass )
-        print "DB Pass      : " + self.db_pass_crypt
-        print "ND Trap Port : " + self.cmd_args.ndtrapport
+        print "DB Pass        : " + self.db_pass_crypt
+        print "ND Trap Port   : " + self.cmd_args.ndtrapport
+        print "Trap Target(s) : "
+        for ip_address in self.cmd_args.traptgt:
+            print "                 - " + ip_address
+            
 
         conf_file = os.path.join ( util.configLocation,
                                    'openclos.yaml' )
@@ -137,20 +145,14 @@ class NDConfMgr:
             for line in lineIter:
                 if 'httpServer :' in line:
                     print line,
-                    # print '    ipAddr : ' + self.cmd_args.nodeip
                     print lineIter.next(),
                     print '    port : ' + self.cmd_args.restport
-                    lineIter.next (),
-                elif '    networkdirector_trap_group :' in line:
-                    print line,
-                    print '        port : ' + self.cmd_args.ndtrapport
-                    lineIter.next (),
-                    print '        target : ' + self.cmd_args.nodeip
                     lineIter.next (),
                 else:
                     add_line = self.process_line ( line )
                     if add_line is not None:
                         print add_line,
+            return "success"
             
         except ( OSError,IOError ) as e:
             print "Could not open " + conf_file
@@ -158,7 +160,20 @@ class NDConfMgr:
             return None
 
 #------------------------------------------------------------------------------
+    def update_trap_data_in_DB ( self ):
+        dao = Dao ( util.loadConfig () )
+        trapTargets = dao.Session ().query ( TrapTarget ).all ()
+        if trapTargets is not None:
+            dao.deleteObjects ( trapTargets )
+
+        newtargets = []
+        for newtarget in self.cmd_args.traptgt:
+            newtargets.append ( TrapTarget ( newtarget, self.cmd_args.ndtrapport ) )
+        dao.createObjects(newtargets)
+
+#------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 if __name__ == "__main__":
     conf_mgr = NDConfMgr ( parser )
-    conf_mgr.do_configuration ()
+    if conf_mgr.do_configuration () is not None:
+        conf_mgr.update_trap_data_in_DB ()

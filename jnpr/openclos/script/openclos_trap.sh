@@ -89,6 +89,13 @@ do_sanity_checks() {
         echo_log "openclos.yaml not found"
         exit 1
     fi
+
+    # check if this node is the master
+    /sbin/ip a list dev eth0 | grep -q eth0:0
+    if [ $? -ne 0 ]; then
+        echo_log "Node is not master - hence cannot start trap service"
+        exit 1
+    fi
     
     echo_log "OpenCLOS sanity checks passed for TRAP"
 }
