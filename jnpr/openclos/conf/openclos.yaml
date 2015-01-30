@@ -124,9 +124,6 @@ report :
 # would allow devices to be auto discovered by NetworkDirector.
 # threadCount: Number of threads used to start 2-stage configuration for devices
 snmpTrap :
-    networkdirector_trap_group :
-        port : 10162
-        target : 0.0.0.0
     openclos_trap_group :
         port : 20162
         target : 0.0.0.0

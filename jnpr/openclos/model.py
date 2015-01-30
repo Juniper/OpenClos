@@ -422,6 +422,18 @@ class InterfaceDefinition(Interface):
         super(InterfaceDefinition, self).__init__(name, device, deployStatus)
         self.mtu = mtu
         self.role = role
+
+
+class TrapTarget(ManagedElement, Base):
+    __tablename__ = 'trapTarget'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    target = Column(String(60))
+    port = Column(Integer)
+
+    def __init__ (self, trapTargetAddress, trapPort = 80):
+        self.target = trapTargetAddress
+        self.port = trapPort
+
         
 class AdditionalLink(ManagedElement, Base):
     __tablename__ = 'additionalLink'
