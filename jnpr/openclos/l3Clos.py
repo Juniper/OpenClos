@@ -14,7 +14,7 @@ import base64
 from netaddr import IPNetwork
 from sqlalchemy.orm import exc
 
-from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig
+from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup
 from dao import Dao
 import util
 from writer import ConfigWriter, CablingPlanWriter
@@ -631,28 +631,36 @@ class L3ClosMediation():
 
         return accessInterface.render(ifdNames=ifdNames)
 
+    def getSnmpTrapTargets(self):
+        if util.isIntegratedWithND(self.conf):   
+            trapGroups = self.dao.getAll(TrapGroup)
+            targetAddressList = [target.targetAddress for target in trapGroups]
+        elif self.isZtpStaged:
+            targetAddressList = util.enumerateRoutableIpv4Addresses()
+        else:
+            return []
+        return targetAddressList
+
     def getParamsForOutOfBandNetwork(self, pod):
         '''
         add all trap-target to the OOB list
         '''
-        oobList = util.getSnmpTrapTargets(self.conf)
-        gateway = None
-        
+        oobList = self.getSnmpTrapTargets()
         oobNetworks = pod.outOfBandAddressList
         if oobNetworks is not None and len(oobNetworks) > 0:
             oobList += oobNetworks.split(',')
 
-            gateway = pod.outOfBandGateway
-            if gateway is None:
-                gateway = util.loadClosDefinition()['ztp']['dhcpOptionRoute']
-       
         # hack to make sure all address has cidr notation
         for i in xrange(len(oobList)):
             if '/' not in oobList[i]:
                 oobList[i] += '/32'
-                
+
+        gateway = pod.outOfBandGateway
+        if gateway is None:
+            gateway = util.loadClosDefinition()['ztp']['dhcpOptionRoute']
+       
         oobList = set(oobList)
-        if len(oobList) > 0:
+        if oobList:
             return {'networks': oobList, 'gateway': gateway}
         else:
             return {}
@@ -714,34 +722,59 @@ class L3ClosMediation():
             return ''
 
     def getNdTrapGroupSettings(self):
-        snmpTrapConf = self.conf.get('snmpTrap')
-        if snmpTrapConf is None:
-            logger.error('No SNMP Trap setting found on openclos.yaml')
-            return
-        if (util.isIntegratedWithND(self.conf)):
-            ndSnmpTrapConf = snmpTrapConf.get('networkdirector_trap_group') 
-            if ndSnmpTrapConf is None:
-                logger.error('No SNMP Trap setting found for ND')
-                return
-            targetList = []
-            if isinstance(ndSnmpTrapConf['target'], list) == True:
-                targetList = ndSnmpTrapConf['target']
-            else:
-                targetList.append(ndSnmpTrapConf['target'])
-            return {'name': 'networkdirector_trap_group', 'port': ndSnmpTrapConf['port'], 'targetIp': targetList }
-        return
+        '''
+        :returns list: list of trap group settings
+        '''
+        if not (util.isIntegratedWithND(self.conf)):
+            return []
+        
+        trapGroups = []
+        
+        targets = self.dao.getObjectsByName(TrapGroup, 'networkdirector_trap_group')
+        if targets:
+            targetAddressList = [target.targetAddress for target in targets]
+            trapGroups.append({'name': targets[0].name, 'port': targets[0].port, 'targetIp': targetAddressList })
+            logger.debug('Added SNMP Trap setting for ND(networkdirector_trap_group) with %d targets' % (len(targets)))
+        else:
+            logger.error('No SNMP Trap setting found for ND(networkdirector_trap_group)')
+
+        targets = self.dao.getObjectsByName(TrapGroup, 'space')
+        if targets:
+            targetAddressList = [target.targetAddress for target in targets]
+            trapGroups.append({'name': targets[0].name, 'port': targets[0].port, 'targetIp': targetAddressList })
+            logger.debug('Added SNMP Trap setting for ND(space) with %d targets' % (len(targets)))
+        else:
+            logger.error('No SNMP Trap setting found for ND(space)')
+
+        return trapGroups
     
     def getOpenclosTrapGroupSettings(self):
-        snmpTrapConf = self.conf.get('snmpTrap')
-        if snmpTrapConf is None:
-            logger.error('No SNMP Trap setting found on openclos.yaml')
-            return
-        openclosSnmpTrapConf = snmpTrapConf.get('openclos_trap_group') 
-        if openclosSnmpTrapConf is None:
-            logger.error('No SNMP Trap setting found for OpenClos')
-            return
-        targetList = util.enumerateRoutableIpv4Addresses()
-        return {'name': 'openclos_trap_group', 'port': openclosSnmpTrapConf['port'], 'targetIp': targetList }
+        '''
+        :returns list: list of trap group settings
+        '''
+        if not self.isZtpStaged:
+            return []
+        
+        trapGroups = []
+        
+        targets = self.dao.getObjectsByName(TrapGroup, 'openclos_trap_group')
+        if targets:
+            targetAddressList = [target.targetAddress for target in targets]
+            trapGroups.append({'name': targets[0].name, 'port': targets[0].port, 'targetIp': targetAddressList })
+            logger.debug('Added SNMP Trap setting for openclos_trap_group (from DB) with %d targets' % (len(targets)))
+        else:
+            snmpTrapConf = self.conf.get('snmpTrap')
+            if snmpTrapConf is not None:
+                openclosSnmpTrapConf = snmpTrapConf.get('openclos_trap_group') 
+                if openclosSnmpTrapConf is not None:
+                    targetList = util.enumerateRoutableIpv4Addresses()
+                    trapGroups.append({'name': 'openclos_trap_group', 'port': openclosSnmpTrapConf['port'], 'targetIp': targetList })
+                else:
+                    logger.error('No SNMP Trap setting found for openclos_trap_group in openclos.yaml')
+            else:
+                logger.error('No SNMP Trap setting found for openclos_trap_group in openclos.yaml')
+        
+        return trapGroups
 
     def createSnmpTrapAndEvent(self, device):
         snmpTemplate = self.templateEnv.get_template('snmpTrap.txt')
@@ -750,22 +783,16 @@ class L3ClosMediation():
         configlet = trapEventTemplate.render()
         
         if device.role == 'leaf':
-            groups = []
-            openclosTrapGroup = self.getOpenclosTrapGroupSettings()
-            if openclosTrapGroup is not None:
-                groups.append(openclosTrapGroup)
-                
-            ndTrapGroup = self.getNdTrapGroupSettings()
-            if ndTrapGroup is not None:
-                groups.append(ndTrapGroup)
-                
-            configlet += snmpTemplate.render(trapGroups = groups)
-            return configlet
+            trapGroups = self.getOpenclosTrapGroupSettings()
+            trapGroups += self.getNdTrapGroupSettings()
+            if trapGroups:
+                configlet += snmpTemplate.render(trapGroups = trapGroups)
+                return configlet
 
         elif device.role == 'spine':
-            ndTrapGroup = self.getNdTrapGroupSettings()
-            if ndTrapGroup is not None:
-                configlet += snmpTemplate.render(trapGroups = [ndTrapGroup])
+            trapGroups = self.getNdTrapGroupSettings()
+            if trapGroups:
+                configlet += snmpTemplate.render(trapGroups = trapGroups)
                 return configlet
 
         return ''
@@ -777,9 +804,9 @@ class L3ClosMediation():
         configlet = trapEventTemplate.render()
         
         if device.role == 'leaf':
-            ndTrapGroup = self.getNdTrapGroupSettings()
-            if ndTrapGroup is not None:
-                configlet += snmpTemplate.render(trapGroups = [ndTrapGroup])
+            trapGroups = self.getNdTrapGroupSettings()
+            if trapGroups:
+                configlet += snmpTemplate.render(trapGroups = trapGroups)
                 
             return configlet
 
@@ -797,15 +824,9 @@ class L3ClosMediation():
         for leafSetting in pod.leafSettings:
             leafSettings[leafSetting.deviceFamily] = leafSetting
 
-        groups = []
-        openclosTrapGroup = self.getOpenclosTrapGroupSettings()
-        if openclosTrapGroup is not None:
-            groups.append(openclosTrapGroup)
-            
-        ndTrapGroup = self.getNdTrapGroupSettings()
-        if ndTrapGroup is not None:
-            groups.append(ndTrapGroup)
-            
+        trapGroups = self.getOpenclosTrapGroupSettings()
+        trapGroups += self.getNdTrapGroupSettings()
+
         outOfBandNetworkParams = self.getParamsForOutOfBandNetwork(pod)
         
         for deviceFamily in leafSettings.keys():
@@ -817,7 +838,7 @@ class L3ClosMediation():
                 ifdNames.append(ifdName)
 
             leafSettings[deviceFamily].config = leafTemplate.render(deviceFamily = deviceFamily, oob = outOfBandNetworkParams, 
-                trapGroups = groups, hashedPassword=pod.getHashPassword(), ifdNames=ifdNames)
+                trapGroups = trapGroups, hashedPassword=pod.getHashPassword(), ifdNames=ifdNames)
             
         return leafSettings.values()
 

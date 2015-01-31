@@ -11,7 +11,7 @@ import unittest
 import shutil
 from flexmock import flexmock
 from jnpr.openclos.l3Clos import L3ClosMediation
-from jnpr.openclos.model import Pod, Device, InterfaceLogical, InterfaceDefinition
+from jnpr.openclos.model import Pod, Device, InterfaceLogical, InterfaceDefinition, TrapGroup
 import jnpr.openclos.util
 
 class TestL3Clos(unittest.TestCase):
@@ -248,20 +248,72 @@ class TestL3Clos(unittest.TestCase):
             l3ClosMediation.templateEnv.get_template('unknown-template')
         self.assertTrue('unknown-template' in e.exception.message)
 
-    def testCreateSnmpTrapAndEventNoNdSpine(self):
-        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
-                                 'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
+    def createTrapGroupsInDb(self, dao):
+        newtargets = []
+        for newtarget in ['1.2.3.4', '1.2.3.5']:
+            newtargets.append ( TrapGroup ( 'networkdirector_trap_group', newtarget, int('10162') ) )
+            newtargets.append ( TrapGroup ( 'space', newtarget, None ) )
+            newtargets.append ( TrapGroup ( 'openclos_trap_group', newtarget, 20162 ) )
+        dao.createObjects(newtargets)
+
+    def testGetNdTrapGroupSettingsNoNd(self):
         l3ClosMediation = L3ClosMediation(self.conf)
+        self.assertEqual(0, len(l3ClosMediation.getNdTrapGroupSettings()))
+        
+    def testGetNdTrapGroupSettingsWithNd(self):
+        self.conf['deploymentMode'] = {'ndIntegrated': True}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        self.assertEqual(0, len(l3ClosMediation.getNdTrapGroupSettings()))
+        
+        self.createTrapGroupsInDb(l3ClosMediation.dao)
+        self.assertEqual(2, len(l3ClosMediation.getNdTrapGroupSettings()))
+        self.assertEqual(10162, l3ClosMediation.getNdTrapGroupSettings()[0]['port'])
+        self.assertEqual(2, len(l3ClosMediation.getNdTrapGroupSettings()[0]['targetIp']))
+        self.assertEqual(162, l3ClosMediation.getNdTrapGroupSettings()[1]['port'])
+        self.assertEqual(2, len(l3ClosMediation.getNdTrapGroupSettings()[1]['targetIp']))
+        
+    def testGetOpenClosTrapGroupSettingsNoStagedZtp(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        self.assertEqual(0, len(l3ClosMediation.getOpenclosTrapGroupSettings()))
+        
+    def testGetOpenClosTrapGroupSettingsWithStagedZtp(self):
+        self.conf['deploymentMode'] = {'ztpStaged': True}
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        self.assertEqual(1, len(l3ClosMediation.getOpenclosTrapGroupSettings()))
+        self.assertEqual(1, len(l3ClosMediation.getOpenclosTrapGroupSettings()[0]['targetIp']))
+        self.assertNotEqual('1.2.3.4', l3ClosMediation.getOpenclosTrapGroupSettings()[0]['targetIp'][0])
+        
+        self.createTrapGroupsInDb(l3ClosMediation.dao)
+        self.assertEqual(1, len(l3ClosMediation.getOpenclosTrapGroupSettings()))
+        self.assertEqual(20162, l3ClosMediation.getOpenclosTrapGroupSettings()[0]['port'])
+        self.assertEqual(2, len(l3ClosMediation.getOpenclosTrapGroupSettings()[0]['targetIp']))
+
+    def testCreateSnmpTrapAndEventNoNdSpine(self):
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        self.createTrapGroupsInDb(l3ClosMediation.dao)
         
         device = Device("test", "qfx5100-48s-6q", "user", "pwd", "spine", "mac", "mgmtIp", None)
         configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
 
         self.assertEqual('', configlet)
   
-    def testCreateSnmpTrapAndEventNoNdLeaf(self):
-        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
-                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+    def testCreateSnmpTrapAndEventNoNdLeafNoStagedZtp(self):
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
         l3ClosMediation = L3ClosMediation(self.conf)
+        self.createTrapGroupsInDb(l3ClosMediation.dao)
+        
+        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
+        configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
+        
+        self.assertEqual('', configlet)
+        
+    def testCreateSnmpTrapAndEventNoNdLeafWithStagedZtp(self):
+        self.conf['deploymentMode'] = {'ztpStaged': True}
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        self.createTrapGroupsInDb(l3ClosMediation.dao)
         
         device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
         configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
@@ -272,10 +324,10 @@ class TestL3Clos(unittest.TestCase):
         self.assertFalse('trap-group networkdirector_trap_group' in configlet)
 
     def testCreateSnmpTrapAndEventWithNdSpine(self):
-        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
-                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.conf['deploymentMode'] = {'ndIntegrated': True}
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self.conf['deploymentMode'] = {'ndIntegrated': True, 'ztpStaged': True}
         l3ClosMediation = L3ClosMediation(self.conf)
+        self.createTrapGroupsInDb(l3ClosMediation.dao)
         
         device = Device("test", "qfx5100-48s-6q", "user", "pwd", "spine", "mac", "mgmtIp", None)
         configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
@@ -284,35 +336,41 @@ class TestL3Clos(unittest.TestCase):
         self.assertTrue('event-options' in configlet)
         self.assertFalse('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
+        self.assertTrue('trap-group space' in configlet)
 
     def testCreateSnmpTrapAndEventWithNdLeaf(self):
-        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
-                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.conf['deploymentMode'] = {'ndIntegrated': True}
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self.conf['deploymentMode'] = {'ndIntegrated': True, 'ztpStaged': True}
         l3ClosMediation = L3ClosMediation(self.conf)
+        self.createTrapGroupsInDb(l3ClosMediation.dao)
         
         device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
         configlet = l3ClosMediation.createSnmpTrapAndEvent(device)
 
         self.assertTrue('' != configlet)
+        #print configlet
         self.assertTrue('event-options' in configlet)
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
+        self.assertTrue('trap-group space' in configlet)
 
     def testCreateSnmpTrapAndEventForLeafFor2ndStage(self):
-        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
-                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.conf['deploymentMode'] = {'ndIntegrated': True}
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self.conf['deploymentMode'] = {'ndIntegrated': True, 'ztpStaged': True}
         l3ClosMediation = L3ClosMediation(self.conf)
+        self.createTrapGroupsInDb(l3ClosMediation.dao)
         
         device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
         configlet = l3ClosMediation.createSnmpTrapAndEventForLeafFor2ndStage(device)
-        print configlet
+        #print configlet
         self.assertTrue('' != configlet)
         self.assertTrue('event-options' in configlet)
         self.assertTrue('trap-group openclos_trap_group' not in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-
+        self.assertTrue('trap-group space' in configlet)
+        self.assertEquals(1, configlet.count('authentication'))
+        self.assertEquals(1, configlet.count('link'))
+                
     def testCreateRoutingOptionsStatic(self):
         l3ClosMediation = L3ClosMediation(self.conf)
         (pod, podDict) = self.createPod(l3ClosMediation)
@@ -352,10 +410,11 @@ class TestL3Clos(unittest.TestCase):
         self.assertEquals(48, configlet.count('family ethernet-switching'))
 
     def testCreateLeafGenericConfigNoNd(self):
-        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
-                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
         self.conf['deviceFamily']['ex4300-24p'] = {"uplinkPorts": 'et-0/1/[0-3]', "downlinkPorts": 'ge-0/0/[0-23]'}
+        self.conf['deploymentMode'] = {'ztpStaged': True}
         l3ClosMediation = L3ClosMediation(self.conf)
+        
         (pod, podDict) = self.createPod(l3ClosMediation)
         pod.outOfBandGateway = '10.0.0.254'
         pod.outOfBandAddressList = '10.0.10.5/32'
@@ -365,30 +424,53 @@ class TestL3Clos(unittest.TestCase):
         configlet = leafSettings[0].config
 
         self.assertTrue('' != configlet)
+        #print configlet
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertEquals(1, configlet.count('static'))
-        self.assertEquals(3, configlet.count('route'))
+        self.assertEquals(2, configlet.count('route'))
 
     def testCreateLeafGenericConfigWithNd(self):
-        self.conf['snmpTrap'] = {'networkdirector_trap_group': {'port': 10162, 'target': '1.2.3.4'},
-                                 'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.conf['deploymentMode'] = {'ndIntegrated': True}
-
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self.conf['deviceFamily']['ex4300-24p'] = {"uplinkPorts": 'et-0/1/[0-3]', "downlinkPorts": 'ge-0/0/[0-23]'}
+        self.conf['deploymentMode'] = {'ndIntegrated': True, 'ztpStaged': True}
         l3ClosMediation = L3ClosMediation(self.conf)
+        self.createTrapGroupsInDb(l3ClosMediation.dao)
+
         (pod, podDict) = self.createPod(l3ClosMediation)
         pod.outOfBandGateway = '10.0.0.254'
-        pod.outOfBandAddressList = '10.0.10.5/32'
+        pod.outOfBandAddressList = '10.0.10.5/32, 10.0.10.6'
         
         leafSettings = l3ClosMediation.createLeafGenericConfigsFor2Stage(pod)
         self.assertTrue(1, len(leafSettings))
         configlet = leafSettings[0].config
 
         self.assertTrue('' != configlet)
+        #print configlet
         self.assertTrue('vendor-id Juniper-qfx5100-48s-6q' in configlet)
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
+        self.assertTrue('trap-group space' in configlet)
         self.assertEquals(1, configlet.count('static'))
-        self.assertEquals(3, configlet.count('route'))
+        self.assertEquals(4, configlet.count('route'))
+
+    def testGetSnmpTrapTargets(self):
+        l3ClosMediation = L3ClosMediation(self.conf)
+        self.assertEqual(0, len(l3ClosMediation.getSnmpTrapTargets()))
+
+    def testGetSnmpTrapTargetsNoNdWithStagedZtp(self):
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self.conf['deploymentMode'] = {'ztpStaged': True}
+        l3ClosMediation = L3ClosMediation(self.conf)
+
+        self.assertEqual(1, len(l3ClosMediation.getSnmpTrapTargets()))
+
+    def testGetSnmpTrapTargetsWithNd(self):
+        self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self.conf['deploymentMode'] = {'ndIntegrated': True, 'ztpStaged': True}
+        l3ClosMediation = L3ClosMediation(self.conf)
+        self.createTrapGroupsInDb(l3ClosMediation.dao)
+
+        self.assertEqual(6, len(l3ClosMediation.getSnmpTrapTargets()))
 
 if __name__ == '__main__':
     unittest.main()

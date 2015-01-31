@@ -5,7 +5,7 @@ import re
 
 import util
 from crypt import Cryptic
-from model import TrapTarget
+from model import TrapGroup
 from dao import Dao
 from l3Clos import L3ClosMediation
 
@@ -162,13 +162,15 @@ class NDConfMgr:
 #------------------------------------------------------------------------------
     def update_trap_data_in_DB ( self ):
         dao = Dao ( util.loadConfig () )
-        trapTargets = dao.Session ().query ( TrapTarget ).all ()
-        if trapTargets is not None:
-            dao.deleteObjects ( trapTargets )
+        trapGroups = dao.getAll(TrapGroup)
+        if trapGroups:
+            dao.deleteObjects ( trapGroups )
 
         newtargets = []
         for newtarget in self.cmd_args.traptgt:
-            newtargets.append ( TrapTarget ( newtarget, self.cmd_args.ndtrapport ) )
+            newtargets.append ( TrapGroup ( 'networkdirector_trap_group', newtarget, int(self.cmd_args.ndtrapport) ) )
+            newtargets.append ( TrapGroup ( 'space', newtarget, None ) )
+            newtargets.append ( TrapGroup ( 'openclos_trap_group', newtarget, 20162 ) )
         dao.createObjects(newtargets)
 
 #------------------------------------------------------------------------------

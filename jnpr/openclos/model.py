@@ -51,16 +51,16 @@ class Pod(ManagedElement, Base):
     managementPrefix = Column(String(32))
     managementStartingIP = Column(String(32))
     managementMask = Column(Integer)
-    spineAS = Column(Integer)
-    leafAS = Column(Integer)
+    spineAS = Column(BigInteger)
+    leafAS = Column(BigInteger)
     topologyType = Column(Enum('threeStage', 'fiveStageRealEstate', 'fiveStagePerformance'))
     outOfBandAddressList = Column(String(512))  # comma separated values
     outOfBandGateway =  Column(String(32))
     allocatedInterConnectBlock = Column(String(32))
     allocatedIrbBlock = Column(String(32))
     allocatedLoopbackBlock = Column(String(32))
-    allocatedSpineAS = Column(Integer)
-    allocatefLeafAS = Column(Integer)
+    allocatedSpineAS = Column(BigInteger)
+    allocatefLeafAS = Column(BigInteger)
     inventoryData = Column(String(2048))
     encryptedPassword = Column(String(100)) # 2-way encrypted
     cryptic = Cryptic()
@@ -274,7 +274,7 @@ class Device(ManagedElement, Base):
     macAddress = Column(String(32))
     managementIp = Column(String(32))
     family = Column(String(100), default = 'unknown')
-    asn = Column(Integer)
+    asn = Column(BigInteger)
     l2Status = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
     l2StatusReason = Column(String(256)) # will be populated only when status is error
     l3Status = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
@@ -423,17 +423,17 @@ class InterfaceDefinition(Interface):
         self.mtu = mtu
         self.role = role
 
-
-class TrapTarget(ManagedElement, Base):
+class TrapGroup(ManagedElement, Base):
     __tablename__ = 'trapTarget'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    target = Column(String(60))
-    port = Column(Integer)
+    name = Column(String(100), index=True, nullable = False)
+    targetAddress = Column(String(60))
+    port = Column(Integer, default = 162)
 
-    def __init__ (self, trapTargetAddress, trapPort = 80):
-        self.target = trapTargetAddress
-        self.port = trapPort
-
+    def __init__ (self, name, targetAddress, port):
+        self.name = name
+        self.targetAddress = targetAddress
+        self.port = port
         
 class AdditionalLink(ManagedElement, Base):
     __tablename__ = 'additionalLink'

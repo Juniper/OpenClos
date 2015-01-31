@@ -5,12 +5,12 @@ snmp {
 {% for trapGroup in trapGroups %}    trap-group {{trapGroup['name']}} {
         version v2;
         destination-port {{trapGroup['port']}};
-        categories {
+        {% if trapGroup['name'] != "space" %}categories {
             link;
             services;
             authentication;
         }
-        targets {
+        {% endif %}targets {
 {% for target in trapGroup['targetIp'] %}            {{target}};
 {% endfor %}        }
     } 
