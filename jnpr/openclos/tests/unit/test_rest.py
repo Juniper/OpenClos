@@ -258,19 +258,7 @@ class TestRest(unittest.TestCase):
         with self.assertRaises(AppError) as e:
             restServerTestApp.get('/openclos/ip-fabrics/'+self.ipFabric1.id+'/ztp-configuration')
         self.assertTrue('404 Not Found' in e.exception.message)
-        
-    def testgetOpenClosConfigParams(self):
-        conf = {}
-        restServer = RestServer(conf)
-        restServer.initRest()
-        restServerTestApp = TestApp(restServer.app)
-        
-        response = restServerTestApp.get('/openclos/conf')
-        self.assertEqual(200, response.status_int)
-        self.assertTrue(response.json['OpenClosConf']['httpServer'].has_key('port'))
-        self.assertTrue(response.json['OpenClosConf']['snmpTrap']['networkdirector_trap_group'].has_key('port'))
-        self.assertTrue(response.json['OpenClosConf']['snmpTrap']['openclos_trap_group'].has_key('port'))       
-        
+                
     def testdeleteIpFabric(self):
         restServerTestApp = self.setupRestWithTwoPods()
         

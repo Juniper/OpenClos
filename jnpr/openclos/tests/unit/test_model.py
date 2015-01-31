@@ -12,7 +12,7 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #t
 import unittest
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-from jnpr.openclos.model import ManagedElement, Pod, LeafSetting, Device, Interface, InterfaceLogical, InterfaceDefinition, Base, AdditionalLink, CablingPlan
+from jnpr.openclos.model import ManagedElement, Pod, LeafSetting, Device, Interface, InterfaceLogical, InterfaceDefinition, Base, AdditionalLink, CablingPlan, TrapGroup
 
 def createPodObj(name):  
     pod = {}
@@ -156,7 +156,7 @@ class TestPod(TestOrm):
         pod['loopbackPrefix'] = '1.4.0.0'
         pod['managementPrefix'] = '172.32.30.101/24'
         pod['spineAS'] = '100'
-        pod['leafAS'] = '100'
+        pod['leafAS'] = '4294967295'
         pod['topologyType'] = 'threeStage'
         pod['inventory'] = 'inventoryUnitTest.json'
         pod['outOfBandAddressList'] = ['1.2.3.4', '5.6.7.8']
@@ -167,6 +167,7 @@ class TestPod(TestOrm):
         self.assertTrue(constructedPod is not None)
         self.assertEqual(','.join(['1.2.3.4', '5.6.7.8']), constructedPod.outOfBandAddressList)
         self.assertEqual('1.3.5.254', constructedPod.outOfBandGateway)
+        self.assertEqual(4294967295, constructedPod.leafAS)
 
 
     def testOrm(self):
@@ -259,6 +260,15 @@ class TestDevice(TestOrm):
         self.session.delete(device)
         self.session.commit()
         self.assertEqual(0, self.session.query(Device).count())
+    
+    def testLargeAsn(self):
+        podOne = createPod('testpod', self.session)
+        device = Device('testdevice', 'qfx-5100-48s-6q', 'admin', 'admin', "spine", "", "", podOne)
+        device.asn = 4294967295
+        self.session.add(device)
+        self.session.commit()  
+        fetched = self.session.query(Device).one()
+        self.assertEqual(device, fetched)        
         
     def testRelationPodDevice(self):
         podOne = createPod('testpodOne', self.session)
@@ -486,6 +496,24 @@ class TestAdditionalLink(TestOrm):
         self.assertEqual("et-0/0/3", additionalLinks[1].port1)
         self.assertEqual("et-0/0/4", additionalLinks[1].port2)
                
+class TestTrapGroup(TestOrm):
+    
+    def testConstructorPass(self):
+        self.assertTrue(TrapGroup('openClos', '1.2.3.4', 20162))
+                        
+    def testOrm(self):       
+        group = TrapGroup('openClos', '1.2.3.4', 20162)
+        self.session.add(group)
+        self.session.commit()
+        
+        self.assertEqual(1, self.session.query(TrapGroup).count())
+        fetched = self.session.query(TrapGroup).one()
+        self.assertEqual(group, fetched)
+        
+        #delete object
+        self.session.delete(group)
+        self.session.commit()
+        self.assertEqual(0, self.session.query(AdditionalLink).count())
 
 if __name__ == '__main__':
     unittest.main()

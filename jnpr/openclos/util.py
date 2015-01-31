@@ -299,26 +299,6 @@ def enumerateRoutableIpv4Addresses():
                     addrs.append(ipv4AddrInfo['addr'])
     return addrs
 
-def modifyConfigTrapTarget(target, confFile = 'openclos.yaml'):
-    '''
-    Modify openclos.yaml, sets trap target for ND only
-    '''
-    global conf
-    try:
-        lineIterator = fileinput.input(os.path.join(configLocation, confFile), inplace=True) 
-        for line in lineIterator:
-            if 'networkdirector_trap_group :' in line:
-                print line,
-                print lineIterator.next(),
-                lineIterator.next()
-                print '        target : %s' %(target)
-            else:
-                print line,
-        conf = None    
-    except (OSError, IOError) as e:
-        print "File error:", e
-        return None
-
 def loadLoggingConfig(conf = {}, logConfFile = 'logging.yaml', appName = None):
     '''
     Loads global configuration and creates hash 'logConf'
@@ -443,25 +423,3 @@ def createOutFolder(conf, ipFabric):
 def deleteOutFolder(conf, ipFabric):
     path = getOutFolderPath(conf, ipFabric)
     shutil.rmtree(path, ignore_errors=True)
-    
-def getSnmpTrapTargets(conf):
-    targets = []
-    trap = conf.get('snmpTrap')
-    if trap:
-        trapGroup = trap.get('networkdirector_trap_group')
-        if trapGroup:
-            if isinstance(trapGroup.get('target'), list) == True:
-                targetList = trapGroup['target']
-            else:
-                targetList = [trapGroup['target']]
-            for target in targetList:
-                if target != '0.0.0.0':
-                    targets.append(target + '/32')
-            
-        trapGroup = trap.get('openclos_trap_group')
-        if trapGroup:
-            target = trapGroup.get('target')
-            if target != '0.0.0.0':
-                targets.append(target + '/32')
-    
-    return targets

@@ -120,11 +120,6 @@ class TestFunctions(unittest.TestCase):
         addrList = enumerateRoutableIpv4Addresses()
         self.assertTrue(len(addrList) > 0)
 
-    def testModifyConfigTrapTarget(self):
-        modifyConfigTrapTarget('99.99.99.99')
-        conf1 = loadConfig()
-        self.assertEquals('99.99.99.99', conf1['snmpTrap']['networkdirector_trap_group']['target'])
-
     def testGetSupportedDeviceFamily(self):
         deviceFamilyList = getSupportedDeviceFamily({'qfx5100-96s-8q': {}, 'qfx5100-48s-6q': {}})
         self.assertEqual(2, len(deviceFamilyList))
@@ -205,16 +200,6 @@ class TestFunctions(unittest.TestCase):
         path = getOutFolderPath({'outputDir': '/var/lib/openclos'}, pod)
         
         self.assertEquals('/var/lib/openclos/'+pod.id+'-'+pod.name, path)
-
-    def testGetSnmpTrapTargets(self):
-        self.assertEqual(0, len(getSnmpTrapTargets({})))
-        self.assertEqual(0, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': '0.0.0.0'}}})))
-        self.assertEqual(1, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': '1.2.3.4'}}})))
-        self.assertEqual(1, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': ['1.2.3.4']}}})))
-        self.assertEqual(2, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': ['1.2.3.4', '1.2.3.5']}}})))
-        self.assertEqual(1, len(getSnmpTrapTargets({'snmpTrap': {'openclos_trap_group': {'target': '1.2.3.4'}}})))
-        self.assertEqual(2, len(getSnmpTrapTargets({'snmpTrap': {'networkdirector_trap_group': {'target': '1.2.3.4'}, 'openclos_trap_group': {'target': '1.2.3.5'}}})))
-        
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

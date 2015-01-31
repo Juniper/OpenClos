@@ -9,7 +9,7 @@ from flexmock import flexmock
 
 import jnpr.openclos.util
 from jnpr.openclos.dao import Dao
-from jnpr.openclos.model import Pod, Device, Interface, InterfaceDefinition
+from jnpr.openclos.model import Pod, Device, Interface, InterfaceDefinition, TrapGroup
 
 class TestDao(unittest.TestCase):
     def setUp(self):
@@ -97,6 +97,26 @@ class TestDao(unittest.TestCase):
         
         filteredIfds = dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
         self.assertEqual(2, len(filteredIfds))
+
+    def testConfigureTrapGroupFromInstaller ( self ):
+        #self.conf['dbUrl'] = 'mysql://root:<pass>@localhost/openclos' 
+        dao = Dao(self.conf)
+
+        trapGroups = dao.getAll(TrapGroup)
+        if trapGroups:
+            dao.deleteObjects ( trapGroups )
+
+        newtargets = []
+        for newtarget in ['1.2.3.4', '1.2.3.5']:
+            newtargets.append ( TrapGroup ( 'networkdirector_trap_group', newtarget, int('10162') ) )
+            newtargets.append ( TrapGroup ( 'space', newtarget, None ) )
+            newtargets.append ( TrapGroup ( 'openclos_trap_group', newtarget, 20162 ) )
+        dao.createObjects(newtargets)
+
+        self.assertEqual(6, len(dao.getAll(TrapGroup)))
+        self.assertEqual(10162, dao.getAll(TrapGroup)[0].port)
+        self.assertEqual(20162, dao.getAll(TrapGroup)[2].port)
+        self.assertEqual(162, dao.getAll(TrapGroup)[4].port)
 
     @unittest.skip('manual test')        
     def testConnectionCleanup(self):
