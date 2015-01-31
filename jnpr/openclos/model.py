@@ -424,7 +424,7 @@ class InterfaceDefinition(Interface):
         self.role = role
 
 class TrapGroup(ManagedElement, Base):
-    __tablename__ = 'trapTarget'
+    __tablename__ = 'trapGroup'
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), index=True, nullable = False)
     targetAddress = Column(String(60))
