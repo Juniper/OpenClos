@@ -154,20 +154,24 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                     uplinkLdpData = self.filterUplinkFromLldpData(lldpData, self.device.family)
                     goodBadCount = self.processLlDpData(uplinkLdpData, self.getAllocatedConnectedUplinkIfds()) 
                     self.validateDeviceL2Status(goodBadCount)
+                    self.updateDeviceConfigStatus('good')
                 else:
                     # for some reason, we can't match the plug-n-play leaf to our inventory. so inventory doesn't have
                     # ip address for this leaf. in this case the leaf and all its links should be marked 'unknown'
                     self.updateDeviceL2Status('unknown')
+                    self.updateDeviceConfigStatus('unknown')
                     self.updateUnknownIfdStatus(self.device.interfaces)
             except DeviceError as exc:
                 logger.error('Encountered device error for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL2Status(None, error = exc)
+                self.updateDeviceConfigStatus('unknown')
                 # when we can't connect, mark the links 'unknown' because it is possible the data network is 
                 # still working so we can't mark the links 'error'
                 self.updateUnknownIfdStatus(self.device.interfaces)
             except Exception as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL2Status('error', str(exc))
+                self.updateDeviceConfigStatus('error', str(exc))
                 self.updateBadIfdStatus(self.device.interfaces)
             finally:
                 self.collectionInProgressCache.doneDevice(self.deviceId)
@@ -217,6 +221,16 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             self.device.l2StatusReason = str(error.cause)
         self.dao.updateObjects([self.device])
 
+    def updateDeviceConfigStatus(self, status, reason = None, error = None):
+        '''Possible status values are  'processing', 'good', 'error' '''
+        if error is None:
+            self.device.configStatus = status
+            self.device.configStatusReason = reason
+        else:
+            self.device.configStatus = 'error'
+            self.device.configStatusReason = str(error.cause)
+        self.dao.updateObjects([self.device])
+        
     def updateSpineStatusFromLldpData(self, spineIfds):
         devicesToBeUpdated = set()
         for spineIfd in spineIfds:
