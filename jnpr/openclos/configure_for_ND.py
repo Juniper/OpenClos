@@ -7,7 +7,6 @@ import util
 from crypt import Cryptic
 from model import TrapGroup
 from dao import Dao
-from l3Clos import L3ClosMediation
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -16,12 +15,15 @@ parser = argparse.ArgumentParser ()
 parser.add_argument ( '--ndvip',
                       action = 'store',
                       help   = 'VIP address used by Network Director' )
+parser.add_argument ( '--nodeip',
+                      action = 'store',
+                      help   = 'Node IP address for Network Director' )
 parser.add_argument ( '--restport',
                       action = 'store',
                       help   = 'Port number to which REST server will bind' )
 parser.add_argument ( '--traptgt',
                       action = 'append',
-                      help   = 'Node IP address for Network Director' )
+                      help   = 'IP Network Director uses to receive trap' )
 parser.add_argument ( '--dbuser',
                       action = 'store',
                       help   = 'User Name to access DB' )
@@ -47,6 +49,9 @@ class NDConfMgr:
         if ( self.cmd_args.ndvip == None ):
             error_str += "- Network Director VIP address (--ndvip) not provided\n"
 
+        if ( self.cmd_args.nodeip == None ):
+            error_str += "- Node IP address (--nodeip) not provided\n"
+
         if ( self.cmd_args.restport == None ):
             error_str += "- REST Port number (--restport) not provided\n"
 
@@ -67,6 +72,9 @@ class NDConfMgr:
 
             if ip_format.match ( self.cmd_args.ndvip ) is None:
                 error_str += "- Network Director VIP address is not valid\n"
+
+            if ip_format.match ( self.cmd_args.nodeip ) is None:
+                error_str += "- Node IP address is not valid\n"
 
             for ip_address in ( self.cmd_args.traptgt ):
                 if ip_format.match ( ip_address ) is None:
@@ -105,7 +113,7 @@ class NDConfMgr:
 
         if self.get_stale_entry_flag () is 1:
             if '            - ' in line:
-                 return None
+                return None
             else:
                 self.set_stale_entry_flag ()
 
@@ -128,6 +136,7 @@ class NDConfMgr:
 
         print "Configuring OpenCLOS with following parameters:"
         print "ND VIP         : " + self.cmd_args.ndvip
+        print "ND node IP     : " + self.cmd_args.nodeip
         print "REST Port      : " + self.cmd_args.restport
         print "DB User        : " + self.cmd_args.dbuser
         self.db_pass_crypt = Cryptic ().encrypt ( self.cmd_args.dbpass )
@@ -147,6 +156,12 @@ class NDConfMgr:
                     print line,
                     print lineIter.next(),
                     print '    port : ' + self.cmd_args.restport
+                    lineIter.next (),
+                elif '    openclos_trap_group :' in line:
+                    print line,
+                    print '        port : ' + str(20162)
+                    lineIter.next (),
+                    print '        target : ' + self.cmd_args.nodeip
                     lineIter.next (),
                 else:
                     add_line = self.process_line ( line )
