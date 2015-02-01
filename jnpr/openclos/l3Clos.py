@@ -631,12 +631,22 @@ class L3ClosMediation():
 
         return accessInterface.render(ifdNames=ifdNames)
 
+    def getOpenclosTrapTargetIpFromConf(self):
+        snmpTrapConf = self.conf.get('snmpTrap')
+        if snmpTrapConf is not None:
+            openclosSnmpTrapConf = snmpTrapConf.get('openclos_trap_group') 
+            if openclosSnmpTrapConf is not None:
+                target = snmpTrapConf.get('openclos_trap_group').get('target')
+                if target is not None:
+                    return [target]
+        return []
+
     def getSnmpTrapTargets(self):
         if util.isIntegratedWithND(self.conf):   
             trapGroups = self.dao.getAll(TrapGroup)
             targetAddressList = [target.targetAddress for target in trapGroups]
         elif self.isZtpStaged:
-            targetAddressList = util.enumerateRoutableIpv4Addresses()
+            targetAddressList = self.getOpenclosTrapTargetIpFromConf()
         else:
             return []
         return targetAddressList
@@ -767,7 +777,7 @@ class L3ClosMediation():
             if snmpTrapConf is not None:
                 openclosSnmpTrapConf = snmpTrapConf.get('openclos_trap_group') 
                 if openclosSnmpTrapConf is not None:
-                    targetList = util.enumerateRoutableIpv4Addresses()
+                    targetList = self.getOpenclosTrapTargetIpFromConf()
                     trapGroups.append({'name': 'openclos_trap_group', 'port': openclosSnmpTrapConf['port'], 'targetIp': targetList })
                 else:
                     logger.error('No SNMP Trap setting found for openclos_trap_group in openclos.yaml')

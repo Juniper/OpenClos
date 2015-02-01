@@ -282,7 +282,7 @@ class TestL3Clos(unittest.TestCase):
         l3ClosMediation = L3ClosMediation(self.conf)
         self.assertEqual(1, len(l3ClosMediation.getOpenclosTrapGroupSettings()))
         self.assertEqual(1, len(l3ClosMediation.getOpenclosTrapGroupSettings()[0]['targetIp']))
-        self.assertNotEqual('1.2.3.4', l3ClosMediation.getOpenclosTrapGroupSettings()[0]['targetIp'][0])
+        self.assertEqual('1.2.3.4', l3ClosMediation.getOpenclosTrapGroupSettings()[0]['targetIp'][0])
         
         self.createTrapGroupsInDb(l3ClosMediation.dao)
         self.assertEqual(1, len(l3ClosMediation.getOpenclosTrapGroupSettings()))
@@ -463,6 +463,7 @@ class TestL3Clos(unittest.TestCase):
         l3ClosMediation = L3ClosMediation(self.conf)
 
         self.assertEqual(1, len(l3ClosMediation.getSnmpTrapTargets()))
+        self.assertEqual('5.6.7.8', l3ClosMediation.getSnmpTrapTargets()[0])
 
     def testGetSnmpTrapTargetsWithNd(self):
         self.conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
@@ -471,6 +472,7 @@ class TestL3Clos(unittest.TestCase):
         self.createTrapGroupsInDb(l3ClosMediation.dao)
 
         self.assertEqual(6, len(l3ClosMediation.getSnmpTrapTargets()))
+        self.assertTrue('5.6.7.8' not in l3ClosMediation.getSnmpTrapTargets())
 
 if __name__ == '__main__':
     unittest.main()
