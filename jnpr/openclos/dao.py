@@ -80,6 +80,15 @@ class AbstractDao(SingletonBase):
     def createObjects(self, session, objects):
         session.add_all(objects)
     
+    def createObjectsAndCommitNow(self, session, objects):
+        try:
+            session.add_all(objects)
+            session.commit()
+        except Exception as ex:
+            logger.error(ex)
+            session.rollback()
+            #raise
+
     def deleteObject(self, session, obj):
         session.delete(obj)
 
@@ -90,6 +99,16 @@ class AbstractDao(SingletonBase):
     def updateObjects(self, session, objects):
         for obj in objects:
             session.merge(obj)
+
+    def updateObjectsAndCommitNow(self, session, objects):
+        try:
+            for obj in objects:
+                session.merge(obj)
+            session.commit()
+        except Exception as ex:
+            logger.error(ex)
+            session.rollback()
+            #raise
 
     def getAll(self, session, objectType):
         return session.query(objectType).order_by(objectType.name).all()

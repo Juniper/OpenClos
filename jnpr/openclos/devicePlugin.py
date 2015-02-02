@@ -217,7 +217,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         else:
             self.device.l2Status = 'error'
             self.device.l2StatusReason = str(error.cause)
-        self._dao.updateObjects(self._session, [self.device])
+        self._dao.updateObjectsAndCommitNow(self._session, [self.device])
 
     def updateDeviceConfigStatus(self, status, reason = None, error = None):
         '''Possible status values are  'processing', 'good', 'error' '''
@@ -227,7 +227,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         else:
             self.device.configStatus = 'error'
             self.device.configStatusReason = str(error.cause)
-        self._dao.updateObjects(self._session, [self.device])
+        self._dao.updateObjectsAndCommitNow(self._session, [self.device])
         
     def updateSpineStatusFromLldpData(self, spineIfds):
         devicesToBeUpdated = set()
@@ -241,7 +241,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             devicesToBeUpdated.add(spineDevice)
 
         if len(devicesToBeUpdated) > 0:
-            self._dao.updateObjects(self._session, devicesToBeUpdated)
+            self._dao.updateObjectsAndCommitNow(self._session, devicesToBeUpdated)
 
     def getAllocatedConnectedUplinkIfds(self):
         uplinkIfds = self._session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == self.device.id).\
@@ -347,7 +347,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             devicesToBeUpdated.add(device)
             
         if len(devicesToBeUpdated) > 0:
-            self._dao.updateObjects(self._session, devicesToBeUpdated)
+            self._dao.updateObjectsAndCommitNow(self._session, devicesToBeUpdated)
             
     def updateGoodIfdStatus(self, ifds):
         modifiedObjects = []
@@ -359,7 +359,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             modifiedObjects.append(ifd)
             modifiedObjects.append(ifd.peer)
 
-        self._dao.updateObjects(self._session, modifiedObjects)
+        self._dao.updateObjectsAndCommitNow(self._session, modifiedObjects)
         self.updateSpineStatusFromLldpData(goodSpines)
     
     def updateIfdStatus(self, ifds, status):
@@ -368,7 +368,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             ifd.lldpStatus = status
             modifiedObjects.append(ifd)
 
-        self._dao.updateObjects(self._session, modifiedObjects)
+        self._dao.updateObjectsAndCommitNow(self._session, modifiedObjects)
 
     def updateBadIfdStatus(self, ifds):
         self.updateIfdStatus(ifds, 'error')
@@ -384,7 +384,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         additionalLinks = []
         for link in links:
             additionalLinks.append(AdditionalLink(self.device.name, link['port1'], link['device2'], link['port2'], 'error'))
-        self._dao.createObjects(self._session, additionalLinks)
+        self._dao.createObjectsAndCommitNow(self._session, additionalLinks)
 
 class L3DataCollector(DeviceDataCollectorNetconf):
     pass
@@ -435,7 +435,7 @@ class TwoStageConfigurator(L2DataCollector):
         else:
             self.device.configStatus = 'error'
             self.device.configStatusReason = str(error.cause)
-        self._dao.updateObjects(self._session, [self.device])
+        self._dao.updateObjectsAndCommitNow(self._session, [self.device])
         
     def start2StageConfiguration(self):
         try:
@@ -598,7 +598,7 @@ class TwoStageConfigurator(L2DataCollector):
         
         logger.info('DeviceFamily is changed, from: %s, to: %s' % (device.family, deviceFamily))
         device.family = deviceFamily
-        self._dao.updateObjects(self._session, [device])
+        self._dao.updateObjectsAndCommitNow(self._session, [device])
         self.fixAccessPorts(device)
         self.fixUplinkPorts(device, uplinksWithIfd)
 
@@ -650,7 +650,7 @@ class TwoStageConfigurator(L2DataCollector):
             listIndex += 1
         
         logger.debug('Number of uplink IFD + IFL fixed: %d' % (len(updateList)))
-        self._dao.updateObjects(self._session, updateList)
+        self._dao.updateObjectsAndCommitNow(self._session, updateList)
 
     def markAllUplinkIfdsToUplink_x(self, device):
         if device is None:
@@ -726,7 +726,7 @@ class TwoStageConfigurator(L2DataCollector):
         device.managementIp = self.deviceIp + '/' + str(mgmtNetwork.prefixlen)
         # mark as 'deploy' automatically because this is a plug-and-play leaf
         device.deployStatus = 'deploy'
-        self._dao.updateObjects(self._session, [device])
+        self._dao.updateObjectsAndCommitNow(self._session, [device])
         logger.debug('updated deployStatus for name: %s, id:%s, deployStatus: %s' % (device.name, device.id, device.deployStatus))
         
         # Is BEST match good enough match
@@ -744,6 +744,9 @@ class TwoStageConfigurator(L2DataCollector):
         logger.debug('updateDeviceConfiguration for %s' % (self.deviceLogStr))
         l3ClosMediation = L3ClosMediation(conf = self._conf)
         config = l3ClosMediation.createLeafConfigFor2Stage(self.device)
+        # l3ClosMediation used seperate db sessions to create device config
+        # expire device from current session for lazy load with committed data
+        self._session.expire(self.device)
         
         configurationUnit = Config(self.deviceConnectionHandle)
 
