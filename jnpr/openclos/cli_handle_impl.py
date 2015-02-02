@@ -136,14 +136,14 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def handle_show_pod_detail ( self, pod_id, *args ):
         l3ClosMediation = L3ClosMediation ()
-        pod_object = l3ClosMediation.dao.getObjectById ( Pod, pod_id )
+        pod_object = l3ClosMediation.__dao.getObjectById ( Pod, pod_id )
         self.show_pod_detail ( pod_object )
 
 #------------------------------------------------------------------------------
     def handle_show_all_pods_detail ( self, *args ):
         print "---------------------------------------------------------------"
         l3ClosMediation = L3ClosMediation ()
-        pod_objects = l3ClosMediation.dao.getAll ( Pod )
+        pod_objects = l3ClosMediation.__dao.getAll ( Pod )
         for pod in pod_objects:
             self.show_pod_detail ( pod )
             print "---------------------------------------------------------------"
@@ -152,7 +152,7 @@ class CLIImplementor:
     def list_all_pods_from_db ( self, add_help=None, *args ):
         ret_list = []
         l3ClosMediation = L3ClosMediation ()
-        pod_objects = l3ClosMediation.dao.getAll ( Pod )
+        pod_objects = l3ClosMediation.__dao.getAll ( Pod )
         for pod in pod_objects:
             pod_str = pod.id
             if ( add_help != None ):

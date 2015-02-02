@@ -18,7 +18,12 @@ class SingletonBase(object):
                     clazz.__singletonInstance = clazz()
         return clazz.__singletonInstance
 
-
-    
+    @classmethod
+    def _destroy(clazz):
+        '''
+        Do not use, should be used by unit tests only
+        '''
+        clazz.__singletonInstance.__del__()
+        clazz.__singletonInstance = None
     
     

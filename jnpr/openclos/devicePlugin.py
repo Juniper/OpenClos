@@ -62,31 +62,28 @@ class DeviceDataCollectorNetconf(object):
     Base class for any device data collector based on NetConf 
     Uses junos-eznc to connect to device
     '''
-    def __init__(self, deviceId, conf = {}):
+    def __init__(self, deviceId, conf = {}, daoClass = Dao):
         global logger
         if any(conf) == False:
-            self.conf = util.loadConfig(appName = moduleName)
+            self._conf = util.loadConfig(appName = moduleName)
         else:
-            self.conf = conf
+            self._conf = conf
         logger = logging.getLogger(moduleName)
 
-        self.dao = None
+        self.daoClass = daoClass
         self.pod = None
         self.deviceId = deviceId
         self.deviceConnectionHandle = None
 
     def manualInit(self):
-        if self.dao is None:
-            self.dao = Dao(self.conf)
+        self._dao = self.daoClass.getInstance()
+        self._session = self._dao._getRawSession()
+        
         if self.deviceId is not None:
-            self.device = self.dao.getObjectById(Device, self.deviceId)
+            self.device = self._dao.getObjectById(self._session, Device, self.deviceId)
             self.deviceLogStr = 'device name: %s, ip: %s, id: %s' % (self.device.name, self.device.managementIp, self.device.id)
             self.pod = self.device.pod
     
-    def __del__(self):
-        if self.dao:
-            self.dao.__del__()
-        
     def connectToDevice(self):
         '''
         :param dict deviceInfo:
@@ -124,12 +121,9 @@ class L2DataCollector(DeviceDataCollectorNetconf):
     Perform manual "init" from  start2StageZtpConfig/startL2Report to make sure it is done 
     from child thread's context
     '''
-    def __init__(self, deviceId, conf = {}, dao = None):
+    def __init__(self, deviceId, conf = {}, daoClass = Dao):
         self.collectionInProgressCache = L2DataCollectorInProgressCache.getInstance()
-        super(L2DataCollector, self).__init__(deviceId, conf)
-
-    def __del__(self):
-        super(L2DataCollector, self).__del__()
+        super(L2DataCollector, self).__init__(deviceId, conf, daoClass)
 
     def manualInit(self):
         super(L2DataCollector, self).manualInit()
@@ -141,6 +135,10 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         except Exception as exc:
             logger.error('L2 data collection failed for %s, %s' % (self.deviceId, exc))
             raise
+        finally:
+            if self._session:
+                self._session.commit()
+                self._session.remove()
     
     def startCollectAndProcessLldp(self):
         if (self.collectionInProgressCache.checkAndAddDevice(self.device.id)):
@@ -219,7 +217,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         else:
             self.device.l2Status = 'error'
             self.device.l2StatusReason = str(error.cause)
-        self.dao.updateObjects([self.device])
+        self._dao.updateObjects(self._session, [self.device])
 
     def updateDeviceConfigStatus(self, status, reason = None, error = None):
         '''Possible status values are  'processing', 'good', 'error' '''
@@ -229,7 +227,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         else:
             self.device.configStatus = 'error'
             self.device.configStatusReason = str(error.cause)
-        self.dao.updateObjects([self.device])
+        self._dao.updateObjects(self._session, [self.device])
         
     def updateSpineStatusFromLldpData(self, spineIfds):
         devicesToBeUpdated = set()
@@ -243,10 +241,10 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             devicesToBeUpdated.add(spineDevice)
 
         if len(devicesToBeUpdated) > 0:
-            self.dao.updateObjects(devicesToBeUpdated)
+            self._dao.updateObjects(self._session, devicesToBeUpdated)
 
     def getAllocatedConnectedUplinkIfds(self):
-        uplinkIfds = self.dao.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == self.device.id).\
+        uplinkIfds = self._session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == self.device.id).\
             filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.sequenceNum).all()
         
         allocatedUplinks = {}
@@ -273,7 +271,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         if not lldpData:
             return lldpData
         
-        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['uplinkPorts']
+        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self._conf['deviceFamily'])['uplinkPorts']
 
         filteredNames = set(uplinkNames).intersection(set(lldpData.keys()))
         filteredUplinks = {name:lldpData[name] for name in filteredNames}
@@ -349,7 +347,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             devicesToBeUpdated.add(device)
             
         if len(devicesToBeUpdated) > 0:
-            self.dao.updateObjects(devicesToBeUpdated)
+            self._dao.updateObjects(self._session, devicesToBeUpdated)
             
     def updateGoodIfdStatus(self, ifds):
         modifiedObjects = []
@@ -361,7 +359,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             modifiedObjects.append(ifd)
             modifiedObjects.append(ifd.peer)
 
-        self.dao.updateObjects(modifiedObjects)
+        self._dao.updateObjects(self._session, modifiedObjects)
         self.updateSpineStatusFromLldpData(goodSpines)
     
     def updateIfdStatus(self, ifds, status):
@@ -370,7 +368,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             ifd.lldpStatus = status
             modifiedObjects.append(ifd)
 
-        self.dao.updateObjects(modifiedObjects)
+        self._dao.updateObjects(self._session, modifiedObjects)
 
     def updateBadIfdStatus(self, ifds):
         self.updateIfdStatus(ifds, 'error')
@@ -382,12 +380,11 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         '''
         lldp has this port but cabling plan does not have this port.
         '''
-        self.dao.Session().query(AdditionalLink).filter(AdditionalLink.device1 == self.device.name).delete()
-        self.dao.Session().commit()
+        self._session.query(AdditionalLink).filter(AdditionalLink.device1 == self.device.name).delete()
         additionalLinks = []
         for link in links:
             additionalLinks.append(AdditionalLink(self.device.name, link['port1'], link['device2'], link['port2'], 'error'))
-        self.dao.createObjects(additionalLinks)
+        self._dao.createObjects(self._session, additionalLinks)
 
 class L3DataCollector(DeviceDataCollectorNetconf):
     pass
@@ -400,24 +397,21 @@ class TwoStageConfigurator(L2DataCollector):
     Perform manual "init" from  start2StageZtpConfig/startL2Report to make sure it is done 
     from child thread's context
     '''
-    def __init__(self, deviceIp, conf = {}, dao = None, stopEvent = None):
+    def __init__(self, deviceIp, conf = {}, daoClass = Dao, stopEvent = None):
         self.configurationInProgressCache = TwoStageConfigInProgressCache.getInstance()
-        super(TwoStageConfigurator, self).__init__(None, conf)
+        super(TwoStageConfigurator, self).__init__(None, conf, daoClass)
         self.deviceIp = deviceIp
         self.deviceLogStr = 'device ip: %s' % (self.deviceIp)
-        # at this point self.conf is initialized
-        self.interval = util.getZtpStagedInterval(self.conf)
-        self.attempt = util.getZtpStagedAttempt(self.conf)
-        self.vcpLldpDelay = util.getVcpLldpDelay(self.conf)
+        # at this point self._conf is initialized
+        self.interval = util.getZtpStagedInterval(self._conf)
+        self.attempt = util.getZtpStagedAttempt(self._conf)
+        self.vcpLldpDelay = util.getVcpLldpDelay(self._conf)
         
         if stopEvent is not None:
             self.stopEvent = stopEvent
         else:
             self.stopEvent = Event()
-            
-    def __del__(self):
-        super(TwoStageConfigurator, self).__del__()
-
+        
     def manualInit(self):
         super(TwoStageConfigurator, self).manualInit()
         
@@ -441,7 +435,7 @@ class TwoStageConfigurator(L2DataCollector):
         else:
             self.device.configStatus = 'error'
             self.device.configStatusReason = str(error.cause)
-        self.dao.updateObjects([self.device])
+        self._dao.updateObjects(self._session, [self.device])
         
     def start2StageConfiguration(self):
         try:
@@ -460,10 +454,14 @@ class TwoStageConfigurator(L2DataCollector):
         except Exception as exc:
             logger.error('Two stage configuration failed for %s, %s' % (self.deviceIp, exc))
             raise
+        finally:
+            if self._session:
+                self._session.commit()
+                self._session.remove()
             
     def findPodByMgmtIp(self, deviceIp):
         logger.debug("Checking all pods for ip %s" % (deviceIp))
-        pods = self.dao.getAll(Pod)
+        pods = self._dao.getAll(self._session, Pod)
         for pod in pods:
             logger.debug("Checking pod[id='%s', name='%s']: %s" % (pod.id, pod.name, pod.managementPrefix))
             ipNetwork = IPNetwork(pod.managementPrefix)
@@ -491,11 +489,11 @@ class TwoStageConfigurator(L2DataCollector):
             logger.debug('NO LLDP data found for device: %s' % (self.deviceIp))
             return lldpData
 
-        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['uplinkPorts']
+        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self._conf['deviceFamily'])['uplinkPorts']
         upLinks = []
         for link in lldpData.values():
             if link['port1'] in uplinkNames:
-                ifd2 = self.dao.getIfdByDeviceNamePortName(link['device2'], link['port2'])
+                ifd2 = self._dao.getIfdByDeviceNamePortName(self._session, link['device2'], link['port2'])
                 if ifd2 is not None:
                     link['ifd2'] = ifd2
                     upLinks.append(link)
@@ -600,7 +598,7 @@ class TwoStageConfigurator(L2DataCollector):
         
         logger.info('DeviceFamily is changed, from: %s, to: %s' % (device.family, deviceFamily))
         device.family = deviceFamily
-        self.dao.updateObjects([device])
+        self._dao.updateObjects(self._session, [device])
         self.fixAccessPorts(device)
         self.fixUplinkPorts(device, uplinksWithIfd)
 
@@ -622,7 +620,7 @@ class TwoStageConfigurator(L2DataCollector):
             return
 
         updateList = []
-        uplinkNamesBasedOnDeviceFamily = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])['uplinkPorts']
+        uplinkNamesBasedOnDeviceFamily = util.getPortNamesForDeviceFamily(device.family, self._conf['deviceFamily'])['uplinkPorts']
         # hack :( needed to keep the sequence proper in case2, if device changed from ex to qfx
         self.markAllUplinkIfdsToUplink_x(device)
         
@@ -639,7 +637,7 @@ class TwoStageConfigurator(L2DataCollector):
             uplinkNamesBasedOnDeviceFamily.remove(peerLeafIfd.name)
             
         # case2: fix remaining IFDs based on device family
-        allocatedUplinkIfds = self.dao.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
+        allocatedUplinkIfds = self._session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
             filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.sequenceNum).all()
         
         listIndex = 0
@@ -652,12 +650,12 @@ class TwoStageConfigurator(L2DataCollector):
             listIndex += 1
         
         logger.debug('Number of uplink IFD + IFL fixed: %d' % (len(updateList)))
-        self.dao.updateObjects(updateList)
+        self._dao.updateObjects(self._session, updateList)
 
     def markAllUplinkIfdsToUplink_x(self, device):
         if device is None:
             return
-        allocatedUplinkIfds = self.dao.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
+        allocatedUplinkIfds = self._session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
             filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.sequenceNum).all()
         
         listIndex = 0
@@ -723,12 +721,12 @@ class TwoStageConfigurator(L2DataCollector):
             logger.info('Device: %s, number of matched uplink count is %d (too less), skipping findMatchedDevice' % (self.deviceIp, maxCount))
             return
 
-        device = self.dao.getObjectById(Device, keyForMaxCount)
+        device = self._dao.getObjectById(self._session, Device, keyForMaxCount)
         mgmtNetwork = IPNetwork(device.pod.managementPrefix)
         device.managementIp = self.deviceIp + '/' + str(mgmtNetwork.prefixlen)
         # mark as 'deploy' automatically because this is a plug-and-play leaf
         device.deployStatus = 'deploy'
-        self.dao.updateObjects([device])
+        self._dao.updateObjects(self._session, [device])
         logger.debug('updated deployStatus for name: %s, id:%s, deployStatus: %s' % (device.name, device.id, device.deployStatus))
         
         # Is BEST match good enough match
@@ -744,7 +742,7 @@ class TwoStageConfigurator(L2DataCollector):
         Device Connection should be open by now, no need to connect again 
         '''
         logger.debug('updateDeviceConfiguration for %s' % (self.deviceLogStr))
-        l3ClosMediation = L3ClosMediation(conf = self.conf, dao = self.dao)
+        l3ClosMediation = L3ClosMediation(conf = self._conf)
         config = l3ClosMediation.createLeafConfigFor2Stage(self.device)
         
         configurationUnit = Config(self.deviceConnectionHandle)
@@ -798,7 +796,7 @@ if __name__ == "__main__":
     pods = l3ClosMediation.loadClosDefinition()
     pod = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
     raw_input("pause...")
-    leaf1 = l3ClosMediation.dao.Session.query(Device).filter(Device.name == 'clos-leaf-01').one()
+    leaf1 = l3ClosMediation.__dao.Session.query(Device).filter(Device.name == 'clos-leaf-01').one()
     c = L2DataCollector(leaf1.id)
     c.startL2Report()
         

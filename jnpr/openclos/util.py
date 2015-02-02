@@ -12,7 +12,6 @@ import datetime
 import shutil
 from netaddr import IPNetwork
 import netifaces
-import fileinput
 import logging.config
 from crypt import Cryptic
 
@@ -423,3 +422,12 @@ def createOutFolder(conf, ipFabric):
 def deleteOutFolder(conf, ipFabric):
     path = getOutFolderPath(conf, ipFabric)
     shutil.rmtree(path, ignore_errors=True)
+
+def getDbUrl():
+    if conf is None:
+        raise ValueError('Configuration is not loaded using "util.loadConfig"')
+    elif conf.get('dbUrl') is None or conf.get('dbUrl')  == '':
+        raise ValueError('DB Url is empty')
+    
+    return conf['dbUrl'] 
+

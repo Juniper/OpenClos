@@ -21,18 +21,16 @@ class WriterBase():
         global logger
         logger = logging.getLogger(moduleName)
        
-        # use dao to generate various output
-        self.dao = dao
-        
+        self._dao = dao
         # this writer is specific for this pod
-        self.pod = pod
-        self.conf = conf
-        self.outputDir = util.createOutFolder(self.conf, self.pod)       
+        self._pod = pod
+        self._conf = conf
+        self.outputDir = util.createOutFolder(self._conf, self._pod)       
         
 class ConfigWriter(WriterBase):
     def __init__(self, conf, pod, dao):
         WriterBase.__init__(self, conf, pod, dao)
-        self.writeInFile = self.conf.get('writeConfigInFile', False)
+        self.writeInFile = self._conf.get('writeConfigInFile', False)
         
     def write(self, device):
         if not self.writeInFile:
@@ -59,11 +57,11 @@ class DhcpConfWriter(WriterBase):
 
     def write(self, dhcpConf):
         if dhcpConf is not None:
-            logger.info('Writing dhcpd.conf for pod: %s' % (self.pod.name))
+            logger.info('Writing dhcpd.conf for pod: %s' % (self._pod.name))
             with open(os.path.join(self.outputDir, 'dhcpd.conf'), 'w') as f:
                     f.write(dhcpConf)
         else:
-            logger.error('No content, skipping writing dhcpd.conf for pod: %s' % (self.pod.name))
+            logger.error('No content, skipping writing dhcpd.conf for pod: %s' % (self._pod.name))
 
     def writeSingle(self, dhcpConf):
         if dhcpConf is not None:
@@ -80,28 +78,30 @@ class CablingPlanWriter(WriterBase):
         #self.templateEnv.trim_blocks = True
         self.templateEnv.lstrip_blocks = True
         # load cabling plan template
-        self.template = self.templateEnv.get_template(self.pod.topologyType + '.txt')
+        self.template = self.templateEnv.get_template(self._pod.topologyType + '.txt')
         # load L2Report template
-        self.l2ReportTemplate = self.templateEnv.get_template(self.pod.topologyType + 'L2Report.json')
+        self.l2ReportTemplate = self.templateEnv.get_template(self._pod.topologyType + 'L2Report.json')
         # validity check
-        if 'deviceFamily' not in self.conf:
+        if 'deviceFamily' not in self._conf:
             raise ValueError("No deviceFamily found in configuration file")
 
     def writeJSON(self):
-        if self.pod.topologyType == 'threeStage':
+        if self._pod.topologyType == 'threeStage':
             return self.writeThreeStageCablingJson()
-        elif self.pod.topologyType == 'fiveStageRealEstate':
+        elif self._pod.topologyType == 'fiveStageRealEstate':
             return self.writeJSONFiveStageRealEstate()
-        elif self.pod.topologyType == 'fiveStagePerformance':
+        elif self._pod.topologyType == 'fiveStagePerformance':
             return self.writeJSONFiveStagePerformance()
 
     def getDataFor3StageCablingPlan(self):            
         devices = []
         links = []
-        for device in self.pod.devices:
+        for device in self._pod.devices:
             devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployStatus': device.deployStatus})
-            if device.role == 'leaf':
-                leafPeerPorts = self.dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
+            if device.role == 'spine':
+                continue
+            with self._dao.getReadSession() as session:
+                leafPeerPorts = self._dao.getConnectedInterconnectIFDsFilterFakeOnes(session, device)
                 for port in leafPeerPorts:
                     leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
                     spinePeerPort = port.peer
@@ -133,11 +133,13 @@ class CablingPlanWriter(WriterBase):
     def getDataFor3StageL2Report(self):            
         devices = []
         links = []
-        for device in self.pod.devices:
+        for device in self._pod.devices:
             if device.deployStatus == 'deploy':
                 devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployStatus': device.deployStatus})
-                if device.role == 'leaf':
-                    leafPeerPorts = self.dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
+                if device.role == 'spine':
+                    continue
+                with self._dao.getReadSession() as session:
+                    leafPeerPorts = self._dao.getConnectedInterconnectIFDsFilterFakeOnes(session, device)
                     for port in leafPeerPorts:
                         leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
                         spinePeerPort = port.peer
@@ -145,14 +147,16 @@ class CablingPlanWriter(WriterBase):
                         if spinePeerPort.device.deployStatus == 'deploy':
                             links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
                                           'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
-        # additional links
-        additionalLinkList = []
-        additionalLinks = self.dao.Session().query(AdditionalLink).all()
-        if additionalLinks is not None:
-            for link in additionalLinks:
-                additionalLinkList.append({'device1': link.device1, 'port1': link.port1, 'ip1': '', 
-                                           'device2': link.device2, 'port2': link.port2, 'ip2': '', 
-                                           'lldpStatus': link.lldpStatus})
+
+        with self._dao.getReadSession() as session:
+            # additional links
+            additionalLinkList = []
+            additionalLinks = session.query(AdditionalLink).all()
+            if additionalLinks is not None:
+                for link in additionalLinks:
+                    additionalLinkList.append({'device1': link.device1, 'port1': link.port1, 'ip1': '', 
+                                               'device2': link.device2, 'port2': link.port2, 'ip2': '', 
+                                               'lldpStatus': link.lldpStatus})
 
         return {'devices': devices, 'links': links, 'additionalLinks': additionalLinkList}
         
@@ -180,11 +184,11 @@ class CablingPlanWriter(WriterBase):
         pass
         
     def writeDOT(self):
-        if self.pod.topologyType == 'threeStage':
+        if self._pod.topologyType == 'threeStage':
             return self.writeDOTThreeStage()
-        elif self.pod.topologyType == 'fiveStageRealEstate':
+        elif self._pod.topologyType == 'fiveStageRealEstate':
             return self.writeDOTFiveStageRealEstate()
-        elif self.pod.topologyType == 'fiveStagePerformance':
+        elif self._pod.topologyType == 'fiveStagePerformance':
             return self.writeDOTFiveStagePerformance()
     
     def writeDOTThreeStage(self):
@@ -192,10 +196,10 @@ class CablingPlanWriter(WriterBase):
         creates DOT file for devices in topology which has peers
         '''
        
-        topology = self.createLabelForDevices(self.pod.devices, self.conf['DOT'])
-        colors = self.conf['DOT']['colors']
+        topology = self.createLabelForDevices(self._pod.devices, self._conf['DOT'])
+        colors = self._conf['DOT']['colors']
         i =0
-        for device in self.pod.devices:
+        for device in self._pod.devices:
             linkLabel = self.createLabelForLinks(device)
             if(i == len(colors)): 
                 i=0
