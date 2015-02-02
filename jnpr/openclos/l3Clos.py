@@ -593,8 +593,12 @@ class L3ClosMediation():
         self.__dao.updateObjects(session, modifiedObjects)
 
     def _createBaseConfig(self, device):
-        baseTemplate = self._templateEnv.get_template('baseTemplate.txt')
-        return baseTemplate.render(hostName=device.name, hashedPassword=device.getHashPassword())
+        if util.isIntegratedWithND(self.__conf):   
+            baseTemplate = self._templateEnv.get_template('baseTemplateNd.txt')
+            return baseTemplate.render(hostName=device.name, hashedPassword=device.getHashPassword())
+        else:
+            baseTemplate = self._templateEnv.get_template('baseTemplate.txt')
+            return baseTemplate.render(hostName=device.name, hashedPassword=device.getHashPassword())
 
     def _createInterfaces(self, session, device): 
         interfaceStanza = self._templateEnv.get_template('interface_stanza.txt')

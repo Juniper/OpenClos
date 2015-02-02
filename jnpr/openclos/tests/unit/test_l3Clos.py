@@ -236,6 +236,7 @@ class TestL3Clos(unittest.TestCase):
         from jinja2 import TemplateNotFound
 
         self.assertIsNotNone(self.l3ClosMediation._templateEnv.get_template('protocolBgp.txt'))
+        self.assertIsNotNone(self.l3ClosMediation._templateEnv.get_template('baseTemplateNd.txt'))
         with self.assertRaises(TemplateNotFound) as e:
             self.l3ClosMediation._templateEnv.get_template('unknown-template')
         self.assertTrue('unknown-template' in e.exception.message)
