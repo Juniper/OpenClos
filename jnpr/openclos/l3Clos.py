@@ -336,7 +336,12 @@ class L3ClosMediation():
             # update other fields
             self._updatePodData(session, pod, podDict, inventoryData)
             logger.info("Pod[id='%s', name='%s']: updated" % (pod.id, pod.name)) 
-            return pod
+            podId = pod.id
+        
+        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
+        with self.__dao.getReadSession() as session:
+            pod = self.__dao.getObjectById(session, Pod, podId)
+        return pod
     
     def deletePod(self, podId):
         '''

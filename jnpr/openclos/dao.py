@@ -33,7 +33,7 @@ class AbstractDao(SingletonBase):
             self.__engine = sqlalchemy.create_engine(dbUrl, echo = debugSql)
         elif 'mysql:' in dbUrl:
             self.__engine = sqlalchemy.create_engine(dbUrl, echo = debugSql,
-                         pool_recycle = 20, isolation_level = "READ COMMITTED")
+                         pool_recycle = 7200, isolation_level = "READ COMMITTED")
         else:
             logger.error('Unsupported DB dialect: %s' % dbUrl)
             raise ValueError('Unsupported DB dialect: %s' % dbUrl)
