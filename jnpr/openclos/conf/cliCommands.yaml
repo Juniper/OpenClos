@@ -27,6 +27,7 @@ create:
                     Desc: Create ZTP configuration for a pre-defined POD
                     Macro: list_all_pods_from_db
                     Handle: handle_create_ztp_config
+                    
 update:
     Access: WRITE
     Args:
@@ -36,6 +37,23 @@ update:
                     Desc: Update password for all devices in all PODs
                     Macro: list_all_pods_from_db
                     Handle: handle_update_password
+        pods:
+            Args:
+                for-pod:
+                    Desc: Update POD configuration
+                    Macro: list_all_pods_from_db
+                    Handle: handle_update_pods   
+                    
+deploy:
+    Access: WRITE
+    Args:                   
+        ztp-config:
+            Args:
+                for-pod:
+                    Desc: Deploy ZTP configuration for a pre-defined POD
+                    Macro: list_all_pods_from_db
+                    Handle: handle_deploy_ztp_config
+                    
 run:
     Access: READ-WRITE
     Args:
