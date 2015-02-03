@@ -280,7 +280,8 @@ class TestL2DataCollector(unittest.TestCase):
             dataCollector = L2DataCollector(IFDs[11].device.id, {}, InMemoryDao)
             dataCollector.manualInit()
             dataCollector._session = session
-
+            dataCollector.device = IFDs[11].device
+            
             lldpDataFromLeaf2 = {
                'et-0/0/48': {'device1': None, 'port1': 'et-0/0/48', 'device2': 'spine1', 'port2': 'et-0/0/1'}, # perfect match
                'et-0/0/49': {'device1': None, 'port1': 'et-0/0/49', 'device2': 'spine2', 'port2': 'et-0/0/99'}, # bad connect
@@ -290,6 +291,7 @@ class TestL2DataCollector(unittest.TestCase):
             flexmock(dataCollector).should_receive('persistAdditionalLinks').with_args([lldpDataFromLeaf2['et-0/0/51']]).times(1)
             flexmock(dataCollector).should_receive('updateGoodIfdStatus').with_args([IFDs[9]]).times(1)
             flexmock(dataCollector).should_receive('updateBadIfdStatus').with_args([IFDs[11], IFDs[10]]).times(1)
+            #flexmock(dataCollector).should_receive('resetSpineStatus').with_args(IFDs[11].device.pod).times(1)
     
             counts = dataCollector.processLlDpData(lldpDataFromLeaf2, {'et-0/0/48': IFDs[9], 'et-0/0/49': IFDs[10], 'dummy': IFDs[11]})
             
