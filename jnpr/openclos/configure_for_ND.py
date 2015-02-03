@@ -176,12 +176,13 @@ class NDConfMgr:
 
 #------------------------------------------------------------------------------
     def update_trap_data_in_DB ( self ):
+        util.loadConfig()
         dao = Dao.getInstance()
-        with self.__dao.getReadWriteSession() as session:
+        with dao.getReadWriteSession() as session:
             trapGroups = dao.getAll(session, TrapGroup)
             if trapGroups:
                 dao.deleteObjects (session, trapGroups)
-    
+
             newtargets = []
             for newtarget in self.cmd_args.traptgt:
                 newtargets.append ( TrapGroup ( 'networkdirector_trap_group', newtarget, int(self.cmd_args.ndtrapport) ) )
