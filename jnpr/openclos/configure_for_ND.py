@@ -187,7 +187,6 @@ class NDConfMgr:
             for newtarget in self.cmd_args.traptgt:
                 newtargets.append ( TrapGroup ( 'networkdirector_trap_group', newtarget, int(self.cmd_args.ndtrapport) ) )
                 newtargets.append ( TrapGroup ( 'openclos_trap_group', newtarget, 20162 ) )
-            newtargets.append ( TrapGroup ( 'space', self.cmd_args.ndvip, None ) )
             dao.createObjects(session, newtargets)
 
 #------------------------------------------------------------------------------

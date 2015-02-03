@@ -1,6 +1,8 @@
 system {
-    {% if hostName is defined %}host-name "{{hostName}}";{% endif %}
+    {% if hostName is defined %}replace:
+    host-name "{{hostName}}";{% endif %}
     time-zone America/Los_Angeles;
+    replace:
     root-authentication {
         encrypted-password "{{hashedPassword}}"; ## SECRET-DATA
     }
@@ -51,4 +53,3 @@ system {
         }
     }
 }
-

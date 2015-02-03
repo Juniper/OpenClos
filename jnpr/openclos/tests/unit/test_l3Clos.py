@@ -236,7 +236,6 @@ class TestL3Clos(unittest.TestCase):
         from jinja2 import TemplateNotFound
 
         self.assertIsNotNone(self.l3ClosMediation._templateEnv.get_template('protocolBgp.txt'))
-        self.assertIsNotNone(self.l3ClosMediation._templateEnv.get_template('baseTemplateNd.txt'))
         with self.assertRaises(TemplateNotFound) as e:
             self.l3ClosMediation._templateEnv.get_template('unknown-template')
         self.assertTrue('unknown-template' in e.exception.message)
@@ -245,7 +244,6 @@ class TestL3Clos(unittest.TestCase):
         newtargets = []
         for newtarget in ['1.2.3.4', '1.2.3.5']:
             newtargets.append ( TrapGroup ( 'networkdirector_trap_group', newtarget, int('10162') ) )
-            newtargets.append ( TrapGroup ( 'space', newtarget, None ) )
             newtargets.append ( TrapGroup ( 'openclos_trap_group', newtarget, 20162 ) )
         with self.__dao.getReadWriteSession() as session:
             self.__dao.createObjects(session, newtargets)
@@ -262,11 +260,9 @@ class TestL3Clos(unittest.TestCase):
         
         self.createTrapGroupsInDb(self.__dao)
         with self.__dao.getReadSession() as session:
-            self.assertEqual(2, len(self.l3ClosMediation._getNdTrapGroupSettings(session)))
+            self.assertEqual(1, len(self.l3ClosMediation._getNdTrapGroupSettings(session)))
             self.assertEqual(10162, self.l3ClosMediation._getNdTrapGroupSettings(session)[0]['port'])
             self.assertEqual(2, len(self.l3ClosMediation._getNdTrapGroupSettings(session)[0]['targetIp']))
-            self.assertEqual(162, self.l3ClosMediation._getNdTrapGroupSettings(session)[1]['port'])
-            self.assertEqual(2, len(self.l3ClosMediation._getNdTrapGroupSettings(session)[1]['targetIp']))
         
     def testGetOpenClosTrapGroupSettingsNoStagedZtp(self):
         with self.__dao.getReadSession() as session:
@@ -338,7 +334,6 @@ class TestL3Clos(unittest.TestCase):
         self.assertTrue('event-options' in configlet)
         self.assertFalse('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-        self.assertTrue('trap-group space' in configlet)
 
     def testCreateSnmpTrapAndEventWithNdLeaf(self):
         self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
@@ -355,7 +350,6 @@ class TestL3Clos(unittest.TestCase):
         self.assertTrue('event-options' in configlet)
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-        self.assertTrue('trap-group space' in configlet)
 
     def testCreateSnmpTrapAndEventForLeafFor2ndStage(self):
         self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
@@ -368,9 +362,8 @@ class TestL3Clos(unittest.TestCase):
             configlet = self.l3ClosMediation._createSnmpTrapAndEventForLeafFor2ndStage(session, device)
         self.assertTrue('' != configlet)
         self.assertTrue('event-options' in configlet)
-        self.assertTrue('trap-group openclos_trap_group' not in configlet)
+        self.assertTrue('trap-group openclos_trap_group' in configlet) # this is for delete snmp trap
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-        self.assertTrue('trap-group space' in configlet)
         self.assertEquals(1, configlet.count('authentication'))
         self.assertEquals(1, configlet.count('link'))
                 
@@ -454,7 +447,6 @@ class TestL3Clos(unittest.TestCase):
         self.assertTrue('vendor-id Juniper-qfx5100-48s-6q' in configlet)
         self.assertTrue('trap-group openclos_trap_group' in configlet)
         self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-        self.assertTrue('trap-group space' in configlet)
         self.assertEquals(1, configlet.count('static'))
         self.assertEquals(4, configlet.count('route'))
 
@@ -478,7 +470,7 @@ class TestL3Clos(unittest.TestCase):
         self.createTrapGroupsInDb(self.__dao)
 
         with self.__dao.getReadSession() as session:
-            self.assertEqual(6, len(self.l3ClosMediation._getSnmpTrapTargets(session)))
+            self.assertEqual(4, len(self.l3ClosMediation._getSnmpTrapTargets(session)))
             self.assertTrue('5.6.7.8' not in self.l3ClosMediation._getSnmpTrapTargets(session))
 
 if __name__ == '__main__':

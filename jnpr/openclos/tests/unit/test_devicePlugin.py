@@ -221,6 +221,7 @@ class TestL2DataCollector(unittest.TestCase):
             dataCollector = L2DataCollector(IFDs[4].device.id, {}, InMemoryDao)
             dataCollector.manualInit()
             dataCollector._session = session
+            dataCollector.device = IFDs[4].device
         
             dataCollector.updateGoodIfdStatus([IFDs[4], IFDs[5]])
     

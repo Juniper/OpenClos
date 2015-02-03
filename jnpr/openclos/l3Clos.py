@@ -593,12 +593,8 @@ class L3ClosMediation():
         self.__dao.updateObjects(session, modifiedObjects)
 
     def _createBaseConfig(self, device):
-        if util.isIntegratedWithND(self.__conf):   
-            baseTemplate = self._templateEnv.get_template('baseTemplateNd.txt')
-            return baseTemplate.render(hostName=device.name, hashedPassword=device.getHashPassword())
-        else:
-            baseTemplate = self._templateEnv.get_template('baseTemplate.txt')
-            return baseTemplate.render(hostName=device.name, hashedPassword=device.getHashPassword())
+        baseTemplate = self._templateEnv.get_template('baseTemplate.txt')
+        return baseTemplate.render(hostName=device.name, hashedPassword=device.getHashPassword())
 
     def _createInterfaces(self, session, device): 
         interfaceStanza = self._templateEnv.get_template('interface_stanza.txt')
@@ -760,14 +756,6 @@ class L3ClosMediation():
         else:
             logger.error('No SNMP Trap setting found for ND(networkdirector_trap_group)')
 
-        targets = self.__dao.getObjectsByName(session, TrapGroup, 'space')
-        if targets:
-            targetAddressList = [target.targetAddress for target in targets]
-            trapGroups.append({'name': targets[0].name, 'port': targets[0].port, 'targetIp': targetAddressList })
-            logger.debug('Added SNMP Trap setting for ND(space) with %d targets' % (len(targets)))
-        else:
-            logger.error('No SNMP Trap setting found for ND(space)')
-
         return trapGroups
     
     def _getOpenclosTrapGroupSettings(self, session):
@@ -822,10 +810,14 @@ class L3ClosMediation():
     def _createSnmpTrapAndEventForLeafFor2ndStage(self, session, device):
         snmpTemplate = self._templateEnv.get_template('snmpTrap.txt')
         trapEventTemplate = self._templateEnv.get_template('eventOptionForTrap.txt')
+        disableSnmpTemplate = self._templateEnv.get_template('snmpTrapDisable.txt')
         
         configlet = trapEventTemplate.render()
         
         if device.role == 'leaf':
+            trapGroups = self._getOpenclosTrapGroupSettings(session)
+            if trapGroups:
+                configlet += disableSnmpTemplate.render(trapGroups = trapGroups)
             trapGroups = self._getNdTrapGroupSettings(session)
             if trapGroups:
                 configlet += snmpTemplate.render(trapGroups = trapGroups)

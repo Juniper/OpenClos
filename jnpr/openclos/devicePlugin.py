@@ -758,7 +758,7 @@ class TwoStageConfigurator(L2DataCollector):
             # make sure no changes are taken from CLI candidate config left over
             configurationUnit.rollback() 
             logger.debug('Rollback any other config for %s' % (self.deviceLogStr))
-            configurationUnit.load(config, format='text', overwrite=True)
+            configurationUnit.load(config, format='text')
             logger.debug('Load generated config as candidate, for %s' % (self.deviceLogStr))
 
             #print configurationUnit.diff()
