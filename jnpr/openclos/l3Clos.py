@@ -27,26 +27,20 @@ moduleName = 'l3Clos'
 logger = None
 
 class L3ClosMediation():
-    def __init__(self, conf = {}, dao = None):
+    def __init__(self, conf = {}, daoClass = Dao):
         global logger
         if any(conf) == False:
-            self.conf = util.loadConfig(appName = moduleName)
+            self.__conf = util.loadConfig(appName = moduleName)
         else:
-            self.conf = conf
+            self.__conf = conf
 
         logger = logging.getLogger(moduleName)
-        if dao is None:
-            self.dao = Dao(self.conf)
-        else:
-            self.dao = dao
+        self.__dao = daoClass.getInstance()
 
-        self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
-        self.templateEnv.keep_trailing_newline = True
-        self.isZtpStaged = util.isZtpStaged(self.conf)
+        self._templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
+        self._templateEnv.keep_trailing_newline = True
+        self.isZtpStaged = util.isZtpStaged(self.__conf)
 
-    def __del__(self):
-        self.dao.__del__()
-        
     def loadClosDefinition(self, closDefination = os.path.join(util.configLocation, 'closTemplate.yaml')):
         '''
         Loads clos definition from yaml file and creates pod object
@@ -66,25 +60,31 @@ class L3ClosMediation():
        
     def createPod(self, podName, podDict, inventoryDict = None):
         '''
-        Create a new POD
+        Create a new Pod
+        :returns str: Pod identifier
+
         '''
         pod = Pod(podName, podDict)
         pod.validate()
         # inventory can come from either podDict or inventoryDict
-        inventoryData = self.resolveInventory(podDict, inventoryDict)
+        inventoryData = self._resolveInventory(podDict, inventoryDict)
         # check inventory contains correct number of devices
-        self.validatePod(pod, podDict, inventoryData)
+        self._validatePod(pod, podDict, inventoryData)
 
-        self.dao.createObjects([pod])
-        logger.info("Pod[id='%s', name='%s']: created" % (pod.id, podName)) 
-
-        # shortcut for updating in createPod
-        # this use case is typical in script invocation but not in ND REST invocation
-        self.updatePodData(pod, podDict, inventoryData)
+        with self.__dao.getReadWriteSession() as session:
+            self.__dao.createObjects(session, [pod])
+            # shortcut for updating in createPod
+            # this use case is typical in script invocation but not in ND REST invocation
+            self._updatePodData(session, pod, podDict, inventoryData)
+            logger.info("Pod[id='%s', name='%s']: created" % (pod.id, pod.name)) 
+            podId = pod.id
         
+        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
+        with self.__dao.getReadSession() as session:
+            pod = self.__dao.getObjectById(session, Pod, podId)
         return pod
-
-    def createSpineIfds(self, pod, spines):
+    
+    def _createSpineIfds(self, session, pod, spines):
         devices = []
         interfaces = []
         for spine in spines:
@@ -95,14 +95,14 @@ class L3ClosMediation():
             device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, None, pod, deployStatus)
             devices.append(device)
             
-            portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
+            portNames = util.getPortNamesForDeviceFamily(device.family, self.__conf['deviceFamily'])
             for name in portNames['ports']:     # spine does not have any uplink/downlink marked, it is just ports
                 ifd = InterfaceDefinition(name, device, 'downlink')
                 interfaces.append(ifd)
-        self.dao.createObjects(devices)
-        self.dao.createObjects(interfaces)
+        self.__dao.createObjects(session, devices)
+        self.__dao.createObjects(session, interfaces)
         
-    def createLeafIfds(self, pod, leaves):
+    def _createLeafIfds(self, session, pod, leaves):
         devices = []
         interfaces = []
         for leaf in leaves:
@@ -120,7 +120,7 @@ class L3ClosMediation():
                     interfaces.append(InterfaceDefinition('uplink-' + str(i), device, 'uplink'))
 
             else:
-                portNames = util.getPortNamesForDeviceFamily(device.family, self.conf['deviceFamily'])
+                portNames = util.getPortNamesForDeviceFamily(device.family, self.__conf['deviceFamily'])
                 interfaceCount = 0
                 for name in portNames['uplinkPorts']:   # all uplink IFDs towards spine
                     interfaces.append(InterfaceDefinition(name, device, 'uplink'))
@@ -137,10 +137,10 @@ class L3ClosMediation():
                 #for name in portNames['downlinkPorts']:   # all downlink IFDs towards Access/Server
                 #    interfaces.append(InterfaceDefinition(name, device, 'downlink'))
         
-        self.dao.createObjects(devices)
-        self.dao.createObjects(interfaces)
+        self.__dao.createObjects(session, devices)
+        self.__dao.createObjects(session, interfaces)
     
-    def deployInventory(self, pod, inventory, role):
+    def _deployInventory(self, pod, inventory, role):
         for inv in inventory:
             for device in pod.devices:
                 # find match by role/id/name
@@ -154,7 +154,7 @@ class L3ClosMediation():
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' deployed" % (pod.id, pod.name, device.role, device.name))
                         device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus'))
                        
-    def resolveInventory(self, podDict, inventoryDict):
+    def _resolveInventory(self, podDict, inventoryDict):
         if podDict is None:
             raise ValueError("podDict cannot be None")
             
@@ -170,11 +170,11 @@ class L3ClosMediation():
 
         return inventoryData
 
-    def validateAttribute(self, pod, attr, dct):
+    def _validateAttribute(self, pod, attr, dct):
         if dct.get(attr) is None:
             raise ValueError("Pod[id='%s', name='%s']: device '%s' attribute '%s' cannot be None" % (pod.id, pod.name, dct.get('name'), attr))
     
-    def validateLoopbackPrefix(self, pod, podDict, inventoryData):
+    def _validateLoopbackPrefix(self, pod, podDict, inventoryData):
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
         lo0Block = IPNetwork(podDict['loopbackPrefix'])
         lo0Ips = list(lo0Block.iter_hosts())
@@ -182,7 +182,7 @@ class L3ClosMediation():
         if availableIps < inventoryDeviceCount:
             raise ValueError("Pod[id='%s', name='%s']: loopbackPrefix available IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
 
-    def validateVlanPrefix(self, pod, podDict, inventoryData):
+    def _validateVlanPrefix(self, pod, podDict, inventoryData):
         vlanBlock = IPNetwork(podDict['vlanPrefix'])
         numOfHostIpsPerSwitch = podDict['hostOrVmCountPerLeaf']
         numOfSubnets = len(inventoryData['leafs'])
@@ -192,7 +192,7 @@ class L3ClosMediation():
         if vlanBlock.prefixlen > cidr:
             raise ValueError("Pod[id='%s', name='%s']: vlanPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, vlanBlock.prefixlen, cidr))
     
-    def validateInterConnectPrefix(self, pod, podDict, inventoryData):
+    def _validateInterConnectPrefix(self, pod, podDict, inventoryData):
         interConnectBlock = IPNetwork(podDict['interConnectPrefix'])
         numOfIpsPerInterconnect = 2
         numOfSubnets = len(inventoryData['spines']) * len(inventoryData['leafs'])
@@ -207,14 +207,14 @@ class L3ClosMediation():
         if interConnectBlock.prefixlen > cidr:
             raise ValueError("Pod[id='%s', name='%s']: interConnectPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, interConnectBlock.prefixlen, cidr))
     
-    def validateManagementPrefix(self, pod, podDict, inventoryData):
+    def _validateManagementPrefix(self, pod, podDict, inventoryData):
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
         managementIps = util.getMgmtIps(podDict.get('managementPrefix'), podDict.get('managementStartingIP'), podDict.get('managementMask'), inventoryDeviceCount)
         availableIps = len(managementIps)
         if availableIps < inventoryDeviceCount:
             raise ValueError("Pod[id='%s', name='%s']: managementPrefix avaiable IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
     
-    def validatePod(self, pod, podDict, inventoryData):
+    def _validatePod(self, pod, podDict, inventoryData):
         if inventoryData is None:
             raise ValueError("Pod[id='%s', name='%s']: inventory cannot be empty" % (pod.id, pod.name))
         
@@ -223,16 +223,16 @@ class L3ClosMediation():
             raise ValueError("Pod[id='%s', name='%s']: capacity cannot be changed" % (pod.id, pod.name))
 
         for spine in inventoryData['spines']:
-            self.validateAttribute(pod, 'name', spine)
-            #self.validateAttribute(pod, 'role', spine)
-            #self.validateAttribute(pod, 'family', spine)
-            #self.validateAttribute(pod, 'deployStatus', spine)
+            self._validateAttribute(pod, 'name', spine)
+            #self._validateAttribute(pod, 'role', spine)
+            #self._validateAttribute(pod, 'family', spine)
+            #self._validateAttribute(pod, 'deployStatus', spine)
             
         for leaf in inventoryData['leafs']:
-            self.validateAttribute(pod, 'name', leaf)
-            #self.validateAttribute(pod, 'role', leaf)
-            #self.validateAttribute(pod, 'family', leaf)
-            #self.validateAttribute(pod, 'deployStatus', leaf)
+            self._validateAttribute(pod, 'name', leaf)
+            #self._validateAttribute(pod, 'role', leaf)
+            #self._validateAttribute(pod, 'family', leaf)
+            #self._validateAttribute(pod, 'deployStatus', leaf)
                 
         # inventory should contain exact same number of devices as capacity
         expectedDeviceCount = int(podDict['spineCount']) + int(podDict['leafCount'])
@@ -241,19 +241,19 @@ class L3ClosMediation():
             raise ValueError("Pod[id='%s', name='%s']: inventory device count %d does not match capacity %d" % (pod.id, pod.name, inventoryDeviceCount, expectedDeviceCount))
 
         # validate loopbackPrefix is big enough
-        self.validateLoopbackPrefix(pod, podDict, inventoryData)
+        self._validateLoopbackPrefix(pod, podDict, inventoryData)
 
         # validate vlanPrefix is big enough
-        self.validateVlanPrefix(pod, podDict, inventoryData)
+        self._validateVlanPrefix(pod, podDict, inventoryData)
         
         # validate interConnectPrefix is big enough
-        self.validateInterConnectPrefix(pod, podDict, inventoryData)
+        self._validateInterConnectPrefix(pod, podDict, inventoryData)
         
         # validate managementPrefix is big enough
-        self.validateManagementPrefix(pod, podDict, inventoryData)
+        self._validateManagementPrefix(pod, podDict, inventoryData)
                 
         
-    def diffInventory(self, pod, inventoryData):
+    def _diffInventory(self, pod, inventoryData):
         # Compare new inventory that user provides against old inventory that we stored in the database.
         inventoryChanged = True
         
@@ -270,12 +270,12 @@ class L3ClosMediation():
             pod.inventoryData = base64.b64encode(zlib.compress(json.dumps(inventoryData)))
 
             # deploy the new devices and undeploy deleted devices
-            self.deployInventory(pod, inventoryData['spines'], 'spine')
-            self.deployInventory(pod, inventoryData['leafs'], 'leaf')
+            self._deployInventory(pod, inventoryData['spines'], 'spine')
+            self._deployInventory(pod, inventoryData['leafs'], 'leaf')
         else:
             logger.debug("Pod[id='%s', name='%s']: inventory not changed" % (pod.id, pod.name))
 
-    def needToRebuild(self, pod, podDict):
+    def _needToRebuild(self, pod, podDict):
         if pod.spineDeviceType != podDict.get('spineDeviceType') or \
            pod.spineCount != podDict.get('spineCount') or \
            pod.leafCount != podDict.get('leafCount') or \
@@ -287,54 +287,60 @@ class L3ClosMediation():
         else:
             return False
             
-    def updatePodData(self, pod, podDict, inventoryData):
+    def _updatePodData(self, session, pod, podDict, inventoryData):
         # if following data changed we need to reallocate resource
-        if self.needToRebuild(pod, podDict) == True:
+        if self._needToRebuild(pod, podDict) == True:
             logger.debug("Pod[id='%s', name='%s']: rebuilding required" % (pod.id, pod.name))
             if len(pod.devices) > 0:
-                self.dao.deleteObjects(pod.devices)
+                self.__dao.deleteObjects(session, pod.devices)
 
         # first time
         if len(pod.devices) == 0:
             logger.debug("Pod[id='%s', name='%s']: building inventory and resource..." % (pod.id, pod.name))
-            self.createSpineIfds(pod, inventoryData['spines'])
-            self.createLeafIfds(pod, inventoryData['leafs'])
-            self.createLinkBetweenIfds(pod)
-            self.allocateResource(pod)
+            self._createSpineIfds(session, pod, inventoryData['spines'])
+            self._createLeafIfds(session, pod, inventoryData['leafs'])
+            self._createLinkBetweenIfds(session, pod)
+            pod.devices.sort(key=lambda dev: dev.name) # Hack to order lists by name
+            self._allocateResource(session, pod)
         else:        
             # compare new inventory that user provides against old inventory that we stored in the database
-            self.diffInventory(pod, inventoryData)
+            self._diffInventory(pod, inventoryData)
                 
         # update pod itself
         pod.update(pod.id, pod.name, podDict)
-        self.dao.updateObjects([pod])
+        self.__dao.updateObjects(session, [pod])
             
         # TODO move the backup operation to CLI 
         # backup current database
-        util.backupDatabase(self.conf)
+        util.backupDatabase(self.__conf)
 
     def updatePod(self, podId, podDict, inventoryDict = None):
         '''
         Modify an existing POD. As a sanity check, if we don't find the POD
         by UUID, a ValueException is thrown
         '''
-        if podId is not None: 
+        if podId is None: 
+            raise ValueError("Pod id cannot be None")
+
+        with self.__dao.getReadWriteSession() as session:        
             try:
-                pod = self.dao.getObjectById(Pod, podId)
+                pod = self.__dao.getObjectById(session, Pod, podId)
             except (exc.NoResultFound):
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
-            else:
-                # inventory can come from either podDict or inventoryDict
-                inventoryData = self.resolveInventory(podDict, inventoryDict)
-                # check inventory contains correct number of devices
-                self.validatePod(pod, podDict, inventoryData)
+
+            # inventory can come from either podDict or inventoryDict
+            inventoryData = self._resolveInventory(podDict, inventoryDict)
+            # check inventory contains correct number of devices
+            self._validatePod(pod, podDict, inventoryData)
+    
+            # update other fields
+            self._updatePodData(session, pod, podDict, inventoryData)
+            logger.info("Pod[id='%s', name='%s']: updated" % (pod.id, pod.name)) 
+            podId = pod.id
         
-                # update other fields
-                self.updatePodData(pod, podDict, inventoryData)
-                logger.info("Pod[id='%s', name='%s']: updated" % (pod.id, pod.name)) 
-        else:
-            raise ValueError("Pod id cannot be None")
-            
+        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
+        with self.__dao.getReadSession() as session:
+            pod = self.__dao.getObjectById(session, Pod, podId)
         return pod
     
     def deletePod(self, podId):
@@ -342,74 +348,76 @@ class L3ClosMediation():
         Delete an existing POD. As a sanity check, if we don't find the POD
         by UUID, a ValueException is thrown
         '''
-        if podId is not None: 
+        if podId is None: 
+            raise ValueError("Pod id cannot be None")
+
+        with self.__dao.getReadWriteSession() as session:        
             try:
-                pod = self.dao.getObjectById(Pod, podId)
+                pod = self.__dao.getObjectById(session, Pod, podId)
             except (exc.NoResultFound):
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
-            else:
-                logger.info("Pod[id='%s', name='%s']: deleted" % (pod.id, pod.name)) 
-                self.dao.deleteObject(pod)
-        else:
-            raise ValueError("Pod id cannot be None")
+
+            self.__dao.deleteObject(session, pod)
+            logger.info("Pod[id='%s', name='%s']: deleted" % (pod.id, pod.name)) 
 
     def createCablingPlan(self, podId):
         '''
         Finds Pod object by id and create cabling plan
         It also creates the output folders for pod
         '''
-        if podId is not None: 
+        if podId is None: 
+            raise ValueError("Pod id cannot be None")
+
+        with self.__dao.getReadWriteSession() as session:        
             try:
-                pod = self.dao.getObjectById(Pod, podId)
+                pod = self.__dao.getObjectById(session, Pod, podId)
             except (exc.NoResultFound):
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
  
             if len(pod.devices) > 0:
-                cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
+                cablingPlanWriter = CablingPlanWriter(self.__conf, pod, self.__dao)
                 # create cabling plan in JSON format
                 cablingPlanJson = cablingPlanWriter.writeJSON()
                 pod.cablingPlan = CablingPlan(pod.id, cablingPlanJson)
                 # create cabling plan in DOT format
                 cablingPlanWriter.writeDOT()
-                self.dao.updateObjects([pod])
+                self.__dao.updateObjects(session, [pod])
                 
                 return True
             else:
                 raise ValueError("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
-            
-        else:
-            raise ValueError("Pod id cannot be None") 
             
     def createDeviceConfig(self, podId):
         '''
         Finds Pod object by id and create device configurations
         It also creates the output folders for pod
         '''
-        if podId is not None:
+        if podId is None: 
+            raise ValueError("Pod id cannot be None")
+
+        with self.__dao.getReadWriteSession() as session:        
             try:
-                pod = self.dao.getObjectById(Pod, podId)
+                pod = self.__dao.getObjectById(session, Pod, podId)
             except (exc.NoResultFound):
                 raise ValueError("Pod[id='%s']: not found" % (podId)) 
  
             if len(pod.devices) > 0:
                 # create configuration
-                self.generateConfig(pod)
+                self.generateConfig(session, pod)
         
                 return True
             else:
                 raise ValueError("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
-        else:
-            raise ValueError("Pod id cannot be None") 
 
-    def createLinkBetweenIfds(self, pod):
+    def _createLinkBetweenIfds(self, session, pod):
         leaves = []
         spines = []
         for device in pod.devices:
             if (device.role == 'leaf'):
-                leafUplinkPorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.sequenceNum).all()
+                leafUplinkPorts = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.sequenceNum).all()
                 leaves.append({'leaf': device, 'leafUplinkPorts': leafUplinkPorts})
             elif (device.role == 'spine'):
-                spinePorts = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).order_by(InterfaceDefinition.sequenceNum).all()
+                spinePorts = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).order_by(InterfaceDefinition.sequenceNum).all()
                 spines.append({'spine': device, 'ports': spinePorts})
         
         leafIndex = 0
@@ -426,9 +434,9 @@ class L3ClosMediation():
                 leafIndex += 1
             leafIndex = 0
             spineIndex += 1
-        self.dao.updateObjects(modifiedObjects)
+        self.__dao.updateObjects(session, modifiedObjects)
         
-    def getLeafSpineFromPod(self, pod):
+    def _getLeafSpineFromPod(self, pod):
         '''
         utility method to get list of spines and leafs of a pod
         returns dict with list for 'spines' and 'leafs'
@@ -443,30 +451,30 @@ class L3ClosMediation():
                 deviceDict['spines'].append(device)
         return deviceDict
     
-    def allocateResource(self, pod):
-        self.allocateLoopback(pod, pod.loopbackPrefix, pod.devices)
-        leafSpineDict = self.getLeafSpineFromPod(pod)
-        self.allocateIrb(pod, pod.vlanPrefix, leafSpineDict['leafs'])
-        self.allocateInterconnect(pod.interConnectPrefix, leafSpineDict['spines'], leafSpineDict['leafs'])
-        self.allocateAsNumber(pod.spineAS, pod.leafAS, leafSpineDict['spines'], leafSpineDict['leafs'])
-        self.allocateManagement(pod.managementPrefix, pod.managementStartingIP, pod.managementMask, leafSpineDict['spines'], leafSpineDict['leafs'])
+    def _allocateResource(self, session, pod):
+        self._allocateLoopback(session, pod, pod.loopbackPrefix, pod.devices)
+        leafSpineDict = self._getLeafSpineFromPod(pod)
+        self._allocateIrb(session, pod, pod.vlanPrefix, leafSpineDict['leafs'])
+        self._allocateInterconnect(session, pod.interConnectPrefix, leafSpineDict['spines'], leafSpineDict['leafs'])
+        self._allocateAsNumber(session, pod.spineAS, pod.leafAS, leafSpineDict['spines'], leafSpineDict['leafs'])
+        self._allocateManagement(session, pod.managementPrefix, pod.managementStartingIP, pod.managementMask, leafSpineDict['spines'], leafSpineDict['leafs'])
         
-    def allocateManagement(self, managementPrefix, managementStartingIP, managementMask, spines, leaves):
+    def _allocateManagement(self, session, managementPrefix, managementStartingIP, managementMask, spines, leaves):
         deviceCount = len(spines)+len(leaves)
         managementIps = util.getMgmtIps(managementPrefix, managementStartingIP, managementMask, deviceCount)
         # don't do partial allocation
         if len(managementIps) == deviceCount:
             for spine, managementIp in zip(spines, managementIps[:len(spines)]):
                 spine.managementIp = managementIp
-            self.dao.updateObjects(spines)
+            self.__dao.updateObjects(session, spines)
             
             # for 2stage and leaf, don' fill in management ip
             if self.isZtpStaged == False:
                 for leaf, managementIp in zip(leaves, managementIps[len(spines):]):
                     leaf.managementIp = managementIp
-                self.dao.updateObjects(leaves)
+                self.__dao.updateObjects(session, leaves)
         
-    def allocateLoopback(self, pod, loopbackPrefix, devices):
+    def _allocateLoopback(self, session, pod, loopbackPrefix, devices):
         loopbackIp = IPNetwork(loopbackPrefix).network
         numOfIps = len(devices) + 2 # +2 for network and broadcast
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
@@ -479,9 +487,9 @@ class L3ClosMediation():
         for device in devices:
             ifl = InterfaceLogical('lo0.0', device, str(lo0Ips.pop(0)) + '/32')
             interfaces.append(ifl)
-        self.dao.createObjects(interfaces)
+        self.__dao.createObjects(session, interfaces)
 
-    def allocateIrb(self, pod, irbPrefix, leafs):
+    def _allocateIrb(self, session, pod, irbPrefix, leafs):
         irbIp = IPNetwork(irbPrefix).network
         numOfHostIpsPerSwitch = pod.hostOrVmCountPerLeaf
         numOfSubnets = len(leafs)
@@ -501,9 +509,9 @@ class L3ClosMediation():
             # TODO: would be better to get irb.1 from property file as .1 is VLAN ID
             ifl = InterfaceLogical('irb.1', leaf, str(ipAddress) + '/' + str(cidrForEachSubnet)) 
             interfaces.append(ifl)
-        self.dao.createObjects(interfaces)
+        self.__dao.createObjects(session, interfaces)
 
-    def allocateInterconnect(self, interConnectPrefix, spines, leafs):
+    def _allocateInterconnect(self, session, interConnectPrefix, spines, leafs):
         interConnectIp = IPNetwork(interConnectPrefix).network
         numOfIpsPerInterconnect = 2
         numOfSubnets = len(spines) * len(leafs)
@@ -522,7 +530,7 @@ class L3ClosMediation():
         spines[0].pod.allocatedInterConnectBlock = str(interconnectBlock.cidr)
 
         for spine in spines:
-            ifdsHasPeer = self.dao.Session().query(InterfaceDefinition).filter(InterfaceDefinition.device_id == spine.id).filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.sequenceNum).all()
+            ifdsHasPeer = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == spine.id).filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.sequenceNum).all()
             for spineIfdHasPeer in ifdsHasPeer:
                 subnet =  interconnectSubnets.pop(0)
                 ips = list(subnet)
@@ -535,9 +543,9 @@ class L3ClosMediation():
                 leafEndIfl= InterfaceLogical(leafEndIfd.name + '.0', leafEndIfd.device, str(ips.pop(0)) + '/' + str(cidrForEachSubnet))
                 leafEndIfd.layerAboves.append(leafEndIfl)
                 interfaces.append(leafEndIfl)
-        self.dao.createObjects(interfaces)
+        self.__dao.createObjects(session, interfaces)
 
-    def allocateAsNumber(self, spineAsn, leafAsn, spines, leafs):
+    def _allocateAsNumber(self, session, spineAsn, leafAsn, spines, leafs):
         devices = []
         for spine in spines:
             spine.asn = spineAsn
@@ -551,10 +559,10 @@ class L3ClosMediation():
             devices.append(leaf)
         leafs[0].pod.allocatefLeafAS = leafAsn - 1
 
-        self.dao.updateObjects(devices)
+        self.__dao.updateObjects(session, devices)
         
-    def generateConfig(self, pod):
-        configWriter = ConfigWriter(self.conf, pod, self.dao)
+    def generateConfig(self, session, pod):
+        configWriter = ConfigWriter(self.__conf, pod, self.__dao)
         modifiedObjects = []
         
         for device in pod.devices:
@@ -562,54 +570,54 @@ class L3ClosMediation():
                 # leaf configs will get created when they are plugged in after 2Stage ztp
                 continue
             
-            config = self.createBaseConfig(device)
-            config += self.createInterfaces(device)
-            config += self.createRoutingOptionsStatic(device)
-            config += self.createRoutingOptionsBgp(device)
-            config += self.createProtocolBgp(device)
-            config += self.createProtocolLldp(device)
-            config += self.createPolicyOption(device)
-            config += self.createSnmpTrapAndEvent(device)
-            config += self.createVlan(device)
+            config = self._createBaseConfig(device)
+            config += self._createInterfaces(session, device)
+            config += self._createRoutingOptionsStatic(session, device)
+            config += self._createRoutingOptionsBgp(session, device)
+            config += self._createProtocolBgp(session, device)
+            config += self._createProtocolLldp(device)
+            config += self._createPolicyOption(session, device)
+            config += self._createSnmpTrapAndEvent(session, device)
+            config += self._createVlan(device)
             device.config = DeviceConfig(device.id, config)
             modifiedObjects.append(device)
             logger.debug('Generated config for device name: %s, id: %s, storing in DB' % (device.name, device.id))
             configWriter.write(device)
 
         if self.isZtpStaged:
-            pod.leafSettings = self.createLeafGenericConfigsFor2Stage(pod)
+            pod.leafSettings = self._createLeafGenericConfigsFor2Stage(session, pod)
             modifiedObjects.append(pod)
             logger.debug('Generated %d leaf generic configs for pod: %s, storing in DB' % (len(pod.leafSettings), pod.name))
             configWriter.writeGenericLeaf(pod)
         
-        self.dao.updateObjects(modifiedObjects)
+        self.__dao.updateObjects(session, modifiedObjects)
 
-    def createBaseConfig(self, device):
-        baseTemplate = self.templateEnv.get_template('baseTemplate.txt')
+    def _createBaseConfig(self, device):
+        baseTemplate = self._templateEnv.get_template('baseTemplate.txt')
         return baseTemplate.render(hostName=device.name, hashedPassword=device.getHashPassword())
 
-    def createInterfaces(self, device): 
-        interfaceStanza = self.templateEnv.get_template('interface_stanza.txt')
-        lo0Stanza = self.templateEnv.get_template('lo0_stanza.txt')
-        mgmtStanza = self.templateEnv.get_template('mgmt_interface.txt')
-        rviStanza = self.templateEnv.get_template('rvi_stanza.txt')
+    def _createInterfaces(self, session, device): 
+        interfaceStanza = self._templateEnv.get_template('interface_stanza.txt')
+        lo0Stanza = self._templateEnv.get_template('lo0_stanza.txt')
+        mgmtStanza = self._templateEnv.get_template('mgmt_interface.txt')
+        rviStanza = self._templateEnv.get_template('rvi_stanza.txt')
             
         config = "interfaces {" + "\n" 
         # management interface
         config += mgmtStanza.render(mgmt_address=device.managementIp)
                 
         #loopback interface
-        loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
+        loopbackIfl = session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
         config += lo0Stanza.render(address=loopbackIfl.ipaddress)
         
         # For Leaf add IRB and server facing interfaces        
         if device.role == 'leaf':
-            irbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'irb.1').one()
+            irbIfl = session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'irb.1').one()
             config += rviStanza.render(address=irbIfl.ipaddress)
-            config += self.createAccessPortInterfaces(device.family)
+            config += self._createAccessPortInterfaces(device.family)
 
         # Interconnect interfaces
-        deviceInterconnectIfds = self.dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
+        deviceInterconnectIfds = self.__dao.getConnectedInterconnectIFDsFilterFakeOnes(session, device)
         for interconnectIfd in deviceInterconnectIfds:
             peerDevice = interconnectIfd.peer.device
             interconnectIfl = interconnectIfd.layerAboves[0]
@@ -622,17 +630,17 @@ class L3ClosMediation():
         config += "}\n"
         return config
 
-    def createAccessPortInterfaces(self, deviceFamily):
-        accessInterface = self.templateEnv.get_template('accessInterface.txt')
+    def _createAccessPortInterfaces(self, deviceFamily):
+        accessInterface = self._templateEnv.get_template('accessInterface.txt')
         ifdNames = []
 
-        for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['downlinkPorts']:
+        for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.__conf['deviceFamily'])['downlinkPorts']:
             ifdNames.append(ifdName)
 
         return accessInterface.render(ifdNames=ifdNames)
 
-    def getOpenclosTrapTargetIpFromConf(self):
-        snmpTrapConf = self.conf.get('snmpTrap')
+    def _getOpenclosTrapTargetIpFromConf(self):
+        snmpTrapConf = self.__conf.get('snmpTrap')
         if snmpTrapConf is not None:
             openclosSnmpTrapConf = snmpTrapConf.get('openclos_trap_group') 
             if openclosSnmpTrapConf is not None:
@@ -641,21 +649,21 @@ class L3ClosMediation():
                     return [target]
         return []
 
-    def getSnmpTrapTargets(self):
-        if util.isIntegratedWithND(self.conf):   
-            trapGroups = self.dao.getAll(TrapGroup)
+    def _getSnmpTrapTargets(self, session):
+        if util.isIntegratedWithND(self.__conf):   
+            trapGroups = self.__dao.getAll(session, TrapGroup)
             targetAddressList = [target.targetAddress for target in trapGroups]
         elif self.isZtpStaged:
-            targetAddressList = self.getOpenclosTrapTargetIpFromConf()
+            targetAddressList = self._getOpenclosTrapTargetIpFromConf()
         else:
             return []
         return targetAddressList
 
-    def getParamsForOutOfBandNetwork(self, pod):
+    def _getParamsForOutOfBandNetwork(self, session, pod):
         '''
         add all trap-target to the OOB list
         '''
-        oobList = self.getSnmpTrapTargets()
+        oobList = self._getSnmpTrapTargets(session)
         oobNetworks = pod.outOfBandAddressList
         if oobNetworks is not None and len(oobNetworks) > 0:
             oobList += oobNetworks.split(',')
@@ -675,23 +683,23 @@ class L3ClosMediation():
         else:
             return {}
     
-    def createRoutingOptionsStatic(self, device):
-        routingOptions = self.templateEnv.get_template('routingOptionsStatic.txt')
-        return routingOptions.render(oob = self.getParamsForOutOfBandNetwork(device.pod))
+    def _createRoutingOptionsStatic(self, session, device):
+        routingOptions = self._templateEnv.get_template('routingOptionsStatic.txt')
+        return routingOptions.render(oob = self._getParamsForOutOfBandNetwork(session, device.pod))
 
-    def createRoutingOptionsBgp(self, device):
-        routingOptions = self.templateEnv.get_template('routingOptionsBgp.txt')
+    def _createRoutingOptionsBgp(self, session, device):
+        routingOptions = self._templateEnv.get_template('routingOptionsBgp.txt')
 
-        loopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
+        loopbackIfl = session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
         loopbackIpWithNoCidr = loopbackIfl.ipaddress.split('/')[0]
         
         return routingOptions.render(routerId=loopbackIpWithNoCidr, asn=str(device.asn))
 
-    def createProtocolBgp(self, device):
-        template = self.templateEnv.get_template('protocolBgp.txt')
+    def _createProtocolBgp(self, session, device):
+        template = self._templateEnv.get_template('protocolBgp.txt')
 
         neighborList = []
-        deviceInterconnectIfds = self.dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
+        deviceInterconnectIfds = self.__dao.getConnectedInterconnectIFDsFilterFakeOnes(session, device)
         for ifd in deviceInterconnectIfds:
             peerIfd = ifd.peer
             peerDevice = peerIfd.device
@@ -701,21 +709,21 @@ class L3ClosMediation():
 
         return template.render(neighbors=neighborList)        
          
-    def createProtocolLldp(self, device):
-        template = self.templateEnv.get_template('protocolLldp.txt')
+    def _createProtocolLldp(self, device):
+        template = self._templateEnv.get_template('protocolLldp.txt')
         return template.render()        
 
-    def createPolicyOption(self, device):
+    def _createPolicyOption(self, session, device):
         pod = device.pod
         
-        template = self.templateEnv.get_template('policyOptions.txt')
+        template = self._templateEnv.get_template('policyOptions.txt')
         subnetDict = {}
         subnetDict['lo0_in'] = pod.allocatedLoopbackBlock
         subnetDict['irb_in'] = pod.allocatedIrbBlock
         
         if device.role == 'leaf':
-            deviceLoopbackIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
-            deviceIrbIfl = self.dao.Session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'irb.1').one()
+            deviceLoopbackIfl = session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
+            deviceIrbIfl = session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'irb.1').one()
             subnetDict['lo0_out'] = deviceLoopbackIfl.ipaddress
             subnetDict['irb_out'] = deviceIrbIfl.ipaddress
         else:
@@ -724,23 +732,23 @@ class L3ClosMediation():
          
         return template.render(subnet=subnetDict)
         
-    def createVlan(self, device):
+    def _createVlan(self, device):
         if device.role == 'leaf':
-            template = self.templateEnv.get_template('vlans.txt')
+            template = self._templateEnv.get_template('vlans.txt')
             return template.render()
         else:
             return ''
 
-    def getNdTrapGroupSettings(self):
+    def _getNdTrapGroupSettings(self, session):
         '''
         :returns list: list of trap group settings
         '''
-        if not (util.isIntegratedWithND(self.conf)):
+        if not (util.isIntegratedWithND(self.__conf)):
             return []
         
         trapGroups = []
         
-        targets = self.dao.getObjectsByName(TrapGroup, 'networkdirector_trap_group')
+        targets = self.__dao.getObjectsByName(session, TrapGroup, 'networkdirector_trap_group')
         if targets:
             targetAddressList = [target.targetAddress for target in targets]
             trapGroups.append({'name': targets[0].name, 'port': targets[0].port, 'targetIp': targetAddressList })
@@ -748,17 +756,9 @@ class L3ClosMediation():
         else:
             logger.error('No SNMP Trap setting found for ND(networkdirector_trap_group)')
 
-        targets = self.dao.getObjectsByName(TrapGroup, 'space')
-        if targets:
-            targetAddressList = [target.targetAddress for target in targets]
-            trapGroups.append({'name': targets[0].name, 'port': targets[0].port, 'targetIp': targetAddressList })
-            logger.debug('Added SNMP Trap setting for ND(space) with %d targets' % (len(targets)))
-        else:
-            logger.error('No SNMP Trap setting found for ND(space)')
-
         return trapGroups
     
-    def getOpenclosTrapGroupSettings(self):
+    def _getOpenclosTrapGroupSettings(self, session):
         '''
         :returns list: list of trap group settings
         '''
@@ -767,17 +767,17 @@ class L3ClosMediation():
         
         trapGroups = []
         
-        targets = self.dao.getObjectsByName(TrapGroup, 'openclos_trap_group')
+        targets = self.__dao.getObjectsByName(session, TrapGroup, 'openclos_trap_group')
         if targets:
             targetAddressList = [target.targetAddress for target in targets]
             trapGroups.append({'name': targets[0].name, 'port': targets[0].port, 'targetIp': targetAddressList })
             logger.debug('Added SNMP Trap setting for openclos_trap_group (from DB) with %d targets' % (len(targets)))
         else:
-            snmpTrapConf = self.conf.get('snmpTrap')
+            snmpTrapConf = self.__conf.get('snmpTrap')
             if snmpTrapConf is not None:
                 openclosSnmpTrapConf = snmpTrapConf.get('openclos_trap_group') 
                 if openclosSnmpTrapConf is not None:
-                    targetList = self.getOpenclosTrapTargetIpFromConf()
+                    targetList = self._getOpenclosTrapTargetIpFromConf()
                     trapGroups.append({'name': 'openclos_trap_group', 'port': openclosSnmpTrapConf['port'], 'targetIp': targetList })
                 else:
                     logger.error('No SNMP Trap setting found for openclos_trap_group in openclos.yaml')
@@ -786,35 +786,39 @@ class L3ClosMediation():
         
         return trapGroups
 
-    def createSnmpTrapAndEvent(self, device):
-        snmpTemplate = self.templateEnv.get_template('snmpTrap.txt')
-        trapEventTemplate = self.templateEnv.get_template('eventOptionForTrap.txt')
+    def _createSnmpTrapAndEvent(self, session, device):
+        snmpTemplate = self._templateEnv.get_template('snmpTrap.txt')
+        trapEventTemplate = self._templateEnv.get_template('eventOptionForTrap.txt')
         
         configlet = trapEventTemplate.render()
         
         if device.role == 'leaf':
-            trapGroups = self.getOpenclosTrapGroupSettings()
-            trapGroups += self.getNdTrapGroupSettings()
+            trapGroups = self._getOpenclosTrapGroupSettings(session)
+            trapGroups += self._getNdTrapGroupSettings(session)
             if trapGroups:
                 configlet += snmpTemplate.render(trapGroups = trapGroups)
                 return configlet
 
         elif device.role == 'spine':
-            trapGroups = self.getNdTrapGroupSettings()
+            trapGroups = self._getNdTrapGroupSettings(session)
             if trapGroups:
                 configlet += snmpTemplate.render(trapGroups = trapGroups)
                 return configlet
 
         return ''
 
-    def createSnmpTrapAndEventForLeafFor2ndStage(self, device):
-        snmpTemplate = self.templateEnv.get_template('snmpTrap.txt')
-        trapEventTemplate = self.templateEnv.get_template('eventOptionForTrap.txt')
+    def _createSnmpTrapAndEventForLeafFor2ndStage(self, session, device):
+        snmpTemplate = self._templateEnv.get_template('snmpTrap.txt')
+        trapEventTemplate = self._templateEnv.get_template('eventOptionForTrap.txt')
+        disableSnmpTemplate = self._templateEnv.get_template('snmpTrapDisable.txt')
         
         configlet = trapEventTemplate.render()
         
         if device.role == 'leaf':
-            trapGroups = self.getNdTrapGroupSettings()
+            trapGroups = self._getOpenclosTrapGroupSettings(session)
+            if trapGroups:
+                configlet += disableSnmpTemplate.render(trapGroups = trapGroups)
+            trapGroups = self._getNdTrapGroupSettings(session)
             if trapGroups:
                 configlet += snmpTemplate.render(trapGroups = trapGroups)
                 
@@ -824,27 +828,27 @@ class L3ClosMediation():
             logger.debug('Device: %s, id: %s, role: spine, no 2ndStage trap/event connfig generated' % (device.name, device.id))
         return ''
 
-    def createLeafGenericConfigsFor2Stage(self, pod):
+    def _createLeafGenericConfigsFor2Stage(self, session, pod):
         '''
         :param Pod: pod
         :returns list: list of PodConfigs
         '''
-        leafTemplate = self.templateEnv.get_template('leafGenericTemplate.txt')
+        leafTemplate = self._templateEnv.get_template('leafGenericTemplate.txt')
         leafSettings = {}
         for leafSetting in pod.leafSettings:
             leafSettings[leafSetting.deviceFamily] = leafSetting
 
-        trapGroups = self.getOpenclosTrapGroupSettings()
-        trapGroups += self.getNdTrapGroupSettings()
+        trapGroups = self._getOpenclosTrapGroupSettings(session)
+        trapGroups += self._getNdTrapGroupSettings(session)
 
-        outOfBandNetworkParams = self.getParamsForOutOfBandNetwork(pod)
+        outOfBandNetworkParams = self._getParamsForOutOfBandNetwork(session, pod)
         
         for deviceFamily in leafSettings.keys():
             if deviceFamily == 'qfx5100-24q-2p':
                 continue
             
             ifdNames = []
-            for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.conf['deviceFamily'])['downlinkPorts']:
+            for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self.__conf['deviceFamily'])['downlinkPorts']:
                 ifdNames.append(ifdName)
 
             leafSettings[deviceFamily].config = leafTemplate.render(deviceFamily = deviceFamily, oob = outOfBandNetworkParams, 
@@ -853,19 +857,20 @@ class L3ClosMediation():
         return leafSettings.values()
 
     def createLeafConfigFor2Stage(self, device):
-        configWriter = ConfigWriter(self.conf, device.pod, self.dao)
+        configWriter = ConfigWriter(self.__conf, device.pod, self.__dao)
         
-        config = self.createBaseConfig(device)
-        config += self.createInterfaces(device)
-        config += self.createRoutingOptionsStatic(device)
-        config += self.createRoutingOptionsBgp(device)
-        config += self.createProtocolBgp(device)
-        config += self.createProtocolLldp(device)
-        config += self.createPolicyOption(device)
-        config += self.createSnmpTrapAndEventForLeafFor2ndStage(device)
-        config += self.createVlan(device)
-        device.config = DeviceConfig(device.id, config)
-        self.dao.updateObjects([device])
+        with self.__dao.getReadWriteSession() as session:
+            config = self._createBaseConfig(device)
+            config += self._createInterfaces(session, device)
+            config += self._createRoutingOptionsStatic(session, device)
+            config += self._createRoutingOptionsBgp(session, device)
+            config += self._createProtocolBgp(session, device)
+            config += self._createProtocolLldp(device)
+            config += self._createPolicyOption(session, device)
+            config += self._createSnmpTrapAndEventForLeafFor2ndStage(session, device)
+            config += self._createVlan(device)
+            device.config = DeviceConfig(device.id, config)
+            self.__dao.updateObjects(session, [device])
         logger.debug('Generated config for device name: %s, id: %s, storing in DB' % (device.name, device.id))
         configWriter.write(device)
         return config

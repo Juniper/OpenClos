@@ -1,3 +1,4 @@
+replace:
 event-options {
     policy target_add_test {
         events snmpd_trap_target_add_notice;

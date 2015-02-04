@@ -8,145 +8,167 @@ from sqlalchemy import exc
 from flexmock import flexmock
 
 import jnpr.openclos.util
-from jnpr.openclos.dao import Dao
 from jnpr.openclos.model import Pod, Device, Interface, InterfaceDefinition, TrapGroup
+from jnpr.openclos.dao import AbstractDao
+
+
+class TestAbstractDao(unittest.TestCase):
+    def testInit(self):
+        with self.assertRaises(NotImplementedError):
+            AbstractDao()
+
+class InMemoryDao(AbstractDao):
+    def _getDbUrl(self):
+        jnpr.openclos.util.loadLoggingConfig()
+        return 'sqlite:///'
 
 class TestDao(unittest.TestCase):
     def setUp(self):
-        '''Creates Dao with in-memory DB'''
-        jnpr.openclos.util.loggingInitialized = True
-        self.conf = {}
-        self.conf['dbUrl'] = 'sqlite:///'
-    
+        self.__dao = InMemoryDao.getInstance()
     def tearDown(self):
-        pass    
+        InMemoryDao._destroy()
+    
+
     def testInvalidConfig(self):
+        class BadDao(AbstractDao):
+            def _getDbUrl(self):
+                return 'unknown://'
         with self.assertRaises(ValueError):
-            dao = Dao({})
+            BadDao()
 
     def testCreateObjects(self):
         from test_model import createDevice
-        #self.conf['debugSql'] = True
-        dao = Dao(self.conf)
-        session = dao.Session()
+
+        with self.__dao.getReadWriteSession() as session:
+            device = createDevice(session, "test")
+            ifd1 = InterfaceDefinition('ifd1', device, 'downlink')
+            ifd2 = InterfaceDefinition('ifd2', device, 'downlink')
+            ifd3 = InterfaceDefinition('ifd3', device, 'downlink')
+            ifd4 = InterfaceDefinition('ifd4', device, 'downlink')
+            self.__dao.createObjects(session, [ifd1, ifd2, ifd3, ifd4])
+
+        with self.__dao.getReadSession() as session:
+            self.assertEqual(4, len(self.__dao.getAll(session, InterfaceDefinition)))
+            self.assertEqual(1, len(self.__dao.getObjectsByName(session, InterfaceDefinition, 'ifd1')))
+            self.assertEqual(1, len(self.__dao.getObjectsByName(session, InterfaceDefinition, 'ifd2')))
         
-        device = createDevice(session, "test")
-        ifd1 = InterfaceDefinition('ifd1', device, 'downlink')
-        ifd2 = InterfaceDefinition('ifd2', device, 'downlink')
-        ifd3 = InterfaceDefinition('ifd3', device, 'downlink')
-        ifd4 = InterfaceDefinition('ifd4', device, 'downlink')
-        dao.createObjects([ifd1, ifd2, ifd3, ifd4])
-
-        self.assertEqual(4, len(dao.getAll(InterfaceDefinition)))
-        self.assertEqual(1, len(dao.getObjectsByName(InterfaceDefinition, 'ifd1')))
-        self.assertEqual(1, len(dao.getObjectsByName(InterfaceDefinition, 'ifd2')))
-
     def testDeleteNonExistingPod(self):
-        dao = Dao(self.conf)
         dict = {'devicePassword': 'test'}
         pod = Pod('unknown', dict)
         with self.assertRaises(exc.InvalidRequestError):
-            dao.deleteObject(pod)
-
+            with self.__dao.getReadWriteSession() as session:
+                self.__dao.deleteObject(session, pod)
+        
     def testCascadeDeletePodDevice(self):
         from test_model import createDevice
-        #self.conf['debugSql'] = True
-        dao = Dao(self.conf)
-        session = dao.Session()
-        device = createDevice(session, "test")
 
-        self.assertEqual(1, len(dao.getAll(Pod)))
-        self.assertEqual(1, len(dao.getAll(Device)))
-        
-        dao.deleteObject(device.pod)
-        
-        self.assertEqual(0, len(dao.getAll(Pod)))
-        self.assertEqual(0, len(dao.getAll(Device)))
+        with self.__dao.getReadWriteSession() as session:
+            device = createDevice(session, "test")
 
+            self.assertEqual(1, len(self.__dao.getAll(session, Pod)))
+            self.assertEqual(1, len(self.__dao.getAll(session, Device)))
+            
+            self.__dao.deleteObject(session, device.pod)
+        
+        with self.__dao.getReadSession() as session:
+            self.assertEqual(0, len(self.__dao.getAll(session, Pod)))
+            self.assertEqual(0, len(self.__dao.getAll(session, Device)))
+        
     def testCascadeDeletePodDeviceInterface(self):
         from test_model import createInterface
-        #self.conf['debugSql'] = True
-        dao = Dao(self.conf)
-        session = dao.Session()
-        interface = createInterface(session, "test")
+        with self.__dao.getReadWriteSession() as session:
+            interface = createInterface(session, "test")
+            
+            self.assertEqual(1, len(self.__dao.getAll(session, Pod)))
+            self.assertEqual(1, len(self.__dao.getAll(session, Device)))
+            self.assertEqual(1, len(self.__dao.getAll(session, Interface)))
+    
+            self.__dao.deleteObject(session, interface.device.pod)
         
-        self.assertEqual(1, len(dao.getAll(Pod)))
-        self.assertEqual(1, len(dao.getAll(Device)))
-        self.assertEqual(1, len(dao.getAll(Interface)))
-
-        dao.deleteObject(interface.device.pod)
-        
-        self.assertEqual(0, len(dao.getAll(Pod)))
-        self.assertEqual(0, len(dao.getAll(Device)))
-        self.assertEqual(0, len(dao.getAll(Interface)))
+        with self.__dao.getReadSession() as session:
+            self.assertEqual(0, len(self.__dao.getAll(session, Pod)))
+            self.assertEqual(0, len(self.__dao.getAll(session, Device)))
+            self.assertEqual(0, len(self.__dao.getAll(session, Interface)))
         
     def testGetObjectById(self):
         from test_model import createPod
-        #self.conf['debugSql'] = True
-        dao = Dao(self.conf)
-        session = dao.Session()
-        pod = createPod("test", session)
+        with self.__dao.getReadWriteSession() as session:
+            pod = createPod("test", session)
 
+        with self.__dao.getReadSession() as session:
+            self.assertEqual(1, len(self.__dao.getAll(session, Pod)))
+        
     def testGetConnectedInterconnectIFDsFilterFakeOnes(self):
         from test_model import createDevice
-        dao = Dao(self.conf)
-        device = createDevice(dao.Session, "test")
-        flexmock(dao.Session).should_receive('query.filter.filter.order_by.all').\
-            and_return([InterfaceDefinition("et-0/1/0", None, 'uplink'), InterfaceDefinition("et-0/1/1", None, 'uplink'), 
-                        InterfaceDefinition("uplink-2", None, 'uplink'), InterfaceDefinition("uplink-3", None, 'uplink')])
+        with self.__dao.getReadWriteSession() as session:
+            device = createDevice(session, "test")
+            fakeSession = flexmock(session)
+            fakeSession.should_receive('query.filter.filter.order_by.all').\
+                and_return([InterfaceDefinition("et-0/1/0", None, 'uplink'), InterfaceDefinition("et-0/1/1", None, 'uplink'), 
+                            InterfaceDefinition("uplink-2", None, 'uplink'), InterfaceDefinition("uplink-3", None, 'uplink')])
         
-        filteredIfds = dao.getConnectedInterconnectIFDsFilterFakeOnes(device)
-        self.assertEqual(2, len(filteredIfds))
+            filteredIfds = self.__dao.getConnectedInterconnectIFDsFilterFakeOnes(fakeSession, device)
+            self.assertEqual(2, len(filteredIfds))
 
     def testConfigureTrapGroupFromInstaller ( self ):
         #self.conf['dbUrl'] = 'mysql://root:<pass>@localhost/openclos' 
-        dao = Dao(self.conf)
 
-        trapGroups = dao.getAll(TrapGroup)
-        if trapGroups:
-            dao.deleteObjects ( trapGroups )
+        with self.__dao.getReadWriteSession() as session:
+            trapGroups = self.__dao.getAll(session, TrapGroup)
+            if trapGroups:
+                self.__dao.deleteObjects (session, trapGroups)
+    
+            newtargets = []
+            for newtarget in ['1.2.3.4', '1.2.3.5']:
+                newtargets.append ( TrapGroup ( 'networkdirector_trap_group', newtarget, int('10162') ) )
+                newtargets.append ( TrapGroup ( 'space', newtarget, None ) )
+                newtargets.append ( TrapGroup ( 'openclos_trap_group', newtarget, 20162 ) )
+                self.__dao.createObjects(session, newtargets)
 
-        newtargets = []
-        for newtarget in ['1.2.3.4', '1.2.3.5']:
-            newtargets.append ( TrapGroup ( 'networkdirector_trap_group', newtarget, int('10162') ) )
-            newtargets.append ( TrapGroup ( 'space', newtarget, None ) )
-            newtargets.append ( TrapGroup ( 'openclos_trap_group', newtarget, 20162 ) )
-        dao.createObjects(newtargets)
-
-        self.assertEqual(6, len(dao.getAll(TrapGroup)))
-        self.assertEqual(10162, dao.getAll(TrapGroup)[0].port)
-        self.assertEqual(20162, dao.getAll(TrapGroup)[2].port)
-        self.assertEqual(162, dao.getAll(TrapGroup)[4].port)
+        with self.__dao.getReadSession() as session:
+            self.assertEqual(6, len(self.__dao.getAll(session, TrapGroup)))
+            self.assertEqual(10162, self.__dao.getAll(session, TrapGroup)[0].port)
+            self.assertEqual(20162, self.__dao.getAll(session, TrapGroup)[2].port)
+            self.assertEqual(162, self.__dao.getAll(session, TrapGroup)[4].port)
 
     @unittest.skip('manual test')        
     def testConnectionCleanup(self):
         import threading
         import time
 
-        self.conf['dbUrl'] = 'mysql://root:<pass>@localhost/openclos' 
-        dao = Dao(self.conf)
+        class MySqlDao(AbstractDao):
+            def _getDbUrl(self):
+                jnpr.openclos.util.loadLoggingConfig()
+                return 'mysql://root:<password>@localhost/openclos'
+
+        dao = MySqlDao.getInstance()
 
         def getPods():
-            return dao.getAll(Pod)
+            with dao.getReadWriteSession() as session:
+                return dao.getAll(session, Pod)
         
         threads = []
         for i in xrange(10):
             threads.append(threading.Thread(target = getPods))
             threads[i].start()
-            
         for thread in threads:
             thread.join()
         
         print 'done 10 threads'
-        time.sleep(30)
-        dao.cleanup()
-        print 'done dao.cleanup()'
-        time.sleep(30)
-        getPods()
-        print 'done fresh getPods()'
-        time.sleep(30)
-        dao.cleanup()
-        print 'done final dao.cleanup()'
+        time.sleep(40)
+        
+        threads = []
+        for i in xrange(10):
+            threads.append(threading.Thread(target = getPods))
+            threads[i].start()
+        for thread in threads:
+            thread.join()
+        
+        print 'done 10 threads'
+        time.sleep(40)
+
+        MySqlDao._destroy()
+        print 'done final __dao destroy'
         time.sleep(30)
          
        

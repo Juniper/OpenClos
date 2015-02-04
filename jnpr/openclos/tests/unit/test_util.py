@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #trick to make it run from CLI
 import unittest
 
+import jnpr
 from jnpr.openclos.util import *
 
 class TestFunctions(unittest.TestCase):
@@ -22,7 +23,7 @@ class TestFunctions(unittest.TestCase):
         self.assertIsNotNone(loadConfig())
     '''
     def testLoadNonExistingConfig(self):
-        conf = None
+        __conf = None
         self.assertIsNone(loadConfig(confFile = 'non-existing.yaml'))
     '''
     def testGetPortNamesForDeviceFamilyNullConf(self):
@@ -179,7 +180,7 @@ class TestFunctions(unittest.TestCase):
         import logging
         self.assertEquals(0, len(logging.getLogger('unknown').handlers))
         self.assertEquals(1, len(logging.getLogger('rest').handlers))
-        shutil.rmtree(self.conf['outputDir'], ignore_errors=True)
+        shutil.rmtree(self.__conf['outputDir'], ignore_errors=True)
 
     def testLoadLoggingForTest(self):
         loadLoggingConfig({})
@@ -200,6 +201,15 @@ class TestFunctions(unittest.TestCase):
         path = getOutFolderPath({'outputDir': '/var/lib/openclos'}, pod)
         
         self.assertEquals('/var/lib/openclos/'+pod.id+'-'+pod.name, path)
+        
+    def testGetDbUrl(self):
+        jnpr.openclos.util.conf = None
+        with self.assertRaises(ValueError) as ve:
+            getDbUrl()
+        
+        loadConfig()
+        self.assertTrue('sqlite:' in getDbUrl())
+
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

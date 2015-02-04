@@ -44,7 +44,7 @@ class MyTaskSet(TaskSet):
         t.start()
         '''
     
-    @task(5)
+    @task(10)
     def getIpFabrics(self):
         response = self.client.get('/openclos/ip-fabrics')
         if response._content is not None:
@@ -52,26 +52,26 @@ class MyTaskSet(TaskSet):
             self.fabricIds = [f['id'] for f in jsonContent['ipFabrics']['ipFabric']]
         #self.logger.info(self.fabricIds)
 
-    @task(5)
+    @task(10)
     def getIpFabric(self):
         if self.fabricIds:
             id = random.choice(self.fabricIds)
             #self.logger.info('GET /openclos/ip-fabrics/%s' % (id))
             self.client.get('/openclos/ip-fabrics/%s' % (id))
             
-    @task(2)
+    @task(5)
     def createCabling(self):
         if self.fabricIds:
             id = random.choice(self.fabricIds)
             self.client.put('/openclos/ip-fabrics/%s/cabling-plan' % (id))
             
-    @task(2)
+    @task(5)
     def createConfigs(self):
         if self.fabricIds:
             id = random.choice(self.fabricIds)
             self.client.put('/openclos/ip-fabrics/%s/device-configuration' % (id))
             
-    @task(5)
+    @task(10)
     def getDevices(self):
         if self.fabricIds:
             id = random.choice(self.fabricIds)
@@ -210,7 +210,7 @@ ipFabrics = [
 
 
 class MyLocust(HttpLocust):
-    host = "http://localhost:80"
+    host = "http://192.168.63.173:20080"
     min_wait = 250
     max_wait = 500
     stop_timeout = 15000

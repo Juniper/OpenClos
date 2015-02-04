@@ -18,34 +18,31 @@ logger = None
 maxThreads = 10
 
 class Report(object):
-    def __init__(self, conf = {}, dao = None):
+    def __init__(self, conf = {}, daoClass = Dao):
         global logger
         if any(conf) == False:
-            self.conf = util.loadConfig(appName = moduleName)
+            self._conf = util.loadConfig(appName = moduleName)
         else:
-            self.conf = conf
+            self._conf = conf
 
         logger = logging.getLogger(moduleName)
-        if dao is None:
-            self.dao = Dao(self.conf)
-        else:
-            self.dao = dao
+        self._dao = daoClass.getInstance()
 
-    def getPod(self, podName):
-        return self.dao.getUniqueObjectByName(Pod, podName)
+    def getPod(self, session, podName):
+        return self._dao.getUniqueObjectByName(session, Pod, podName)
 
-    def getIpFabric(self, ipFabricId):
+    def getIpFabric(self, session, ipFabricId):
         try:
-            return self.dao.getObjectById(Pod, ipFabricId)
+            return self._dao.getObjectById(session, Pod, ipFabricId)
         except (exc.NoResultFound) as e:
             logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s" % (ipFabricId, e.message)) 
             
 class ResourceAllocationReport(Report):
-    def __init__(self, conf = {}, dao = None):
-        super(ResourceAllocationReport, self).__init__(conf, dao)
+    def __init__(self, conf = {}, daoClass = Dao):
+        super(ResourceAllocationReport, self).__init__(conf, daoClass)
         
-    def getPods(self):
-        podObject = self.dao.getAll(Pod)
+    def getPods(self, session):
+        podObject = self._dao.getAll(session, Pod)
         pods = []
         
         for i in range(len(podObject)):
@@ -107,46 +104,47 @@ class ResourceAllocationReport(Report):
         return asnAllocation
 
 class L2Report(Report):
-    def __init__(self, conf = {}, dao = None):
-        super(L2Report, self).__init__(conf, dao)
+    def __init__(self, conf = {},  daoClass = Dao):
+        super(L2Report, self).__init__(conf, daoClass)
         
-        if self.conf.get('report') and self.conf['report'].get('threadCount'):
-            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self.conf['report']['threadCount'])
+        if self._conf.get('report') and self._conf['report'].get('threadCount'):
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self._conf['report']['threadCount'])
         else:
             self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = maxThreads)
         
     def generateReport(self, podId, cachedData = True, writeToFile = False):
-        pod = self.getIpFabric(podId)
-        if pod is None: 
-            logger.error('No pod found for podId: %s' % (podId))
-            raise ValueError('No pod found for podId: %s' % (podId)) 
-        
-        if cachedData == False:
-            logger.info('Generating L2Report from real data')
-            futureList = []
-            for device in pod.devices:
-                if device.role == 'leaf':
-                    l2DataCollector = L2DataCollector(device.id, self.conf, self.dao) 
-                    futureList.append(self.executor.submit(l2DataCollector.startL2Report))
-            logger.info('Submitted processing all devices')
-            concurrent.futures.wait(futureList)
-            # At this point multiple threads, ie multiple db sessions
-            # have updated device, so we need to refresh pod data. 
-            # Rather than refresh, better option is expire, which
-            # would trigger lazy load.
-            self.dao.Session.expire(pod)
-            logger.info('Done processing all devices')
-        else:
-            logger.info('Generating L2Report from cached data')
-        cablingPlanWriter = CablingPlanWriter(self.conf, pod, self.dao)
-        if writeToFile:
-            return cablingPlanWriter.writeThreeStageL2ReportJson()
-        else:
-            return cablingPlanWriter.getThreeStageL2ReportJson()
+        with self._dao.getReadSession() as session:
+            pod = self.getIpFabric(session, podId)
+            if pod is None: 
+                logger.error('No pod found for podId: %s' % (podId))
+                raise ValueError('No pod found for podId: %s' % (podId)) 
+            
+            if cachedData == False:
+                logger.info('Generating L2Report from real data')
+                futureList = []
+                for device in pod.devices:
+                    if device.role == 'leaf':
+                        l2DataCollector = L2DataCollector(device.id, self._conf, self._dao) 
+                        futureList.append(self.executor.submit(l2DataCollector.startL2Report))
+                logger.info('Submitted processing all devices')
+                concurrent.futures.wait(futureList)
+                # At this point multiple threads, ie multiple db sessions
+                # have updated device, so we need to refresh pod data. 
+                # Rather than refresh, better option is expire, which
+                # would trigger lazy load.
+                session.expire(pod)
+                logger.info('Done processing all devices')
+            else:
+                logger.info('Generating L2Report from cached data')
+            cablingPlanWriter = CablingPlanWriter(self._conf, pod, self._dao)
+            if writeToFile:
+                return cablingPlanWriter.writeThreeStageL2ReportJson()
+            else:
+                return cablingPlanWriter.getThreeStageL2ReportJson()
 
 class L3Report(Report):
-    def __init__(self, conf = {}, dao = None):
-        super(L3Report, self).__init__(conf, dao)
+    def __init__(self, conf = {},  daoClass = Dao):
+        super(L3Report, self).__init__(conf, daoClass)
     
 
 if __name__ == '__main__':

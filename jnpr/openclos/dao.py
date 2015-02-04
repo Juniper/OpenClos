@@ -8,84 +8,99 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import exc
 import util
 import logging 
+import contextlib
 
 from model import Base, Device, InterfaceDefinition, LeafSetting
+from common import SingletonBase
 
 moduleName = 'dao'
 logger = None
 
-class Dao:
-    def __init__(self, conf):
+
+class AbstractDao(SingletonBase):
+    def __init__(self):
         global logger
         logger = logging.getLogger(moduleName)
+        debugSql = False
+        if logger.isEnabledFor(logging.DEBUG):
+            debugSql = True
             
-        self.engine = None
-        self.Session = None
-
-        if conf is not None and 'dbUrl' in conf:
-            if util.isSqliteUsed(conf):
-                self.engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={}, echo = conf.get('debugSql', False))
-            else:
-                self.engine = sqlalchemy.create_engine(conf['dbUrl'], connect_args={}, echo = conf.get('debugSql', False),
-                        pool_recycle=7200, isolation_level="READ COMMITTED")
-            Base.metadata.create_all(self.engine) 
-            session_factory = sessionmaker(bind=self.engine)
-            self.Session = scoped_session(session_factory)
+        self.__engine = None
+        self.__sessionFactory = None
+        dbUrl = self._getDbUrl()
+        
+        if 'sqlite:' in dbUrl:
+            self.__engine = sqlalchemy.create_engine(dbUrl, echo = debugSql)
+        elif 'mysql:' in dbUrl:
+            self.__engine = sqlalchemy.create_engine(dbUrl, echo = debugSql,
+                         pool_recycle = 7200, isolation_level = "READ COMMITTED")
         else:
-            raise ValueError("Missing configuration parameter:'dbUrl'")
+            logger.error('Unsupported DB dialect: %s' % dbUrl)
+            raise ValueError('Unsupported DB dialect: %s' % dbUrl)
+        
+        Base.metadata.create_all(self.__engine) 
+        self.__sessionFactory = sessionmaker(bind=self.__engine)
+        logger.info('Dao is initialized with Engine')
 
     def __del__(self):
-        if self.engine:
-            #self.Session.close_all()
-            #self.engine.dispose()
-            pass
-        
-        
-    # Don't remove session after each operation, it detaches the object from ORM,
-    # which disables further operations on the object like lazy load of collection.
-    # When thread dies, it gets GCed automatically
-    def createObjects(self, objects):
-        session = self.Session()
+        if self.__engine:
+            self.__sessionFactory.close_all()
+            self.__engine.dispose()
+    
+    @contextlib.contextmanager
+    def getReadSession(self):
+        try:
+            session = scoped_session(self.__sessionFactory)
+            yield session
+        except Exception as ex:
+            logger.error(ex)
+            raise
+        finally:
+            session.remove()
+
+    @contextlib.contextmanager
+    def getReadWriteSession(self):
+        try:
+            session = scoped_session(self.__sessionFactory)
+            yield session
+            session.commit()
+        except Exception as ex:
+            session.rollback()
+            logger.error(ex)
+            raise
+        finally:
+            session.remove()
+    
+    def _getRawSession(self):
+        return scoped_session(self.__sessionFactory)
+    
+    def _getDbUrl(self):
+        raise NotImplementedError
+
+    def createObjects(self, session, objects):
+        session.add_all(objects)
+    
+    def createObjectsAndCommitNow(self, session, objects):
         try:
             session.add_all(objects)
             session.commit()
         except Exception as ex:
             logger.error(ex)
             session.rollback()
-            raise
-        finally:
-            #self.Session.remove()
-            pass
-    
-    def deleteObject(self, obj):
-        session = self.Session()
-        try:
+            #raise
+
+    def deleteObject(self, session, obj):
+        session.delete(obj)
+
+    def deleteObjects(self, session, objects):
+        for obj in objects:
             session.delete(obj)
-            session.commit()
-        except Exception as ex:
-            logger.error(ex)
-            session.rollback()
-            raise
-        finally:
-            #self.Session.remove()
-            pass
 
-    def deleteObjects(self, objects):
-        session = self.Session()
-        try:
-            for obj in objects:
-                session.delete(obj)
-            session.commit()
-        except Exception as ex:
-            logger.error(ex)
-            session.rollback()
-            raise
-        finally:
-            #self.Session.remove()
-            pass
+    def updateObjects(self, session, objects):
+        for obj in objects:
+            session.merge(obj)
 
-    def updateObjects(self, objects):
-        session = self.Session()
+    def updateObjectsAndCommitNow(self, session, objects):
         try:
             for obj in objects:
                 session.merge(obj)
@@ -93,71 +108,43 @@ class Dao:
         except Exception as ex:
             logger.error(ex)
             session.rollback()
-            raise
-        finally:
-            #self.Session.remove()
-            pass
+            #raise
 
-    def getAll(self, objectType):
-        session = self.Session()
-        try:
-            return session.query(objectType).order_by(objectType.name).all()
-        finally:
-            #self.Session.remove()
-            pass
+    def getAll(self, session, objectType):
+        return session.query(objectType).order_by(objectType.name).all()
     
-    def getObjectById(self, objectType, id):
-        session = self.Session()
-        try:
-            return session.query(objectType).filter_by(id = id).one()
-        finally:
-            #self.Session.remove()
-            pass
+    def getObjectById(self, session, objectType, id):
+        return session.query(objectType).filter_by(id = id).one()
 
-
-    def getUniqueObjectByName(self, objectType, name):
-        session = self.Session()
+    def getUniqueObjectByName(self, session, objectType, name):
         try:
             return session.query(objectType).filter_by(name = name).one()
         except (exc.NoResultFound, exc.MultipleResultsFound) as ex:
             logger.info(str(ex))
-        finally:
-            #self.Session.remove()
-            pass
 
-    def getObjectsByName(self, objectType, name):
-        session = self.Session()
-        try:
-            return session.query(objectType).filter_by(name = name).all()
-        finally:
-            #self.Session.remove()
-            pass
+    def getObjectsByName(self, session, objectType, name):
+        return session.query(objectType).filter_by(name = name).all()
 
-    def getIfdByDeviceNamePortName(self, deviceName, portName):
-        session = self.Session()
+    def getIfdByDeviceNamePortName(self, session, deviceName, portName):
         try:
             device = session.query(Device).filter_by(name = deviceName).one()
             return session.query(InterfaceDefinition).filter_by(device_id = device.id).filter_by(name = portName).one()
         except (exc.NoResultFound, exc.MultipleResultsFound) as ex:
             logger.info(str(ex))
-        finally:
-            #self.Session.remove()
-            pass
 
-    def getLeafSetting(self, podId, deviceFamily):
-        session = self.Session()
+    def getLeafSetting(self, session, podId, deviceFamily):
         try:
             return session.query(LeafSetting).filter_by(pod_id = podId).filter_by(deviceFamily = deviceFamily).one()
         except (exc.NoResultFound) as ex:
             logger.info(str(ex))
 
-    def getConnectedInterconnectIFDsFilterFakeOnes(self, device):
+    def getConnectedInterconnectIFDsFilterFakeOnes(self, session, device):
         '''
         Get interconnect IFDs except following ..
         1. no peer configured
         2. port name is uplink-* for device with known family 
         '''
-        interconnectPorts = self.Session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
+        interconnectPorts = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
             .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.sequenceNum).all()
 
         ports = []        
@@ -166,3 +153,9 @@ class Dao:
                 continue
             ports.append(port)
         return ports
+
+class Dao(AbstractDao):
+    def _getDbUrl(self):
+        return util.getDbUrl()
+    
+    

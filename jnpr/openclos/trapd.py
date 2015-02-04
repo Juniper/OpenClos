@@ -81,9 +81,9 @@ class TrapReceiver():
     def __init__(self, conf = {}):
         global logger
         if conf is None or any(conf) == False:
-            self.conf = util.loadConfig(appName = moduleName)
+            self.__conf = util.loadConfig(appName = moduleName)
         else:
-            self.conf = conf
+            self.__conf = conf
 
         logger = logging.getLogger(moduleName)
         # default value
@@ -91,18 +91,18 @@ class TrapReceiver():
         self.port = DEFAULT_PORT
         
         # validate required parameter
-        if 'snmpTrap' in self.conf and 'openclos_trap_group' in self.conf['snmpTrap'] and 'target' in self.conf['snmpTrap']['openclos_trap_group']:
-            self.target = self.conf['snmpTrap']['openclos_trap_group']['target']
+        if 'snmpTrap' in self.__conf and 'openclos_trap_group' in self.__conf['snmpTrap'] and 'target' in self.__conf['snmpTrap']['openclos_trap_group']:
+            self.target = self.__conf['snmpTrap']['openclos_trap_group']['target']
         else:
             logger.info("snmpTrap:openclos_trap_group:target is missing from configuration. using %s" % (self.target))                
 
-        if 'snmpTrap' in self.conf and 'openclos_trap_group' in self.conf['snmpTrap'] and 'port' in self.conf['snmpTrap']['openclos_trap_group']:
-            self.port = int(self.conf['snmpTrap']['openclos_trap_group']['port'])
+        if 'snmpTrap' in self.__conf and 'openclos_trap_group' in self.__conf['snmpTrap'] and 'port' in self.__conf['snmpTrap']['openclos_trap_group']:
+            self.port = int(self.__conf['snmpTrap']['openclos_trap_group']['port'])
         else:
             logger.info("snmpTrap:openclos_trap_group:port is missing from configuration. using %d" % (self.port))                
             
-        if 'snmpTrap' in self.conf and 'threadCount' in self.conf['snmpTrap']:
-            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self.conf['snmpTrap']['threadCount'])
+        if 'snmpTrap' in self.__conf and 'threadCount' in self.__conf['snmpTrap']:
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self.__conf['snmpTrap']['threadCount'])
         else:
             self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = DEFAULT_MAX_THREADS)
 

@@ -1,6 +1,9 @@
 routing-options {
+    replace:
     router-id {{routerId}};
+    replace:
     autonomous-system {{asn}};
+    replace:
     forwarding-table {
         export PFE-LB;
     }

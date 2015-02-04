@@ -13,19 +13,19 @@ from jnpr.openclos.trapd import TrapReceiver
 class TestTrapReceiver(unittest.TestCase):
 
     def testInit(self):
-        self.conf = {}
-        self.conf['snmpTrap'] = {}
-        self.conf['snmpTrap']['openclos_trap_group'] = {}
-        self.conf['snmpTrap']['openclos_trap_group']['target'] = "1.1.1.1"
-        self.conf['snmpTrap']['openclos_trap_group']['port'] = 20163
-        trapReceiver = TrapReceiver(self.conf)
+        self.__conf = {}
+        self.__conf['snmpTrap'] = {}
+        self.__conf['snmpTrap']['openclos_trap_group'] = {}
+        self.__conf['snmpTrap']['openclos_trap_group']['target'] = "1.1.1.1"
+        self.__conf['snmpTrap']['openclos_trap_group']['port'] = 20163
+        trapReceiver = TrapReceiver(self.__conf)
         self.assertEqual('1.1.1.1', trapReceiver.target)
         self.assertEqual(20163, trapReceiver.port)
     
     def testInitDefaultValue(self):
-        self.conf = {}
-        self.conf['snmpTrap'] = {}
-        trapReceiver = TrapReceiver(self.conf)
+        self.__conf = {}
+        self.__conf['snmpTrap'] = {}
+        trapReceiver = TrapReceiver(self.__conf)
         self.assertEqual('0.0.0.0', trapReceiver.target)
         self.assertEqual(20162, trapReceiver.port)
         
@@ -39,12 +39,12 @@ class TestTrapReceiver(unittest.TestCase):
 
     @unittest.skipIf(sys.platform.startswith("win"), "Don't run on Windows")
     def testStart(self):
-        self.conf = {}
-        self.conf['snmpTrap'] = {}
-        self.conf['snmpTrap']['openclos_trap_group'] = {}
-        self.conf['snmpTrap']['openclos_trap_group']['target'] = "0.0.0.0"
-        self.conf['snmpTrap']['openclos_trap_group']['port'] = 20162
-        trapReceiver = TrapReceiver(self.conf)
+        self.__conf = {}
+        self.__conf['snmpTrap'] = {}
+        self.__conf['snmpTrap']['openclos_trap_group'] = {}
+        self.__conf['snmpTrap']['openclos_trap_group']['target'] = "0.0.0.0"
+        self.__conf['snmpTrap']['openclos_trap_group']['port'] = 20162
+        trapReceiver = TrapReceiver(self.__conf)
         trapReceiver.start()
         sleep(2)
         self.assertEqual(True, self.isPortOpen(20162))
