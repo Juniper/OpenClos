@@ -13,6 +13,7 @@ import logging
 import util
 import signal
 import sys
+import subprocess
 import concurrent.futures
 from devicePlugin import TwoStageConfigurator 
 
@@ -72,8 +73,19 @@ def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
                 for oid, val in varBinds:
                     logger.debug('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
                     
+    
     # start the 2-stage configuration in a separate thread
     if trapReceiver is not None:
+        # execute 2-stage configuration callback if there is one configured in openclos.yaml
+        callback = trapReceiver.twoStageConfigurationCallback
+        if callback is not None and len(callback) > 0: 
+            proc = subprocess.Popen(callback, shell=True)
+            returnValue = proc.wait()
+            if returnValue != 0:
+                # 2-stage configuration callback returns non-zero value indicating we SHOULD NOT continue
+                logger.debug('twoStageConfigurationCallback "%s" returns %d, trap ignored' % (callback, returnValue))
+                return
+            
         configurator = TwoStageConfigurator(deviceIp=transportAddress[0], stopEvent=trapReceiver.stopEvent)
         trapReceiver.executor.submit(configurator.start2StageConfiguration)        
 
@@ -108,6 +120,8 @@ class TrapReceiver():
 
         # event to stop from sleep
         self.stopEvent = Event()
+        
+        self.twoStageConfigurationCallback = util.getTwoStageConfigurationCallback(self.__conf)
        
     def threadFunction(self):
         self.transportDispatcher = AsynsockDispatcher()
