@@ -87,6 +87,9 @@ class NDConfMgr:
 #------------------------------------------------------------------------------
     def process_line ( self, line ):
         
+        if 'twoStageConfigurationCallback:' in line:
+            return "twoStageConfigurationCallback: '/sbin/ip a list dev eth0 | grep -q eth0:0'\n"
+            
         if '    ndIntegrated :' in line:
             return '    ndIntegrated : true\n'
 

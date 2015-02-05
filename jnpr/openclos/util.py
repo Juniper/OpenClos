@@ -254,6 +254,12 @@ def getZtpStagedAttempt(conf):
     else:
         return None
 
+def getTwoStageConfigurationCallback(conf):
+    if isZtpStaged(conf) == True:
+        return conf.get('twoStageConfigurationCallback')
+    else:
+        return None
+
 def getVcpLldpDelay(conf):
     if isZtpStaged(conf) == True:
         return conf['deploymentMode'].get('ztpVcpLldpDelay', TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY)

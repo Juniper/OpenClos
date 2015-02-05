@@ -149,3 +149,9 @@ cli:
     header: "Welcome to openclos - by Juniper Networks"
     # on_exit is the message that would appear when CLI session is terminated
     on_exit: "goodbye"
+
+# Optional callback to control 2-stage configuration processing.
+# callback can be a shell command or a shell script. 
+# if the callback exit code is 0, 2-stage configuration for the current leaf continues, 
+# if the callback exit code is not 0, 2-stage configuration for the current leaf aborts 
+#twoStageConfigurationCallback:
