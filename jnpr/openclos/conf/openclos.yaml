@@ -114,7 +114,7 @@ httpServer :
 
 # Number of threads used to communicate with devices
 report :
-    threadCount : 10
+    threadCount : 20
          
 # SNMP trap settings for NetworkDirector and OpenClos
 # OpenClos uses traps to perform 2-stage ZTP process
