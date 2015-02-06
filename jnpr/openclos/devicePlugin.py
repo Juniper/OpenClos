@@ -532,6 +532,10 @@ class TwoStageConfigurator(L2DataCollector):
             try:
                 self.device.family = self.deviceConnectionHandle.facts['model'].lower()
                 self.deleteVcpPorts(self.device.family)
+                if self.stopEvent.is_set():
+                    self.configurationInProgressCache.doneDevice(self.deviceIp)
+                    return
+
                 lldpData = self.collectLldpFromDevice()
             except DeviceError as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceIp, exc))
@@ -576,10 +580,7 @@ class TwoStageConfigurator(L2DataCollector):
         # Wait for some time get lldp advertisement on et-* ports
         # default advertisement interval 30secs
         logger.debug('Wait for vcpLldpDelay: %d seconds...' % (self.vcpLldpDelay))
-        self.stopEvent.wait(self.vcpLldpDelay)
-        if self.stopEvent.is_set():
-            return
-        
+        self.stopEvent.wait(self.vcpLldpDelay)        
 
     def fixPlugNPlayDevice(self, device, deviceFamily, uplinksWithIfd):
         '''
