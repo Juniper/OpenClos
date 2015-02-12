@@ -65,6 +65,32 @@ class TestZtp(unittest.TestCase):
         self.assertFalse('None' in dhcpConf)
         self.assertEquals(4, dhcpConf.count('host-name')) # 1 global + 3 device
 
+    def testGeneratePodSpecificDhcpConfWithSerial(self):
+        from jnpr.openclos.l3Clos import util
+        flexmock(util, isPlatformUbuntu = True)
+        
+        with self._dao.getReadWriteSession() as session:
+            pod = createPod('pod1', session)
+            pod.spineJunosImage = 'testSpineImage'
+            
+            createPodDevice(session, 'dev1', pod)
+            dev2 = createPodDevice(session, 'dev2', pod)
+            dev2.macAddress = None
+            dev2.serialNumber = 'VB1234567890'
+            dev3 = createPodDevice(session, 'dev3', pod)
+            dev3.role = 'leaf'
+            dev3.serialNumber = 'VB1234567891'
+          
+            dhcpConf = self.ztpServer.generatePodSpecificDhcpConf(session, pod.id)
+
+        self.assertEquals(2, dhcpConf.count('testSpineImage'))
+        self.assertFalse('{{' in dhcpConf)
+        self.assertFalse('}}' in dhcpConf)
+        self.assertFalse('None' in dhcpConf)
+        self.assertTrue('VB1234567890' in dhcpConf)
+        self.assertTrue('VB1234567891' not in dhcpConf)
+        self.assertEquals(4, dhcpConf.count('host-name')) # 1 global + 3 device
+
     def testGeneratePodSpecificDhcpConfFor2StageZtp(self):
         from jnpr.openclos.l3Clos import util
         flexmock(util, isPlatformUbuntu = True)

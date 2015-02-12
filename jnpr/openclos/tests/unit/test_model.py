@@ -39,13 +39,13 @@ def createPod(name, session):
     return pod
 
 def createDevice(session, name):
-    device = Device(name, "", "", "", "spine", "", "1.2.3.4/24", createPod(name, session))
+    device = Device(name, "", "", "", "spine", "11:12:13:14:15:16", "1.2.3.4/24", createPod(name, session))
     session.add(device)
     session.commit()
     return device
 
 def createPodDevice(session, name, pod):
-    device = Device(name, "", "", "", "spine", "", "1.2.3.4", pod)
+    device = Device(name, "", "", "", "spine", "11:12:13:14:15:16", "1.2.3.4", pod)
     session.add(device)
     session.commit()
     return device
@@ -250,7 +250,7 @@ class TestDevice(TestOrm):
 
     def testOrm(self):
         podOne = createPod('testpod', self.session)
-        device = Device('testdevice', 'qfx-5100-48s-6q', 'admin', 'admin', "spine", "", "", podOne)
+        device = Device('testdevice', 'qfx-5100-48s-6q', 'admin', 'admin', "spine", "", "", podOne, "provision", "VB1234567890")
         self.session.add(device)
         self.session.commit()  
         fetched = self.session.query(Device).one()
