@@ -82,14 +82,14 @@ class TestZtp(unittest.TestCase):
             dev3.serialNumber = 'VB1234567891'
           
             dhcpConf = self.ztpServer.generatePodSpecificDhcpConf(session, pod.id)
-
+            print dhcpConf
         self.assertEquals(2, dhcpConf.count('testSpineImage'))
         self.assertFalse('{{' in dhcpConf)
         self.assertFalse('}}' in dhcpConf)
         self.assertFalse('None' in dhcpConf)
         self.assertTrue('VB1234567890' in dhcpConf)
         self.assertTrue('VB1234567891' not in dhcpConf)
-        self.assertEquals(4, dhcpConf.count('host-name')) # 1 global + 3 device
+        self.assertEquals(5, dhcpConf.count('host-name')) # 1 global class + 1 subnet + 2 device mac + 1 device serial
 
     def testGeneratePodSpecificDhcpConfFor2StageZtp(self):
         from jnpr.openclos.l3Clos import util
