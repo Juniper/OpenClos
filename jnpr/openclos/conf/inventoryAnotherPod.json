@@ -1,9 +1,9 @@
 {   "spines" : [
-       { "name" : "clos-spine-01", "macAddress" : "10:0e:7e:af:35:41", "deployStatus" : "deploy"},
+       { "name" : "clos-spine-01", "macAddress" : "10:0e:7e:af:35:41", "serialNumber" : "VG3714070310", "deployStatus" : "deploy"},
        { "name" : "clos-spine-02", "macAddress" : "10:0e:7e:af:50:c1", "deployStatus" : "deploy"}
     ],
     "leafs" : [
-       { "name" : "clos-leaf-01", "family" : "qfx5100-96s-8q", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus" : "deploy"},
+       { "name" : "clos-leaf-01", "family" : "qfx5100-96s-8q", "serialNumber" : "VB3113470018", "deployStatus" : "deploy"},
        { "name" : "clos-leaf-02", "family" : "qfx5100-96s-8q", "macAddress" : "10:0e:7e:b8:9d:01", "deployStatus" : "deploy"},
        { "name" : "clos-leaf-03"},
        { "name" : "clos-leaf-04"}

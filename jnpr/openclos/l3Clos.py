@@ -92,7 +92,8 @@ class L3ClosMediation():
             password = spine.get('password')
             macAddress = spine.get('macAddress')
             deployStatus = spine.get('deployStatus')    #default is 'provision' set on DB
-            device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, None, pod, deployStatus)
+            serialNumber = spine.get('serialNumber')
+            device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, None, pod, deployStatus, serialNumber)
             devices.append(device)
             
             portNames = util.getPortNamesForDeviceFamily(device.family, self.__conf['deviceFamily'])
@@ -111,7 +112,8 @@ class L3ClosMediation():
             macAddress = leaf.get('macAddress')
             family = leaf.get('family') #default is 'unknown' set on DB
             deployStatus = leaf.get('deployStatus') #default is 'provision' set on DB
-            device = Device(leaf['name'], family, username, password, 'leaf', macAddress, None, pod, deployStatus)
+            serialNumber = leaf.get('serialNumber')
+            device = Device(leaf['name'], family, username, password, 'leaf', macAddress, None, pod, deployStatus, serialNumber)
             devices.append(device)
             
             if family is None or family == 'unknown':
@@ -147,12 +149,12 @@ class L3ClosMediation():
                 if device.role == role and (device.id == inv.get('id') or device.name == inv['name']):
                     if device.deployStatus == inv.get('deployStatus'):
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' unchanged" % (pod.id, pod.name, device.role, device.name))
-                    elif device.deployStatus == 'deploy' and inv.get('deployStatus') is None:
+                    elif device.deployStatus == 'deploy' and (inv.get('deployStatus') is None or inv.get('deployStatus') == 'provision'):
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' provisioned" % (pod.id, pod.name, device.role, device.name))
-                        device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus', 'provision'))
+                        device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus', 'provision'), inv.get('serialNumber'))
                     elif device.deployStatus == 'provision' and inv.get('deployStatus') == 'deploy':
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' deployed" % (pod.id, pod.name, device.role, device.name))
-                        device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus'))
+                        device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus'), inv.get('serialNumber'))
                        
     def _resolveInventory(self, podDict, inventoryDict):
         if podDict is None:

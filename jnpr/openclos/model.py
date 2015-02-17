@@ -272,6 +272,7 @@ class Device(ManagedElement, Base):
     encryptedPassword = Column(String(100)) # 2-way encrypted
     role = Column(Enum('spine', 'leaf'))
     macAddress = Column(String(32))
+    serialNumber = Column(String(32))
     managementIp = Column(String(32))
     family = Column(String(100), default = 'unknown')
     asn = Column(BigInteger)
@@ -291,7 +292,7 @@ class Device(ManagedElement, Base):
     )
     
                 
-    def __init__(self, name, family, username, password, role, macAddress, managementIp, pod, deployStatus=None):
+    def __init__(self, name, family, username, password, role, macAddress, managementIp, pod, deployStatus=None, serialNumber=None):
         '''
         Creates Device object.
         '''
@@ -308,8 +309,9 @@ class Device(ManagedElement, Base):
         self.managementIp = managementIp
         self.pod = pod
         self.deployStatus = deployStatus
+        self.serialNumber = serialNumber
         
-    def update(self, name, username, password, macAddress, deployStatus):
+    def update(self, name, username, password, macAddress, deployStatus, serialNumber):
         '''
         Updates Device object.
         '''
@@ -319,8 +321,7 @@ class Device(ManagedElement, Base):
             self.encryptedPassword = self.cryptic.encrypt(password)
         self.macAddress = macAddress
         self.deployStatus = deployStatus
-        #for interface in self.interfaces:
-        #    interface.deployStatus = deployStatus
+        self.serialNumber = serialNumber
     
     def getCleartextPassword(self):
         '''

@@ -35,6 +35,8 @@ class ZtpServer():
 
         if templateEnv is None:
             self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', ztpTemplateLocation))
+            self.templateEnv.lstrip_blocks = True
+            self.templateEnv.trim_blocks = True
 
     
     def dcpServerReloadConfig(self):
@@ -149,7 +151,7 @@ class ZtpServer():
         
         pod = self._dao.getObjectById(session, Pod, podId)
         for device in pod.devices:
-            if device.macAddress is None or device.family == 'unknown':
+            if device.family == 'unknown':
                 continue
             
             if device.role == 'spine':
@@ -171,11 +173,21 @@ class ZtpServer():
                 continue
             
             deviceMgmtIp = str(IPNetwork(device.managementIp).ip)
-            ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
-            # don't start url as /openclos/ip-fabrics, first / causes ZTP problem
-            'configUrl': 'openclos/ip-fabrics/' + pod.id + '/devices/' + device.id + '/config',
-            'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
-        
+            if device.macAddress :
+                ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
+                # don't start url as /openclos/ip-fabrics, first / causes ZTP problem
+                'configUrl': 'openclos/ip-fabrics/' + pod.id + '/devices/' + device.id + '/config',
+                'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
+                logger.info('Device: %s, %s used MAC to map in dhcpd.conf' % (device.name, deviceMgmtIp))
+            elif device.serialNumber:
+                ztp['devices'].append({'name': device.name, 'serial': device.serialNumber,
+                # don't start url as /openclos/ip-fabrics, first / causes ZTP problem
+                'configUrl': 'openclos/ip-fabrics/' + pod.id + '/devices/' + device.id + '/config',
+                'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
+                logger.info('Device: %s, %s used Serial to map in dhcpd.conf' % (device.name, deviceMgmtIp))
+            else:
+                logger.error('Device: %s, %s does not have MAC or SerialNumber, not added in dhcpd.conf' % (device.name, deviceMgmtIp))
+                
         if util.isZtpStaged(self.__conf):
             ztp['leafs'] = []
             for leafSetting in pod.leafSettings:
@@ -204,4 +216,5 @@ if __name__ == '__main__':
     
         pods = ztpServer._dao.getAll(session, Pod)
         ztpServer.createPodSpecificDhcpConfFile(session, pods[0].id)
+        ztpServer.createPodSpecificDhcpConfFile(session, pods[1].id)
         #ztpServer.createSingleDhcpConfFile()
