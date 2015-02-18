@@ -336,10 +336,10 @@ class TestRest(unittest.TestCase):
                 "devicePassword": "viren123",
                 "outOfBandGateway": "192.168.2.1",
                 "devices": [
-                  {"role": "spine", "family": "qfx5100-24q-2p", "name": "test12321-spine-0", "username": "root", "password": "viren123", "deployStatus": "deploy"},
-                  {"role": "spine", "family": "qfx5100-24q-2p", "name": "test12321-spine-1"},
-                  {"role": "leaf", "family": "qfx5100-48s-6q", "name": "test12321-leaf-0", "deployStatus": "deploy"},
-                  {"role": "leaf", "family": "qfx5100-48s-6q", "name": "test12321-leaf-1", "deployStatus": "deploy"},
+                  {"role": "spine", "family": "qfx5100-24q-2p", "name": "test12321-spine-0", "username": "root", "password": "viren123", "serialNumber":"1234567", "deployStatus": "deploy"},
+                  {"role": "spine", "family": "qfx5100-24q-2p", "name": "test12321-spine-1", "serialNumber":"JNPR-1234" },
+                  {"role": "leaf", "family": "qfx5100-48s-6q", "name": "test12321-leaf-0", "serialNumber":"JNPR-3456", "deployStatus": "deploy"},
+                  {"role": "leaf", "family": "qfx5100-48s-6q", "name": "test12321-leaf-1", "serialNumber":"JNPR-5678", "deployStatus": "deploy"},
                   {"role": "leaf", "name": "test12321-leaf-2"}
                 ]
             }
@@ -388,7 +388,8 @@ class TestRest(unittest.TestCase):
                     "role": "test",
                     "name": "pparam_Test1-spine-0",
                     "username": "root",
-                    "password": "Test123!"
+                    "password": "Test123!",
+                    "serialNumber":"JNPR-1234567"
                     },
                 ]
             }
