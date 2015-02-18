@@ -15,7 +15,7 @@ from jnpr.junos.exception import ConnectError, RpcError, CommitError, LockError
 from jnpr.junos.utils.config import Config
 
 from dao import Dao
-from model import Pod, Device, InterfaceDefinition, AdditionalLink
+from model import Pod, Device, InterfaceDefinition, AdditionalLink, BgpLink
 from exception import DeviceError
 from common import SingletonBase
 from l3Clos import L3ClosMediation
@@ -389,12 +389,11 @@ class L3DataCollector(DeviceDataCollectorNetconf):
     Perform manual "init" from startL3Report to make sure it is done
     from child thread's context.
     '''
-    def __init__(self, deviceId, conf = {}, dao = None):
+    def __init__(self, deviceId, conf = {}, daoClass = Dao):
         self.collectionInProgressCache = L3DataCollectorInProgressCache.getInstance()
-        super(L3DataCollector, self).__init__(deviceId, conf)
+        super(L3DataCollector, self).__init__(deviceId, conf, daoClass)
 
     def manualInit(self):
-        #Performing manual "init" for Dao
         super(L3DataCollector, self).manualInit()
 
     def startL3Report(self):
@@ -402,34 +401,47 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             self.manualInit()
             self.startCollectAndProcessBgp()
         except Exception as exc:
-            logger.error('L# data collection failed for %s, %s' % (self.deviceId, exc))
+            logger.error('L3 data collection failed for %s, %s' % (self.deviceId, exc))
             raise
+        finally:
+            if self._session:
+                self._session.commit()
+                self._session.remove()
 
     def startCollectAndProcessBgp(self):
         if (self.collectionInProgressCache.checkAndAddDevice(self.device.id)):
             logger.debug('Started L3 data collection for %s' % (self.deviceLogStr))
             try:
-                self.updateDeviceL3Status('processing')
-                # use device level password for leaves that already went through staged configuration
-                self.connectToDevice()
-                bgpData = self.collectBgpFromDevice()
-
+                if self.device.managementIp is not None:
+                    self.updateDeviceL3Status('processing')
+                    # use device level password for leaves that already went through staged configuration
+                    self.connectToDevice()
+                    bgpLinks = self.collectBgpFromDevice()
+                    self.storeBgpLinks(bgpLinks)
+                    self.updateDeviceL3Status('good')
+                else:
+                    # for some reason, we can't match the plug-n-play leaf to our inventory. so inventory doesn't have
+                    # ip address for this leaf. in this case the leaf and all its links should be marked 'unknown'
+                    self.updateDeviceL3Status('unknown')
+                    self.updateBgpLinkStatus('unknown')
             except DeviceError as exc:
-                logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
-                self.updateDeviceL2Status(None, error = exc)
+                logger.error('Collect BGP data failed for %s, %s' % (self.deviceLogStr, exc))
+                self.updateDeviceL3Status(None, error = exc)
+                # when we can't connect, mark the links 'unknown' because it is possible the data network is 
+                # still working so we can't mark the links 'error'
+                self.updateBgpLinkStatus('unknown')
             except Exception as exc:
-                logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
-                self.updateDeviceL2Status('error', str(exc))
+                logger.error('Collect BGP data failed for %s, %s' % (self.deviceLogStr, exc))
+                self.updateDeviceL3Status('error', str(exc))
+                self.updateBgpLinkStatus('bad')
             finally:
                 self.collectionInProgressCache.doneDevice(self.deviceId)
-                logger.debug('Ended L2 data collection for %s' % (self.deviceLogStr))
-
+                logger.debug('Ended L3 data collection for %s' % (self.deviceLogStr))
         else:
             logger.debug('L3 data collection is already in progress for %s', (self.deviceLogStr))
 
-
     def collectBgpFromDevice(self):
-        logger.debug('Start LLDP data collector for %s' % (self.deviceLogStr))
+        logger.debug('Start BGP data collector for %s' % (self.deviceLogStr))
 
         try:
             bgpTable = loadyaml(os.path.join(junosEzTableLocation, 'BGP.yaml'))['BGPNeighborTable']
@@ -439,13 +451,10 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             devicesToBeUpdated = []
             for link in bgpData:
                 logger.debug('device1: %s, device1as1: %s, device2: %s, device2as: %s, inputMsgCount: %s, outputMsgCount: %s, outQueueCount: %s , linkState : %s, active/receive/acceptCount: %s/%s/%s' % (link.local_add, link.local_as, link.peer_add, link.peer_as, link.in_msg, link.out_msg, link.out_queue, link.state, link.act_count, link.rx_count, link.acc_count ) )
-
-
-
                 links.append({'device1': self.device.name, 'device1Ip': link.local_add , 'device1as': link.local_as, 'device2': None, 'device2Ip': link.peer_add, 'device2as': link.peer_as, 'inputMsgCount': link.in_msg,
                               'outputMsgCount': link.out_msg, 'outQueueCount': link.out_queue , 'linkState' : link.state, 'activeReceiveAcceptCount': (str(link.act_count) +'/' + str(link.rx_count) + '/' + str(link.acc_count) ) })
-
-            self.storeBgpLinks(links)
+            logger.debug('End BGP data collector for %s' % (self.deviceLogStr))
+            return links
         except RpcError as exc:
             logger.error('BGP data collection failure, %s' % (exc))
             raise DeviceError(exc)
@@ -454,15 +463,26 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
             raise DeviceError(exc)
 
-
     def storeBgpLinks(self, bgpLinks):
         # storing bgp data into database
-        self.dao.Session().query(BgpLink).filter(BgpLink.device_id == self.device.id).filter(BgpLink.pod_id == self.pod.id).delete()
-        self.dao.Session().commit()
+        self._session.query(BgpLink).filter(BgpLink.device_id == self.device.id).delete()
         bgpObjects = []
         for link in bgpLinks:
-            bgpObjects.append(BgpLink(self.pod.id, self.device.id, link))
-        self.dao.createObjects(bgpObjects)
+            bgpObjects.append(BgpLink(self.device.pod.id, self.device.id, link))
+        self._dao.createObjectsAndCommitNow(self._session, bgpObjects)
+
+    def updateDeviceL3Status(self, status, reason = None, error = None):
+        '''Possible status values are  'processing', 'good', 'error' '''
+        if error is None:
+            self.device.l3Status = status
+            self.device.l3StatusReason = reason
+        else:
+            self.device.l3Status = 'error'
+            self.device.l3StatusReason = str(error.cause)
+        self._dao.updateObjectsAndCommitNow(self._session, [self.device])
+
+    def updateBgpLinkStatus(self, status):
+        self._session.query(BgpLink).filter(BgpLink.device_id == self.device.id).update({'link_state': status})
 
 class TwoStageConfigurator(L2DataCollector):
     '''

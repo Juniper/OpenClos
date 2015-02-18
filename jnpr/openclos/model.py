@@ -474,19 +474,19 @@ class BgpLink(ManagedElement, Base):
     act_rx_acc_route_count = Column(String(100))
 
 
-    def __init__(self, podId, deviceId,**kwargs):
+    def __init__(self, podId, deviceId, linkDict):
 
         self.id = str(uuid.uuid4())
         self.pod_id= podId
         self.device_id=deviceId
-        self.device1 = kwargs.pop('device1')
-        self.device1Ip = kwargs.pop('device1Ip')
-        self.device1As = kwargs.pop('device1as')
-        self.device2 = kwargs.pop('device2')
-        self.device2Ip = kwargs.pop('device2Ip')
-        self.device2As = kwargs.pop('device2as')
-        self.input_msg_count = kwargs.pop('inputMsgCount')
-        self.output_msg_count = kwargs.pop('outputMsgCount')
-        self.out_queue_count = kwargs.pop('outQueueCount')
-        self.link_state = kwargs.pop('linkState')
-        self.act_rx_acc_route_count = kwargs.pop('activeReceiveAcceptCount')
+        self.device1 = linkDict.get('device1')
+        self.device1Ip = linkDict.get('device1Ip')
+        self.device1As = linkDict.get('device1as')
+        self.device2 = linkDict.get('device2')
+        self.device2Ip = linkDict.get('device2Ip')
+        self.device2As = linkDict.get('device2as')
+        self.input_msg_count = linkDict.get('inputMsgCount')
+        self.output_msg_count = linkDict.get('outputMsgCount')
+        self.out_queue_count = linkDict.get('outQueueCount')
+        self.link_state = linkDict.get('linkState')
+        self.act_rx_acc_route_count = linkDict.get('activeReceiveAcceptCount')
