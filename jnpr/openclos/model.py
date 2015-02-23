@@ -455,3 +455,38 @@ class AdditionalLink(ManagedElement, Base):
         self.device2 = device2
         self.port2 = port2
         self.lldpStatus = lldpStatus
+
+class BgpLink(ManagedElement, Base):
+    __tablename__ = 'bgpLink'
+    id = Column(String(60), primary_key=True)
+    device_id=Column(String(60))
+    pod_id=Column(String(60))
+    device1 = Column(String(100)) # free form in case device does not exist in device table
+    device1Ip = Column(String(60))
+    device1As = Column(Integer)
+    device2 = Column(String(100))# free form in case device does not exist in device table
+    device2Ip = Column(String(60))
+    device2As = Column(Integer)
+    input_msg_count = Column(Integer)
+    output_msg_count = Column(Integer)
+    out_queue_count = Column(Integer)
+    link_state = Column(String(100),default = 'unknown')
+    act_rx_acc_route_count = Column(String(100))
+
+
+    def __init__(self, podId, deviceId, linkDict):
+
+        self.id = str(uuid.uuid4())
+        self.pod_id= podId
+        self.device_id=deviceId
+        self.device1 = linkDict.get('device1')
+        self.device1Ip = linkDict.get('device1Ip')
+        self.device1As = linkDict.get('device1as')
+        self.device2 = linkDict.get('device2')
+        self.device2Ip = linkDict.get('device2Ip')
+        self.device2As = linkDict.get('device2as')
+        self.input_msg_count = linkDict.get('inputMsgCount')
+        self.output_msg_count = linkDict.get('outputMsgCount')
+        self.out_queue_count = linkDict.get('outQueueCount')
+        self.link_state = linkDict.get('linkState')
+        self.act_rx_acc_route_count = linkDict.get('activeReceiveAcceptCount')

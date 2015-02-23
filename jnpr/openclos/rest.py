@@ -18,7 +18,7 @@ from bottle import error, request, response, PluginError
 from exception import RestError
 from model import Pod, Device
 from dao import Dao
-from report import ResourceAllocationReport, L2Report
+from report import ResourceAllocationReport, L2Report, L3Report
 from l3Clos import L3ClosMediation
 from ztp import ZtpServer
 from jnpr.openclos.util import isSqliteUsed
@@ -124,6 +124,9 @@ class RestServer():
         # Create a single instance of l2Report as it holds thread-pool
         # for device connection. Don't create l2Report multiple times 
         self.l2Report = L2Report(self.__conf, daoClass)
+        # Create a single instance of l3Report as it holds thread-pool
+        # for device connection. Don't create l3Report multiple times 
+        self.l3Report = L3Report(self.__conf, daoClass)
 
         
     def initRest(self):
@@ -667,27 +670,16 @@ class RestServer():
     
     def getL3Report(self, dbSession, ipFabricId):
         try:
-            #TODO: process and return real data from L3Report 
-            return {"l3Report": {
-              "devices": [
-                {"id": "3eddfee0-b381-46ac-8bc0-931f023b55c2", "name": "clos-leaf-01", "family": "qfx5100-96s-8q", "role":"leaf", "status":"bad", "statusReason":"ConnectAuthError(192.168.48.218)"},
-                {"id": "ffa7c8dd-47a5-48e8-9090-716b056e49af", "name": "clos-leaf-02", "family": "qfx5100-96s-8q", "role":"leaf", "status":"good", "statusReason":""},
-                {"id": "c407aabf-6553-4608-95fe-f6885b72732a", "name": "clos-leaf-03", "family": "qfx5100-96s-8q", "role":"leaf", "status":"bad", "statusReason":"ConnectUnknownHostError(192.168.48.999)"},
-                {"id": "138d1d9d-0984-4e96-ab64-eca1bb86e45d", "name": "clos-spine-01", "family": "qfx5100-24q-2p", "role":"spine", "status":"unknown", "statusReason":""},
-                {"id": "82bfe693-9d80-44c1-994d-2c48b7cda785", "name": "clos-spine-02", "family": "qfx5100-24q-2p", "role":"spine", "status":"unknown", "statusReason":""}
-              ],
-              "peers": [
-                { "device1": "clos-leaf-01", "asn1": "400", "ip1":"192.169.0.1/31", "device2": "clos-spine-01", "asn2": "300", "ip2":"192.169.0.0/31", "status":"unknown", "routes": ""},
-                { "device1": "clos-leaf-01", "asn1": "400", "ip1":"192.169.0.7/31", "device2": "clos-spine-02", "asn2": "301", "ip2":"192.169.0.6/31", "status":"unknown", "routes": ""},
-                { "device1": "clos-leaf-02", "asn1": "401", "ip1":"192.169.0.3/31", "device2": "clos-spine-01", "asn2": "300", "ip2":"192.169.0.2/31", "status":"good", "routes": "8/10/10/2"},
-                { "device1": "clos-leaf-02", "asn1": "401", "ip1":"192.169.0.9/31", "device2": "clos-spine-02", "asn2": "301", "ip2":"192.169.0.8/31", "status":"good", "routes": "8/10/10/2"},
-                { "device1": "clos-leaf-03", "asn1": "402", "ip1":"192.169.0.5/31", "device2": "clos-spine-01", "asn2": "300", "ip2":"192.169.0.4/31", "status":"unknown", "routes": ""},
-                { "device1": "clos-leaf-03", "asn1": "402", "ip1":"192.169.0.11/31", "device2": "clos-spine-02", "asn2": "301", "ip2":"192.169.0.10/31", "status":"bad", "routes": ""}
-              ]
-            }}
+            cached = bottle.request.query.get('cached', '1')
+            if cached == '1':
+                cachedData = True
+            else:
+                cachedData = False
+            bottle.response.headers['Content-Type'] = 'application/json'
+            return self.l3Report.generateReport(ipFabricId, cachedData)
+
         except ValueError:
             raise bottle.HTTPError(404, "Fabric with id: %s not found" % (ipFabricId))
-
 
 if __name__ == '__main__':
     restServer = RestServer()

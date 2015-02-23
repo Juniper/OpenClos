@@ -6,9 +6,9 @@ Created on Oct 30, 2014
 import unittest
 
 import jnpr.openclos.util
-from jnpr.openclos.devicePlugin import DeviceDataCollectorNetconf, L2DataCollector, DeviceOperationInProgressCache, TwoStageConfigurator 
+from jnpr.openclos.devicePlugin import DeviceDataCollectorNetconf, L2DataCollector, L3DataCollector, DeviceOperationInProgressCache, TwoStageConfigurator 
 from jnpr.openclos.exception import DeviceError
-from jnpr.openclos.model import Device, InterfaceDefinition, InterfaceLogical
+from jnpr.openclos.model import Device, InterfaceDefinition, InterfaceLogical, BgpLink
 from test_dao import InMemoryDao 
 
 from jnpr.junos.exception import ConnectError
@@ -66,11 +66,11 @@ class TestL2DataCollector(unittest.TestCase):
     def testCollectLldpFromDevice(self):
         flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-96s-8q", "root", "Embe1mpls", "leaf", "", "192.168.48.219", None))
 
-        dataCollector = L2DataCollector('1234', self.__conf)
+        dataCollector = L2DataCollector('1234', self.__conf, InMemoryDao)
         dataCollector._dao = self._dao
         dataCollector.manualInit()
 
-        dataCollector.connectToDevice("Embe1mpls")
+        dataCollector.connectToDevice()
         dataCollector.collectLldpFromDevice()
 
     def testUpdateDeviceL2StatusProcessing(self):
@@ -687,6 +687,86 @@ class TestTwoStageConfigurator(TestL2DataCollector):
     @unittest.skip("")
     def testMatchDevice(self):
         self.configurator.findMatchedDevice(self.getLldpData(), 'qfx5100-96s-8q')
+
+class TestL3DataCollector(unittest.TestCase):
+
+    def setUp(self):
+        self.__conf = {'deviceFamily': {"qfx5100-48s-6q": {"uplinkPorts": 'et-0/0/[48-53]', "downlinkPorts": 'xe-0/0/[0-47]'}}}
+        self._dao = InMemoryDao.getInstance()
+        
+    def tearDown(self):
+        self._dao = None
+        InMemoryDao._destroy()
+
+    @unittest.skip("need physical device to test")
+    def testCollectBgpFromDevice(self):
+        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-96s-8q", "root", "Embe1mpls", "leaf", "", "192.168.48.219", None))
+
+        dataCollector = L3DataCollector('1234', self.__conf, InMemoryDao)
+        dataCollector._dao = self._dao
+        dataCollector.manualInit()
+
+        dataCollector.connectToDevice()
+        dataCollector.collectBgpFromDevice()
+
+    def testUpdateDeviceL3StatusProcessing(self):
+        from test_model import createDevice
+        with self._dao.getReadSession() as session:
+            leaf = createDevice(session, 'leaf')
+            dataCollector = L3DataCollector(leaf.id, {}, InMemoryDao)
+            dataCollector.manualInit()
+            dataCollector._session = session
+
+            dataCollector.updateDeviceL3Status("processing")
+            self.assertEqual(leaf.l3Status, "processing")
+            self.assertIsNone(leaf.l3StatusReason)
+
+    def testUpdateDeviceL2StatusWithException(self):
+        from test_model import createDevice
+        with self._dao.getReadSession() as session:
+            leaf = createDevice(session, 'leaf')
+            dataCollector = L3DataCollector(leaf.id, {}, InMemoryDao)
+            dataCollector.manualInit()
+            dataCollector._session = session
+
+            dataCollector.updateDeviceL3Status(None, error = DeviceError(ValueError("test error")))
+            self.assertEqual("error", leaf.l3Status)
+            self.assertEqual("test error", leaf.l3StatusReason)
+
+    def testUpdateDeviceL3StatusWithErrorMessage(self):
+        from test_model import createDevice
+        with self._dao.getReadSession() as session:
+            leaf = createDevice(session, 'leaf')
+            dataCollector = L3DataCollector(leaf.id, {}, InMemoryDao)
+            dataCollector.manualInit()
+            dataCollector._session = session
+
+            dataCollector.updateDeviceL3Status("error", "test reason")
+            self.assertEqual("error", leaf.l3Status)
+            self.assertEqual("test reason", leaf.l3StatusReason)
+
+    def testStoreBgpLinks(self):
+        device_id = None
+        with self._dao.getReadWriteSession() as session:
+            from test_model import createPod
+            pod = createPod('pod1', session)
+            session.add(pod)
+            device = Device("leaf1", "qfx5100-48s-6q", "", "", "leaf", "11:12:13:14:15:16", "1.2.3.4/24", pod)
+            device_id = device.id
+            session.add(device)
+            
+        with self._dao.getReadSession() as session:
+            dataCollector = L3DataCollector(device_id, {}, InMemoryDao)
+            dataCollector.manualInit()
+            dataCollector._session = session
+            
+            bgpLinks = [{'device1': 'leaf1', 'device1as1': 401, 'device1Ip': '192.169.0.3+179', 'device2': None, 'device2as': 300, 'device2Ip': '192.169.0.2+57574', 'inputMsgCount': 16764, 'outputMsgCount': 16811, 'outQueueCount': 0 , 'linkState' : 'Established', 'active/receive/acceptCount': '3/3/3'},
+                        {'device1': 'leaf1', 'device1as1': 401, 'device1Ip': '192.169.0.11+179', 'device2': None, 'device2as': 301, 'device2Ip': '192.169.0.10+49383','inputMsgCount': 16816, 'outputMsgCount': 16810, 'outQueueCount': 0 , 'linkState' : 'Established', 'active/receive/acceptCount': '2/2/2'}]
+            dataCollector.storeBgpLinks(bgpLinks)
+
+            bgpLinks = session.query(BgpLink).filter(BgpLink.device_id == device_id).all()
+            self.assertEqual('192.169.0.3+179', bgpLinks[0].device1Ip)
+            self.assertEqual('192.169.0.11+179', bgpLinks[1].device1Ip)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

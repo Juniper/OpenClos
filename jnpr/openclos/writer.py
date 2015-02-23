@@ -8,7 +8,7 @@ import os
 import logging
 from jinja2 import Environment, PackageLoader
 
-from model import InterfaceDefinition, AdditionalLink
+from model import InterfaceDefinition, AdditionalLink, BgpLink
 import util
 
 cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
@@ -81,6 +81,8 @@ class CablingPlanWriter(WriterBase):
         self.template = self.templateEnv.get_template(self._pod.topologyType + '.txt')
         # load L2Report template
         self.l2ReportTemplate = self.templateEnv.get_template(self._pod.topologyType + 'L2Report.json')
+        # load L3Report template
+        self.l3ReportTemplate = self.templateEnv.get_template(self._pod.topologyType + 'L3Report.json')
         # validity check
         if 'deviceFamily' not in self._conf:
             raise ValueError("No deviceFamily found in configuration file")
@@ -176,6 +178,40 @@ class CablingPlanWriter(WriterBase):
         with open(path, 'w') as f:
                 f.write(l2ReportJson)
         return l2ReportJson
+
+    def getDataFor3StageL3Report(self):            
+        devices = []
+        links = []
+        for device in self._pod.devices:
+            if device.deployStatus == 'deploy':
+                devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l3Status, 'reason': device.l3StatusReason, 'deployStatus': device.deployStatus})
+                if device.role == 'spine':
+                    continue
+                with self._dao.getReadSession() as session:
+                    bgpLinks = session.query(BgpLink).filter(BgpLink.device_id == device.id).all()
+                    for bgpLink in bgpLinks:
+                        links.append({'device1': bgpLink.device1, 'asn1': bgpLink.device1As, 'ip1': bgpLink.device1Ip, 
+                                      'device2': bgpLink.device2, 'asn2': bgpLink.device2As, 'ip2': bgpLink.device2Ip, 
+                                      'inPacket': bgpLink.input_msg_count, 'outPacket': bgpLink.output_msg_count, 'outQueue': bgpLink.out_queue_count,
+                                      'status': bgpLink.link_state, 'routes': bgpLink.act_rx_acc_route_count})
+        return {'devices': devices, 'links': links}
+        
+    def getThreeStageL3ReportJson(self):
+        '''
+        This method will be called by REST layer
+        :returns str: l3Report in json format.
+        '''
+        data = self.getDataFor3StageL3Report()
+        l3ReportJson = self.l3ReportTemplate.render(devices = data['devices'], links = data['links'])
+        return l3ReportJson
+    
+    def writeThreeStageL3ReportJson(self):
+        l3ReportJson = self.getThreeStageL3ReportJson()
+        path = os.path.join(self.outputDir, 'l3Report.json')
+        logger.info('Writing L3Report: %s' % (path))
+        with open(path, 'w') as f:
+                f.write(l3ReportJson)
+        return l3ReportJson
 
     def writeJSONFiveStageRealEstate(self):
         pass

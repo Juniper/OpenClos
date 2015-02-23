@@ -6,7 +6,7 @@ Created on Sep 9, 2014
 import unittest
 import os
 
-from jnpr.openclos.report import ResourceAllocationReport, L2Report
+from jnpr.openclos.report import ResourceAllocationReport, L2Report, L3Report
 from test_dao import InMemoryDao 
 
 class Test(unittest.TestCase):
@@ -26,7 +26,7 @@ class Test(unittest.TestCase):
                 'writer' : 'INFO',
                 'devicePlugin' : 'INFO',
                 'trapd' : 'INFO',
-                '__dao' : 'INFO'
+                'dao' : 'INFO'
         }
         self.__conf['DOT'] = {'ranksep' : '5 equally', 'colors': ['red', 'green', 'blue']}
         self.__conf['deviceFamily'] = {
@@ -38,11 +38,13 @@ class Test(unittest.TestCase):
                 "downlinkPorts": 'xe-0/0/[0-47]'
             }
         }
-        self.report = ResourceAllocationReport(self.__conf, InMemoryDao)
-        self.session = self.report.__dao.Session()
+        self._dao = InMemoryDao.getInstance()
+        #self.report = ResourceAllocationReport(self.__conf, InMemoryDao)
 
     def tearDown(self):
-        pass
+        self._dao = None
+        InMemoryDao._destroy()
+        
     '''
     def testGetInterconnectAllocation(self):
         from test_model import createPod
@@ -58,12 +60,20 @@ class Test(unittest.TestCase):
         interconnectAllocation = self.report.getInterconnectAllocation("test")
         self.assertEqual({}, interconnectAllocation)
     ''' 
-    # TODO: for some reason, this test case passes when manually invoking nose framework but fails on jenkins. investigate
-    #def testGenerateReport(self):
-    #    l2Report = L2Report()
-    #    from test_model import createPod
-    #    pod = createPod("test", l2Report.__dao.Session())
-    #    l2Report.generateReport(pod.id, True, False)
+    
+    def testGenerateL2Report(self):
+        l2Report = L2Report(self.__conf, self._dao)
+        from test_model import createPod
+        with self._dao.getReadSession() as session:
+            pod = createPod("test", session)
+            l2Report.generateReport(pod.id, True, False)
+            
+    def testGenerateL3Report(self):
+        l3Report = L3Report(self.__conf, self._dao)
+        from test_model import createPod
+        with self._dao.getReadSession() as session:
+            pod = createPod("test", session)
+            l3Report.generateReport(pod.id, True, False)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
