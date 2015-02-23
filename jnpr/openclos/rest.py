@@ -10,10 +10,10 @@ from sqlalchemy.orm import exc
 import StringIO
 import zipfile
 import traceback
-
 import json
 import util
 import logging
+
 from bottle import error, request, response, PluginError
 from exception import RestError
 from model import Pod, Device
@@ -31,7 +31,7 @@ junosImageRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf'
 
 def loggingPlugin(callback):
     def wrapper(*args, **kwargs):
-        msg = '"{} {} {}"'.format(request.method, request.path, 
+        msg = '"{} {} {}"'.format(request.method, request.path,
                                         request.environ.get('SERVER_PROTOCOL', ''))
         
         if logger.isEnabledFor(logging.DEBUG):
@@ -379,6 +379,7 @@ class RestServer():
                 outputDict['family'] = device.family
                 outputDict['macAddress'] = device.macAddress
                 outputDict['managementIp'] = device.managementIp
+                outputDict['serialNumber'] = device.serialNumber
                 outputDict['deployStatus'] = device.deployStatus
                 outputDict['configStatus'] = device.configStatus
                 outputDict['l2Status'] = device.l2Status
@@ -419,6 +420,7 @@ class RestServer():
             outputDict['l2StatusReason'] = device.l2StatusReason
             outputDict['l3Status'] = device.l3Status
             outputDict['l3StatusReason'] = device.l3StatusReason
+            outputDict['serialNumber'] = device.serialNumber
             outputDict['deployStatus'] = device.deployStatus
             outputDict['uri'] = bottle.request.url
             outputDict['pod'] = {'uri': ipFbaricUri }
@@ -643,6 +645,7 @@ class RestServer():
             temp['username'] = device.get('username')
             temp['password'] = device.get('password')
             temp['family'] = device.get('family')
+            temp['serialNumber'] = device.get('serialNumber')
             temp['deployStatus'] = device.get('deployStatus')
             if temp['role'] == 'spine':
                 spines.append(temp)
