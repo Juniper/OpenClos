@@ -163,13 +163,17 @@ def trap_receiver_signal_handler(signal, frame):
     logger.debug("received signal %d" % signal)
     trapReceiver.stop()
     sys.exit(0)
-        
-if __name__ == '__main__':
+
+def main():
     signal.signal(signal.SIGINT, trap_receiver_signal_handler)
     signal.signal(signal.SIGTERM, trap_receiver_signal_handler)
+    global trapReceiver
     trapReceiver = TrapReceiver()
     trapReceiver.start()
     # Note we have to do this in order for signal to be properly caught by main thread
     # We need to do the similar thing when we integrate this into sampleApplication.py
     while True:
         signal.pause()
+    
+if __name__ == '__main__':
+    main()

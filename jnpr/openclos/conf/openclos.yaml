@@ -1,5 +1,4 @@
 # Deployment mode
-# ndIntegrated: true/false indicates if deployed with Network Director
 # ztpStaged: true/false, true indicates ZTP process goes through 2-stage
 # device configuration. During leaf device boot-strap, it gets generic config,
 # then OpenClos finds the topology and applies new topology.
@@ -14,7 +13,6 @@
 # ztpStagedAttempt and ztpStagedInterval only take effect
 # when ztpStaged is set to true.
 deploymentMode :
-    ndIntegrated : false
     ztpStaged : true
     ztpStagedAttempt: 5
     ztpStagedInterval: 30
@@ -116,12 +114,9 @@ httpServer :
 report :
     threadCount : 20
          
-# SNMP trap settings for NetworkDirector and OpenClos
-# OpenClos uses traps to perform 2-stage ZTP process
+# SNMP trap settings for OpenClos
+# OpenClos uses traps to perform staged ZTP process
 # target address is where OpenClos is running (same as httpServer:ipAddr)
-# NetworkDirector trap settings are optional, should be set only when
-# OpenClos is integrated with NetworkDirector, enabling networkdirector_trap_group
-# would allow devices to be auto discovered by NetworkDirector.
 # threadCount: Number of threads used to start 2-stage configuration for devices
 snmpTrap :
     openclos_trap_group :

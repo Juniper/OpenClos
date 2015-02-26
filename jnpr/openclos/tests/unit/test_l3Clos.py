@@ -16,9 +16,9 @@ from test_dao import InMemoryDao
 
 class TestL3Clos(unittest.TestCase):
     def setUp(self):
-        self.__conf = {}
-        self.__conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
-        self.__conf['deviceFamily'] = {
+        self._conf = {}
+        self._conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
+        self._conf['deviceFamily'] = {
             "qfx5100-24q-2p": {
                 "ports": 'et-0/0/[0-23]'
             },
@@ -31,13 +31,13 @@ class TestL3Clos(unittest.TestCase):
                 "downlinkPorts": 'ge-0/0/[0-23]'
             }
         }
-        self.__dao = InMemoryDao.getInstance()
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
+        self._dao = InMemoryDao.getInstance()
+        self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
 
     
     def tearDown(self):
         ''' Deletes 'out' folder under test dir'''
-        shutil.rmtree(self.__conf['outputDir'], ignore_errors=True)
+        shutil.rmtree(self._conf['outputDir'], ignore_errors=True)
         InMemoryDao._destroy()
         self.l3ClosMediation = None
 
@@ -49,8 +49,8 @@ class TestL3Clos(unittest.TestCase):
         pods = self.l3ClosMediation.loadClosDefinition('non-existing.yaml')
         self.assertIsNone(pods)
         
-        with self.__dao.getReadSession() as session:
-            self.assertEqual(0, len(self.__dao.getAll(session, Pod)))
+        with self._dao.getReadSession() as session:
+            self.assertEqual(0, len(self._dao.getAll(session, Pod)))
 
     def getPodDict(self):
         return {"devicePassword": "Embe1mpls", "leafCount": 3, "leafSettings": [{"deviceType":"qfx5100-48s-6q"}], 
@@ -62,7 +62,7 @@ class TestL3Clos(unittest.TestCase):
         podDict = self.getPodDict()
         self.l3ClosMediation.createPod('pod1', podDict)
         
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(Pod).count())
 
     def testUpdatePod(self):
@@ -82,7 +82,7 @@ class TestL3Clos(unittest.TestCase):
         }
         self.l3ClosMediation.updatePod(pod.id, podDict, inventoryDict)
 
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             pod = session.query(Pod).one()
             self.assertEqual(5, len(pod.devices))
             deployCount = 0
@@ -101,8 +101,8 @@ class TestL3Clos(unittest.TestCase):
         return pod
     
     def testCablingPlanAndDeviceConfig(self):
-        self.__conf['DOT'] = {'ranksep' : '5 equally', 'colors': ['red', 'green', 'blue']}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
+        self._conf['DOT'] = {'ranksep' : '5 equally', 'colors': ['red', 'green', 'blue']}
+        self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
         pod = self.createPodSpineLeaf()
         self.assertEqual(True, self.l3ClosMediation.createCablingPlan(pod.id))
         self.assertEqual(True, self.l3ClosMediation.createDeviceConfig(pod.id))
@@ -113,7 +113,7 @@ class TestL3Clos(unittest.TestCase):
         # force close current session and get new session to make sure merge and flush took place properly
         podId = pod.id
 
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             spine01Port0 = session.query(InterfaceDefinition).join(Device).filter(InterfaceDefinition.name == 'et-0/0/0').filter(Device.name == 'spine-01').filter(Device.pod_id == podId).one()
             self.assertIsNotNone(spine01Port0.peer)
             self.assertEqual('et-0/0/48', spine01Port0.peer.name)
@@ -145,7 +145,7 @@ class TestL3Clos(unittest.TestCase):
             self.assertEqual('leaf-03', spine02Port2.peer.device.name)
 
     def testCreateLeafIfds(self):
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             from test_model import createPod
             pod = createPod('test', session)
             pod.spineCount = 6
@@ -158,7 +158,7 @@ class TestL3Clos(unittest.TestCase):
         
     def testGetLeafSpineFromPod(self):
         self.createPodSpineLeaf()
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             pod = session.query(Pod).one()
             leafSpineDict = self.l3ClosMediation._getLeafSpineFromPod(pod)
             self.assertEqual(3, len(leafSpineDict['leafs']))
@@ -167,7 +167,7 @@ class TestL3Clos(unittest.TestCase):
     def testAllocateLoopback(self):
         pod = self.createPodSpineLeaf()
     
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.name == 'leaf-01').filter(Device.pod_id == pod.id).one()
             self.assertEqual('10.0.0.1/32', ifl.ipaddress)
             ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.name == 'spine-02').filter(Device.pod_id == pod.id).one()
@@ -177,7 +177,7 @@ class TestL3Clos(unittest.TestCase):
     def testAllocateIrb(self):
         pod = self.createPodSpineLeaf()
         
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.name == 'leaf-01').filter(Device.pod_id == pod.id).one()
             self.assertEqual('172.16.0.1/24', ifl.ipaddress)
             self.assertEqual('172.16.0.0/22', pod.allocatedIrbBlock)
@@ -185,7 +185,7 @@ class TestL3Clos(unittest.TestCase):
     def testAllocateInterconnect(self):
         pod = self.createPodSpineLeaf()
 
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'et-0/0/0.0').filter(Device.name == 'spine-01').filter(Device.pod_id == pod.id).one()
             belowIfd = session.query(InterfaceDefinition).filter(InterfaceDefinition.id == ifl.layer_below_id).one()
             self.assertEqual('et-0/0/0', belowIfd.name)
@@ -198,13 +198,13 @@ class TestL3Clos(unittest.TestCase):
     def testAllocateAsNumber(self):
         self.createPodSpineLeaf()
 
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             self.assertEqual(100, session.query(Device).filter(Device.role == 'spine').all()[0].asn)
             self.assertEqual(201, session.query(Device).filter(Device.role == 'leaf').all()[1].asn)
         
     def testCreatePolicyOptionSpine(self):
         self.createPodSpineLeaf()
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             pod = session.query(Pod).one()
             device = Device("test", "qfx5100-24q-2p", "user", "pwd", "spine", "mac", "mgmtIp", pod)
             device.pod.allocatedIrbBlock = '10.0.0.0/28'
@@ -218,7 +218,7 @@ class TestL3Clos(unittest.TestCase):
 
     def testCreatePolicyOptionLeaf(self):
         self.createPodSpineLeaf()
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             pod = session.query(Pod).one()
             device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
             device.pod.allocatedIrbBlock = '10.0.0.0/28'
@@ -245,131 +245,65 @@ class TestL3Clos(unittest.TestCase):
         for newtarget in ['1.2.3.4', '1.2.3.5']:
             newtargets.append ( TrapGroup ( 'networkdirector_trap_group', newtarget, int('10162') ) )
             newtargets.append ( TrapGroup ( 'openclos_trap_group', newtarget, 20162 ) )
-        with self.__dao.getReadWriteSession() as session:
-            self.__dao.createObjects(session, newtargets)
-
-    def testGetNdTrapGroupSettingsNoNd(self):
-        with self.__dao.getReadSession() as session:
-            self.assertEqual(0, len(self.l3ClosMediation._getNdTrapGroupSettings(session)))
-        
-    def testGetNdTrapGroupSettingsWithNd(self):
-        self.__conf['deploymentMode'] = {'ndIntegrated': True}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        with self.__dao.getReadSession() as session:
-            self.assertEqual(0, len(self.l3ClosMediation._getNdTrapGroupSettings(session)))
-        
-        self.createTrapGroupsInDb(self.__dao)
-        with self.__dao.getReadSession() as session:
-            self.assertEqual(1, len(self.l3ClosMediation._getNdTrapGroupSettings(session)))
-            self.assertEqual(10162, self.l3ClosMediation._getNdTrapGroupSettings(session)[0]['port'])
-            self.assertEqual(2, len(self.l3ClosMediation._getNdTrapGroupSettings(session)[0]['targetIp']))
-        
+        with self._dao.getReadWriteSession() as session:
+            self._dao.createObjects(session, newtargets)
+    
     def testGetOpenClosTrapGroupSettingsNoStagedZtp(self):
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             self.assertEqual(0, len(self.l3ClosMediation._getOpenclosTrapGroupSettings(session)))
         
     def testGetOpenClosTrapGroupSettingsWithStagedZtp(self):
-        self.__conf['deploymentMode'] = {'ztpStaged': True}
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        with self.__dao.getReadSession() as session:
+        self._conf['deploymentMode'] = {'ztpStaged': True}
+        self._conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
+        self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
+        with self._dao.getReadSession() as session:
             self.assertEqual(1, len(self.l3ClosMediation._getOpenclosTrapGroupSettings(session)))
             self.assertEqual(1, len(self.l3ClosMediation._getOpenclosTrapGroupSettings(session)[0]['targetIp']))
             self.assertEqual('1.2.3.4', self.l3ClosMediation._getOpenclosTrapGroupSettings(session)[0]['targetIp'][0])
         
-        self.createTrapGroupsInDb(self.__dao)
-        with self.__dao.getReadSession() as session:
+        self.createTrapGroupsInDb(self._dao)
+        with self._dao.getReadSession() as session:
             self.assertEqual(1, len(self.l3ClosMediation._getOpenclosTrapGroupSettings(session)))
             self.assertEqual(20162, self.l3ClosMediation._getOpenclosTrapGroupSettings(session)[0]['port'])
             self.assertEqual(2, len(self.l3ClosMediation._getOpenclosTrapGroupSettings(session)[0]['targetIp']))
 
-    def testCreateSnmpTrapAndEventNoNdSpine(self):
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        self.createTrapGroupsInDb(self.__dao)
+    def testCreateSnmpTrapAndEventSpine(self):
+        self._conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
+        self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
+        self.createTrapGroupsInDb(self._dao)
         
         device = Device("test", "qfx5100-48s-6q", "user", "pwd", "spine", "mac", "mgmtIp", None)
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             configlet = self.l3ClosMediation._createSnmpTrapAndEvent(session, device)
 
         self.assertEqual('', configlet)
   
-    def testCreateSnmpTrapAndEventNoNdLeafNoStagedZtp(self):
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        self.createTrapGroupsInDb(self.__dao)
+    def testCreateSnmpTrapAndEventLeafNoStagedZtp(self):
+        self._conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
+        self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
+        self.createTrapGroupsInDb(self._dao)
         
         device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             configlet = self.l3ClosMediation._createSnmpTrapAndEvent(session, device)
         
         self.assertEqual('', configlet)
         
-    def testCreateSnmpTrapAndEventNoNdLeafWithStagedZtp(self):
-        self.__conf['deploymentMode'] = {'ztpStaged': True}
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        self.createTrapGroupsInDb(self.__dao)
+    def testCreateSnmpTrapAndEventLeafWith2ndStageZtp(self):
+        self._conf['deploymentMode'] = {'ztpStaged': True}
+        self._conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '1.2.3.4'}}
+        self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
+        self.createTrapGroupsInDb(self._dao)
         
         device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             configlet = self.l3ClosMediation._createSnmpTrapAndEvent(session, device)
         
-        self.assertTrue('' != configlet)
-        self.assertTrue('event-options' in configlet)
-        self.assertTrue('trap-group openclos_trap_group' in configlet)
-        self.assertFalse('trap-group networkdirector_trap_group' in configlet)
+        self.assertTrue('' == configlet)
 
-    def testCreateSnmpTrapAndEventWithNdSpine(self):
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.__conf['deploymentMode'] = {'ndIntegrated': True, 'ztpStaged': True}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        self.createTrapGroupsInDb(self.__dao)
-        
-        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "spine", "mac", "mgmtIp", None)
-        with self.__dao.getReadSession() as session:
-            configlet = self.l3ClosMediation._createSnmpTrapAndEvent(session, device)
-
-        self.assertTrue('' != configlet)
-        self.assertTrue('event-options' in configlet)
-        self.assertFalse('trap-group openclos_trap_group' in configlet)
-        self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-
-    def testCreateSnmpTrapAndEventWithNdLeaf(self):
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.__conf['deploymentMode'] = {'ndIntegrated': True, 'ztpStaged': True}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        self.createTrapGroupsInDb(self.__dao)
-        
-        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
-        with self.__dao.getReadSession() as session:
-            configlet = self.l3ClosMediation._createSnmpTrapAndEvent(session, device)
-
-        self.assertTrue('' != configlet)
-        #print configlet
-        self.assertTrue('event-options' in configlet)
-        self.assertTrue('trap-group openclos_trap_group' in configlet)
-        self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-
-    def testCreateSnmpTrapAndEventForLeafFor2ndStage(self):
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.__conf['deploymentMode'] = {'ndIntegrated': True, 'ztpStaged': True}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        self.createTrapGroupsInDb(self.__dao)
-        
-        device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", None)
-        with self.__dao.getReadSession() as session:
-            configlet = self.l3ClosMediation._createSnmpTrapAndEventForLeafFor2ndStage(session, device)
-        self.assertTrue('' != configlet)
-        self.assertTrue('event-options' in configlet)
-        self.assertTrue('trap-group openclos_trap_group' in configlet) # this is for delete snmp trap
-        self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-        self.assertEquals(1, configlet.count('authentication'))
-        self.assertEquals(1, configlet.count('link'))
-                
     def testCreateRoutingOptionsStatic(self):
         self.createPodSpineLeaf()
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             pod = session.query(Pod).one()
             device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
             device.pod.outOfBandGateway = '10.0.0.254'
@@ -379,37 +313,31 @@ class TestL3Clos(unittest.TestCase):
             self.assertEquals(1, configlet.count('static'))
             self.assertEquals(2, configlet.count('route'))
 
-    def testCreateAccessInterfaceNoNd(self):
+    def testCreateAccessInterface(self):
         configlet = self.l3ClosMediation._createAccessPortInterfaces('qfx5100-48s-6q')
         self.assertEquals(48, configlet.count('family ethernet-switching'))
         self.assertTrue('xe-0/0/0' in configlet)
         self.assertTrue('xe-0/0/47' in configlet)
 
-    def testCreateAccessInterfaceEx4300NoNd(self):
-        self.__conf['deviceFamily']['ex4300-48p'] = {
+    def testCreateAccessInterfaceEx4300(self):
+        self._conf['deviceFamily']['ex4300-48p'] = {
                 "uplinkPorts": 'et-0/0/[48-51]', 
                 "downlinkPorts": 'ge-0/0/[0-47]'
         }
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
+        self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
         configlet = self.l3ClosMediation._createAccessPortInterfaces('ex4300-48p')
         self.assertEquals(48, configlet.count('family ethernet-switching'))
         self.assertTrue('ge-0/0/0' in configlet)
         self.assertTrue('ge-0/0/47' in configlet)
 
-    def testCreateAccessInterfaceNd(self):
-        self.__conf['deploymentMode'] = {'ndIntegrated': True}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        configlet = self.l3ClosMediation._createAccessPortInterfaces('qfx5100-48s-6q')
-        self.assertEquals(48, configlet.count('family ethernet-switching'))
-
-    def testCreateLeafGenericConfigNoNd(self):
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.__conf['deviceFamily']['ex4300-24p'] = {"uplinkPorts": 'et-0/1/[0-3]', "downlinkPorts": 'ge-0/0/[0-23]'}
-        self.__conf['deploymentMode'] = {'ztpStaged': True}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
+    def testCreateLeafGenericConfig(self):
+        self._conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self._conf['deviceFamily']['ex4300-24p'] = {"uplinkPorts": 'et-0/1/[0-3]', "downlinkPorts": 'ge-0/0/[0-23]'}
+        self._conf['deploymentMode'] = {'ztpStaged': True}
+        self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
         
         self.createPodSpineLeaf()
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             pod = session.query(Pod).one()
             pod.outOfBandGateway = '10.0.0.254'
             pod.outOfBandAddressList = '10.0.10.5/32'
@@ -424,54 +352,18 @@ class TestL3Clos(unittest.TestCase):
         self.assertEquals(1, configlet.count('static'))
         self.assertEquals(2, configlet.count('route'))
 
-    def testCreateLeafGenericConfigWithNd(self):
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.__conf['deviceFamily']['ex4300-24p'] = {"uplinkPorts": 'et-0/1/[0-3]', "downlinkPorts": 'ge-0/0/[0-23]'}
-        self.__conf['deploymentMode'] = {'ndIntegrated': True, 'ztpStaged': True}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        self.createTrapGroupsInDb(self.__dao)
-
-
-        self.createPodSpineLeaf()
-        with self.__dao.getReadSession() as session:
-            pod = session.query(Pod).one()
-            pod.outOfBandGateway = '10.0.0.254'
-            pod.outOfBandAddressList = '10.0.10.5/32, 10.0.10.6'
-            
-            leafSettings = self.l3ClosMediation._createLeafGenericConfigsFor2Stage(session, pod)
-            self.assertTrue(1, len(leafSettings))
-            configlet = leafSettings[0].config
-
-        self.assertTrue('' != configlet)
-        #print configlet
-        self.assertTrue('vendor-id Juniper-qfx5100-48s-6q' in configlet)
-        self.assertTrue('trap-group openclos_trap_group' in configlet)
-        self.assertTrue('trap-group networkdirector_trap_group' in configlet)
-        self.assertEquals(1, configlet.count('static'))
-        self.assertEquals(4, configlet.count('route'))
-
     def testGetSnmpTrapTargets(self):
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             self.assertEqual(0, len(self.l3ClosMediation._getSnmpTrapTargets(session)))
 
-    def testGetSnmpTrapTargetsNoNdWithStagedZtp(self):
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.__conf['deploymentMode'] = {'ztpStaged': True}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
+    def testGetSnmpTrapTargetsWithStagedZtp(self):
+        self._conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
+        self._conf['deploymentMode'] = {'ztpStaged': True}
+        self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
 
-        with self.__dao.getReadSession() as session:
+        with self._dao.getReadSession() as session:
             self.assertEqual(1, len(self.l3ClosMediation._getSnmpTrapTargets(session)))
             self.assertEqual('5.6.7.8', self.l3ClosMediation._getSnmpTrapTargets(session)[0])
-
-    def testGetSnmpTrapTargetsWithNd(self):
-        self.__conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
-        self.__conf['deploymentMode'] = {'ndIntegrated': True, 'ztpStaged': True}
-        self.l3ClosMediation = L3ClosMediation(self.__conf, InMemoryDao)
-        self.createTrapGroupsInDb(self.__dao)
-
-        with self.__dao.getReadSession() as session:
-            self.assertEqual(4, len(self.l3ClosMediation._getSnmpTrapTargets(session)))
-            self.assertTrue('5.6.7.8' not in self.l3ClosMediation._getSnmpTrapTargets(session))
 
 if __name__ == '__main__':
     unittest.main()

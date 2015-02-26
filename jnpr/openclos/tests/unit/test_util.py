@@ -101,14 +101,6 @@ class TestFunctions(unittest.TestCase):
         mgmtIps = getMgmtIps("192.168.48.216/25", None, None, 5)
         self.assertEqual(mgmtIpList, mgmtIps)
 
-    def testIsIntegratedWithNd(self):
-        self.assertFalse(isIntegratedWithND(None))
-        self.assertFalse(isIntegratedWithND({}))
-        self.assertFalse(isIntegratedWithND({'deploymentMode': None}))
-        self.assertFalse(isIntegratedWithND({'deploymentMode': {}}))
-        self.assertFalse(isIntegratedWithND({'deploymentMode': {'ndIntegrated': False}}))
-        self.assertTrue(isIntegratedWithND({'deploymentMode': {'ndIntegrated': True}}))
-        
     def testIsZtpStaged(self):
         self.assertFalse(isZtpStaged(None))
         self.assertFalse(isZtpStaged({}))
@@ -166,24 +158,14 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(6, len(seqNumSet))
 
     def testLoadLoggingConfig(self):
-        loadLoggingConfig({}, appName='rest')
+        loadLoggingConfig(appName='rest')
         import logging
         self.assertEquals(0, len(logging.getLogger('unknown').handlers))
         self.assertEquals(2, len(logging.getLogger('rest').handlers))
         self.assertTrue('openclos-rest.log' in logging.getLogger('rest').handlers[1].baseFilename)
 
-    @unittest.skip("require root access")
-    def testLoadLoggingConfigWithNd(self):
-        if not os.path.exists('/var/log/openclos'):
-            os.makedirs('/var/log/openclos')
-        loadLoggingConfig({'deploymentMode': {'ndIntegrated' : True}}, appName='rest')
-        import logging
-        self.assertEquals(0, len(logging.getLogger('unknown').handlers))
-        self.assertEquals(1, len(logging.getLogger('rest').handlers))
-        shutil.rmtree(self.__conf['outputDir'], ignore_errors=True)
-
     def testLoadLoggingForTest(self):
-        loadLoggingConfig({})
+        loadLoggingConfig()
         import logging
         self.assertEquals(0, len(logging.getLogger('unknown').handlers))
         self.assertEquals(1, len(logging.getLogger('rest').handlers))

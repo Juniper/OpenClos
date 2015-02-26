@@ -40,7 +40,7 @@ class AbstractDao(SingletonBase):
         
         Base.metadata.create_all(self.__engine) 
         self.__sessionFactory = sessionmaker(bind=self.__engine)
-        logger.info('Dao is initialized with Engine')
+        logger.debug('Dao is initialized with Engine')
 
     def __del__(self):
         if self.__engine:

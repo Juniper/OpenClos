@@ -684,7 +684,10 @@ class RestServer():
         except ValueError:
             raise bottle.HTTPError(404, "Fabric with id: %s not found" % (ipFabricId))
 
-if __name__ == '__main__':
+def main():
     restServer = RestServer()
     restServer.initRest()
     restServer.start()
+    
+if __name__ == '__main__':
+    main()
