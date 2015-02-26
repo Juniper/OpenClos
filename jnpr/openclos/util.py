@@ -58,7 +58,7 @@ def loadConfig(confFile = 'openclos.yaml', appName = None):
     finally:
         pass
     
-    loadLoggingConfig(conf, appName = appName)
+    loadLoggingConfig(appName = appName)
     return conf
 
 def fixOutputDirForRelativePath(outputDir):
@@ -232,11 +232,6 @@ def getMgmtIps(prefix, startingIP, mask, count):
 def getMgmtIpsForLeaf():
     return []
 
-def isIntegratedWithND(conf):
-    if conf is not None and conf.get('deploymentMode') is not None:
-        return conf['deploymentMode'].get('ndIntegrated', False)
-    return False
-        
 def isZtpStaged(conf):
     if conf is not None and conf.get('deploymentMode') is not None:
         return conf['deploymentMode'].get('ztpStaged', False)
@@ -266,32 +261,6 @@ def getVcpLldpDelay(conf):
     else:
         return None
     
-def isPrimaryNode():
-    '''
-    Checks if current node is primary node in cluster.
-    Needed to check only for ND integration on centos, as ND can run only on centos.
-    For any other platform returns True
-
-    Example output of 'ip a list'
-    2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast qlen 1000
-    link/ether 00:50:56:9f:99:d4 brd ff:ff:ff:ff:ff:ff
-    inet 192.168.63.251/25 brd 192.168.63.255 scope global eth0
-    inet 192.168.63.250/25 brd 192.168.63.255 scope global secondary eth0:0
-
-    :returns bool: True if the node has eth0:0 configured with VIP
-    '''
-    
-    if not isIntegratedWithND() or not isPlatformCentos():
-        return True
-    
-    import subprocess
-    proc = subprocess.Popen('/sbin/ip a list dev eth0 | grep -q eth0:0', shell=True)
-    returnValue = proc.wait()
-    if (returnValue == 0):
-        return True
-    else:
-        return False
-
 def enumerateRoutableIpv4Addresses():
     addrs = []
     intfs = netifaces.interfaces()
@@ -304,7 +273,12 @@ def enumerateRoutableIpv4Addresses():
                     addrs.append(ipv4AddrInfo['addr'])
     return addrs
 
-def loadLoggingConfig(conf = {}, logConfFile = 'logging.yaml', appName = None):
+def loadLoggingConfig(logConfFile = 'logging.yaml', appName = None):
+    logConf = getLoggingHandlers(logConfFile, appName)
+    if logConf is not None:
+        logging.config.dictConfig(logConf)
+    
+def getLoggingHandlers(logConfFile = 'logging.yaml', appName = None):
     '''
     Loads global configuration and creates hash 'logConf'
     '''
@@ -316,9 +290,6 @@ def loadLoggingConfig(conf = {}, logConfFile = 'logging.yaml', appName = None):
             handlers = logConf.get('handlers')
             if handlers is not None:
                 
-                if isIntegratedWithND(conf):
-                    removeLoggingHandler('console', logConf)
-
                 if appName is None:
                     removeLoggingHandler('file', logConf)
                                                         
@@ -326,20 +297,17 @@ def loadLoggingConfig(conf = {}, logConfFile = 'logging.yaml', appName = None):
                     filename = handlerDict.get('filename')
                     if filename is not None:
                         filename = filename.replace('%(appName)', appName)
-                        if isIntegratedWithND(conf):
-                            handlerDict['filename'] = '/var/log/openclos/' + filename
-                        else:
-                            handlerDict['filename'] = filename
+                        handlerDict['filename'] = filename
                             
-            # now we are done with substitution, we are ready to start the logging
-            logging.config.dictConfig(logConf)
+            return logConf
     except (OSError, IOError) as e:
         print "File error:", e
     except (yaml.scanner.ScannerError) as e:
         print "YAML error:", e
     finally:
         logConfStream.close()
-        
+    
+    
 def removeLoggingHandler(name, logConf):
     for key, logger in logConf['loggers'].iteritems():
         logger['handlers'].remove(name)

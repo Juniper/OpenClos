@@ -110,27 +110,6 @@ class TestDao(unittest.TestCase):
             filteredIfds = self.__dao.getConnectedInterconnectIFDsFilterFakeOnes(fakeSession, device)
             self.assertEqual(2, len(filteredIfds))
 
-    def testConfigureTrapGroupFromInstaller ( self ):
-        #self.conf['dbUrl'] = 'mysql://root:<pass>@localhost/openclos' 
-
-        with self.__dao.getReadWriteSession() as session:
-            trapGroups = self.__dao.getAll(session, TrapGroup)
-            if trapGroups:
-                self.__dao.deleteObjects (session, trapGroups)
-    
-            newtargets = []
-            for newtarget in ['1.2.3.4', '1.2.3.5']:
-                newtargets.append ( TrapGroup ( 'networkdirector_trap_group', newtarget, int('10162') ) )
-                newtargets.append ( TrapGroup ( 'space', newtarget, None ) )
-                newtargets.append ( TrapGroup ( 'openclos_trap_group', newtarget, 20162 ) )
-                self.__dao.createObjects(session, newtargets)
-
-        with self.__dao.getReadSession() as session:
-            self.assertEqual(6, len(self.__dao.getAll(session, TrapGroup)))
-            self.assertEqual(10162, self.__dao.getAll(session, TrapGroup)[0].port)
-            self.assertEqual(20162, self.__dao.getAll(session, TrapGroup)[2].port)
-            self.assertEqual(162, self.__dao.getAll(session, TrapGroup)[4].port)
-
     @unittest.skip('manual test')        
     def testConnectionCleanup(self):
         import threading
