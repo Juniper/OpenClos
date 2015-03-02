@@ -404,4 +404,17 @@ def getDbUrl():
         raise ValueError('DB Url is empty')
     
     return conf['dbUrl'] 
+    
+def stripNetmaskFromIpString(ipString):
+    pos = ipString.find('/')
+    if pos != -1:
+        return ipString[:pos]
+    else:
+        return ipString
 
+def stripPlusSignFromIpString(ipString):
+    pos = ipString.find('+')
+    if pos != -1:
+        return ipString[:pos]
+    else:
+        return ipString

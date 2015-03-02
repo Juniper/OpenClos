@@ -9,7 +9,7 @@ import concurrent.futures
 
 import util
 from dao import Dao
-from model import Pod
+from model import Pod, Device, InterfaceLogical
 from devicePlugin import L2DataCollector, L3DataCollector
 from writer import CablingPlanWriter
 
@@ -67,6 +67,20 @@ class L2Report(Report):
         else:
             self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = maxThreads)
         
+    def resetSpineL2Status(self, devices):
+        with self._dao.getReadWriteSession() as session:
+            devicesToBeUpdated = set()
+            for device in devices:
+                if device.role == 'spine':
+                    device.l2Status = 'unknown'
+                    device.l2StatusReason = None
+                    device.configStatus = 'unknown'
+                    device.configStatusReason = None
+                    devicesToBeUpdated.add(device)
+                
+            if len(devicesToBeUpdated) > 0:
+                self._dao.updateObjects(session, devicesToBeUpdated)
+            
     def generateReport(self, podId, cachedData = True, writeToFile = False):
         with self._dao.getReadSession() as session:
             pod = self.getIpFabric(session, podId)
@@ -76,6 +90,10 @@ class L2Report(Report):
             
             if cachedData == False:
                 logger.info('Generating L2Report from real data')
+                
+                # reset all spines l2 status
+                self.resetSpineL2Status(pod.devices)
+                
                 futureList = []
                 for device in pod.devices:
                     if device.role == 'leaf':
@@ -106,6 +124,18 @@ class L3Report(Report):
         else:
             self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = maxThreads)
         
+    def resetSpineL3Status(self, devices):
+        with self._dao.getReadWriteSession() as session:
+            devicesToBeUpdated = set()
+            for device in devices:
+                if device.role == 'spine':
+                    device.l3Status = 'unknown'
+                    device.l3StatusReason = None
+                    devicesToBeUpdated.add(device)
+                
+            if len(devicesToBeUpdated) > 0:
+                self._dao.updateObjects(session, devicesToBeUpdated)
+            
     def generateReport(self, podId, cachedData = True, writeToFile = False):
         with self._dao.getReadSession() as session:
             pod = self.getIpFabric(session, podId)
@@ -115,6 +145,10 @@ class L3Report(Report):
             
             if cachedData == False:
                 logger.info('Generating L3Report from real data')
+                
+                # reset all spines l3 status
+                self.resetSpineL3Status(pod.devices)
+               
                 futureList = []
                 for device in pod.devices:
                     if device.role == 'leaf':

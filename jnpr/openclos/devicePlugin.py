@@ -229,12 +229,11 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         devicesToBeUpdated = set()
         for spineIfd in spineIfds:
             spineDevice = spineIfd.device
-            if spineDevice.role != 'spine':
-                continue
-            spineDevice.deployStatus = 'deploy'
-            spineDevice.l2Status = 'good'
-            spineDevice.configStatus = 'good'
-            devicesToBeUpdated.add(spineDevice)
+            if spineDevice is not None and spineDevice.role == 'spine':
+                spineDevice.deployStatus = 'deploy'
+                spineDevice.l2Status = 'good'
+                spineDevice.configStatus = 'good'
+                devicesToBeUpdated.add(spineDevice)
 
         if len(devicesToBeUpdated) > 0:
             self._dao.updateObjectsAndCommitNow(self._session, devicesToBeUpdated)
@@ -321,7 +320,6 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                 logger.debug('connected: bad: remote peer mismatch: (%s, %s) vs (%s, %s)' % (link['device2'], link['port2'], ifd.peer.device.name, ifd.peer.name))
                 badIfds.append(ifd)
         
-        self.resetSpineStatus(self.device.pod.devices)
         self.updateGoodIfdStatus(goodIfds)
         self.updateBadIfdStatus(badIfds)
         
@@ -329,22 +327,6 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                      len(allocatedConnectedUplinkIfds), len(goodIfds), len(badIfds), len(additional))
         return {'goodUplinkCount': len(goodIfds), 'badUplinkCount': len(badIfds), 'additionalLinkCount': len(additional)};
 
-    def resetSpineStatus(self, devices):
-        devicesToBeUpdated = set()
-        for device in devices:
-            if device.role != 'spine':
-                continue
-            device.l2Status = 'unknown'
-            device.l2StatusReason = None
-            device.configStatus = 'unknown'
-            device.configStatusReason = None
-            device.l3Status = 'unknown'
-            device.l3StatusReason = None
-            devicesToBeUpdated.add(device)
-            
-        if len(devicesToBeUpdated) > 0:
-            self._dao.updateObjectsAndCommitNow(self._session, devicesToBeUpdated)
-            
     def updateGoodIfdStatus(self, ifds):
         modifiedObjects = []
         goodSpines = []
@@ -417,7 +399,7 @@ class L3DataCollector(DeviceDataCollectorNetconf):
                     # use device level password for leaves that already went through staged configuration
                     self.connectToDevice()
                     bgpLinks = self.collectBgpFromDevice()
-                    self.storeBgpLinks(bgpLinks)
+                    self.processBgpData(bgpLinks)
                     self.updateDeviceL3Status('good')
                 else:
                     # for some reason, we can't match the plug-n-play leaf to our inventory. so inventory doesn't have
@@ -440,6 +422,12 @@ class L3DataCollector(DeviceDataCollectorNetconf):
         else:
             logger.debug('L3 data collection is already in progress for %s', (self.deviceLogStr))
 
+    def getDeviceByAsn(self, asn):
+        try:
+            return self._session.query(Device).filter(Device.pod_id == self.device.pod.id).filter(Device.asn == asn).one()
+        except Exception as exc:
+            logger.debug('getDeviceByAsn failed: %s' % (exc))
+               
     def collectBgpFromDevice(self):
         logger.debug('Start BGP data collector for %s' % (self.deviceLogStr))
 
@@ -448,11 +436,24 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             table = bgpTable(self.deviceConnectionHandle)
             bgpData = table.get()
             links = []
-            devicesToBeUpdated = []
             for link in bgpData:
-                logger.debug('device1: %s, device1as1: %s, device2: %s, device2as: %s, inputMsgCount: %s, outputMsgCount: %s, outQueueCount: %s , linkState : %s, active/receive/acceptCount: %s/%s/%s' % (link.local_add, link.local_as, link.peer_add, link.peer_as, link.in_msg, link.out_msg, link.out_queue, link.state, link.act_count, link.rx_count, link.acc_count ) )
-                links.append({'device1': self.device.name, 'device1Ip': link.local_add , 'device1as': link.local_as, 'device2': None, 'device2Ip': link.peer_add, 'device2as': link.peer_as, 'inputMsgCount': link.in_msg,
-                              'outputMsgCount': link.out_msg, 'outQueueCount': link.out_queue , 'linkState' : link.state, 'activeReceiveAcceptCount': (str(link.act_count) +'/' + str(link.rx_count) + '/' + str(link.acc_count) ) })
+                device1Name = self.device.name
+                # strip ip
+                device1Ip = util.stripPlusSignFromIpString(link.local_add)
+                device2Ip = util.stripPlusSignFromIpString(link.peer_add)
+                # find device2's hostname by AS
+                device2Asn = int(link.peer_as)
+                device2Obj = self.getDeviceByAsn(device2Asn)
+                if device2Obj is not None:
+                    device2Name = device2Obj.name
+                else:
+                    logger.debug('Cannot find device2 by AS %d' % device2Asn)
+                    device2Name = None
+                    
+                logger.debug('device1: %s, device1Ip: %s, device1as1: %s, device2: %s, device2Ip: %s, device2as: %s, inputMsgCount: %s, outputMsgCount: %s, outQueueCount: %s , linkState : %s, active/receive/acceptCount: %s/%s/%s, flapCount : %s' % (device1Name, device1Ip, link.local_as, device2Name, device2Ip, link.peer_as, link.in_msg, link.out_msg, link.out_queue, link.state, link.act_count, link.rx_count, link.acc_count, link.flap_count ) )
+                links.append({'device1': device1Name, 'device1Ip': device1Ip , 'device1as': link.local_as, 'device2': device2Name, 'device2Ip': device2Ip, 'device2as': link.peer_as, 'inputMsgCount': link.in_msg,
+                                  'outputMsgCount': link.out_msg, 'outQueueCount': link.out_queue , 'linkState' : link.state, 'activeReceiveAcceptCount': (str(link.act_count) +'/' + str(link.rx_count) + '/' + str(link.acc_count)), 'flapCount': link.flap_count, 'device2Obj': device2Obj})
+                    
             logger.debug('End BGP data collector for %s' % (self.deviceLogStr))
             return links
         except RpcError as exc:
@@ -463,7 +464,11 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
             raise DeviceError(exc)
 
-    def storeBgpLinks(self, bgpLinks):
+    def processBgpData(self, bgpLinks):
+        self.persistBgpLinks(bgpLinks)
+        self.updateSpineStatusFromBgpData(bgpLinks)
+        
+    def persistBgpLinks(self, bgpLinks):
         # storing bgp data into database
         self._session.query(BgpLink).filter(BgpLink.device_id == self.device.id).delete()
         bgpObjects = []
@@ -471,6 +476,18 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             bgpObjects.append(BgpLink(self.device.pod.id, self.device.id, link))
         self._dao.createObjectsAndCommitNow(self._session, bgpObjects)
 
+    def updateSpineStatusFromBgpData(self, bgpLinks):
+        devicesToBeUpdated = set()
+        for link in bgpLinks:
+            device2 = link.get('device2Obj')
+            if device2 is not None and device2.role == 'spine':
+                device2.l3Status = 'good'
+                device2.l3StatusReason = None
+                devicesToBeUpdated.add(device2)
+                
+        if len(devicesToBeUpdated) > 0:
+            self._dao.updateObjectsAndCommitNow(self._session, devicesToBeUpdated)
+            
     def updateDeviceL3Status(self, status, reason = None, error = None):
         '''Possible status values are  'processing', 'good', 'error' '''
         if error is None:

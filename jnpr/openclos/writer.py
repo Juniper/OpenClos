@@ -192,7 +192,7 @@ class CablingPlanWriter(WriterBase):
                     for bgpLink in bgpLinks:
                         links.append({'device1': bgpLink.device1, 'asn1': bgpLink.device1As, 'ip1': bgpLink.device1Ip, 
                                       'device2': bgpLink.device2, 'asn2': bgpLink.device2As, 'ip2': bgpLink.device2Ip, 
-                                      'inPacket': bgpLink.input_msg_count, 'outPacket': bgpLink.output_msg_count, 'outQueue': bgpLink.out_queue_count,
+                                      'inPacket': bgpLink.input_msg_count, 'outPacket': bgpLink.output_msg_count, 'outQueue': bgpLink.out_queue_count, 'lastFlap': bgpLink.flap_count,
                                       'status': bgpLink.link_state, 'routes': bgpLink.act_rx_acc_route_count})
         return {'devices': devices, 'links': links}
         

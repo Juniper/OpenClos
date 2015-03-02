@@ -470,6 +470,7 @@ class BgpLink(ManagedElement, Base):
     input_msg_count = Column(Integer)
     output_msg_count = Column(Integer)
     out_queue_count = Column(Integer)
+    flap_count = Column(Integer)
     link_state = Column(String(100),default = 'unknown')
     act_rx_acc_route_count = Column(String(100))
 
@@ -488,5 +489,6 @@ class BgpLink(ManagedElement, Base):
         self.input_msg_count = linkDict.get('inputMsgCount')
         self.output_msg_count = linkDict.get('outputMsgCount')
         self.out_queue_count = linkDict.get('outQueueCount')
+        self.flap_count = linkDict.get('flapCount')
         self.link_state = linkDict.get('linkState')
         self.act_rx_acc_route_count = linkDict.get('activeReceiveAcceptCount')
