@@ -190,5 +190,5 @@ Support
 
 If you find an issue with the software, please open a bug report on the OpenClos repository.
 
-The Juniper Networks Technical Assistance Center (JTAC) does not provide support for OpenClos software. For general questions and support, send e-mail to openclos-support@juniper.net.
+The Juniper Networks Technical Assistance Center (JTAC) does not provide support for OpenClos software. For general questions and support please visit [OpenClos Google Group](https://groups.google.com/forum/#!forum/openclos)
 
