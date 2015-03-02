@@ -19,9 +19,9 @@ installedDhcpConf = "/etc/dhcp/dhcpd.conf"
 
 # OpenClos generated dhcpd.conf file path. It is usually located at
 # <OpenClos install dir>/jnpr/openclos/out/<pod id>-<pod name>/dhcpd.conf
-# example for ubuntu - /usr/local/lib/python2.7/dist-packages/jnpr/openclos/out/<pod id>-<pod name>/dhcpd.conf
-# example for centos - /usr/lib/python2.6/site-packages/jnpr/openclos/out/<pod id>-<pod name>/dhcpd.conf
-generatedDhcpConf = "/home/regress/OpenClos-R1.0.dev1/jnpr/openclos/out/<pod id>-<pod name>/dhcpd.conf"
+generatedDhcpConf = os.path.join(os.path.dirname(os.path.abspath(jnpr.openclos.l3Clos.__file__)), 
+                                 'out', '<pod id>-<pod name>', 'dhcpd.conf')
+
 
 class sampleApplication:
     '''
@@ -49,8 +49,9 @@ class sampleApplication:
         Install and restart DHCP server with new dhcp configuration
         '''
         ztpServer = ZtpServer()
-        ztpServer.createPodSpecificDhcpConfFile(self.pod.id)
-        print generatedDhcpConf
+        with ztpServer._dao.getReadSession() as session:
+            ztpServer.createPodSpecificDhcpConfFile(session, self.pod.id)
+            print generatedDhcpConf
 
         if jnpr.openclos.util.isPlatformUbuntu():
             os.system('sudo apt-get -y install isc-dhcp-server')
@@ -75,6 +76,7 @@ class sampleApplication:
         '''
         start trap receiver to listen on traps from devices
         '''
+        global trapReceiver
         trapReceiver = TrapReceiver()
         trapReceiver.start()
         return trapReceiver
@@ -87,16 +89,22 @@ def signal_handler(signal, frame):
     sys.exit(0)
         
 if __name__ == '__main__':
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
     app = sampleApplication()
-    trapReceiver = app.startTrapReceiver()
-    app.createConfigFilesForDevices()
-    app.setupZTP()
-    restServer = app.startHTTPserverForZTPFileTransferProtocol()
+
+    newpid = os.fork()
+    if newpid == 0: # child
+        app.createConfigFilesForDevices()
+        app.setupZTP()
+        restServer = app.startHTTPserverForZTPFileTransferProtocol()
     
-    # Note we have to do this in order for signal to be properly caught by main thread
-    # We need to do the similar thing when we integrate this into sampleApplication.py
-    while True:
-        signal.pause()
+    else: # parent
+
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        app.startTrapReceiver()
+
+        # Note we have to do this in order for signal to be properly caught by main thread
+        # We need to do the similar thing when we integrate this into sampleApplication.py
+        while True:
+            signal.pause()
