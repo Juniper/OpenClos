@@ -28,9 +28,6 @@ class Report(object):
         logger = logging.getLogger(moduleName)
         self._dao = daoClass.getInstance()
 
-    def getPod(self, session, podName):
-        return self._dao.getUniqueObjectByName(session, Pod, podName)
-
     def getIpFabric(self, session, ipFabricId):
         try:
             return self._dao.getObjectById(session, Pod, ipFabricId)
@@ -61,48 +58,6 @@ class ResourceAllocationReport(Report):
             
         return pods
     
-    def getInterconnectAllocation(self, podName):
-        pod = self.getPod(podName)
-        if pod is None: return {}
-        
-        interconnectAllocation = {}
-        interconnectAllocation['block'] = pod.interConnectPrefix
-        interconnectAllocation['allocated'] = pod.allocatedInterConnectBlock
-        return interconnectAllocation
-    
-    def getLoopbackAllocation(self, podName):
-        pod = self.getPod(podName)
-        if pod is None: return {}
-
-        loopbackAllocation = {}
-        loopbackAllocation['block'] = pod.loopbackPrefix
-        loopbackAllocation['allocated'] = pod.allocatedLoopbackBlock
-        return loopbackAllocation
-    
-    def getIrbAllocation(self, podName):
-        pod = self.getPod(podName)
-        if pod is None: return {}
-
-        irbAllocation = {}
-        irbAllocation['block'] = pod.vlanPrefix
-        irbAllocation['allocated'] = pod.allocatedIrbBlock
-        return irbAllocation
-    
-    def getAsnAllocation(self, podName):
-        pod = self.getPod(podName)
-        if pod is None: return {}
-
-        asnAllocation = {}
-        asnAllocation['spineBlockStart'] = pod.spineAS
-        asnAllocation['spineBlockEnd'] = pod.leafAS - 1
-        asnAllocation['leafBlockStart'] = pod.leafAS
-        asnAllocation['leafBlockEnd'] = 65535
-        asnAllocation['spineAllocatedStart'] = pod.spineAS
-        asnAllocation['spineAllocatedEnd'] = pod.allocatedSpineAS
-        asnAllocation['leafAllocatedStart'] = pod.leafAS
-        asnAllocation['leafAllocatedEnd'] = pod.allocatefLeafAS
-        return asnAllocation
-
 class L2Report(Report):
     def __init__(self, conf = {},  daoClass = Dao):
         super(L2Report, self).__init__(conf, daoClass)
@@ -183,13 +138,20 @@ class L3Report(Report):
 
 if __name__ == '__main__':
     report = ResourceAllocationReport()
-    print report.getPods();
-    print report.getInterconnectAllocation('labLeafSpine')
-    print report.getLoopbackAllocation('labLeafSpine')
-    print report.getIrbAllocation('labLeafSpine')
-    print report.getAsnAllocation('labLeafSpine')
+    with report._dao.getReadSession() as session:
+        pods = report.getPods(session);
+        print pods
 
     l2Report = L2Report()
-    pod = l2Report.getPod('anotherPod')
-    if pod is not None:
-        print l2Report.generateReport(pod.id, False, True)
+    with l2Report._dao.getReadSession() as session:
+        pods = l2Report._dao.getAll(session, Pod)
+        pod = [x for x in pods if x.name == 'anotherPod'][0]
+        if pod is not None:
+            print l2Report.generateReport(pod.id, False, True)
+
+    l3Report = L3Report()
+    with l3Report._dao.getReadSession() as session:
+        pods = l3Report._dao.getAll(session, Pod)
+        pod = [x for x in pods if x.name == 'anotherPod'][0]
+        if pod is not None:
+            print l3Report.generateReport(pod.id, False, True)
