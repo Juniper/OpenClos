@@ -762,7 +762,7 @@ class TestL3DataCollector(unittest.TestCase):
             
             bgpLinks = [{'device1': 'leaf1', 'device1as1': 401, 'device1Ip': '192.169.0.3+179', 'device2': None, 'device2as': 300, 'device2Ip': '192.169.0.2+57574', 'inputMsgCount': 16764, 'outputMsgCount': 16811, 'outQueueCount': 0 , 'linkState' : 'Established', 'active/receive/acceptCount': '3/3/3'},
                         {'device1': 'leaf1', 'device1as1': 401, 'device1Ip': '192.169.0.11+179', 'device2': None, 'device2as': 301, 'device2Ip': '192.169.0.10+49383','inputMsgCount': 16816, 'outputMsgCount': 16810, 'outQueueCount': 0 , 'linkState' : 'Established', 'active/receive/acceptCount': '2/2/2'}]
-            dataCollector.storeBgpLinks(bgpLinks)
+            dataCollector.persistBgpLinks(bgpLinks)
 
             bgpLinks = session.query(BgpLink).filter(BgpLink.device_id == device_id).all()
             self.assertEqual('192.169.0.3+179', bgpLinks[0].device1Ip)
