@@ -371,9 +371,8 @@ class L3DataCollector(DeviceDataCollectorNetconf):
     Perform manual "init" from startL3Report to make sure it is done
     from child thread's context.
     '''
-    def __init__(self, deviceId, conf = {}, daoClass = Dao, deviceIp2NameMap = {}):
+    def __init__(self, deviceId, conf = {}, daoClass = Dao):
         self.collectionInProgressCache = L3DataCollectorInProgressCache.getInstance()
-        self.deviceIp2NameMap = deviceIp2NameMap
         super(L3DataCollector, self).__init__(deviceId, conf, daoClass)
 
     def manualInit(self):
@@ -423,6 +422,12 @@ class L3DataCollector(DeviceDataCollectorNetconf):
         else:
             logger.debug('L3 data collection is already in progress for %s', (self.deviceLogStr))
 
+    def getDeviceByAsn(self, asn):
+        try:
+            return self._session.query(Device).filter(Device.pod_id == self.device.pod.id).filter(Device.asn == asn).one()
+        except Exception as exc:
+            logger.debug('getDeviceByAsn failed: %s' % (exc))
+               
     def collectBgpFromDevice(self):
         logger.debug('Start BGP data collector for %s' % (self.deviceLogStr))
 
@@ -436,15 +441,16 @@ class L3DataCollector(DeviceDataCollectorNetconf):
                 # strip ip
                 device1Ip = util.stripPlusSignFromIpString(link.local_add)
                 device2Ip = util.stripPlusSignFromIpString(link.peer_add)
-                # find device2's hostname
-                device2Obj = self.deviceIp2NameMap.get(device2Ip)
+                # find device2's hostname by AS
+                device2Asn = int(link.peer_as)
+                device2Obj = self.getDeviceByAsn(device2Asn)
                 if device2Obj is not None:
                     device2Name = device2Obj.name
                 else:
-                    logger.debug('Cannot find device2 by ip %s' % device2Ip)
+                    logger.debug('Cannot find device2 by AS %d' % device2Asn)
                     device2Name = None
                     
-                logger.debug('device1: %s, device1Ip: %s, device1as1: %s, device2: %s, device2Ip: %s, device2as: %s, inputMsgCount: %s, outputMsgCount: %s, outQueueCount: %s , linkState : %s, active/receive/acceptCount: %s/%s/%s' % (device1Name, device1Ip, link.local_as, device2Name, device2Ip, link.peer_as, link.in_msg, link.out_msg, link.out_queue, link.state, link.act_count, link.rx_count, link.acc_count ) )
+                logger.debug('device1: %s, device1Ip: %s, device1as1: %s, device2: %s, device2Ip: %s, device2as: %s, inputMsgCount: %s, outputMsgCount: %s, outQueueCount: %s , linkState : %s, active/receive/acceptCount: %s/%s/%s, flapCount : %s' % (device1Name, device1Ip, link.local_as, device2Name, device2Ip, link.peer_as, link.in_msg, link.out_msg, link.out_queue, link.state, link.act_count, link.rx_count, link.acc_count, link.flap_count ) )
                 links.append({'device1': device1Name, 'device1Ip': device1Ip , 'device1as': link.local_as, 'device2': device2Name, 'device2Ip': device2Ip, 'device2as': link.peer_as, 'inputMsgCount': link.in_msg,
                                   'outputMsgCount': link.out_msg, 'outQueueCount': link.out_queue , 'linkState' : link.state, 'activeReceiveAcceptCount': (str(link.act_count) +'/' + str(link.rx_count) + '/' + str(link.acc_count)), 'flapCount': link.flap_count, 'device2Obj': device2Obj})
                     

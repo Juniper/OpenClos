@@ -872,9 +872,9 @@ def main():
     l3ClosMediation = L3ClosMediation()
     pods = l3ClosMediation.loadClosDefinition()
 
-    #pod1 = l3ClosMediation.createPod('labLeafSpine', pods['labLeafSpine'])
-    #l3ClosMediation.createCablingPlan(pod1.id)
-    #l3ClosMediation.createDeviceConfig(pod1.id)
+    pod1 = l3ClosMediation.createPod('labLeafSpine', pods['labLeafSpine'])
+    l3ClosMediation.createCablingPlan(pod1.id)
+    l3ClosMediation.createDeviceConfig(pod1.id)
 
     pod2 = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
     l3ClosMediation.createCablingPlan(pod2.id)
