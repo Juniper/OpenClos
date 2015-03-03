@@ -371,8 +371,9 @@ class L3DataCollector(DeviceDataCollectorNetconf):
     Perform manual "init" from startL3Report to make sure it is done
     from child thread's context.
     '''
-    def __init__(self, deviceId, conf = {}, daoClass = Dao):
+    def __init__(self, deviceId, conf = {}, daoClass = Dao, deviceAsn2NameMap = {}):
         self.collectionInProgressCache = L3DataCollectorInProgressCache.getInstance()
+        self.deviceAsn2NameMap = deviceAsn2NameMap
         super(L3DataCollector, self).__init__(deviceId, conf, daoClass)
 
     def manualInit(self):
@@ -422,12 +423,6 @@ class L3DataCollector(DeviceDataCollectorNetconf):
         else:
             logger.debug('L3 data collection is already in progress for %s', (self.deviceLogStr))
 
-    def getDeviceByAsn(self, asn):
-        try:
-            return self._session.query(Device).filter(Device.pod_id == self.device.pod.id).filter(Device.asn == asn).one()
-        except Exception as exc:
-            logger.debug('getDeviceByAsn failed: %s' % (exc))
-               
     def collectBgpFromDevice(self):
         logger.debug('Start BGP data collector for %s' % (self.deviceLogStr))
 
@@ -443,7 +438,7 @@ class L3DataCollector(DeviceDataCollectorNetconf):
                 device2Ip = util.stripPlusSignFromIpString(link.peer_add)
                 # find device2's hostname by AS
                 device2Asn = int(link.peer_as)
-                device2Obj = self.getDeviceByAsn(device2Asn)
+                device2Obj = self.deviceAsn2NameMap.get(device2Asn)
                 if device2Obj is not None:
                     device2Name = device2Obj.name
                 else:
