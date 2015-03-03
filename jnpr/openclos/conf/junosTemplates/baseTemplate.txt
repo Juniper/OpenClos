@@ -1,7 +1,10 @@
 system {
+    {% if hostName is defined %}replace:
+    host-name "{{hostName}}";{% endif %}
     time-zone America/Los_Angeles;
+    replace:
     root-authentication {
-        encrypted-password "$1$7JodUDyI$hnYxQLO1RrOAXCX3MIF1r/"; ## SECRET-DATA
+        encrypted-password "{{hashedPassword}}"; ## SECRET-DATA
     }
     services {
         ssh {
@@ -50,4 +53,3 @@ system {
         }
     }
 }
-

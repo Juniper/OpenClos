@@ -1,0 +1,87 @@
+create:
+    Access: WRITE
+    Args:
+        pods:
+            Desc: Export POD definitions to the database
+            Handle: handle_create_pods
+            Args:
+                from-file:
+                    Desc: Export POD definitions from a file to the database
+                    Macro: list_all_yaml_files
+                    Handle: handle_create_pods_from_file
+        cabling-plan:
+            Args:
+                for-pod:
+                    Desc: Create cabling plan for a pre-defined POD
+                    Macro: list_all_pods_from_db
+                    Handle: handle_create_cabling_plan
+        device-config:
+            Args:
+                for-pod:
+                    Desc: Create device configuration for a pre-defined POD
+                    Macro: list_all_pods_from_db
+                    Handle: handle_create_device_config
+        ztp-config:
+            Args:
+                for-pod:
+                    Desc: Create ZTP configuration for a pre-defined POD
+                    Macro: list_all_pods_from_db
+                    Handle: handle_create_ztp_config
+                    
+update:
+    Access: WRITE
+    Args:
+        password:
+            Args:
+                for-pod:
+                    Desc: Update password for all devices in all PODs
+                    Macro: list_all_pods_from_db
+                    Handle: handle_update_password
+        pods:
+            Args:
+                for-pod:
+                    Desc: Update POD configuration
+                    Macro: list_all_pods_from_db
+                    Handle: handle_update_pods   
+                    
+deploy:
+    Access: WRITE
+    Args:                   
+        ztp-config:
+            Args:
+                for-pod:
+                    Desc: Deploy ZTP configuration for a pre-defined POD
+                    Macro: list_all_pods_from_db
+                    Handle: handle_deploy_ztp_config
+                    
+run:
+    Access: READ-WRITE
+    Args:
+        reports:
+            Args:
+                for-pod:
+                    Desc: Generate reports
+                    Macro: list_all_pods_from_db
+                    Handle: handle_run_reports
+        REST:
+            Args:
+                server:
+                    Desc: Run REST server process
+                    Handle: handle_run_rest_server
+
+show:
+    Access: READ-ONLY
+    Args:
+        pods:
+            Args:
+                terse:
+                    Desc: Show all PODs defined in the database in brief
+                    Handle: handle_show_pods_terse
+                detail:
+                    Desc: Show specific POD defined in the database in detail
+                    Macro: list_all_pods_from_db
+                    Handle: handle_show_pod_detail
+                    Args:
+                        all:
+                            Desc: Show all PODs defined in the database in detail
+                            Handle: handle_show_all_pods_detail

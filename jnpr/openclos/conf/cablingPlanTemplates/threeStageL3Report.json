@@ -1,0 +1,12 @@
+{
+"l3Report": {
+  "devices": [
+    {% for device in devices %}    {"id": "{{ device['id'] }}", "name": "{{ device['name'] }}", "family": "{{ device['family'] }}", "role":"{{ device['role'] }}", "status":"{{ device['status'] }}", "statusReason":"{{ device['reason'] }}", "deployStatus":"{{ device['deployStatus'] }}"}{% if not loop.last %},
+    {% endif %}{% endfor %}
+  ],
+  "peers": [
+    {% for link in links %}    { "device1": "{{ link['device1'] }}", "asn1": "{{ link['asn1'] }}", "ip1":"{{ link['ip1'] }}", "device2": "{{ link['device2'] }}", "asn2": "{{ link['asn2'] }}", "ip2":"{{ link['ip2'] }}", "status":"{{ link['status'] }}", "inPacket":"{{ link['inPacket'] }}", "outPacket":"{{ link['outPacket'] }}", "outQueue":"{{ link['outQueue'] }}", "lastFlap":"{{ link['lastFlap'] }}", "routes":"{{ link['routes'] }}"}{% if not loop.last %},
+    {% endif %}{% endfor %}
+  ]
+}
+}

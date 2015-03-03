@@ -12,34 +12,40 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #t
 import unittest
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-from jnpr.openclos.model import ManagedElement, Pod, Device, Interface, InterfaceLogical, InterfaceDefinition, Base
+from jnpr.openclos.model import ManagedElement, Pod, LeafSetting, Device, Interface, InterfaceLogical, InterfaceDefinition, Base, AdditionalLink, CablingPlan, TrapGroup
 
-def createPod(name, session):  
+def createPodObj(name):  
     pod = {}
-    pod['spineCount'] = '3'
-    pod['spineDeviceType'] = 'QFX5100-24Q'
-    pod['leafCount'] = '5'
-    pod['leafDeviceType'] = 'QFX5100-48S'
+    pod['spineCount'] = '2'
+    pod['spineDeviceType'] = 'qfx-5100-24q-2p'
+    pod['leafCount'] = '2'
+    pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
     pod['interConnectPrefix'] = '1.2.0.0'
     pod['vlanPrefix'] = '1.3.0.0'
+    pod['hostOrVmCountPerLeaf'] = 100
     pod['loopbackPrefix'] = '1.4.0.0'
+    pod['managementPrefix'] = '172.32.30.101/24'
     pod['spineAS'] = '100'
     pod['leafAS'] = '100'
     pod['topologyType'] = 'threeStage'
-    pod['inventory'] = 'inventoryLabKurt.json'
-    pod = Pod(name, **pod)
+    pod['inventory'] = 'inventoryAnotherPod.json'
+    pod['devicePassword'] = 'test'
+    return Pod(name, pod)
+
+def createPod(name, session):  
+    pod = createPodObj(name)
     session.add(pod)
     session.commit()
     return pod
 
 def createDevice(session, name):
-    device = Device(name, "", "", "", "spine", "", "1.2.3.4/24", createPod(name, session))
+    device = Device(name, "", "", "", "spine", "11:12:13:14:15:16", "1.2.3.4/24", createPod(name, session))
     session.add(device)
     session.commit()
     return device
 
 def createPodDevice(session, name, pod):
-    device = Device(name, "", "", "", "spine", "", "1.2.3.4", pod)
+    device = Device(name, "", "", "", "spine", "11:12:13:14:15:16", "1.2.3.4", pod)
     session.add(device)
     session.commit()
     return device
@@ -64,7 +70,6 @@ class TestManagedElement(unittest.TestCase):
               
 class TestOrm(unittest.TestCase):
     def setUp(self):
-    
         '''
         Change echo=True to troubleshoot ORM issue
         '''
@@ -81,88 +86,107 @@ class TestPod(TestOrm):
     
     def testPodValidateSuccess(self):
         pod = {}
-        pod['spineCount'] = '3'
-        pod['spineDeviceType'] = 'QFX5100-24Q'
-        pod['leafCount'] = '5'
-        pod['leafDeviceType'] = 'QFX5100-48S'
+        pod['spineCount'] = '2'
+        pod['spineDeviceType'] = 'qfx-5100-24q-2p'
+        pod['leafCount'] = '2'
+        pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
         pod['hostOrVmCountPerLeaf'] = 100
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
+        pod['managementPrefix'] = '172.32.30.101/24'
         pod['spineAS'] = '100'
         pod['leafAS'] = '100'
         pod['topologyType'] = 'threeStage'
-        pod['inventory'] = 'inventoryLabKurt.json'
-        pod = Pod("test", **pod)
+        pod['inventory'] = 'inventoryUnitTest.json'
+        pod['devicePassword'] = 'test'
+        pod = Pod("test", pod)
         
         pod.validate()
   
-    def testPodValidateMisingAllRequiredFields(self):
-        pod = {}
-        with self.assertRaises(ValueError) as ve:
-            pod = Pod('testPod', **pod)
-            pod.validateRequiredFields()
-        error = ve.exception.message
-        self.assertEqual(10, error.count(','))
+    #def testPodValidateMisingAllRequiredFields(self):
+    #    pod = {}
+    #    with self.assertRaises(ValueError) as ve:
+    #        pod = Pod('testPod', pod)
+    #        pod.validateRequiredFields()
+    #    error = ve.exception.message
+    #    self.assertEqual(11, error.count(','))
 
-    def testPodValidateMisingFewRequiredFields(self):
-        pod = {}
-        pod['interConnectPrefix'] = '1.2.0.0'
-        pod['leafAS'] = '100'
-        with self.assertRaises(ValueError) as ve:
-            pod = Pod('testPod', **pod)
-            pod.validateRequiredFields()
-        error = ve.exception.message
-        self.assertEqual(8, error.count(','), 'Number of missing field is not correct')
+    #def testPodValidateMisingFewRequiredFields(self):
+    #    pod = {}
+    #    pod['interConnectPrefix'] = '1.2.0.0'
+    #    pod['leafAS'] = '100'
+    #    with self.assertRaises(ValueError) as ve:
+    #        pod = Pod('testPod', pod)
+    #        pod.validateRequiredFields()
+    #    error = ve.exception.message
+    #    self.assertEqual(9, error.count(','), 'Number of missing field is not correct')
 
-    def testPodValidateMisingBadIpAddress(self):
-        pod = {}
-        pod['interConnectPrefix'] = '1.2.0.0.0'
-        pod['vlanPrefix'] = '1.2.0.257'
-        pod['loopbackPrefix'] = None
-        with self.assertRaises(ValueError) as ve:
-            pod = Pod('testPod', **pod)
-            pod.validateIPaddr()
-        error = ve.exception.message
-        self.assertEqual(2, error.count(','), 'Number of bad Ip address format field is not correct')
+    #def testPodValidateMisingBadIpAddress(self):
+    #    pod = {}
+    #    pod['interConnectPrefix'] = '1.2.0.0.0'
+    #    pod['vlanPrefix'] = '1.2.0.257'
+    #    pod['managementPrefix'] = '172.32.30.101/24'
+    #    pod['loopbackPrefix'] = None
+    #    with self.assertRaises(ValueError) as ve:
+    #        pod = Pod('testPod', pod)
+    #        pod.validateIPaddr()
+    #    error = ve.exception.message
+    #    self.assertEqual(2, error.count(','), 'Number of bad Ip address format field is not correct')
 
-    def testValidateEnum(self):
-        with self.assertRaises(ValueError) :
-            Pod.validateEnum('Pod.TopologyTypeEnum', 'abcd', Pod.TopologyTypeEnum)
-        with self.assertRaises(ValueError) :
-            Pod.validateEnum('Pod.TopologyTypeEnum', ['abcd'], Pod.TopologyTypeEnum)
+    def testPodVaidateLeafUplinkcountMustBeUp(self):
+        pod = createPodObj('name')
+        with self.assertRaises(ValueError) as ve:
+            pod.leafUplinkcountMustBeUp = 1
+            pod.validate()
+        error = ve.exception.message
+        self.assertTrue('leafUplinkcountMustBeUp' in error and 'should be between 2 and spineCount' in error)
+
+        pod = createPodObj('name')
+        self.assertEqual(2, pod.leafUplinkcountMustBeUp)
 
     def testConstructorPass(self):
         pod = {}
-        pod['spineCount'] = '3'
-        pod['spineDeviceType'] = 'QFX5100-24Q'
-        pod['leafCount'] = '5'
-        pod['leafDeviceType'] = 'QFX5100-48S'
+        pod['spineCount'] = '2'
+        pod['spineDeviceType'] = 'qfx-5100-24q-2p'
+        pod['leafCount'] = '2'
+        pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
+        pod['managementPrefix'] = '172.32.30.101/24'
         pod['spineAS'] = '100'
-        pod['leafAS'] = '100'
+        pod['leafAS'] = '4294967295'
         pod['topologyType'] = 'threeStage'
-        pod['inventory'] = 'inventoryLabKurt.json'
+        pod['inventory'] = 'inventoryUnitTest.json'
         pod['outOfBandAddressList'] = ['1.2.3.4', '5.6.7.8']
-        self.assertTrue(Pod('testPod', **pod) is not None)
+        pod['outOfBandGateway'] = '1.3.5.254'
+        pod['devicePassword'] = 'test'
+        
+        constructedPod = Pod('testPod', pod) 
+        self.assertTrue(constructedPod is not None)
+        self.assertEqual(','.join(['1.2.3.4', '5.6.7.8']), constructedPod.outOfBandAddressList)
+        self.assertEqual('1.3.5.254', constructedPod.outOfBandGateway)
+        self.assertEqual(4294967295, constructedPod.leafAS)
+
 
     def testOrm(self):
         pod = {}
-        pod['spineCount'] = '3'
-        pod['spineDeviceType'] = 'QFX5100-24Q'
-        pod['leafCount'] = '5'
-        pod['leafDeviceType'] = 'QFX5100-48S'
+        pod['spineCount'] = '2'
+        pod['spineDeviceType'] = 'qfx-5100-24q-2p'
+        pod['leafCount'] = '2'
+        pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
+        pod['managementPrefix'] = '172.32.30.101/24'
         pod['spineAS'] = '100'
         pod['leafAS'] = '100'
         pod['topologyType'] = 'threeStage'
         pod['inventory'] = 'inventoryLabKurt.json'
         pod['outOfBandAddressList'] = ['1.2.3.4', '5.6.7.8']
-        podOne = Pod('testPod', **pod)
+        pod['devicePassword'] = 'test'
+        podOne = Pod('testPod', pod)
         self.session.add(podOne)
         self.session.commit()
         
@@ -173,14 +197,60 @@ class TestPod(TestOrm):
         self.session.commit()
         self.assertEqual(0, self.session.query(Pod).count())
 
-class TestDevice(TestOrm):
+class TestLeafSetting(TestOrm):
     def testConstructorPass(self):
         podOne = createPod('testpod', self.session)
-        self.assertTrue(Device('testdevice', 'QFX5100-48S', 'admin', 'admin', "spine", "", "", podOne) is not None)    
+        self.assertTrue(LeafSetting('qfx5100-48s-6q', podOne.id) is not None)    
 
     def testOrm(self):
         podOne = createPod('testpod', self.session)
-        device = Device('testdevice', 'QFX5100-48S', 'admin', 'admin', "spine", "", "", podOne)
+        leafSetting = LeafSetting('qfx5100-48s-6q', podOne.id)
+        podOne.leafSettings = [leafSetting]
+        self.session.merge(podOne)
+        self.session.commit()
+        
+        fetched = self.session.query(LeafSetting).one()
+        self.assertEqual(leafSetting, fetched)
+        
+        fetched = self.session.query(Pod).one()
+        self.assertEqual(1, len(fetched.leafSettings))
+
+        #delete object
+        self.session.delete(podOne)
+        self.session.commit()
+        self.assertEqual(0, self.session.query(LeafSetting).count())
+
+class TestCablingPlan(TestOrm):
+    def testConstructorPass(self):
+        podOne = createPod('testpod', self.session)
+        self.assertTrue(CablingPlan(podOne.id, 'cabling json', 'cabling dot') is not None)    
+
+    def testOrm(self):
+        podOne = createPod('testpod', self.session)
+        cablingPlan = CablingPlan(podOne.id, 'cabling json', 'cabling dot')
+        podOne.cablingPlan = cablingPlan
+        self.session.merge(podOne)
+        self.session.commit()
+        
+        fetched = self.session.query(CablingPlan).one()
+        self.assertEqual(cablingPlan, fetched)
+        
+        fetched = self.session.query(Pod).one()
+        self.assertIsNotNone(fetched.cablingPlan)
+
+        #delete object
+        self.session.delete(podOne)
+        self.session.commit()
+        self.assertEqual(0, self.session.query(CablingPlan).count())
+
+class TestDevice(TestOrm):
+    def testConstructorPass(self):
+        podOne = createPod('testpod', self.session)
+        self.assertTrue(Device('testdevice', 'qfx-5100-48s-6q', 'admin', 'admin', "spine", "", "", podOne) is not None)    
+
+    def testOrm(self):
+        podOne = createPod('testpod', self.session)
+        device = Device('testdevice', 'qfx-5100-48s-6q', 'admin', 'admin', "spine", "", "", podOne, "provision", "VB1234567890")
         self.session.add(device)
         self.session.commit()  
         fetched = self.session.query(Device).one()
@@ -190,16 +260,25 @@ class TestDevice(TestOrm):
         self.session.delete(device)
         self.session.commit()
         self.assertEqual(0, self.session.query(Device).count())
+    
+    def testLargeAsn(self):
+        podOne = createPod('testpod', self.session)
+        device = Device('testdevice', 'qfx-5100-48s-6q', 'admin', 'admin', "spine", "", "", podOne)
+        device.asn = 4294967295
+        self.session.add(device)
+        self.session.commit()  
+        fetched = self.session.query(Device).one()
+        self.assertEqual(device, fetched)        
         
     def testRelationPodDevice(self):
         podOne = createPod('testpodOne', self.session)
-        deviceOne = Device('testDeviceOne', 'QFX5100-48S', 'admin', 'admin',  "spine", "", "", podOne)
+        deviceOne = Device('testDeviceOne', 'qfx-5100-48s-6q', 'admin', 'admin',  "spine", "", "", podOne)
         self.session.add(deviceOne)
            
         podTwo = createPod('testpodTwo', self.session)
-        deviceTwo = Device('testDeviceOne', 'QFX5100-48S', 'admin', 'admin',  "spine", "", "", podTwo)
+        deviceTwo = Device('testDeviceTwo', 'qfx-5100-48s-6q', 'admin', 'admin',  "spine", "", "", podTwo)
         self.session.add(deviceTwo)
-        deviceThree = Device('testDeviceOne', 'QFX5100-48S', 'admin', 'admin',  "spine", "", "", podTwo)
+        deviceThree = Device('testDeviceThree', 'qfx-5100-48s-6q', 'admin', 'admin',  "spine", "", "", podTwo)
         self.session.add(deviceThree)
         self.session.commit()
 
@@ -221,11 +300,11 @@ class TestInterface(TestOrm):
     
     def testConstructorPass(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        self.assertTrue(Interface('testintf', deviceOne))
+        self.assertTrue(Interface('et-0/0/0', deviceOne))
                         
     def testOrm(self):       
         deviceOne = createDevice(self.session, 'testdevice')
-        IF = Interface('testintf', deviceOne)
+        IF = Interface('et-0/0/0', deviceOne)
         self.session.add(IF)
         self.session.commit()
         
@@ -242,13 +321,13 @@ class TestInterface(TestOrm):
         # create device
         #create interface
         deviceOne = createDevice(self.session, 'testdevice')
-        IFLone = Interface('testintf', deviceOne )
+        IFLone = Interface('et-0/0/0', deviceOne )
         self.session.add(IFLone)
              
         deviceTwo = createDevice(self.session, 'testdevice')
-        IFLtwo = Interface('testintf', deviceTwo)
+        IFLtwo = Interface('et-0/0/0', deviceTwo)
         self.session.add(IFLtwo)
-        IFLthree = Interface('testintf', deviceTwo)
+        IFLthree = Interface('et-0/0/1', deviceTwo)
         self.session.add(IFLthree)
         self.session.commit()
         
@@ -269,11 +348,11 @@ class TestInterface(TestOrm):
     def testRelationInterfacePeer(self):
         
         deviceOne = createDevice(self.session, 'testdevice')
-        IFLone = Interface('testintf', deviceOne)
+        IFLone = Interface('et-0/0/0', deviceOne)
         self.session.add(IFLone)
         
         deviceTwo = createDevice(self.session, 'testdevice')
-        IFLtwo = Interface('testintf', deviceTwo )
+        IFLtwo = Interface('et-0/0/0', deviceTwo )
         self.session.add(IFLtwo)
         
         IFLone.peer = IFLtwo
@@ -291,15 +370,15 @@ class TestInterfaceLogical(TestOrm):
     
     def testConstructorPass(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        self.assertTrue(InterfaceLogical('testIntf', deviceOne) is not None)
-        self.assertTrue(InterfaceLogical('testIntf', deviceOne, '1.2.3.4') is not None)
-        self.assertTrue(InterfaceLogical('testIntf', deviceOne, '1.2.3.4', 9000) is not None)
+        self.assertTrue(InterfaceLogical('et-0/0/0', deviceOne) is not None)
+        self.assertTrue(InterfaceLogical('et-0/0/1', deviceOne, '1.2.3.4') is not None)
+        self.assertTrue(InterfaceLogical('et-0/0/2', deviceOne, '1.2.3.4', 9000) is not None)
 
 
     def testOrm(self):
         
         deviceOne = createDevice(self.session, 'testdevice')
-        IFL = InterfaceLogical('testIntf', deviceOne, '1.2.3.4', 9000)
+        IFL = InterfaceLogical('et-0/0/0', deviceOne, '1.2.3.4', 9000)
         self.session.add(IFL)
         self.session.commit()
 
@@ -317,12 +396,12 @@ class TestInterfaceDefinition(TestOrm):
     
     def testConstructorPass(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        self.assertTrue(InterfaceDefinition('testIntf', deviceOne, 'downlink') is not None)
-        self.assertTrue(InterfaceDefinition('testIntf', deviceOne, 9000) is not None)
+        self.assertTrue(InterfaceDefinition('et-0/0/0', deviceOne, 'downlink') is not None)
+        self.assertTrue(InterfaceDefinition('et-0/0/1', deviceOne, 9000) is not None)
         
     def testOrm(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        IFD = InterfaceDefinition('testIntfdef', deviceOne, 9000)
+        IFD = InterfaceDefinition('et-0/0/0', deviceOne, 9000)
         self.session.add(IFD)
         self.session.commit()
         
@@ -335,5 +414,106 @@ class TestInterfaceDefinition(TestOrm):
         self.session.commit()
         self.assertEqual(0, self.session.query(InterfaceDefinition).count())
          
+    def testQueryOrderBy(self):
+        deviceOne = createDevice(self.session, 'testdevice')
+        IFDs = [InterfaceDefinition('et-0/0/0', deviceOne, 9000), InterfaceDefinition('et-0/0/1', deviceOne, 9000), 
+                InterfaceDefinition('et-0/0/2', deviceOne, 9000), InterfaceDefinition('et-0/0/3', deviceOne, 9000), 
+                InterfaceDefinition('et-0/0/10', deviceOne, 9000), InterfaceDefinition('et-0/0/11', deviceOne, 9000),
+                InterfaceDefinition('et-0/0/12', deviceOne, 9000), InterfaceDefinition('et-0/0/13', deviceOne, 9000),
+                InterfaceDefinition('et-0/1/0', deviceOne, 9000), InterfaceDefinition('et-0/1/1', deviceOne, 9000),
+                InterfaceDefinition('et-0/1/2', deviceOne, 9000), InterfaceDefinition('et-0/1/3', deviceOne, 9000)]
+        self.session.add_all(IFDs)
+        self.session.commit()
+        
+        fetchedIfds = self.session.query(InterfaceDefinition).order_by(InterfaceDefinition.sequenceNum).all()
+        self.assertEqual('et-0/0/0', fetchedIfds[0].name)
+        self.assertEqual('et-0/0/1', fetchedIfds[1].name)
+        self.assertEqual('et-0/0/2', fetchedIfds[2].name)
+        self.assertEqual('et-0/0/3', fetchedIfds[3].name)
+        self.assertEqual('et-0/0/10', fetchedIfds[4].name)
+        self.assertEqual('et-0/0/11', fetchedIfds[5].name)
+        self.assertEqual('et-0/0/12', fetchedIfds[6].name)
+        self.assertEqual('et-0/0/13', fetchedIfds[7].name)
+        self.assertEqual('et-0/1/0', fetchedIfds[8].name)
+        self.assertEqual('et-0/1/1', fetchedIfds[9].name)
+        self.assertEqual('et-0/1/2', fetchedIfds[10].name)
+        self.assertEqual('et-0/1/3', fetchedIfds[11].name)
+
+        
+class TestAdditionalLink(TestOrm):
+    
+    def testConstructorPass(self):
+        self.assertTrue(AdditionalLink('device1', 'et-0/0/0', "device2", 'et-0/0/1'))
+                        
+    def testOrm(self):       
+        IF = AdditionalLink('device1', 'et-0/0/0', "device2", 'et-0/0/1')
+        self.session.add(IF)
+        self.session.commit()
+        
+        self.assertEqual(1, self.session.query(AdditionalLink).count())
+        fetched = self.session.query(AdditionalLink).one()
+        self.assertEqual(IF, fetched)
+        
+        #delete object
+        self.session.delete(IF)
+        self.session.commit()
+        self.assertEqual(0, self.session.query(AdditionalLink).count())
+        
+    def testRelationDeviceAdditionalLink(self):
+        # create pod
+        # create device
+        #create AdditionalLink
+        IFLone = AdditionalLink('device1', 'et-0/0/1', "device2", 'et-0/0/2')
+        IFLtwo = AdditionalLink('device3', 'et-0/0/3', "device4", 'et-0/0/4')
+        self.session.add(IFLone)
+        self.session.add(IFLtwo)
+        self.session.commit()
+        
+        self.assertEqual(2, self.session.query(AdditionalLink).count())
+        # check relation navigation from additionalLink device
+        additionalLinks = self.session.query(AdditionalLink).all()
+        self.assertEqual("device1", additionalLinks[0].device1)
+        self.assertEqual("device2", additionalLinks[0].device2)
+        self.assertEqual("device3", additionalLinks[1].device1)
+        self.assertEqual("device4", additionalLinks[1].device2)
+        
+           
+    def testRelationAdditionalLinkPeer(self):
+        # create pod
+        # create device
+        #create AdditionalLink
+        IFLone = AdditionalLink('device1', 'et-0/0/1', "device2", 'et-0/0/2')
+        IFLtwo = AdditionalLink('device3', 'et-0/0/3', "device4", 'et-0/0/4')
+        self.session.add(IFLone)
+        self.session.add(IFLtwo)
+        self.session.commit()
+        
+        self.assertEqual(2, self.session.query(AdditionalLink).count())
+        # check relation navigation from additionalLink device
+        additionalLinks = self.session.query(AdditionalLink).all()
+        self.assertEqual("et-0/0/1", additionalLinks[0].port1)
+        self.assertEqual("et-0/0/2", additionalLinks[0].port2)
+        self.assertEqual("et-0/0/3", additionalLinks[1].port1)
+        self.assertEqual("et-0/0/4", additionalLinks[1].port2)
+               
+class TestTrapGroup(TestOrm):
+    
+    def testConstructorPass(self):
+        self.assertTrue(TrapGroup('openClos', '1.2.3.4', 20162))
+                        
+    def testOrm(self):       
+        group = TrapGroup('openClos', '1.2.3.4', 20162)
+        self.session.add(group)
+        self.session.commit()
+        
+        self.assertEqual(1, self.session.query(TrapGroup).count())
+        fetched = self.session.query(TrapGroup).one()
+        self.assertEqual(group, fetched)
+        
+        #delete object
+        self.session.delete(group)
+        self.session.commit()
+        self.assertEqual(0, self.session.query(AdditionalLink).count())
+
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,6 @@
+snmp {
+    replace:
+{% for trapGroup in trapGroups %}    trap-group {{trapGroup['name']}} {
+    } 
+{% endfor %}
+}

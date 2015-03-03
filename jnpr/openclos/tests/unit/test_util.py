@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../..')) #trick to make it run from CLI
 import unittest
 
+import jnpr
 from jnpr.openclos.util import *
 
 class TestFunctions(unittest.TestCase):
@@ -16,37 +17,39 @@ class TestFunctions(unittest.TestCase):
         pass
 
     def tearDown(self):
-        pass
+        conf = None
 
     def testLoadDefaultConfig(self):
         self.assertIsNotNone(loadConfig())
+    '''
     def testLoadNonExistingConfig(self):
-        self.assertIsNone(loadConfig('non-existing.yaml'))
-
+        __conf = None
+        self.assertIsNone(loadConfig(confFile = 'non-existing.yaml'))
+    '''
     def testGetPortNamesForDeviceFamilyNullConf(self):
         with self.assertRaises(ValueError) as ve:
             getPortNamesForDeviceFamily(None, None)
 
     def testGetPortNamesForDeviceFamilyUnknownFamily(self):
         with self.assertRaises(ValueError) as ve:
-            getPortNamesForDeviceFamily('unknown', {'QFX5100-24Q': {}})
+            getPortNamesForDeviceFamily('unknown', {'qfx-5100-24q-2p': {}})
         error = ve.exception.message
         self.assertTrue('unknown' in error)
         
     def testGetPortNamesForDeviceFamily24Q(self):
-        portNames = getPortNamesForDeviceFamily('QFX5100-24Q', {'QFX5100-24Q': {'ports':'et-0/0/[0-23]'}})
+        portNames = getPortNamesForDeviceFamily('qfx-5100-24q-2p', {'qfx-5100-24q-2p': {'ports':'et-0/0/[0-23]'}})
         self.assertEqual(0, len(portNames['uplinkPorts']))
         self.assertEqual(0, len(portNames['downlinkPorts']))
         self.assertEqual(24, len(portNames['ports']))
 
     def testGetPortNamesForDeviceFamily48S(self):
-        portNames = getPortNamesForDeviceFamily('QFX5100-48S', {'QFX5100-48S': {'uplinkPorts':'et-0/0/[48-53]', 'downlinkPorts': 'xe-0/0/[0-47]'}})
+        portNames = getPortNamesForDeviceFamily('qfx-5100-48s-6q', {'qfx-5100-48s-6q': {'uplinkPorts':'et-0/0/[48-53]', 'downlinkPorts': 'xe-0/0/[0-47]'}})
         self.assertEqual(6, len(portNames['uplinkPorts']))
         self.assertEqual(48, len(portNames['downlinkPorts']))
         self.assertEqual(0, len(portNames['ports']))
         
     def testGetPortNamesForDeviceFamily96S(self):
-        portNames = getPortNamesForDeviceFamily('QFX5100-96S', {'QFX5100-96S': {'uplinkPorts':'et-0/0/[96-103]', 'downlinkPorts': 'xe-0/0/[0-95]'}})
+        portNames = getPortNamesForDeviceFamily('qfx5100-96s-8q', {'qfx5100-96s-8q': {'uplinkPorts':'et-0/0/[96-103]', 'downlinkPorts': 'xe-0/0/[0-95]'}})
         self.assertEqual(8, len(portNames['uplinkPorts']))
         self.assertEqual(96, len(portNames['downlinkPorts']))
         self.assertEqual(0, len(portNames['ports']))
@@ -71,6 +74,14 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(10, len(portNames))
         self.assertEqual('xe-0/0/1', portNames[0])
         self.assertEqual('xe-0/0/10', portNames[9])        
+        
+    def testExpandPortNameList(self):
+        portNames = expandPortName(['xe-0/0/[1-10]', 'et-0/0/[0-3]'])
+        self.assertEqual(14, len(portNames))
+        self.assertEqual('xe-0/0/1', portNames[0])
+        self.assertEqual('xe-0/0/10', portNames[9])        
+        self.assertEqual('et-0/0/0', portNames[10])        
+        self.assertEqual('et-0/0/3', portNames[13])        
 
     def testFixSqlliteDbUrlForRelativePath(self):
         dbUrl = fixSqlliteDbUrlForRelativePath('sqlite:////absolute-path/sqllite3.db')
@@ -80,7 +91,108 @@ class TestFunctions(unittest.TestCase):
             self.assertTrue("C:\\" in dbUrl)
         else:
             self.assertTrue(dbUrl.count('/') > 4)
+            
+    def testGetMgmtIps(self):
+        mgmtIpList = ["1.2.3.1/24", "1.2.3.2/24", "1.2.3.3/24", "1.2.3.4/24", "1.2.3.5/24", "1.2.3.6/24"] 
+        mgmtIps = getMgmtIps("1.2.3.1/24", None, None, 6)
+        self.assertEqual(mgmtIpList, mgmtIps)
 
+        mgmtIpList = ["192.168.48.216/25", "192.168.48.217/25", "192.168.48.218/25", "192.168.48.219/25", "192.168.48.220/25"] 
+        mgmtIps = getMgmtIps("192.168.48.216/25", None, None, 5)
+        self.assertEqual(mgmtIpList, mgmtIps)
+
+    def testIsZtpStaged(self):
+        self.assertFalse(isZtpStaged(None))
+        self.assertFalse(isZtpStaged({}))
+        self.assertFalse(isZtpStaged({'deploymentMode': None}))
+        self.assertFalse(isZtpStaged({'deploymentMode': {}}))
+        self.assertFalse(isZtpStaged({'deploymentMode': {'ztpStaged': False}}))
+        self.assertTrue(isZtpStaged({'deploymentMode': {'ztpStaged': True}}))
+
+    def testEnumerateRoutableIpv4Addresses(self):
+        addrList = enumerateRoutableIpv4Addresses()
+        self.assertTrue(len(addrList) > 0)
+
+    def testGetSupportedDeviceFamily(self):
+        deviceFamilyList = getSupportedDeviceFamily({'qfx5100-96s-8q': {}, 'qfx5100-48s-6q': {}})
+        self.assertEqual(2, len(deviceFamilyList))
+        
+        with self.assertRaises(ValueError):
+            getSupportedDeviceFamily(None)
+
+    def testInterfaceNameToUniqueSequenceNumber(self):
+        self.assertEqual(0, interfaceNameToUniqueSequenceNumber('et-0/0/0'))
+        self.assertEqual(1, interfaceNameToUniqueSequenceNumber('et-0/0/1'))
+        self.assertEqual(2, interfaceNameToUniqueSequenceNumber('et-0/0/2'))
+        self.assertEqual(11, interfaceNameToUniqueSequenceNumber('et-0/0/11'))
+        self.assertEqual(100, interfaceNameToUniqueSequenceNumber('et-0/0/100'))
+        self.assertEqual(1000, interfaceNameToUniqueSequenceNumber('et-0/1/0'))
+        self.assertEqual(1100, interfaceNameToUniqueSequenceNumber('et-0/1/100'))
+        self.assertEqual(10000, interfaceNameToUniqueSequenceNumber('et-1/0/0'))
+        
+        self.assertEqual(10000000, interfaceNameToUniqueSequenceNumber('et-0/0/0.0'))
+        self.assertEqual(10000001, interfaceNameToUniqueSequenceNumber('et-0/0/0.1'))
+        self.assertEqual(10010000, interfaceNameToUniqueSequenceNumber('et-0/0/100.0'))
+        self.assertEqual(10010001, interfaceNameToUniqueSequenceNumber('et-0/0/100.1'))
+        self.assertEqual(10100000, interfaceNameToUniqueSequenceNumber('et-0/1/0.0'))
+        self.assertEqual(10100001, interfaceNameToUniqueSequenceNumber('et-0/1/0.1'))
+        self.assertEqual(11000001, interfaceNameToUniqueSequenceNumber('et-1/0/0.1'))
+
+        self.assertEqual(20000000, interfaceNameToUniqueSequenceNumber('uplink-0'))
+        self.assertEqual(20000001, interfaceNameToUniqueSequenceNumber('uplink-1'))
+        self.assertEqual(21000000, interfaceNameToUniqueSequenceNumber('uplink-0.0'))
+        self.assertEqual(21000001, interfaceNameToUniqueSequenceNumber('uplink-0.1'))
+        self.assertEqual(21000100, interfaceNameToUniqueSequenceNumber('uplink-1.0'))
+        self.assertEqual(21000101, interfaceNameToUniqueSequenceNumber('uplink-1.1'))
+
+    def testLo0IrbVmeToUniqueSequenceNumber(self):
+        seqNumSet = set()
+        
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('lo0'))
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('lo0.0'))
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('vme'))
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('vme.0'))
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('irb'))
+        seqNumSet.add(interfaceNameToUniqueSequenceNumber('irb.1'))
+        
+        self.assertEqual(6, len(seqNumSet))
+
+    def testLoadLoggingConfig(self):
+        loadLoggingConfig(appName='rest')
+        import logging
+        self.assertEquals(0, len(logging.getLogger('unknown').handlers))
+        self.assertEquals(2, len(logging.getLogger('rest').handlers))
+        self.assertTrue('openclos-rest.log' in logging.getLogger('rest').handlers[1].baseFilename)
+
+    def testLoadLoggingForTest(self):
+        loadLoggingConfig()
+        import logging
+        self.assertEquals(0, len(logging.getLogger('unknown').handlers))
+        self.assertEquals(1, len(logging.getLogger('rest').handlers))
+
+    def testGetOutFolderPath(self):
+        from test_model import createPodObj
+        pod = createPodObj('testPod')
+        path = getOutFolderPath({}, pod)
+        
+        self.assertEquals('out/'+pod.id+'-'+pod.name, path)
+        
+    def testGetOutFolderPathFromConf(self):
+        from test_model import createPodObj
+        pod = createPodObj('testPod')
+        path = getOutFolderPath({'outputDir': '/var/lib/openclos'}, pod)
+        
+        self.assertEquals('/var/lib/openclos/'+pod.id+'-'+pod.name, path)
+        
+    def testGetDbUrl(self):
+        jnpr.openclos.util.conf = None
+        with self.assertRaises(ValueError) as ve:
+            getDbUrl()
+        
+        loadConfig()
+        self.assertTrue('sqlite:' in getDbUrl())
+
+        
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

@@ -1,42 +1,94 @@
+# Deployment mode
+# ztpStaged: true/false, true indicates ZTP process goes through 2-stage
+# device configuration. During leaf device boot-strap, it gets generic config,
+# then OpenClos finds the topology and applies new topology.
+# False indicates all leaf configs are generated based on cabling-plan and 
+# deployed to the device using ZTP process. 
+# ztpStagedAttempt: How many times OpenClos tries to connect to leaf
+# to collect lldp data when it receives trap from that leaf. 
+# default is 5 times. 0 means no-op so it basically disables the 2-stage.
+# ztpStagedInterval: How long OpenClos waits in between retries. 
+# default is 60 seconds. 0 means do not wait. 
+# ztpVcpLldpDelay: How long OpenClos waits between delete VCP on EX4300 and LLDP collection
+# ztpStagedAttempt and ztpStagedInterval only take effect
+# when ztpStaged is set to true.
+deploymentMode :
+    ztpStaged : true
+    ztpStagedAttempt: 5
+    ztpStagedInterval: 30
+    ztpVcpLldpDelay: 40
+    
 # Generated file/configuration location
 # default value 'out' relative to current dir 
 # can take absolute path as '/tmp/out/'
 outputDir : out
 
-# Sqllite3 database URL
+# Database URL
+# Please NOTE dbUrl is used by sqlite only. For all other databases, please see
+# MySQL parameters below as an example.
+
+# sqlite parameters
 # for relative file location ./data/sqllite3.db, url is sqlite:///data/sqllite3.db
 # absolute file location /tmp/sqllite3.db, url is sqlite:////tmp/sqllite3.db
 dbUrl : sqlite:///data/sqllite3.db
 
-# Logging level
-# possible values: DEBUG, INFO, WARNING, ERROR, CRITICAL
-logLevel : 
-    fabric : INFO
-    report : INFO
-    ztp : INFO
-    rest : INFO
-    writer : INFO
+# MySQL  parameters
+#dbDialect : mysql
+#dbHost : localhost
+#dbUser : root
+#dbPassword : password
+#dbName : openclos
 
 # debug SQL and ORM
 # "true" will enable logging all SQL statements to underlying DB
 debugSql : false
+debugRest : true
+
+#device configuration will be stored by default in DB
+#"file" will allow device configuration to store in DB and File
+writeConfigInFile : false
+
     
 # Device family and port names
-# QFX5100-24Q ports could be [0-32] with two four-port expansion modules
-# unlike 48S or 96S for 24Q there is no specific uplink/downlink
+# qfx5100-24q-2p ports could be [0-32] with two four-port expansion modules
+# unlike 48s or 96s for 24Q there is no specific uplink/downlink
 deviceFamily :
-    QFX5100-24Q :
+    qfx5100-24q-2p :
         uplinkPorts : 
         downlinkPorts : 
-        ports : 'et-0/0/[0-23]' 
-    QFX5100-48S :
+        ports : ['et-0/0/[0-23]', 'et-0/1/[0-3]', 'et-0/2/[0-3]']
+    qfx5100-48s-6q :
+        uplinkPorts : 'et-0/0/[48-53]'
+        downlinkPorts : ['xe-0/0/[0-47]', 'ge-0/0/[0-47]']
+        ports :
+    qfx5100-48t-6q :
         uplinkPorts : 'et-0/0/[48-53]' 
         downlinkPorts : 'xe-0/0/[0-47]'
         ports :  
-    QFX5100-96S :
-        uplinkPorts : 'et-0/0/[96-103]' 
-        downlinkPorts : 'xe-0/0/[0-95]'
-        ports :  
+    qfx5100-96s-8q :
+        uplinkPorts : 'et-0/0/[96-103]'
+        downlinkPorts : ['xe-0/0/[0-95]', 'ge-0/0/[0-95]']
+        ports :
+    ex4300-24p :
+        uplinkPorts : 'et-0/1/[0-3]'
+        downlinkPorts : 'ge-0/0/[0-23]'
+        ports :
+    ex4300-24t :
+        uplinkPorts : 'et-0/1/[0-3]'
+        downlinkPorts : 'ge-0/0/[0-23]'
+        ports :
+    ex4300-32f :
+        uplinkPorts : ['et-0/1/[0-1]', 'et-0/2/[0-1]']
+        downlinkPorts : 'ge-0/0/[0-31]'
+        ports :
+    ex4300-48p :
+        uplinkPorts : 'et-0/1/[0-3]'
+        downlinkPorts : 'ge-0/0/[0-47]'
+        ports :
+    ex4300-48t :
+        uplinkPorts : 'et-0/1/[0-3]'
+        downlinkPorts : 'ge-0/0/[0-47]'
+        ports :
 
 # List of colors used in the DOT file to represent interconnects 
 DOT :
@@ -53,13 +105,48 @@ DOT :
 # HttpServer for REST and ZTP.
 # To make ZTP work the port has to be 80. IpAddr specified here
 # is used to populate dhcpd.conf fot ZTP. If no address is provided
-# REST will start at localhost, but ZTP process would not work
+# REST will start at localhost
 httpServer :
-    ipAddr : 
+    ipAddr : localhost
     port : 80
+
+# Number of threads used to communicate with devices
+report :
+    threadCount : 20
+         
+# SNMP trap settings for OpenClos
+# OpenClos uses traps to perform staged ZTP process
+# target address is where OpenClos is running (same as httpServer:ipAddr)
+# threadCount: Number of threads used to start 2-stage configuration for devices
+snmpTrap :
+    openclos_trap_group :
+        port : 20162
+        target : 0.0.0.0
+    threadCount : 10
+
 
 # various scripts
 # Note for release 1.0, the backup database script is engine specific
 script : 
     database: 
         backup : script/backup_sqlite.sh
+
+# CLI configuration
+cli:
+    # This is the text that would appear at each prompt
+    prompt_text: "openclos"
+    # prompt_style follows prompt_text and these together make the command-
+    #              prompt of the CLI
+    #              The cli code will add <space> after the prompt_style
+    prompt_style: "#"
+    # header is the text that appears when CLI is invoked, and CLI prompt-
+    #        is issued
+    header: "Welcome to openclos - by Juniper Networks"
+    # on_exit is the message that would appear when CLI session is terminated
+    on_exit: "goodbye"
+
+# Optional callback to control 2-stage configuration processing.
+# callback can be a shell command or a shell script. 
+# if the callback exit code is 0, 2-stage configuration for the current leaf continues, 
+# if the callback exit code is not 0, 2-stage configuration for the current leaf aborts 
+#twoStageConfigurationCallback:

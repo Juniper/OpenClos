@@ -1,11 +1,12 @@
 {
-    "links" : [
-        {% for spine in spines %} 
-            {% set spine_loop = loop %}
-            {% for leaf in leaves %}
-                { "s_name" : "{{ spine }}", "s_port" : "{{ spinePorts[loop.index0] }}", "l_name" : "{{ leaf }}", "l_port" : "{{ leafPorts[spine_loop.index0] }}" }
-                {% if not spine_loop.last or not loop.last %} , {% endif %}
-            {% endfor %} 
-        {% endfor %}
-    ]
+"cablingPlan": {
+  "devices": [
+    {% for device in devices %}    {"id": "{{ device['id'] }}", "name": "{{ device['name'] }}", "family": "{{ device['family'] }}", "role":"{{ device['role'] }}"}{% if not loop.last %},
+    {% endif %}{% endfor %}
+  ],
+  "links": [
+    {% for link in links %}    { "device1": "{{ link['device1'] }}", "port1": "{{ link['port1'] }}", "ip1":"{{ link['ip1'] }}", "device2": "{{ link['device2'] }}", "port2": "{{ link['port2'] }}", "ip2":"{{ link['ip2'] }}"}{% if not loop.last %},
+    {% endif %}{% endfor %}
+  ]
+}
 }

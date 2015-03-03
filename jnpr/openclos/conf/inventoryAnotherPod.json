@@ -1,11 +1,11 @@
 {   "spines" : [
-       { "name" : "spine-11", "mac_address" : "aa:bb:cc:dd:ee:b1", "mgmt_ip" : "172.32.32.201/24" },
-       { "name" : "spine-12", "mac_address" : "aa:bb:cc:dd:ee:b2", "mgmt_ip" : "172.32.32.202/24" }
+       { "name" : "clos-spine-01", "macAddress" : "10:0e:7e:af:35:41", "serialNumber" : "VG3714070310", "deployStatus" : "deploy"},
+       { "name" : "clos-spine-02", "macAddress" : "10:0e:7e:af:50:c1", "deployStatus" : "deploy"}
     ],
     "leafs" : [
-       { "name" : "leaf-11", "mac_address" : "aa:bb:cc:dd:ee:a1", "mgmt_ip" : "172.32.32.101/24" },
-       { "name" : "leaf-12", "mac_address" : "aa:bb:cc:dd:ee:a2", "mgmt_ip" : "172.32.32.102/24" },
-       { "name" : "leaf-13", "mac_address" : "aa:bb:cc:dd:ee:a3", "mgmt_ip" : "172.32.32.103/24" },
-       { "name" : "leaf-14", "mac_address" : "aa:bb:cc:dd:ee:a4", "mgmt_ip" : "172.32.32.104/24" }
+       { "name" : "clos-leaf-01", "family" : "qfx5100-96s-8q", "serialNumber" : "VB3113470018", "deployStatus" : "deploy"},
+       { "name" : "clos-leaf-02", "family" : "qfx5100-96s-8q", "macAddress" : "10:0e:7e:b8:9d:01", "deployStatus" : "deploy"},
+       { "name" : "clos-leaf-03"},
+       { "name" : "clos-leaf-04"}
     ]
 }
