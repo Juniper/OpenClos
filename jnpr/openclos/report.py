@@ -136,6 +136,16 @@ class L3Report(Report):
             if len(devicesToBeUpdated) > 0:
                 self._dao.updateObjects(session, devicesToBeUpdated)
             
+    def getDeviceAsn2NameMap(self, podId, session):
+        map = {}
+        logger.debug("Building device AS -> device name map...")
+        devices = session.query(Device).filter(Device.pod_id == podId).all()
+        for device in devices:
+            if device.asn is not None:
+                logger.debug("[%d]->[%s]" %(device.asn, device.name))
+                map[device.asn] = device
+        return map
+        
     def generateReport(self, podId, cachedData = True, writeToFile = False):
         with self._dao.getReadSession() as session:
             pod = self.getIpFabric(session, podId)
@@ -146,13 +156,16 @@ class L3Report(Report):
             if cachedData == False:
                 logger.info('Generating L3Report from real data')
                 
+                # Note this map is static so we only intialize it once for entire L3 report
+                deviceAsn2NameMap = self.getDeviceAsn2NameMap(podId, session)
+                
                 # reset all spines l3 status
                 self.resetSpineL3Status(pod.devices)
                
                 futureList = []
                 for device in pod.devices:
                     if device.role == 'leaf':
-                        l3DataCollector = L3DataCollector(device.id, self._conf, self._dao) 
+                        l3DataCollector = L3DataCollector(device.id, self._conf, self._dao, deviceAsn2NameMap) 
                         futureList.append(self.executor.submit(l3DataCollector.startL3Report))
                 logger.info('Submitted processing all devices')
                 concurrent.futures.wait(futureList)
