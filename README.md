@@ -37,8 +37,8 @@ Supported Devices and Software
 ------------------------------
 
 * Management Server - Python 2.7.x running on an Ubuntu 14.04 or CentOS 6.x based server
-* Spine Devices - QFX5100-24Q switches running Junos OS Release 13.2X51-D20 or later
-* Leaf Devices - QFX5100-48S switches running Junos OS Release 13.2X51-D20 or later, maximum of 6 spine connections
+* Spine Devices - QFX5100-24Q switches running Junos OS Release 14.1X53-D15 or later
+* Leaf Devices - QFX5100-48S, QFX5100-96S, EX4300-48T switches running Junos OS Release 14.1X53-D15 or later, maximum of 8 spine connections
 
 
 Install OpenClos on the Management Server
@@ -55,38 +55,37 @@ Install OpenClos on the Management Server
     cd OpenClos-<version>  
     sudo pip install --egg -e .  
 
-**Centos install issues**  
+**CentOS Installation Issues**  
 
 * Error: Unable to execute gcc: No such file or directory
 * Error: bin/sh: xslt-config: command not found, make sure the development packages of libxml2 and libxslt are installed
 * Error:  #error Python headers needed to compile C extensions, please install development version of Python
 
-For all above errors install following packages and re-try installing openclos  
+For all the above errors, install the following packages and reinstall OpenClos.
   
     sudo yum install -y python-devel libxml2-devel libxslt-devel gcc openssl
 
 * Error: error_name, '.'.join(version), '.'.join(min_version))), TypeError: sequence item 0: expected string, int found
 
-Centos 5.7, install lxml 3.4 causes problem, manually install lxml 3.3.6 followed by openclos
+In CentOS 5.7, if the installation of lxml 3.4 causes a problem, manually install lxml 3.3.6 and then install OpenClos
     sudo pip install lxml==3.3.6 --egg
     
     
-**Ubunu install issues**  
+**Ubuntu Installation Issues**  
 
 * Error: fatal error: pyconfig.h: No such file or directory
 * Error: bin/sh: xslt-config: command not found, make sure the development packages of libxml2 and libxslt are installed
 
-For all above errors install following packages and re-try installing openclos  
+For all the above errors, install the following packages and reinstall OpenClos
   
     sudo apt-get install -y python-dev libxml2-dev libxslt-dev
 
 
-**Windows install issues**  
+**Windows Installation Issues**  
 
 * Error: "Unable to find vcvarsall.bat"
   
-One of the Openclos dependent module uses PyCrypto, if installation gives error use platform specific pre-built PyCrypto 
-from - http://www.voidspace.org.uk/python/modules.shtml#pycrypto, then install openclos again.
+One of the OpenClos dependent modules uses PyCrypto. If the installation generates an error message, use the platform-specific prebuilt PyCrypto software from http://www.voidspace.org.uk/python/modules.shtml#pycrypto, and then reinstall OpenClos.
 
 
 Configuration on the Management Server
@@ -94,8 +93,8 @@ Configuration on the Management Server
 
 **Database**  
 
-* sqlite3 is the default database with file based DB, for better performance use traditional DBs
-* mysql database: install 'sudo apt-get install -y python-mysqldb', then set DB connection parameters in openclos.yaml file
+* sqlite3 is the default database that uses a file-based database. For better performance, use a traditional database.
+* To install the mysql database: issue the 'sudo apt-get install -y python-mysqldb' command, and then set the database connection parameters in openclos.yaml file.
 
 **Junos OS image**
 Copy the Junos OS image file to OpenClos-<version>/jnpr/openclos/conf/ztp/
@@ -148,9 +147,7 @@ The script is available at <path-to-OpenClos>/jnpr/openclos/tests/sampleApplicat
 * Error: ImportError: No module named openclos.l3Clos
 * Error: ImportError: No module named openclos.rest
   
-openclos and dependent module junos-eznc both uses same namespace 'jnpr'. If junos-eznc was already installed with pip, 
-uninstall (pip uninstall junos-eznc) then install openclos (pip install OpenClos.zip --egg). Make sure 
-to use '--egg' flag to avoid 'flat' install, which causes import error.
+OpenClos and its dependent module junos-eznc both use the same 'jnpr' namespace. If junos-eznc was already installed with pip, uninstall this module by issuing the "pip uninstall junos-eznc" command and then install OpenClos by issuing the "pip install OpenClos.zip --egg" command. Be sure to use '--egg' flag to avoid a 'flat' installation, which causes an import error.
 
 
 Run tests
@@ -168,7 +165,7 @@ It also generates a cabling plan in two formats:
 * DOT file - cablingPlan.dot (this file can be viewed with an application like GraphViz)
 * JSON file - cablingPlan.json
 
-All generated configurations (device configuration and ZTP configuration) in the <path-to-OpenClos>/jnpr/openclos/out/PODID-PODNAME directory.
+All generated configurations (device and ZTP configurations) are stored in the /jnpr/openclos/out/PODID-PODNAME directory
 
 * Ubuntu standard install - "/usr/local/lib/python2.7/dist-packages/jnpr/openclos/out/PODID-PODNAME"
 * Centos standard install - "/usr/lib/python2.6/site-packages/jnpr/openclos/out/PODID-PODNAME"
@@ -181,9 +178,9 @@ Apache 2.0
 
 
 Support
------------
+-------
 
 If you find an issue with the software, please open a bug report on the OpenClos repository.
 
-The Juniper Networks Technical Assistance Center (JTAC) does not provide support for OpenClos software. For general questions and support please visit [OpenClos Google Group](https://groups.google.com/forum/#!forum/openclos)
+The Juniper Networks Technical Assistance Center (JTAC) does not provide support for OpenClos software. You can obtain support for OpenClos by visiting the [OpenClos Google Group](https://groups.google.com/forum/#!forum/openclos)
 
