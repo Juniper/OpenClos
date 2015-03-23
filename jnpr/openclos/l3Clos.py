@@ -148,13 +148,12 @@ class L3ClosMediation():
                 # find match by role/id/name
                 if device.role == role and (device.id == inv.get('id') or device.name == inv['name']):
                     if device.deployStatus == inv.get('deployStatus'):
-                        logger.debug("Pod[id='%s', name='%s']: %s device '%s' unchanged" % (pod.id, pod.name, device.role, device.name))
+                        logger.debug("Pod[id='%s', name='%s']: %s device '%s' deploy status unchanged" % (pod.id, pod.name, device.role, device.name))
                     elif device.deployStatus == 'deploy' and (inv.get('deployStatus') is None or inv.get('deployStatus') == 'provision'):
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' provisioned" % (pod.id, pod.name, device.role, device.name))
-                        device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus', 'provision'), inv.get('serialNumber'))
                     elif device.deployStatus == 'provision' and inv.get('deployStatus') == 'deploy':
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' deployed" % (pod.id, pod.name, device.role, device.name))
-                        device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus'), inv.get('serialNumber'))
+                    device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus'), inv.get('serialNumber'))
                        
     def _resolveInventory(self, podDict, inventoryDict):
         if podDict is None:
