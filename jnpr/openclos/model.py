@@ -36,7 +36,7 @@ class ManagedElement(object):
 class Pod(ManagedElement, Base):
     __tablename__ = 'pod'
     id = Column(String(60), primary_key=True)
-    name = Column(String(100), index=True, nullable = False)
+    name = Column(String(255), index=True, nullable = False)
     description = Column(String(256))
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
@@ -267,7 +267,7 @@ class CablingPlan(ManagedElement, Base):
 class Device(ManagedElement, Base):
     __tablename__ = 'device'
     id = Column(String(60), primary_key=True)
-    name = Column(String(100), nullable = False)
+    name = Column(String(255), nullable = False)
     username = Column(String(100), default = 'root')
     encryptedPassword = Column(String(100)) # 2-way encrypted
     role = Column(Enum('spine', 'leaf'))
