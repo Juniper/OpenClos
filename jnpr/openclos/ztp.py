@@ -13,6 +13,8 @@ import util
 from model import Pod
 from dao import Dao
 from writer import DhcpConfWriter
+from propLoader import OpenClosProperty
+
 from sqlalchemy.orm import exc
 
 
@@ -26,7 +28,7 @@ class ZtpServer():
     def __init__(self, conf = {}, templateEnv = None, daoClass = Dao):
         global logger
         if any(conf) == False:
-            self.__conf = util.loadConfig(appName = moduleName)
+            self.__conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self.__conf = conf
 

@@ -156,6 +156,7 @@ class AbstractDao(SingletonBase):
 
 class Dao(AbstractDao):
     def _getDbUrl(self):
-        return util.getDbUrl()
+        from propLoader import OpenClosProperty
+        return OpenClosProperty().getDbUrl()
     
     

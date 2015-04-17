@@ -21,7 +21,8 @@ from dao import Dao
 from report import ResourceAllocationReport, L2Report, L3Report
 from l3Clos import L3ClosMediation
 from ztp import ZtpServer
-from jnpr.openclos.util import isSqliteUsed
+from util import isSqliteUsed
+from propLoader import OpenClosProperty
 
 moduleName = 'rest'
 logger = None
@@ -98,7 +99,8 @@ class RestServer():
     def __init__(self, conf = {}, daoClass = Dao):
         global logger
         if any(conf) == False:
-            self.__conf = util.loadConfig(appName = moduleName)
+            self.__conf = OpenClosProperty(appName = moduleName).getProperties()
+
             global webServerRoot
             webServerRoot = self.__conf['outputDir']
         else:

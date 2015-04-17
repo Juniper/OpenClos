@@ -7,11 +7,11 @@ import logging
 from sqlalchemy.orm import exc
 import concurrent.futures
 
-import util
 from dao import Dao
-from model import Pod, Device, InterfaceLogical
+from model import Pod, Device
 from devicePlugin import L2DataCollector, L3DataCollector
 from writer import CablingPlanWriter
+from propLoader import OpenClosProperty
 
 moduleName = 'report'
 logger = None
@@ -21,7 +21,7 @@ class Report(object):
     def __init__(self, conf = {}, daoClass = Dao):
         global logger
         if any(conf) == False:
-            self._conf = util.loadConfig(appName = moduleName)
+            self._conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self._conf = conf
 

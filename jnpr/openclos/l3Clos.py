@@ -16,7 +16,9 @@ from sqlalchemy.orm import exc
 
 from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup
 from dao import Dao
+from propLoader import OpenClosProperty
 import util
+
 from writer import ConfigWriter, CablingPlanWriter
 from jinja2 import Environment, PackageLoader
 import logging
@@ -30,7 +32,7 @@ class L3ClosMediation():
     def __init__(self, conf = {}, daoClass = Dao):
         global logger
         if any(conf) == False:
-            self._conf = util.loadConfig(appName = moduleName)
+            self._conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self._conf = conf
 

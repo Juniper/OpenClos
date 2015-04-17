@@ -22,66 +22,7 @@ TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT=5
 TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL=30 # in seconds
 TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY=40 # in seconds
 
-conf = None
-
-def loadConfig(confFile = 'openclos.yaml', appName = None):
-    '''
-    Loads global configuration and creates hash 'conf'
-    '''
-    global conf
     
-    if conf:
-        return conf
-    
-    try:
-        confStream = open(os.path.join(configLocation, confFile), 'r')
-        conf = yaml.load(confStream)
-        if conf is not None:
-            if 'dbUrl' in conf:
-                if 'dbDialect' in conf:
-                    print "Warning: dbUrl and dbDialect both exist. dbDialect ignored"
-                # dbUrl is used by sqlite only
-                conf['dbUrl'] = fixSqlliteDbUrlForRelativePath(conf['dbUrl'])
-            elif 'dbDialect' in conf:
-                db_pass = Cryptic ().decrypt ( conf['dbPassword'] )
-                conf['dbUrl'] = conf['dbDialect'] + '://' + conf['dbUser'] + ':' + db_pass + '@' + conf['dbHost'] + '/' + conf['dbName'] 
-            if 'outputDir' in conf:
-                conf['outputDir'] = fixOutputDirForRelativePath(conf['outputDir'])
-        
-    except (OSError, IOError) as e:
-        print "File error:", e
-        return None
-    except (yaml.scanner.ScannerError) as e:
-        print "YAML error:", e
-        confStream.close()
-        return None
-    finally:
-        pass
-    
-    loadLoggingConfig(appName = appName)
-    return conf
-
-def fixOutputDirForRelativePath(outputDir):
-    # /absolute-path/out
-    # relative-path/out
-    if (os.path.abspath(outputDir) != outputDir):
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), outputDir)
-    else:
-        return outputDir
-
-def fixSqlliteDbUrlForRelativePath(dbUrl):
-    # sqlite:////absolute-path/sqllite3.db
-    # sqlite:///relative-path/sqllite3.db
-    match = re.match(r"sqlite:(\/+)(.*)\/(.*)", dbUrl)
-    if match is not None:
-        isRelative = (len(match.group(1)) == 3)
-        if isRelative:
-            relativeDir = match.group(2)
-            absoluteDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), relativeDir)
-            dbUrl = 'sqlite:///' + absoluteDir + os.path.sep + match.group(3)
-
-    return dbUrl
-
 def loadClosDefinition(closDefination = os.path.join(configLocation, 'closTemplate.yaml')):
     '''
     Loads clos definition from yaml file
@@ -273,6 +214,7 @@ def enumerateRoutableIpv4Addresses():
                     addrs.append(ipv4AddrInfo['addr'])
     return addrs
 
+
 def loadLoggingConfig(logConfFile = 'logging.yaml', appName = None):
     logConf = getLoggingHandlers(logConfFile, appName)
     if logConf is not None:
@@ -313,6 +255,7 @@ def removeLoggingHandler(name, logConf):
         logger['handlers'].remove(name)
 
     logConf['handlers'].pop(name)
+
 
 def getImageNameForDevice(pod, device):
     if device.role == 'spine':
@@ -396,14 +339,6 @@ def createOutFolder(conf, ipFabric):
 def deleteOutFolder(conf, ipFabric):
     path = getOutFolderPath(conf, ipFabric)
     shutil.rmtree(path, ignore_errors=True)
-
-def getDbUrl():
-    if conf is None:
-        raise ValueError('Configuration is not loaded using "util.loadConfig"')
-    elif conf.get('dbUrl') is None or conf.get('dbUrl')  == '':
-        raise ValueError('DB Url is empty')
-    
-    return conf['dbUrl'] 
     
 def stripNetmaskFromIpString(ipString):
     pos = ipString.find('/')
