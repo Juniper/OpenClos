@@ -16,6 +16,7 @@ import sys
 import subprocess
 import concurrent.futures
 from devicePlugin import TwoStageConfigurator 
+from propLoader import OpenClosProperty
 
 moduleName = 'trapd'
 logger = None
@@ -93,7 +94,7 @@ class TrapReceiver():
     def __init__(self, conf = {}):
         global logger
         if conf is None or any(conf) == False:
-            self.__conf = util.loadConfig(appName = moduleName)
+            self.__conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self.__conf = conf
 

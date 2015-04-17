@@ -167,7 +167,6 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def list_all_yaml_files ( self, *args ):
         ret_list = []
-        util.loadConfig ()
         for conf_file in os.listdir ( util.configLocation ):
             if ( os.path.isfile ( os.path.join ( util.configLocation, conf_file ) ) ):
                 m = re.search ( ".yaml", conf_file )

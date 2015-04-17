@@ -19,13 +19,6 @@ class TestFunctions(unittest.TestCase):
     def tearDown(self):
         conf = None
 
-    def testLoadDefaultConfig(self):
-        self.assertIsNotNone(loadConfig())
-    '''
-    def testLoadNonExistingConfig(self):
-        __conf = None
-        self.assertIsNone(loadConfig(confFile = 'non-existing.yaml'))
-    '''
     def testGetPortNamesForDeviceFamilyNullConf(self):
         with self.assertRaises(ValueError) as ve:
             getPortNamesForDeviceFamily(None, None)
@@ -83,15 +76,6 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual('et-0/0/0', portNames[10])        
         self.assertEqual('et-0/0/3', portNames[13])        
 
-    def testFixSqlliteDbUrlForRelativePath(self):
-        dbUrl = fixSqlliteDbUrlForRelativePath('sqlite:////absolute-path/sqllite3.db')
-        self.assertEqual(5, dbUrl.count('/'))
-        dbUrl = fixSqlliteDbUrlForRelativePath('sqlite:///relative-path/sqllite3.db')
-        if isPlatformWindows():
-            self.assertTrue("C:\\" in dbUrl)
-        else:
-            self.assertTrue(dbUrl.count('/') > 4)
-            
     def testGetMgmtIps(self):
         mgmtIpList = ["1.2.3.1/24", "1.2.3.2/24", "1.2.3.3/24", "1.2.3.4/24", "1.2.3.5/24", "1.2.3.6/24"] 
         mgmtIps = getMgmtIps("1.2.3.1/24", None, None, 6)
@@ -183,15 +167,6 @@ class TestFunctions(unittest.TestCase):
         path = getOutFolderPath({'outputDir': '/var/lib/openclos'}, pod)
         
         self.assertEquals('/var/lib/openclos/'+pod.id+'-'+pod.name, path)
-        
-    def testGetDbUrl(self):
-        jnpr.openclos.util.conf = None
-        with self.assertRaises(ValueError) as ve:
-            getDbUrl()
-        
-        loadConfig()
-        self.assertTrue('sqlite:' in getDbUrl())
-
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

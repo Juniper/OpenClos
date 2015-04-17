@@ -19,7 +19,9 @@ from model import Pod, Device, InterfaceDefinition, AdditionalLink, BgpLink
 from exception import DeviceError
 from common import SingletonBase
 from l3Clos import L3ClosMediation
+from propLoader import OpenClosProperty
 import util
+
 from netaddr import IPAddress, IPNetwork
 
 moduleName = 'devicePlugin'
@@ -65,7 +67,7 @@ class DeviceDataCollectorNetconf(object):
     def __init__(self, deviceId, conf = {}, daoClass = Dao):
         global logger
         if any(conf) == False:
-            self._conf = util.loadConfig(appName = moduleName)
+            self._conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self._conf = conf
         logger = logging.getLogger(moduleName)
