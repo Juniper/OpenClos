@@ -13,17 +13,15 @@ import shutil
 from netaddr import IPNetwork
 import netifaces
 import logging.config
-from crypt import Cryptic
 
-#__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
-configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
+from propLoader import propertyFileLocation
 
 TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT=5
 TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL=30 # in seconds
 TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY=40 # in seconds
 
     
-def loadClosDefinition(closDefination = os.path.join(configLocation, 'closTemplate.yaml')):
+def loadClosDefinition(closDefination = os.path.join(propertyFileLocation, 'closTemplate.yaml')):
     '''
     Loads clos definition from yaml file
     '''
@@ -225,7 +223,7 @@ def getLoggingHandlers(logConfFile = 'logging.yaml', appName = None):
     Loads global configuration and creates hash 'logConf'
     '''
     try:
-        logConfStream = open(os.path.join(configLocation, logConfFile), 'r')
+        logConfStream = open(os.path.join(propertyFileLocation, logConfFile), 'r')
         logConf = yaml.load(logConfStream)
 
         if logConf is not None:

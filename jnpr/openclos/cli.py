@@ -37,6 +37,7 @@ import yaml
 
 # openclos classes
 import util
+import propLoader
 
 # CLI related classes
 from cli_parser import CLIUtil
@@ -453,7 +454,7 @@ if __name__ == '__main__':
     # keylogger = KeyLogging ()
     # keylogger.start ()
 
-    openclosConfFile = os.path.join ( util.configLocation,
+    openclosConfFile = os.path.join ( propLoader.propertyFileLocation,
                                       'openclos.yaml' )
     yaml_file_stream = open ( openclosConfFile, 'r' )
     cli_config = yaml.load ( yaml_file_stream )

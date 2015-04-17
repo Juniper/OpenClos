@@ -7,7 +7,6 @@ Created on Apr 16, 2015
 import os
 import yaml
 import re
-import logging
 
 from crypt import Cryptic
 import util

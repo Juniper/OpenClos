@@ -16,7 +16,7 @@ from sqlalchemy.orm import exc
 
 from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup
 from dao import Dao
-from propLoader import OpenClosProperty
+from propLoader import propertyFileLocation, OpenClosProperty
 import util
 
 from writer import ConfigWriter, CablingPlanWriter
@@ -43,7 +43,7 @@ class L3ClosMediation():
         self._templateEnv.keep_trailing_newline = True
         self.isZtpStaged = util.isZtpStaged(self._conf)
 
-    def loadClosDefinition(self, closDefination = os.path.join(util.configLocation, 'closTemplate.yaml')):
+    def loadClosDefinition(self, closDefination = os.path.join(propertyFileLocation, 'closTemplate.yaml')):
         '''
         Loads clos definition from yaml file and creates pod object
         '''
@@ -167,7 +167,7 @@ class L3ClosMediation():
         if inventoryDict is not None:
             inventoryData = inventoryDict
         elif 'inventory' in podDict and podDict['inventory'] is not None:
-            json_inventory = open(os.path.join(util.configLocation, podDict['inventory']))
+            json_inventory = open(os.path.join(propertyFileLocation, podDict['inventory']))
             inventoryData = json.load(json_inventory)
             json_inventory.close()
 
