@@ -5,10 +5,10 @@ Created on Oct 30, 2014
 '''
 import unittest
 
-import jnpr.openclos.util
 from jnpr.openclos.devicePlugin import DeviceDataCollectorNetconf, L2DataCollector, L3DataCollector, DeviceOperationInProgressCache, TwoStageConfigurator 
 from jnpr.openclos.exception import DeviceError
 from jnpr.openclos.model import Device, InterfaceDefinition, InterfaceLogical, BgpLink
+from jnpr.openclos import propLoader
 from test_dao import InMemoryDao 
 
 from jnpr.junos.exception import ConnectError
@@ -302,7 +302,7 @@ class TestL2DataCollector(unittest.TestCase):
 
 class TestDataCollectorInProgressCache(unittest.TestCase):
     def setUp(self):
-        jnpr.openclos.util.loadLoggingConfig()
+        propLoader.loadLoggingConfig()
 
     def testSingleton(self):
         cache1 = DeviceOperationInProgressCache.getInstance()

@@ -21,8 +21,7 @@ from dao import Dao
 from report import ResourceAllocationReport, L2Report, L3Report
 from l3Clos import L3ClosMediation
 from ztp import ZtpServer
-from util import isSqliteUsed
-from propLoader import OpenClosProperty
+from propLoader import OpenClosProperty, DeviceSku
 
 moduleName = 'rest'
 logger = None
@@ -129,7 +128,7 @@ class RestServer():
         # Create a single instance of l3Report as it holds thread-pool
         # for device connection. Don't create l3Report multiple times 
         self.l3Report = L3Report(self.__conf, daoClass)
-
+        self.deviceSku = DeviceSku()
         
     def initRest(self):
         self.addRoutes(self.baseUrl)
@@ -482,35 +481,9 @@ class RestServer():
         return config
     
     def getOpenClosConfigParams(self, dbSession):
-        supportedDevices = []
-        for device in self.__conf['deviceFamily']:
-            port = util.getPortNamesForDeviceFamily(device, self.__conf['deviceFamily'])
-            deviceDetail = {}
-            if len(port['uplinkPorts']) > 0:
-                deviceDetail['family'] = device
-                deviceDetail['uplinkStart'] = port['uplinkPorts'][0]
-                deviceDetail['uplinkEnd'] = port['uplinkPorts'][len(port['uplinkPorts'])-1]
-                deviceDetail['role'] = 'leaf'
-                
-            if len(port['downlinkPorts']) > 0:
-                deviceDetail['downlinkStart'] = port['uplinkPorts'][0]
-                deviceDetail['downlinkEnd'] = port['uplinkPorts'][len(port['uplinkPorts'])-1]
-                deviceDetail['role'] = 'leaf'
-              
-            if len(port['uplinkPorts'])==0 and len(port['downlinkPorts']) == 0:
-                if  device == 'qfx5100-24q-2p':
-                    deviceDetail['role'] = 'spine'
-                    deviceDetail['family'] = device
-                    deviceDetail['downlinkStart'] = port['ports'][0]
-                    deviceDetail['downlinkEnd'] = port['ports'][len(port['ports'])-1]
-                    deviceDetail['uplinkStart'] = ''
-                    deviceDetail['uplinkEnd'] = ''
-                
-            supportedDevices.append(deviceDetail)
-            
         confValues = {}
         confValues.update({'dbUrl': self.__conf['dbUrl']})
-        confValues.update({'supportedDevices' : supportedDevices })
+        confValues.update({'supportedDevices' : self.deviceSku.skuDetail })
         confValues.update({'dotColors': self.__conf['DOT']['colors'] })
         confValues.update({'httpServer' : self.__conf['httpServer']})
         confValues.update({'snmpTrap' : self.__conf['snmpTrap']})

@@ -315,9 +315,11 @@ class TestL3Clos(unittest.TestCase):
 
     def testCreateAccessInterface(self):
         configlet = self.l3ClosMediation._createAccessPortInterfaces('qfx5100-48s-6q')
-        self.assertEquals(48, configlet.count('family ethernet-switching'))
+        self.assertEquals(96, configlet.count('family ethernet-switching'))
         self.assertTrue('xe-0/0/0' in configlet)
         self.assertTrue('xe-0/0/47' in configlet)
+        self.assertTrue('ge-0/0/0' in configlet)
+        self.assertTrue('ge-0/0/47' in configlet)
 
     def testCreateAccessInterfaceEx4300(self):
         self._conf['deviceFamily']['ex4300-48p'] = {

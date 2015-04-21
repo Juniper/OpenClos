@@ -12,8 +12,6 @@ import datetime
 import shutil
 from netaddr import IPNetwork
 import netifaces
-import logging.config
-
 from propLoader import propertyFileLocation
 
 TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT=5
@@ -37,87 +35,6 @@ def loadClosDefinition(closDefination = os.path.join(propertyFileLocation, 'clos
         stream.close()
     finally:
         pass
-
-
-def getSupportedDeviceFamily(conf):
-    '''
-    :param dict: conf -- device family configuration in dict format, not the whole conf, conf['deviceFamily']
-    :returns list: device model/family (exactly as it is appeared on junos)
-
-    '''
-    if conf is None:
-        raise ValueError("Missing configuration data")
-    return conf.keys()
-    
-
-def getPortNamesForDeviceFamily(deviceFamily, conf):
-    '''
-    returns all port names for a device family grouped by uplink/downlink
-    ex - xe-0/0/0, xe-0/0/1 ... xe-0/0/47
-    For some device family (qfx5100-24q-2p) there is no specific uplink/downlink, 
-    for those it is just a list in the dict.
-    
-    :param str: deviceFamily -- example qfx5100-24q-2p
-    :param dict: conf -- device family configuration in dict format, example in openclos.yaml
-    :returns dict: portNames
-        uplinkPorts: 
-        downlinkPorts:
-        ports: list of ports that are not tagged, example qfx5100-24q-2p 
-    '''
-
-    if conf is None:
-        raise ValueError("Missing configuration data")
-    
-    if deviceFamily not in conf:
-        raise ValueError("Unknown device family: %s" % (deviceFamily))
-    
-    portMapping = conf[deviceFamily]
-    portNames = {'uplinkPorts': [], 'downlinkPorts': [], 'ports': []}
-    if 'uplinkPorts' in portMapping:
-        portNames['uplinkPorts'] = expandPortName(portMapping['uplinkPorts'])
-    if 'downlinkPorts' in portMapping:
-        portNames['downlinkPorts'] = expandPortName(portMapping['downlinkPorts'])
-    if 'ports' in portMapping:
-        portNames['ports'] = expandPortName(portMapping['ports'])
-    return portNames
-
-
-portNameRegx = re.compile(r"([a-z]+-\d\/\d\/\[)(\d{1,3})-(\d{1,3})(\])")
-def expandPortName(portName):
-    '''    
-    Expands portname regular expression to a list
-    ex - [xe-0/0/0, xe-0/0/1 ... xe-0/0/47]
-    Currently it does not expands all junos regex, only few limited 
-
-    Keyword arguments:
-    portName -- port name in junos regular expression. 
-                it could be a single string in format: xe-0/0/[0-10]
-                or it could be a list of strings where each string is in format: ['xe-0/0/[0-10]', 'et-0/0/[0-3]']
-    '''
-    if not portName or portName == '':
-        return []
-    
-    portList = []
-    if isinstance(portName, list) == True:
-        portList = portName
-    else:
-        portList.append(portName)
-    
-    portNames = []
-    for port in portList:
-        match = portNameRegx.match(port)
-        if match is None:
-            raise ValueError("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (port))
-        
-        preRegx = match.group(1)    # group index starts with 1, NOT 0
-        postRegx = match.group(4)
-        startNum = int(match.group(2))
-        endNum = int(match.group(3))
-        
-        for id in range(startNum, endNum + 1):
-            portNames.append(preRegx[:-1] + str(id) + postRegx[1:])
-        
-    return portNames
 
 def isPlatformUbuntu():
     #return 'ubuntu' in platform.platform().lower()
@@ -211,49 +128,6 @@ def enumerateRoutableIpv4Addresses():
                 for ipv4AddrInfo in ipv4AddrInfoList:
                     addrs.append(ipv4AddrInfo['addr'])
     return addrs
-
-
-def loadLoggingConfig(logConfFile = 'logging.yaml', appName = None):
-    logConf = getLoggingHandlers(logConfFile, appName)
-    if logConf is not None:
-        logging.config.dictConfig(logConf)
-    
-def getLoggingHandlers(logConfFile = 'logging.yaml', appName = None):
-    '''
-    Loads global configuration and creates hash 'logConf'
-    '''
-    try:
-        logConfStream = open(os.path.join(propertyFileLocation, logConfFile), 'r')
-        logConf = yaml.load(logConfStream)
-
-        if logConf is not None:
-            handlers = logConf.get('handlers')
-            if handlers is not None:
-                
-                if appName is None:
-                    removeLoggingHandler('file', logConf)
-                                                        
-                for handlerName, handlerDict in handlers.items():
-                    filename = handlerDict.get('filename')
-                    if filename is not None:
-                        filename = filename.replace('%(appName)', appName)
-                        handlerDict['filename'] = filename
-                            
-            return logConf
-    except (OSError, IOError) as e:
-        print "File error:", e
-    except (yaml.scanner.ScannerError) as e:
-        print "YAML error:", e
-    finally:
-        logConfStream.close()
-    
-    
-def removeLoggingHandler(name, logConf):
-    for key, logger in logConf['loggers'].iteritems():
-        logger['handlers'].remove(name)
-
-    logConf['handlers'].pop(name)
-
 
 def getImageNameForDevice(pod, device):
     if device.role == 'spine':
