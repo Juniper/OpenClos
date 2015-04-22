@@ -275,7 +275,7 @@ class TestRest(unittest.TestCase):
         self.assertEqual(200, response.status_int)
         self.assertTrue(response.json['OpenClosConf']['httpServer'].has_key('port'))
         self.assertTrue(response.json['OpenClosConf']['snmpTrap']['openclos_trap_group'].has_key('port'))   
-        self.assertEquals(11, len(response.json['OpenClosConf']['supportedDevices'].keys()))
+        self.assertEquals(14, len(response.json['OpenClosConf']['supportedDevices']))
         
     def testdeleteIpFabric(self):
         with self.__dao.getReadWriteSession() as session:

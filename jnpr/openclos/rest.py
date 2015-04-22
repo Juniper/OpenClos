@@ -98,36 +98,36 @@ class RestServer():
     def __init__(self, conf = {}, daoClass = Dao):
         global logger
         if any(conf) == False:
-            self.__conf = OpenClosProperty(appName = moduleName).getProperties()
+            self._conf = OpenClosProperty(appName = moduleName).getProperties()
 
             global webServerRoot
-            webServerRoot = self.__conf['outputDir']
+            webServerRoot = self._conf['outputDir']
         else:
-            self.__conf = conf
+            self._conf = conf
         logger = logging.getLogger(moduleName)
         
         self.__daoClass = daoClass
         self.__dao = daoClass.getInstance()
         self.openclosDbSessionPlugin = OpenclosDbSessionPlugin(daoClass)
         
-        if 'httpServer' in self.__conf and 'ipAddr' in self.__conf['httpServer'] and self.__conf['httpServer']['ipAddr'] is not None:
-            self.host = self.__conf['httpServer']['ipAddr']
+        if 'httpServer' in self._conf and 'ipAddr' in self._conf['httpServer'] and self._conf['httpServer']['ipAddr'] is not None:
+            self.host = self._conf['httpServer']['ipAddr']
         else:
             self.host = 'localhost'
 
-        if 'httpServer' in self.__conf and 'port' in self.__conf['httpServer']:
-            self.port = self.__conf['httpServer']['port']
+        if 'httpServer' in self._conf and 'port' in self._conf['httpServer']:
+            self.port = self._conf['httpServer']['port']
         else:
             self.port = 8080
         self.baseUrl = 'http://%s:%d' % (self.host, self.port)
 
-        self.report = ResourceAllocationReport(self.__conf, daoClass)
+        self.report = ResourceAllocationReport(self._conf, daoClass)
         # Create a single instance of l2Report as it holds thread-pool
         # for device connection. Don't create l2Report multiple times 
-        self.l2Report = L2Report(self.__conf, daoClass)
+        self.l2Report = L2Report(self._conf, daoClass)
         # Create a single instance of l3Report as it holds thread-pool
         # for device connection. Don't create l3Report multiple times 
-        self.l3Report = L3Report(self.__conf, daoClass)
+        self.l3Report = L3Report(self._conf, daoClass)
         self.deviceSku = DeviceSku()
         
     def initRest(self):
@@ -152,7 +152,7 @@ class RestServer():
         if logger.isEnabledFor(logging.DEBUG):
             debugRest = True
 
-        if util.isSqliteUsed(self.__conf):
+        if util.isSqliteUsed(self._conf):
             bottle.run(self.app, host=self.host, port=self.port, debug=debugRest)
         else:
             bottle.run(self.app, host=self.host, port=self.port, debug=debugRest, server='paste')
@@ -481,12 +481,21 @@ class RestServer():
         return config
     
     def getOpenClosConfigParams(self, dbSession):
+        supportedDevices = []
+        
+        for deviceFamily, value in self.deviceSku.skuDetail.iteritems():
+            for role, ports in value.iteritems():
+                uplinks = ports.get('uplinkPorts')
+                downlinks = ports.get('downlinkPorts')
+                deviceDetail = {'family': deviceFamily, 'role': role, 'uplinkPorts': uplinks, 'downlinkPorts': downlinks}                
+                supportedDevices.append(deviceDetail)
+            
         confValues = {}
-        confValues.update({'dbUrl': self.__conf['dbUrl']})
-        confValues.update({'supportedDevices' : self.deviceSku.skuDetail })
-        confValues.update({'dotColors': self.__conf['DOT']['colors'] })
-        confValues.update({'httpServer' : self.__conf['httpServer']})
-        confValues.update({'snmpTrap' : self.__conf['snmpTrap']})
+        confValues.update({'dbUrl': self._conf['dbUrl']})
+        confValues.update({'supportedDevices' :  supportedDevices})
+        confValues.update({'dotColors': self._conf['DOT']['colors'] })
+        confValues.update({'httpServer' : self._conf['httpServer']})
+        confValues.update({'snmpTrap' : self._conf['snmpTrap']})
 
         return {'OpenClosConf' : confValues }
                     
@@ -498,7 +507,7 @@ class RestServer():
             if pod is None:
                 raise bottle.HTTPError(400, exception = RestError(0, "POST body can not be empty"))
 
-        l3ClosMediation = L3ClosMediation(self.__conf, self.__daoClass)
+        l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
         ipFabric = self.getPodFromDict(pod)
         ipFabricName = ipFabric.pop('name')
         fabricDevices = self.getDevDictFromDict(pod)
@@ -516,7 +525,7 @@ class RestServer():
         
     def createCablingPlan(self, dbSession, ipFabricId):
         try:
-            l3ClosMediation = L3ClosMediation(self.__conf, self.__daoClass)
+            l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
             if l3ClosMediation.createCablingPlan(ipFabricId) is True:
                 return bottle.HTTPResponse(status=200)
         except ValueError:
@@ -524,7 +533,7 @@ class RestServer():
 
     def createDeviceConfiguration(self, dbSession, ipFabricId):
         try:
-            l3ClosMediation = L3ClosMediation(self.__conf, self.__daoClass)
+            l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
             if l3ClosMediation.createDeviceConfig(ipFabricId) is True:
                 return bottle.HTTPResponse(status=200)
         except ValueError:
@@ -544,7 +553,7 @@ class RestServer():
             if inPod is None:
                 raise bottle.HTTPError(400, exception = RestError(0, "POST body can not be empty"))
 
-        l3ClosMediation = L3ClosMediation(self.__conf, self.__daoClass)
+        l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
         ipFabric = self.getPodFromDict(inPod)
         #ipFabric['id'] = ipFabricId
         #ipFabric['uri'] = bottle.request.url
@@ -564,7 +573,7 @@ class RestServer():
         ipFabric = self.report.getIpFabric(dbSession, ipFabricId)
         if ipFabric is not None:
             self.__dao.deleteObject(dbSession, ipFabric)
-            util.deleteOutFolder(self.__conf, ipFabric)
+            util.deleteOutFolder(self._conf, ipFabric)
             logger.debug("IpFabric with id: %s deleted" % (ipFabricId))
         else:
             raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
