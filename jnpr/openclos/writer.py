@@ -83,9 +83,6 @@ class CablingPlanWriter(WriterBase):
         self.l2ReportTemplate = self.templateEnv.get_template(self._pod.topologyType + 'L2Report.json')
         # load L3Report template
         self.l3ReportTemplate = self.templateEnv.get_template(self._pod.topologyType + 'L3Report.json')
-        # validity check
-        if 'deviceFamily' not in self._conf:
-            raise ValueError("No deviceFamily found in configuration file")
 
     def writeJSON(self):
         if self._pod.topologyType == 'threeStage':

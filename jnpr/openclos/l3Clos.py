@@ -16,7 +16,7 @@ from sqlalchemy.orm import exc
 
 from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup
 from dao import Dao
-from propLoader import OpenClosProperty
+from propLoader import propertyFileLocation, OpenClosProperty, DeviceSku
 import util
 
 from writer import ConfigWriter, CablingPlanWriter
@@ -42,8 +42,9 @@ class L3ClosMediation():
         self._templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
         self._templateEnv.keep_trailing_newline = True
         self.isZtpStaged = util.isZtpStaged(self._conf)
+        self.deviceSku = DeviceSku()
 
-    def loadClosDefinition(self, closDefination = os.path.join(util.configLocation, 'closTemplate.yaml')):
+    def loadClosDefinition(self, closDefination = os.path.join(propertyFileLocation, 'closTemplate.yaml')):
         '''
         Loads clos definition from yaml file and creates pod object
         '''
@@ -98,8 +99,8 @@ class L3ClosMediation():
             device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, None, pod, deployStatus, serialNumber)
             devices.append(device)
             
-            portNames = util.getPortNamesForDeviceFamily(device.family, self._conf['deviceFamily'])
-            for name in portNames['ports']:     # spine does not have any uplink/downlink marked, it is just ports
+            portNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'spine')
+            for name in portNames['downlinkPorts']:     # spine does not have any uplink/downlink marked, it is just ports
                 ifd = InterfaceDefinition(name, device, 'downlink')
                 interfaces.append(ifd)
         self._dao.createObjects(session, devices)
@@ -124,7 +125,7 @@ class L3ClosMediation():
                     interfaces.append(InterfaceDefinition('uplink-' + str(i), device, 'uplink'))
 
             else:
-                portNames = util.getPortNamesForDeviceFamily(device.family, self._conf['deviceFamily'])
+                portNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')
                 interfaceCount = 0
                 for name in portNames['uplinkPorts']:   # all uplink IFDs towards spine
                     interfaces.append(InterfaceDefinition(name, device, 'uplink'))
@@ -167,7 +168,7 @@ class L3ClosMediation():
         if inventoryDict is not None:
             inventoryData = inventoryDict
         elif 'inventory' in podDict and podDict['inventory'] is not None:
-            json_inventory = open(os.path.join(util.configLocation, podDict['inventory']))
+            json_inventory = open(os.path.join(propertyFileLocation, podDict['inventory']))
             inventoryData = json.load(json_inventory)
             json_inventory.close()
 
@@ -637,7 +638,7 @@ class L3ClosMediation():
         accessInterface = self._templateEnv.get_template('accessInterface.txt')
         ifdNames = []
 
-        for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self._conf['deviceFamily'])['downlinkPorts']:
+        for ifdName in self.deviceSku.getPortNamesForDeviceFamily(deviceFamily, 'leaf')['downlinkPorts']:
             ifdNames.append(ifdName)
 
         return accessInterface.render(ifdNames=ifdNames)
@@ -842,7 +843,7 @@ class L3ClosMediation():
                 continue
             
             ifdNames = []
-            for ifdName in util.getPortNamesForDeviceFamily(deviceFamily, self._conf['deviceFamily'])['downlinkPorts']:
+            for ifdName in self.deviceSku.getPortNamesForDeviceFamily(deviceFamily, 'leaf')['downlinkPorts']:
                 ifdNames.append(ifdName)
 
             leafSettings[deviceFamily].config = leafTemplate.render(deviceFamily = deviceFamily, oob = outOfBandNetworkParams, 

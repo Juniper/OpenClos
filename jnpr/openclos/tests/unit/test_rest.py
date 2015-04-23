@@ -274,7 +274,8 @@ class TestRest(unittest.TestCase):
         response = self.restServerTestApp.get('/openclos/conf')
         self.assertEqual(200, response.status_int)
         self.assertTrue(response.json['OpenClosConf']['httpServer'].has_key('port'))
-        self.assertTrue(response.json['OpenClosConf']['snmpTrap']['openclos_trap_group'].has_key('port'))       
+        self.assertTrue(response.json['OpenClosConf']['snmpTrap']['openclos_trap_group'].has_key('port'))   
+        self.assertEquals(14, len(response.json['OpenClosConf']['supportedDevices']))
         
     def testdeleteIpFabric(self):
         with self.__dao.getReadWriteSession() as session:

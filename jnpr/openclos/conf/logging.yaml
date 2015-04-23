@@ -24,6 +24,9 @@ loggers:
     dao : 
         level: INFO
         handlers: [console, file] 
+    propLoader : 
+        level: INFO
+        handlers: [console, file] 
 formatters:
     detailed:
         format: '%(asctime)s [%(name)-12s] [%(levelname)-8s] [%(thread)8x] %(message)s'

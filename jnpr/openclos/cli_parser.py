@@ -24,6 +24,7 @@ import yaml
 
 # openclos classes
 import util
+import propLoader
 
 # cli related classes
 from cli_handle_impl import CLIImplementor
@@ -45,7 +46,7 @@ class CLICommand:
 class CLIUtil:
 
     def __init__ ( self ):
-        commandConfFile = os.path.join ( util.configLocation, 
+        commandConfFile = os.path.join ( propLoader.propertyFileLocation, 
                                          'cliCommands.yaml' )
         self.yaml_file_stream = open ( commandConfFile, 'r' )
         raw_graph = yaml.load ( self.yaml_file_stream )

@@ -19,7 +19,7 @@ from model import Pod, Device, InterfaceDefinition, AdditionalLink, BgpLink
 from exception import DeviceError
 from common import SingletonBase
 from l3Clos import L3ClosMediation
-from propLoader import OpenClosProperty
+from propLoader import OpenClosProperty, DeviceSku
 import util
 
 from netaddr import IPAddress, IPNetwork
@@ -76,6 +76,8 @@ class DeviceDataCollectorNetconf(object):
         self.pod = None
         self.deviceId = deviceId
         self.deviceConnectionHandle = None
+        self.deviceSku = DeviceSku()
+
 
     def manualInit(self):
         self._dao = self.daoClass.getInstance()
@@ -268,7 +270,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         if not lldpData:
             return lldpData
         
-        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self._conf['deviceFamily'])['uplinkPorts']
+        uplinkNames = self.deviceSku.getPortNamesForDeviceFamily(deviceFamily, 'leaf')['uplinkPorts']
 
         filteredNames = set(uplinkNames).intersection(set(lldpData.keys()))
         filteredUplinks = {name:lldpData[name] for name in filteredNames}
@@ -597,7 +599,7 @@ class TwoStageConfigurator(L2DataCollector):
             logger.debug('NO LLDP data found for device: %s' % (self.deviceIp))
             return lldpData
 
-        uplinkNames = util.getPortNamesForDeviceFamily(deviceFamily, self._conf['deviceFamily'])['uplinkPorts']
+        uplinkNames = self.deviceSku.getPortNamesForDeviceFamily(deviceFamily, 'leaf')['uplinkPorts']
         upLinks = []
         for link in lldpData.values():
             if link['port1'] in uplinkNames:
@@ -729,7 +731,7 @@ class TwoStageConfigurator(L2DataCollector):
             return
 
         updateList = []
-        uplinkNamesBasedOnDeviceFamily = util.getPortNamesForDeviceFamily(device.family, self._conf['deviceFamily'])['uplinkPorts']
+        uplinkNamesBasedOnDeviceFamily = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['uplinkPorts']
         # hack :( needed to keep the sequence proper in case2, if device changed from ex to qfx
         self.markAllUplinkIfdsToUplink_x(device)
         

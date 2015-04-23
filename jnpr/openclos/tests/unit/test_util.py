@@ -19,63 +19,6 @@ class TestFunctions(unittest.TestCase):
     def tearDown(self):
         conf = None
 
-    def testGetPortNamesForDeviceFamilyNullConf(self):
-        with self.assertRaises(ValueError) as ve:
-            getPortNamesForDeviceFamily(None, None)
-
-    def testGetPortNamesForDeviceFamilyUnknownFamily(self):
-        with self.assertRaises(ValueError) as ve:
-            getPortNamesForDeviceFamily('unknown', {'qfx-5100-24q-2p': {}})
-        error = ve.exception.message
-        self.assertTrue('unknown' in error)
-        
-    def testGetPortNamesForDeviceFamily24Q(self):
-        portNames = getPortNamesForDeviceFamily('qfx-5100-24q-2p', {'qfx-5100-24q-2p': {'ports':'et-0/0/[0-23]'}})
-        self.assertEqual(0, len(portNames['uplinkPorts']))
-        self.assertEqual(0, len(portNames['downlinkPorts']))
-        self.assertEqual(24, len(portNames['ports']))
-
-    def testGetPortNamesForDeviceFamily48S(self):
-        portNames = getPortNamesForDeviceFamily('qfx-5100-48s-6q', {'qfx-5100-48s-6q': {'uplinkPorts':'et-0/0/[48-53]', 'downlinkPorts': 'xe-0/0/[0-47]'}})
-        self.assertEqual(6, len(portNames['uplinkPorts']))
-        self.assertEqual(48, len(portNames['downlinkPorts']))
-        self.assertEqual(0, len(portNames['ports']))
-        
-    def testGetPortNamesForDeviceFamily96S(self):
-        portNames = getPortNamesForDeviceFamily('qfx5100-96s-8q', {'qfx5100-96s-8q': {'uplinkPorts':'et-0/0/[96-103]', 'downlinkPorts': 'xe-0/0/[0-95]'}})
-        self.assertEqual(8, len(portNames['uplinkPorts']))
-        self.assertEqual(96, len(portNames['downlinkPorts']))
-        self.assertEqual(0, len(portNames['ports']))
-
-    def testExpandPortNameBadRegex1(self):
-        with self.assertRaises(ValueError) as ve:
-            expandPortName('xe-0/0/[1-1000]')
-    def testExpandPortNameBadRegex2(self):
-        with self.assertRaises(ValueError) as ve:
-            expandPortName('xe-0//[1-10]')
-    def testExpandPortNameBadRegex3(self):
-        with self.assertRaises(ValueError) as ve:
-            expandPortName('-0/0/[1-10]')
-    def testExpandPortNameEmpty(self):
-        portNames = expandPortName('')
-        self.assertEqual(0, len(portNames))
-        portNames = expandPortName(None)
-        self.assertEqual(0, len(portNames))
-
-    def testExpandPortName(self):
-        portNames = expandPortName('xe-0/0/[1-10]')
-        self.assertEqual(10, len(portNames))
-        self.assertEqual('xe-0/0/1', portNames[0])
-        self.assertEqual('xe-0/0/10', portNames[9])        
-        
-    def testExpandPortNameList(self):
-        portNames = expandPortName(['xe-0/0/[1-10]', 'et-0/0/[0-3]'])
-        self.assertEqual(14, len(portNames))
-        self.assertEqual('xe-0/0/1', portNames[0])
-        self.assertEqual('xe-0/0/10', portNames[9])        
-        self.assertEqual('et-0/0/0', portNames[10])        
-        self.assertEqual('et-0/0/3', portNames[13])        
-
     def testGetMgmtIps(self):
         mgmtIpList = ["1.2.3.1/24", "1.2.3.2/24", "1.2.3.3/24", "1.2.3.4/24", "1.2.3.5/24", "1.2.3.6/24"] 
         mgmtIps = getMgmtIps("1.2.3.1/24", None, None, 6)
@@ -96,13 +39,6 @@ class TestFunctions(unittest.TestCase):
     def testEnumerateRoutableIpv4Addresses(self):
         addrList = enumerateRoutableIpv4Addresses()
         self.assertTrue(len(addrList) > 0)
-
-    def testGetSupportedDeviceFamily(self):
-        deviceFamilyList = getSupportedDeviceFamily({'qfx5100-96s-8q': {}, 'qfx5100-48s-6q': {}})
-        self.assertEqual(2, len(deviceFamilyList))
-        
-        with self.assertRaises(ValueError):
-            getSupportedDeviceFamily(None)
 
     def testInterfaceNameToUniqueSequenceNumber(self):
         self.assertEqual(0, interfaceNameToUniqueSequenceNumber('et-0/0/0'))
@@ -140,19 +76,6 @@ class TestFunctions(unittest.TestCase):
         seqNumSet.add(interfaceNameToUniqueSequenceNumber('irb.1'))
         
         self.assertEqual(6, len(seqNumSet))
-
-    def testLoadLoggingConfig(self):
-        loadLoggingConfig(appName='rest')
-        import logging
-        self.assertEquals(0, len(logging.getLogger('unknown').handlers))
-        self.assertEquals(2, len(logging.getLogger('rest').handlers))
-        self.assertTrue('openclos-rest.log' in logging.getLogger('rest').handlers[1].baseFilename)
-
-    def testLoadLoggingForTest(self):
-        loadLoggingConfig()
-        import logging
-        self.assertEquals(0, len(logging.getLogger('unknown').handlers))
-        self.assertEquals(1, len(logging.getLogger('rest').handlers))
 
     def testGetOutFolderPath(self):
         from test_model import createPodObj
