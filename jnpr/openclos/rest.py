@@ -21,10 +21,11 @@ from dao import Dao
 from report import ResourceAllocationReport, L2Report, L3Report
 from l3Clos import L3ClosMediation
 from ztp import ZtpServer
-from propLoader import OpenClosProperty, DeviceSku
+from propLoader import OpenClosProperty, DeviceSku, loadLoggingConfig
 
 moduleName = 'rest'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 
 webServerRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
 junosImageRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf', 'ztp')
@@ -96,7 +97,6 @@ class ResourceLink():
 
 class RestServer():
     def __init__(self, conf = {}, daoClass = Dao):
-        global logger
         if any(conf) == False:
             self._conf = OpenClosProperty(appName = moduleName).getProperties()
 
@@ -104,7 +104,6 @@ class RestServer():
             webServerRoot = self._conf['outputDir']
         else:
             self._conf = conf
-        logger = logging.getLogger(moduleName)
         
         self.__daoClass = daoClass
         self.__dao = daoClass.getInstance()

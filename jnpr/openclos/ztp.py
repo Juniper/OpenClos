@@ -13,26 +13,25 @@ import util
 from model import Pod
 from dao import Dao
 from writer import DhcpConfWriter
-from propLoader import OpenClosProperty
+from propLoader import OpenClosProperty, loadLoggingConfig
 
 from sqlalchemy.orm import exc
 
 
 moduleName = 'ztp'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 
 ztpTemplateLocation = os.path.join('conf', 'ztp')
 
 
 class ZtpServer():
     def __init__(self, conf = {}, templateEnv = None, daoClass = Dao):
-        global logger
         if any(conf) == False:
             self.__conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self.__conf = conf
 
-        logger = logging.getLogger(moduleName)
         self._dao = daoClass.getInstance()
 
         if templateEnv is None:

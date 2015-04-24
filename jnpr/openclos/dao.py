@@ -6,21 +6,20 @@ Created on Aug 26, 2014
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import exc
-import util
 import logging 
 import contextlib
 
 from model import Base, Device, InterfaceDefinition, LeafSetting
 from common import SingletonBase
+from propLoader import loadLoggingConfig
 
 moduleName = 'dao'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 
 
 class AbstractDao(SingletonBase):
     def __init__(self):
-        global logger
-        logger = logging.getLogger(moduleName)
         debugSql = False
         if logger.isEnabledFor(logging.DEBUG):
             debugSql = True
