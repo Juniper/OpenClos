@@ -10,17 +10,16 @@ from jinja2 import Environment, PackageLoader
 
 from model import InterfaceDefinition, AdditionalLink, BgpLink
 import util
+from propLoader import loadLoggingConfig
 
 cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
 
 moduleName = 'writer'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 
 class WriterBase():
-    def __init__(self, conf, pod, dao):
-        global logger
-        logger = logging.getLogger(moduleName)
-       
+    def __init__(self, conf, pod, dao):       
         self._dao = dao
         # this writer is specific for this pod
         self._pod = pod

@@ -62,7 +62,6 @@ class OpenClosProperty(PropertyLoader):
                 self._properties['dbUrl'] = self._properties['dbDialect'] + '://' + self._properties['dbUser'] + ':' + dbPass + '@' + self._properties['dbHost'] + '/' + self._properties['dbName'] 
             if 'outputDir' in self._properties:
                 self._properties['outputDir'] = self.fixOutputDirForRelativePath(self._properties['outputDir'])
-        loadLoggingConfig(appName = appName)
 
     def getProperties(self):
         return self._properties

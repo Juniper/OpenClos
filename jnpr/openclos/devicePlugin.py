@@ -19,13 +19,14 @@ from model import Pod, Device, InterfaceDefinition, AdditionalLink, BgpLink
 from exception import DeviceError
 from common import SingletonBase
 from l3Clos import L3ClosMediation
-from propLoader import OpenClosProperty, DeviceSku
+from propLoader import OpenClosProperty, DeviceSku, loadLoggingConfig
 import util
 
 from netaddr import IPAddress, IPNetwork
 
 moduleName = 'devicePlugin'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 
 junosEzTableLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf', 'junosEznc')
 
@@ -65,12 +66,10 @@ class DeviceDataCollectorNetconf(object):
     Uses junos-eznc to connect to device
     '''
     def __init__(self, deviceId, conf = {}, daoClass = Dao):
-        global logger
         if any(conf) == False:
             self._conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self._conf = conf
-        logger = logging.getLogger(moduleName)
 
         self.daoClass = daoClass
         self.pod = None

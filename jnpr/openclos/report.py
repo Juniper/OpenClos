@@ -11,21 +11,20 @@ from dao import Dao
 from model import Pod, Device
 from devicePlugin import L2DataCollector, L3DataCollector
 from writer import CablingPlanWriter
-from propLoader import OpenClosProperty
+from propLoader import OpenClosProperty, loadLoggingConfig
 
 moduleName = 'report'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 maxThreads = 10
 
 class Report(object):
     def __init__(self, conf = {}, daoClass = Dao):
-        global logger
         if any(conf) == False:
             self._conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self._conf = conf
 
-        logger = logging.getLogger(moduleName)
         self._dao = daoClass.getInstance()
 
     def getIpFabric(self, session, ipFabricId):

@@ -16,10 +16,11 @@ import sys
 import subprocess
 import concurrent.futures
 from devicePlugin import TwoStageConfigurator 
-from propLoader import OpenClosProperty
+from propLoader import OpenClosProperty, loadLoggingConfig
 
 moduleName = 'trapd'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 20162
@@ -92,13 +93,11 @@ def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
 
 class TrapReceiver():
     def __init__(self, conf = {}):
-        global logger
         if conf is None or any(conf) == False:
             self.__conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self.__conf = conf
 
-        logger = logging.getLogger(moduleName)
         # default value
         self.target = DEFAULT_HOST
         self.port = DEFAULT_PORT

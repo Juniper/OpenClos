@@ -16,7 +16,7 @@ from sqlalchemy.orm import exc
 
 from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup
 from dao import Dao
-from propLoader import propertyFileLocation, OpenClosProperty, DeviceSku
+from propLoader import propertyFileLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
 import util
 
 from writer import ConfigWriter, CablingPlanWriter
@@ -26,17 +26,16 @@ import logging
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 
 moduleName = 'l3Clos'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 
 class L3ClosMediation():
     def __init__(self, conf = {}, daoClass = Dao):
-        global logger
         if any(conf) == False:
             self._conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self._conf = conf
 
-        logger = logging.getLogger(moduleName)
         self._dao = daoClass.getInstance()
 
         self._templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
