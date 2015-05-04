@@ -27,11 +27,11 @@ class Report(object):
 
         self._dao = daoClass.getInstance()
 
-    def getIpFabric(self, session, ipFabricId):
+    def getPod(self, session, podId):
         try:
-            return self._dao.getObjectById(session, Pod, ipFabricId)
+            return self._dao.getObjectById(session, Pod, podId)
         except (exc.NoResultFound) as e:
-            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s" % (ipFabricId, e.message)) 
+            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s" % (podId, e.message)) 
             
 class ResourceAllocationReport(Report):
     def __init__(self, conf = {}, daoClass = Dao):
@@ -82,7 +82,7 @@ class L2Report(Report):
             
     def generateReport(self, podId, cachedData = True, writeToFile = False):
         with self._dao.getReadSession() as session:
-            pod = self.getIpFabric(session, podId)
+            pod = self.getPod(session, podId)
             if pod is None: 
                 logger.error('No pod found for podId: %s' % (podId))
                 raise ValueError('No pod found for podId: %s' % (podId)) 
@@ -147,7 +147,7 @@ class L3Report(Report):
         
     def generateReport(self, podId, cachedData = True, writeToFile = False):
         with self._dao.getReadSession() as session:
-            pod = self.getIpFabric(session, podId)
+            pod = self.getPod(session, podId)
             if pod is None: 
                 logger.error('No pod found for podId: %s' % (podId))
                 raise ValueError('No pod found for podId: %s' % (podId)) 

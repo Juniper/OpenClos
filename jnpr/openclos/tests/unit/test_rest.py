@@ -42,10 +42,10 @@ class TestRest(unittest.TestCase):
         self.assertEqual(200, response.status_int)
         self.assertEqual(2, len(response.json['links']))
 
-    def testGetIpFabricsNoPod(self):
-        response = self.restServerTestApp.get('/openclos/ip-fabrics')
+    def testGetPodsNoPod(self):
+        response = self.restServerTestApp.get('/openclos/pods')
         self.assertEqual(200, response.status_int)
-        self.assertEqual(0, len(response.json['ipFabrics']['ipFabric']))
+        self.assertEqual(0, len(response.json['pods']['pod']))
 
     def setupRestWithTwoDevices(self, session):
         from test_model import createDevice
@@ -54,24 +54,24 @@ class TestRest(unittest.TestCase):
     
     def setupRestWithTwoPods(self, session):
         from test_model import createPod
-        self.ipFabric1 = createPod("test1", session)
-        self.ipFabric2 = createPod("test2", session)
+        self.pod1 = createPod("test1", session)
+        self.pod2 = createPod("test2", session)
 
-    def testGetIpFabrics(self):
+    def testGetPods(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoDevices(session)
             device1PodId = self.device1.pod_id
             device2PodId = self.device2.pod_id
                     
-        response = self.restServerTestApp.get('/openclos/ip-fabrics')
+        response = self.restServerTestApp.get('/openclos/pods')
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(2, len(response.json['ipFabrics']['ipFabric']))
-        self.assertTrue("/openclos/ip-fabrics/"+device1PodId in response.json['ipFabrics']['ipFabric'][0]['uri'])
-        self.assertTrue("/openclos/ip-fabrics/"+device2PodId in response.json['ipFabrics']['ipFabric'][1]['uri'])
+        self.assertEqual(2, len(response.json['pods']['pod']))
+        self.assertTrue("/openclos/pods/"+device1PodId in response.json['pods']['pod'][0]['uri'])
+        self.assertTrue("/openclos/pods/"+device2PodId in response.json['pods']['pod'][1]['uri'])
 
-    def testGetDevicesNonExistingIpFabric(self):
+    def testGetDevicesNonExistingPod(self):
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.get('/openclos/ip-fabrics/' + 'nonExisting'+'/devices')
+            self.restServerTestApp.get('/openclos/pods/' + 'nonExisting'+'/devices')
         self.assertTrue('404 Not Found' in e.exception.message)
     
     def testGetDevices(self):
@@ -80,18 +80,18 @@ class TestRest(unittest.TestCase):
             device1PodId = self.device1.pod_id
             device1Id = self.device1.id
 
-        response = self.restServerTestApp.get('/openclos/ip-fabrics/'+device1PodId+'/devices')
+        response = self.restServerTestApp.get('/openclos/pods/'+device1PodId+'/devices')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['devices']['device']))
-        self.assertTrue("/openclos/ip-fabrics/"+device1PodId+"/devices/"+device1Id in response.json['devices']['device'][0]['uri'])
+        self.assertTrue("/openclos/pods/"+device1PodId+"/devices/"+device1Id in response.json['devices']['device'][0]['uri'])
     
     def testGetDeviceNonExistingDevice(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
             
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.get('/openclos/ip-fabrics/' +ipFabric1Id+'/devices/'+'nonExisting')
+            self.restServerTestApp.get('/openclos/pods/' +pod1Id+'/devices/'+'nonExisting')
         self.assertTrue('404 Not Found' in e.exception.message)
     
     def testGetDevice(self):
@@ -102,11 +102,11 @@ class TestRest(unittest.TestCase):
             deviceName = self.device1.name
             deviceFamily = self.device1.family
 
-        response = self.restServerTestApp.get('/openclos/ip-fabrics/'+device1PodId+'/devices/'+device1Id)
+        response = self.restServerTestApp.get('/openclos/pods/'+device1PodId+'/devices/'+device1Id)
         self.assertEqual(200, response.status_int)         
         self.assertEqual(deviceName, response.json['device']['name'])
         self.assertEqual(deviceFamily, response.json['device']['family'])
-        self.assertTrue('/openclos/ip-fabrics/' + device1PodId in response.json['device']['pod']['uri']) 
+        self.assertTrue('/openclos/pods/' + device1PodId in response.json['device']['pod']['uri']) 
 
     def testGetIndex(self):
         response = self.restServerTestApp.get('/')
@@ -118,7 +118,7 @@ class TestRest(unittest.TestCase):
             device1PodId = self.device1.pod_id
 
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.get('/openclos/ip-fabrics/'+device1PodId+'/devices/'+'nonExisting'+'/config')
+            self.restServerTestApp.get('/openclos/pods/'+device1PodId+'/devices/'+'nonExisting'+'/config')
         self.assertTrue('404 Not Found' in e.exception.message)
         self.assertTrue('No device found' in e.exception.message)
 
@@ -129,7 +129,7 @@ class TestRest(unittest.TestCase):
             deviceId = self.device1.id
        
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.get('/openclos/ip-fabrics/'+podId+'/devices/'+deviceId+'/config')
+            self.restServerTestApp.get('/openclos/pods/'+podId+'/devices/'+deviceId+'/config')
         self.assertTrue('404 Not Found' in e.exception.message)
         self.assertTrue('Device exists but no config found' in e.exception.message)
 
@@ -141,7 +141,7 @@ class TestRest(unittest.TestCase):
             podId = self.device1.pod_id
             deviceId = self.device1.id
             
-        response = self.restServerTestApp.get('/openclos/ip-fabrics/'+podId+'/devices/'+deviceId+'/config')
+        response = self.restServerTestApp.get('/openclos/pods/'+podId+'/devices/'+deviceId+'/config')
         self.assertEqual(200, response.status_int)
         self.assertEqual("testconfig", response.body)
         
@@ -153,7 +153,7 @@ class TestRest(unittest.TestCase):
             podId = self.device1.pod_id
             deviceId = self.device1.id
             
-        response = self.restServerTestApp.get('/openclos/ip-fabrics/'+podId+'/device-configuration')
+        response = self.restServerTestApp.get('/openclos/pods/'+podId+'/device-configuration')
         self.assertEqual(200, response.status_int)
         self.assertEqual('application/zip', response.headers.get('Content-Type'))
         
@@ -163,7 +163,7 @@ class TestRest(unittest.TestCase):
         archive = zipfile.ZipFile(buff, "r")
         self.assertEqual(1, len(archive.namelist()))
 
-    def testGetDeviceConfigsInZipUnknownIpFabric(self):
+    def testGetDeviceConfigsInZipUnknownPod(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoDevices(session)
             podDir = os.path.join(configLocation, self.device1.pod_id+'-test1')
@@ -172,7 +172,7 @@ class TestRest(unittest.TestCase):
             open(os.path.join(podDir, self.device1.id+'-test1.conf'), "a") 
 
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.get('/openclos/ip-fabrics/UNOKNOWN/device-configuration')
+            self.restServerTestApp.get('/openclos/pods/UNOKNOWN/device-configuration')
         self.assertTrue('404 Not Found' in e.exception.message)
         shutil.rmtree(podDir, ignore_errors=True)
 
@@ -188,56 +188,56 @@ class TestRest(unittest.TestCase):
         self.assertEqual(200, response.status_int)
         os.remove(os.path.join(imageLocation, 'efgh.tgz'))
         
-    def testGetIpFabric(self):
+    def testGetPod(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            ipFabric1Id = self.ipFabric1.id
-            ipFabric1Name = self.ipFabric1.name
-            ipFabric1SpineDeviceType = self.ipFabric1.spineDeviceType
+            pod1Id = self.pod1.id
+            pod1Name = self.pod1.name
+            pod1SpineDeviceType = self.pod1.spineDeviceType
 
-        response = self.restServerTestApp.get('/openclos/ip-fabrics/' + ipFabric1Id)
+        response = self.restServerTestApp.get('/openclos/pods/' + pod1Id)
         self.assertEqual(200, response.status_int)
-        self.assertEqual(ipFabric1Name, response.json['ipFabric']['name'])
-        self.assertEqual(ipFabric1SpineDeviceType, response.json['ipFabric']['spineDeviceType'])
-        self.assertTrue('/openclos/ip-fabrics/' + ipFabric1Id + '/cabling-plan' in response.json['ipFabric']['cablingPlan']['uri'])
-        self.assertTrue('/openclos/ip-fabrics/' + ipFabric1Id + '/devices' in response.json['ipFabric']['devices']['uri'])
+        self.assertEqual(pod1Name, response.json['pod']['name'])
+        self.assertEqual(pod1SpineDeviceType, response.json['pod']['spineDeviceType'])
+        self.assertTrue('/openclos/pods/' + pod1Id + '/cabling-plan' in response.json['pod']['cablingPlan']['uri'])
+        self.assertTrue('/openclos/pods/' + pod1Id + '/devices' in response.json['pod']['devices']['uri'])
 
-    def testGetgetNonExistingIpFabric(self):
+    def testGetgetNonExistingPod(self):
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.get('/openclos/ip-fabrics/' + 'nonExisting')
+            self.restServerTestApp.get('/openclos/pods/' + 'nonExisting')
         self.assertTrue('404 Not Found' in e.exception.message)
         
     def testGetNonExistingCablingPlan(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.get('/openclos/ip-fabrics/'+ipFabric1Id+'/cabling-plan',headers = {'Accept':'application/json'})
+            self.restServerTestApp.get('/openclos/pods/'+pod1Id+'/cabling-plan',headers = {'Accept':'application/json'})
         self.assertTrue('404 Not Found' in e.exception.message)
     
     def testGetCablingPlanJson(self):
         from jnpr.openclos.model import CablingPlan
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            cablingPlan = CablingPlan(self.ipFabric1.id, 'cabling json')
-            self.ipFabric1.cablingPlan = cablingPlan
+            cablingPlan = CablingPlan(self.pod1.id, 'cabling json')
+            self.pod1.cablingPlan = cablingPlan
             
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
 
-        response = self.restServerTestApp.get('/openclos/ip-fabrics/'+ipFabric1Id+'/cabling-plan',headers = {'Accept':'application/json'})
+        response = self.restServerTestApp.get('/openclos/pods/'+pod1Id+'/cabling-plan',headers = {'Accept':'application/json'})
         self.assertEqual(200, response.status_int)
         self.assertEqual('cabling json', response.body)
         
     def testGetCablingPlanDot(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            cablingPlanLocation = os.path.join(configLocation, self.ipFabric1.id+'-'+self.ipFabric1.name)
+            cablingPlanLocation = os.path.join(configLocation, self.pod1.id+'-'+self.pod1.name)
             if not os.path.exists(os.path.join(cablingPlanLocation)):
                 os.makedirs((os.path.join(cablingPlanLocation)))
             ls = open(os.path.join(cablingPlanLocation, 'cablingPlan.dot'), "a+")
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
        
-        response = self.restServerTestApp.get('/openclos/ip-fabrics/'+ipFabric1Id+'/cabling-plan',headers = {'Accept':'application/dot'})
+        response = self.restServerTestApp.get('/openclos/pods/'+pod1Id+'/cabling-plan',headers = {'Accept':'application/dot'})
         self.assertEqual(200, response.status_int)
         ls.close()
         shutil.rmtree(cablingPlanLocation, ignore_errors=True)
@@ -245,13 +245,13 @@ class TestRest(unittest.TestCase):
     def testGetZtpConfig(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            ztpConfigLocation = os.path.join(configLocation, self.ipFabric1.id+'-'+self.ipFabric1.name)
+            ztpConfigLocation = os.path.join(configLocation, self.pod1.id+'-'+self.pod1.name)
             if not os.path.exists(os.path.join(ztpConfigLocation)):
                 os.makedirs((os.path.join(ztpConfigLocation)))
             ls = open(os.path.join(ztpConfigLocation, 'dhcpd.conf'), "a+")
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
        
-        response = self.restServerTestApp.get('/openclos/ip-fabrics/'+ipFabric1Id+'/ztp-configuration')
+        response = self.restServerTestApp.get('/openclos/pods/'+pod1Id+'/ztp-configuration')
         self.assertEqual(200, response.status_int)
         ls.close()
         shutil.rmtree(ztpConfigLocation, ignore_errors=True)
@@ -259,10 +259,10 @@ class TestRest(unittest.TestCase):
     def testGetNonExistingZtpConfig(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
 
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.get('/openclos/ip-fabrics/'+ipFabric1Id+'/ztp-configuration')
+            self.restServerTestApp.get('/openclos/pods/'+pod1Id+'/ztp-configuration')
         self.assertTrue('404 Not Found' in e.exception.message)
         
     def testgetOpenClosConfigParams(self):
@@ -277,27 +277,27 @@ class TestRest(unittest.TestCase):
         self.assertTrue(response.json['OpenClosConf']['snmpTrap']['openclos_trap_group'].has_key('port'))   
         self.assertEquals(14, len(response.json['OpenClosConf']['supportedDevices']))
         
-    def testdeleteIpFabric(self):
+    def testdeletePod(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
         
-        response = self.restServerTestApp.delete('/openclos/ip-fabrics/'+ipFabric1Id)
+        response = self.restServerTestApp.delete('/openclos/pods/'+pod1Id)
         self.assertEqual(204, response.status_int)
-        response = self.restServerTestApp.get('/openclos/ip-fabrics')
-        self.assertEqual(1, response.json['ipFabrics']['total'])
+        response = self.restServerTestApp.get('/openclos/pods')
+        self.assertEqual(1, response.json['pods']['total'])
           
-    def testDeleteNonExistingIpFabric(self):
+    def testDeleteNonExistingPod(self):
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.delete('/openclos/ip-fabrics/' + 'nonExisting')
+            self.restServerTestApp.delete('/openclos/pods/' + 'nonExisting')
         self.assertTrue('404 Not Found', e.exception.message)
         
-    def testCreateIpFabricWithPostBodyEmpty(self):
-        response = self.restServerTestApp.post('/openclos/ip-fabrics', headers = {'Content-Type':'application/json'}, expect_errors = True)
+    def testCreatePodWithPostBodyEmpty(self):
+        response = self.restServerTestApp.post('/openclos/pods', headers = {'Content-Type':'application/json'}, expect_errors = True)
         self.assertEqual(400, response.status_int)
         self.assertTrue('No json in request object' in response.json['errorMessage'] )
 
-    def testCreateIpFabricWithPost(self):
+    def testCreatePodWithPost(self):
         self.tearDown()
         self.__conf['deviceFamily'] = {
             "qfx5100-24q-2p": {
@@ -317,8 +317,8 @@ class TestRest(unittest.TestCase):
         restServer.initRest()
         self.restServerTestApp = TestApp(restServer.app)
         
-        ipFabric = {
-            "ipFabric": {
+        pod = {
+            "pod": {
                 "name": "test12321",
                 "spineDeviceType": "qfx5100-24q-2p",
                 "spineCount": 2,
@@ -346,28 +346,28 @@ class TestRest(unittest.TestCase):
             }
         }
 
-        response = self.restServerTestApp.post('/openclos/ip-fabrics', headers = {'Content-Type':'application/json'}, params=json.dumps(ipFabric))
+        response = self.restServerTestApp.post('/openclos/pods', headers = {'Content-Type':'application/json'}, params=json.dumps(pod))
         self.assertEqual(201, response.status_int)
-        response = self.restServerTestApp.get('/openclos/ip-fabrics')
+        response = self.restServerTestApp.get('/openclos/pods')
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(1, len(response.json['ipFabrics']['ipFabric']))
+        self.assertEqual(1, len(response.json['pods']['pod']))
 
-    def testReconfigureIpFabricWithPostBodyEmpty(self):
+    def testReconfigurePodWithPostBodyEmpty(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
         
-        response = self.restServerTestApp.put('/openclos/ip-fabrics/'+ipFabric1Id, headers = {'Content-Type':'application/json'}, expect_errors = True)
+        response = self.restServerTestApp.put('/openclos/pods/'+pod1Id, headers = {'Content-Type':'application/json'}, expect_errors = True)
         self.assertEqual(400, response.status_int)
         self.assertTrue('No json in request object' in response.json['errorMessage'] )
         
-    def testUpdateIpFabricWithInvalidRole(self):
+    def testUpdatePodWithInvalidRole(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
         
-        ipFabricDetails = {
-            "ipFabric": {
+        podDetails = {
+            "pod": {
                 "name": "moloy1",
                 "spineDeviceType": "qfx5100-24q-2p",
                 "spineCount": 2,
@@ -395,36 +395,36 @@ class TestRest(unittest.TestCase):
                 ]
             }
         }
-        response = self.restServerTestApp.put('/openclos/ip-fabrics/'+ipFabric1Id, params=json.dumps(ipFabricDetails), headers = {'Content-Type':'application/json'}, expect_errors = True)
+        response = self.restServerTestApp.put('/openclos/pods/'+pod1Id, params=json.dumps(podDetails), headers = {'Content-Type':'application/json'}, expect_errors = True)
         self.assertEqual(400, response.status_int)
         self.assertTrue('Unexpected role value' in response.json['errorMessage'] )         
 
     def testGetLeafGenericConfiguration404(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
         
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.get('/openclos/ip-fabrics/'+ipFabric1Id+'/leaf-generic-configurations/qfx5100-48s-6q')
+            self.restServerTestApp.get('/openclos/pods/'+pod1Id+'/leaf-generic-configurations/qfx5100-48s-6q')
         self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('IpFabric exists but no leaf generic config' in e.exception.message)
+        self.assertTrue('Pod exists but no leaf generic config' in e.exception.message)
         self.assertTrue('qfx5100-48s-6q' in e.exception.message)
 
     def setupRestWithPodAndGenericConfig(self, session):
         from test_model import createPod
         from jnpr.openclos.model import LeafSetting
-        self.ipFabric1 = createPod("test1", session)
-        leafSetting = LeafSetting('qfx5100-48s-6q', self.ipFabric1.id, config = "testConfig abcd")
-        self.ipFabric1.leafSettings = [leafSetting]
-        session.merge(self.ipFabric1)
+        self.pod1 = createPod("test1", session)
+        leafSetting = LeafSetting('qfx5100-48s-6q', self.pod1.id, config = "testConfig abcd")
+        self.pod1.leafSettings = [leafSetting]
+        session.merge(self.pod1)
 
 
     def testGetLeafGenericConfiguration(self):
         with self.__dao.getReadWriteSession() as session:
             self.setupRestWithPodAndGenericConfig(session)
-            ipFabric1Id = self.ipFabric1.id
+            pod1Id = self.pod1.id
         
-        response = self.restServerTestApp.get('/openclos/ip-fabrics/'+ipFabric1Id+'/leaf-generic-configurations/qfx5100-48s-6q')
+        response = self.restServerTestApp.get('/openclos/pods/'+pod1Id+'/leaf-generic-configurations/qfx5100-48s-6q')
         self.assertEqual(200, response.status_int) 
         self.assertTrue('testConfig abcd' in response.body)
 
