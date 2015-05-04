@@ -290,7 +290,10 @@ class RestServer():
     def getCablingPlan(self, dbSession, ipFabricId):
         
         header =  bottle.request.get_header('Accept')
-        logger.debug('Accept header: %s' % (header))
+        logger.debug('Accept header before processing: %s' % (header))
+        # hack to remove comma character, must be a bug on Bottle
+        header = header.translate(None, ',')
+        logger.debug('Accept header after processing: %s' % (header))
 
         ipFabric = self.report.getIpFabric(dbSession, ipFabricId)
         if ipFabric is not None:
