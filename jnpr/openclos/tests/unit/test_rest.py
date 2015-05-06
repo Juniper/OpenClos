@@ -21,9 +21,9 @@ class TestRest(unittest.TestCase):
     def setUp(self):
         if not os.path.exists(configLocation):
             os.makedirs(configLocation)
-        self.__dao = InMemoryDao.getInstance()
-        self.__conf = {'httpServer': {'ipAddr': '1.2.3.4', 'port': 9090}}
-        self.restServer = RestServer(self.__conf, InMemoryDao)
+        self._dao = InMemoryDao.getInstance()
+        self._conf = {'httpServer': {'ipAddr': '1.2.3.4', 'port': 9090}}
+        self.restServer = RestServer(self._conf, InMemoryDao)
         self.restServer.initRest()
         self.restServerTestApp = TestApp(self.restServer.app)
 
@@ -58,7 +58,7 @@ class TestRest(unittest.TestCase):
         self.pod2 = createPod("test2", session)
 
     def testGetPods(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoDevices(session)
             device1PodId = self.device1.pod_id
             device2PodId = self.device2.pod_id
@@ -75,7 +75,7 @@ class TestRest(unittest.TestCase):
         self.assertTrue('404 Not Found' in e.exception.message)
     
     def testGetDevices(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoDevices(session)
             device1PodId = self.device1.pod_id
             device1Id = self.device1.id
@@ -86,7 +86,7 @@ class TestRest(unittest.TestCase):
         self.assertTrue("/openclos/pods/"+device1PodId+"/devices/"+device1Id in response.json['devices']['device'][0]['uri'])
     
     def testGetDeviceNonExistingDevice(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             pod1Id = self.pod1.id
             
@@ -95,7 +95,7 @@ class TestRest(unittest.TestCase):
         self.assertTrue('404 Not Found' in e.exception.message)
     
     def testGetDevice(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoDevices(session)
             device1PodId = self.device1.pod_id
             device1Id = self.device1.id
@@ -113,7 +113,7 @@ class TestRest(unittest.TestCase):
         self.assertEqual(302, response.status_int)
         
     def testGetConfigNoDevice(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoDevices(session)
             device1PodId = self.device1.pod_id
 
@@ -123,7 +123,7 @@ class TestRest(unittest.TestCase):
         self.assertTrue('No device found' in e.exception.message)
 
     def testGetConfigNoConfigFile(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoDevices(session)
             podId = self.device1.pod_id
             deviceId = self.device1.id
@@ -135,7 +135,7 @@ class TestRest(unittest.TestCase):
 
     def testGetConfig(self):
         from jnpr.openclos.model import DeviceConfig
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoDevices(session)
             self.device1.config = DeviceConfig(self.device1.id, "testconfig")
             podId = self.device1.pod_id
@@ -147,7 +147,7 @@ class TestRest(unittest.TestCase):
         
     def testGetDeviceConfigsInZip(self):
         from jnpr.openclos.model import DeviceConfig
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoDevices(session)
             self.device1.config = DeviceConfig(self.device1.id, "testconfig")
             podId = self.device1.pod_id
@@ -164,7 +164,7 @@ class TestRest(unittest.TestCase):
         self.assertEqual(1, len(archive.namelist()))
 
     def testGetDeviceConfigsInZipUnknownPod(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoDevices(session)
             podDir = os.path.join(configLocation, self.device1.pod_id+'-test1')
             if not os.path.exists(podDir):
@@ -189,7 +189,7 @@ class TestRest(unittest.TestCase):
         os.remove(os.path.join(imageLocation, 'efgh.tgz'))
         
     def testGetPod(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             pod1Id = self.pod1.id
             pod1Name = self.pod1.name
@@ -197,6 +197,7 @@ class TestRest(unittest.TestCase):
 
         response = self.restServerTestApp.get('/openclos/pods/' + pod1Id)
         self.assertEqual(200, response.status_int)
+        self.assertEqual(pod1Id, response.json['pod']['id'])
         self.assertEqual(pod1Name, response.json['pod']['name'])
         self.assertEqual(pod1SpineDeviceType, response.json['pod']['spineDeviceType'])
         self.assertTrue('/openclos/pods/' + pod1Id + '/cabling-plan' in response.json['pod']['cablingPlan']['uri'])
@@ -208,7 +209,7 @@ class TestRest(unittest.TestCase):
         self.assertTrue('404 Not Found' in e.exception.message)
         
     def testGetNonExistingCablingPlan(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             pod1Id = self.pod1.id
         with self.assertRaises(AppError) as e:
@@ -217,7 +218,7 @@ class TestRest(unittest.TestCase):
     
     def testGetCablingPlanJson(self):
         from jnpr.openclos.model import CablingPlan
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             cablingPlan = CablingPlan(self.pod1.id, 'cabling json')
             self.pod1.cablingPlan = cablingPlan
@@ -229,7 +230,7 @@ class TestRest(unittest.TestCase):
         self.assertEqual('cabling json', response.body)
         
     def testGetCablingPlanDot(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             cablingPlanLocation = os.path.join(configLocation, self.pod1.id+'-'+self.pod1.name)
             if not os.path.exists(os.path.join(cablingPlanLocation)):
@@ -243,7 +244,7 @@ class TestRest(unittest.TestCase):
         shutil.rmtree(cablingPlanLocation, ignore_errors=True)
         
     def testGetZtpConfig(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             ztpConfigLocation = os.path.join(configLocation, self.pod1.id+'-'+self.pod1.name)
             if not os.path.exists(os.path.join(ztpConfigLocation)):
@@ -257,7 +258,7 @@ class TestRest(unittest.TestCase):
         shutil.rmtree(ztpConfigLocation, ignore_errors=True)
         
     def testGetNonExistingZtpConfig(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             pod1Id = self.pod1.id
 
@@ -278,7 +279,7 @@ class TestRest(unittest.TestCase):
         self.assertEquals(14, len(response.json['OpenClosConf']['supportedDevices']))
         
     def testdeletePod(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             pod1Id = self.pod1.id
         
@@ -299,7 +300,7 @@ class TestRest(unittest.TestCase):
 
     def testCreatePodWithPost(self):
         self.tearDown()
-        self.__conf['deviceFamily'] = {
+        self._conf['deviceFamily'] = {
             "qfx5100-24q-2p": {
                 "ports": 'et-0/0/[0-23]'
             },
@@ -313,7 +314,7 @@ class TestRest(unittest.TestCase):
             }
         }
 
-        restServer = RestServer(self.__conf, InMemoryDao)
+        restServer = RestServer(self._conf, InMemoryDao)
         restServer.initRest()
         self.restServerTestApp = TestApp(restServer.app)
         
@@ -353,7 +354,7 @@ class TestRest(unittest.TestCase):
         self.assertEqual(1, len(response.json['pods']['pod']))
 
     def testReconfigurePodWithPostBodyEmpty(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             pod1Id = self.pod1.id
         
@@ -362,7 +363,7 @@ class TestRest(unittest.TestCase):
         self.assertTrue('No json in request object' in response.json['errorMessage'] )
         
     def testUpdatePodWithInvalidRole(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             pod1Id = self.pod1.id
         
@@ -400,7 +401,7 @@ class TestRest(unittest.TestCase):
         self.assertTrue('Unexpected role value' in response.json['errorMessage'] )         
 
     def testGetLeafGenericConfiguration404(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             pod1Id = self.pod1.id
         
@@ -420,7 +421,7 @@ class TestRest(unittest.TestCase):
 
 
     def testGetLeafGenericConfiguration(self):
-        with self.__dao.getReadWriteSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.setupRestWithPodAndGenericConfig(session)
             pod1Id = self.pod1.id
         

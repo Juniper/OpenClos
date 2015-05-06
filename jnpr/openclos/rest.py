@@ -246,6 +246,11 @@ class RestServer():
         podsData['uri'] = url 
         return {'pods' : podsData}
     
+    def getPodFieldListToCopy(self):
+        return ['id', 'name', 'description', 'spineAS', 'spineDeviceType', 'spineCount', 'leafAS', 'leafCount', 
+                'leafUplinkcountMustBeUp', 'loopbackPrefix', 'vlanPrefix', 'interConnectPrefix', 'managementPrefix', 
+                'outOfBandAddressList', 'outOfBandGateway', 'topologyType', 'spineJunosImage', 'hostOrVmCountPerLeaf']
+    
     def getPod(self, dbSession, podId, requestUrl = None):
         if requestUrl is None:
             requestUrl = str(bottle.request.url).translate(None, ',')
@@ -253,6 +258,10 @@ class RestServer():
         if pod is not None:
             outputDict = {} 
             devices = pod.devices
+            for field in self.getPodFieldListToCopy():
+                outputDict[field] = pod.__dict__.get(field)
+            
+            '''
             outputDict['id'] = pod.id
             outputDict['name'] = pod.name
             outputDict['description'] = pod.description 
@@ -260,9 +269,6 @@ class RestServer():
             outputDict['spineDeviceType'] = pod.spineDeviceType
             outputDict['spineCount'] = pod.spineCount
             outputDict['leafAS'] = pod.leafAS
-            outputDict['leafSettings'] = []
-            for leafSetting in pod.leafSettings:
-                outputDict['leafSettings'].append({'deviceType': leafSetting.deviceFamily, 'junosImage': leafSetting.junosImage})
             outputDict['leafCount'] = pod.leafCount
             outputDict['loopbackPrefix'] = pod.loopbackPrefix 
             outputDict['vlanPrefix'] = pod.vlanPrefix
@@ -272,6 +278,12 @@ class RestServer():
             outputDict['outOfBandGateway'] = pod.outOfBandGateway 
             outputDict['topologyType'] = pod.topologyType
             outputDict['spineJunosImage'] = pod.spineJunosImage
+            outputDict['hostOrVmCountPerLeaf'] = pod.hostOrVmCountPerLeaf
+            '''
+            outputDict['leafSettings'] = []
+            for leafSetting in pod.leafSettings:
+                outputDict['leafSettings'].append({'deviceType': leafSetting.deviceFamily, 'junosImage': leafSetting.junosImage})
+
             outputDict['devicePassword'] = pod.getCleartextPassword()
             outputDict['uri'] = requestUrl
             outputDict['devices'] = {'uri': requestUrl + '/devices', 'total':len(devices)}
@@ -282,8 +294,9 @@ class RestServer():
             outputDict['l3Report'] = {'uri': requestUrl + '/l3-report'}
             
             logger.debug('getPod: %s' % (podId))
-         
+     
             return {'pod': outputDict}
+
         else:
             raise bottle.HTTPError(404, "Pod with id: %s not found" % (podId))
     
@@ -368,6 +381,10 @@ class RestServer():
         logger.debug('zip file content:\n' + str(zipArchive.namelist()))
         return buff.getvalue()
 
+    def copyAdditionalDeviceFields(self, dict, device):
+        '''
+        Hook to enhance Device object
+        '''
     def getDevices(self, dbSession, podId):
         
         devices = {}
@@ -388,6 +405,8 @@ class RestServer():
                 outputDict['l2Status'] = device.l2Status
                 outputDict['l3Status'] = device.l3Status
                 outputDict['uri'] = str(bottle.request.url).translate(None, ',') + '/' +device.id
+                self.copyAdditionalDeviceFields(outputDict, device)
+
                 listOfDevices.append(outputDict)
             devices['device'] = listOfDevices
             devices['uri'] = str(bottle.request.url).translate(None, ',')
@@ -428,6 +447,7 @@ class RestServer():
             outputDict['uri'] = str(bottle.request.url).translate(None, ',')
             outputDict['pod'] = {'uri': ipFbaricUri }
             outputDict['config'] = {'uri': str(bottle.request.url).translate(None, ',') + '/config' }
+            self.copyAdditionalDeviceFields(outputDict, device)
             
             return {'device': outputDict}
         else:
@@ -590,23 +610,32 @@ class RestServer():
         '''
         if podDict is None:
             raise bottle.HTTPError(400, exception = RestError(0, "Invalid value in POST/PUT body."))
+        
+        for field in self.getPodFieldListToCopy():
+            pod[field] = podDict.get(field)
+        
+        '''
         pod['name'] = podDict.get('name')
-        pod['spineCount'] = podDict.get('spineCount')
-        pod['spineDeviceType'] = podDict.get('spineDeviceType')
-        pod['leafCount'] = podDict.get('leafCount')
-        pod['leafSettings'] = podDict.get('leafSettings')
-        pod['leafUplinkcountMustBeUp'] = podDict.get('leafUplinkcountMustBeUp')
-        pod['interConnectPrefix'] = podDict.get('interConnectPrefix')
-        pod['vlanPrefix'] = podDict.get('vlanPrefix')
-        pod['loopbackPrefix'] = podDict.get('loopbackPrefix')
+        pod['description'] = podDict.get('description')
         pod['spineAS'] = podDict.get('spineAS')
+        pod['spineDeviceType'] = podDict.get('spineDeviceType')
+        pod['spineCount'] = podDict.get('spineCount')
         pod['leafAS'] = podDict.get('leafAS')
-        pod['topologyType'] = podDict.get('topologyType')
+        pod['leafCount'] = podDict.get('leafCount')
+        pod['leafUplinkcountMustBeUp'] = podDict.get('leafUplinkcountMustBeUp')
+        pod['loopbackPrefix'] = podDict.get('loopbackPrefix')
+        pod['vlanPrefix'] = podDict.get('vlanPrefix')
+        pod['interConnectPrefix'] = podDict.get('interConnectPrefix')
+        pod['managementPrefix'] = podDict.get('managementPrefix')
         pod['outOfBandAddressList'] = podDict.get('outOfBandAddressList')
         pod['outOfBandGateway'] = podDict.get('outOfBandGateway')
-        pod['managementPrefix'] = podDict.get('managementPrefix')
+        pod['topologyType'] = podDict.get('topologyType')
+        pod['topologyType'] = podDict.get('topologyType')
+        pod['spineJunosImage'] = podDict.get('spineJunosImage')
         pod['hostOrVmCountPerLeaf'] = podDict.get('hostOrVmCountPerLeaf')
-        pod['description'] = podDict.get('description')
+        '''
+
+        pod['leafSettings'] = podDict.get('leafSettings')
         pod['devicePassword'] = podDict.get('devicePassword')
 
         return pod

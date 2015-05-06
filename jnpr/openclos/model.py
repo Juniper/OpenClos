@@ -72,14 +72,20 @@ class Pod(ManagedElement, Base):
         '''
         super(Pod, self).__init__()
         self.update(None, name, podDict)
-        
+    
+    def copyAdditionalFields(self, podDict):
+        '''
+        Hook for enhancements, add additional fields 
+        and get initialized
+        '''
+    
     def update(self, id, name, podDict):
         '''
         Updates a Pod ORM object from dict
         '''
-        if id is not None:
+        if id:
             self.id = id
-        elif 'id' in podDict:
+        elif podDict.get('id'):
             self.id = podDict.get('id')
         else:
             self.id = str(uuid.uuid4())
@@ -132,7 +138,8 @@ class Pod(ManagedElement, Base):
         devicePassword = podDict.get('devicePassword')
         if devicePassword is not None and len(devicePassword) > 0:
             self.encryptedPassword = self.cryptic.encrypt(devicePassword)
-
+        self.copyAdditionalFields(podDict)
+        
     def calculateEffectiveLeafUplinkcountMustBeUp(self):
         # if user configured a value, use it always 
         if self.leafUplinkcountMustBeUp is not None and self.leafUplinkcountMustBeUp > 0:

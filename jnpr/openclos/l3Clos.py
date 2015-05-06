@@ -86,7 +86,7 @@ class L3ClosMediation():
             pod = self._dao.getObjectById(session, Pod, podId)
         return pod
     
-    def _createSpineIfds(self, session, pod, spines):
+    def _createSpineAndIfds(self, session, pod, spines):
         devices = []
         interfaces = []
         for spine in spines:
@@ -105,9 +105,8 @@ class L3ClosMediation():
         self._dao.createObjects(session, devices)
         self._dao.createObjects(session, interfaces)
         
-    def _createLeafIfds(self, session, pod, leaves):
+    def _createLeafAndIfds(self, session, pod, leaves):
         devices = []
-        interfaces = []
         for leaf in leaves:
             username = leaf.get('username')
             password = leaf.get('password') #default is Pod level pass, set on constructor
@@ -118,30 +117,31 @@ class L3ClosMediation():
             device = Device(leaf['name'], family, username, password, 'leaf', macAddress, None, pod, deployStatus, serialNumber)
             devices.append(device)
             
-            if family is None or family == 'unknown':
-                # temporary uplink ports, names will get fixed after 2-stage ztp
-                for i in xrange(0, pod.spineCount):
-                    interfaces.append(InterfaceDefinition('uplink-' + str(i), device, 'uplink'))
-
-            else:
-                portNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')
-                interfaceCount = 0
-                for name in portNames['uplinkPorts']:   # all uplink IFDs towards spine
-                    interfaces.append(InterfaceDefinition(name, device, 'uplink'))
-                    interfaceCount += 1
-                
-                # Hack plugNPlay-mixedLeaf: Create additional uplinks when spine count is more than available uplink ports
-                # example: spine count=5, device=ex4300-24p
-                while interfaceCount < pod.spineCount:
-                    interfaces.append(InterfaceDefinition('uplink-' + str(interfaceCount), device, 'uplink'))
-                    interfaceCount += 1
-                
-                
-                # leaf access/downlink ports are not used in app so far, no need to create them    
-                #for name in portNames['downlinkPorts']:   # all downlink IFDs towards Access/Server
-                #    interfaces.append(InterfaceDefinition(name, device, 'downlink'))
-        
         self._dao.createObjects(session, devices)
+        for device in devices:
+            self._createLeafIfds(session, pod, device)
+        
+    def _createLeafIfds(self, session, pod, device):
+        interfaces = []
+
+        if device.family is None or device.family == 'unknown':
+            # temporary uplink ports, names will get fixed after 2-stage ztp
+            for i in xrange(0, pod.spineCount):
+                interfaces.append(InterfaceDefinition('uplink-' + str(i), device, 'uplink'))
+
+        else:
+            portNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')
+            interfaceCount = 0
+            for name in portNames['uplinkPorts']:   # all uplink IFDs towards spine
+                interfaces.append(InterfaceDefinition(name, device, 'uplink'))
+                interfaceCount += 1
+            
+            # Hack plugNPlay-mixedLeaf: Create additional uplinks when spine count is more than available uplink ports
+            # example: spine count=5, device=ex4300-24p
+            while interfaceCount < pod.spineCount:
+                interfaces.append(InterfaceDefinition('uplink-' + str(interfaceCount), device, 'uplink'))
+                interfaceCount += 1
+                        
         self._dao.createObjects(session, interfaces)
     
     def _deployInventory(self, pod, inventory, role):
@@ -300,8 +300,8 @@ class L3ClosMediation():
         # first time
         if len(pod.devices) == 0:
             logger.debug("Pod[id='%s', name='%s']: building inventory and resource..." % (pod.id, pod.name))
-            self._createSpineIfds(session, pod, inventoryData['spines'])
-            self._createLeafIfds(session, pod, inventoryData['leafs'])
+            self._createSpineAndIfds(session, pod, inventoryData['spines'])
+            self._createLeafAndIfds(session, pod, inventoryData['leafs'])
             self._createLinkBetweenIfds(session, pod)
             pod.devices.sort(key=lambda dev: dev.name) # Hack to order lists by name
             self._allocateResource(session, pod)

@@ -144,14 +144,14 @@ class TestL3Clos(unittest.TestCase):
             self.assertEqual('uplink-1', spine02Port2.peer.name)
             self.assertEqual('leaf-03', spine02Port2.peer.device.name)
 
-    def testCreateLeafIfds(self):
+    def testCreateLeafAndIfds(self):
         with self._dao.getReadSession() as session:
             from test_model import createPod
             pod = createPod('test', session)
             pod.spineCount = 6
             leaves = [{ "name" : "leaf-01", "family" : "ex4300-24p", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus": "deploy" }]
     
-            self.l3ClosMediation._createLeafIfds(session, pod, leaves)
+            self.l3ClosMediation._createLeafAndIfds(session, pod, leaves)
             interfaces = session.query(InterfaceDefinition).all()
             self.assertEqual(6, len(interfaces))
         
