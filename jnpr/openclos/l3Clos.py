@@ -143,7 +143,13 @@ class L3ClosMediation():
                 interfaceCount += 1
                         
         self._dao.createObjects(session, interfaces)
+        self._createLeafDownlinkIfds(session, pod, device)
     
+    def _createLeafDownlinkIfds(self, session, pod, device):
+        '''
+        leaf access/downlink ports are not used so far, no need to create them    
+        '''
+
     def _deployInventory(self, pod, inventory, role):
         for inv in inventory:
             for device in pod.devices:

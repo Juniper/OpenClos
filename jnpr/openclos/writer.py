@@ -13,6 +13,7 @@ import util
 from propLoader import loadLoggingConfig
 
 cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
+cablingPlanTemplatePackage = 'jnpr.openclos'
 
 moduleName = 'writer'
 loadLoggingConfig(appName = moduleName)
@@ -73,11 +74,11 @@ class DhcpConfWriter(WriterBase):
 class CablingPlanWriter(WriterBase):
     def __init__(self, conf, pod, dao):
         WriterBase.__init__(self, conf, pod, dao)
-        self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', cablingPlanTemplateLocation))
+        self.templateEnv = Environment(loader=PackageLoader(cablingPlanTemplatePackage, cablingPlanTemplateLocation))
         #self.templateEnv.trim_blocks = True
         self.templateEnv.lstrip_blocks = True
         # load cabling plan template
-        self.template = self.templateEnv.get_template(self._pod.topologyType + '.txt')
+        self.template = self.templateEnv.get_template(self._pod.topologyType + '.json')
         # load L2Report template
         self.l2ReportTemplate = self.templateEnv.get_template(self._pod.topologyType + 'L2Report.json')
         # load L3Report template
