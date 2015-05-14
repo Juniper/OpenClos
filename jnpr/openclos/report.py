@@ -185,7 +185,7 @@ class L3Report(Report):
 if __name__ == '__main__':
     report = ResourceAllocationReport()
     with report._dao.getReadSession() as session:
-        pods = report.getPods(session);
+        pods = report.getPods(session)
         print pods
 
     l2Report = L2Report()
