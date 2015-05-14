@@ -10,8 +10,9 @@ import concurrent.futures
 from dao import Dao
 from model import Pod, Device
 from devicePlugin import L2DataCollector, L3DataCollector
-from writer import CablingPlanWriter
+from writer import L2ReportWriter, L3ReportWriter
 from propLoader import OpenClosProperty, loadLoggingConfig
+
 
 moduleName = 'report'
 loadLoggingConfig(appName = moduleName)
@@ -108,11 +109,11 @@ class L2Report(Report):
                 logger.info('Done processing all devices')
             else:
                 logger.info('Generating L2Report from cached data')
-            cablingPlanWriter = CablingPlanWriter(self._conf, pod, self._dao)
+            l2ReportWriter = L2ReportWriter(self._conf, pod, self._dao)
             if writeToFile:
-                return cablingPlanWriter.writeThreeStageL2ReportJson()
+                return l2ReportWriter.writeThreeStageL2ReportJson()
             else:
-                return cablingPlanWriter.getThreeStageL2ReportJson()
+                return l2ReportWriter.getThreeStageL2ReportJson()
 
 class L3Report(Report):
     def __init__(self, conf = {},  daoClass = Dao):
@@ -176,11 +177,11 @@ class L3Report(Report):
                 logger.info('Done processing all devices')
             else:
                 logger.info('Generating L3Report from cached data')
-            cablingPlanWriter = CablingPlanWriter(self._conf, pod, self._dao)
+            l3ReportWriter = L3ReportWriter(self._conf, pod, self._dao)
             if writeToFile:
-                return cablingPlanWriter.writeThreeStageL3ReportJson()
+                return l3ReportWriter.writeThreeStageL3ReportJson()
             else:
-                return cablingPlanWriter.getThreeStageL3ReportJson()
+                return l3ReportWriter.getThreeStageL3ReportJson()
 
 if __name__ == '__main__':
     report = ResourceAllocationReport()
