@@ -196,8 +196,10 @@ class CLIImplementor:
 
 #------------------------------------------------------------------------------
     def handle_create_ztp_config ( self, pod_name ):
-        ztpServer = ZtpServer()
-        ztpServer.createPodSpecificDhcpConfFile ( pod_name )
+        report = ResourceAllocationReport()
+        with report._dao.getReadSession() as session:
+            ztpServer = ZtpServer()
+            ztpServer.createPodSpecificDhcpConfFile ( session, pod_name )
 
 #------------------------------------------------------------------------------
     def handle_deploy_ztp_config ( self, pod_id ):
