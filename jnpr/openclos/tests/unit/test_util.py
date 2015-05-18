@@ -65,6 +65,13 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(21000100, interfaceNameToUniqueSequenceNumber('uplink-1.0'))
         self.assertEqual(21000101, interfaceNameToUniqueSequenceNumber('uplink-1.1'))
 
+        self.assertEqual(22000000, interfaceNameToUniqueSequenceNumber('access-0'))
+        self.assertEqual(22000001, interfaceNameToUniqueSequenceNumber('access-1'))
+        self.assertEqual(23000000, interfaceNameToUniqueSequenceNumber('access-0.0'))
+        self.assertEqual(23000001, interfaceNameToUniqueSequenceNumber('access-0.1'))
+        self.assertEqual(23000100, interfaceNameToUniqueSequenceNumber('access-1.0'))
+        self.assertEqual(23000101, interfaceNameToUniqueSequenceNumber('access-1.1'))
+
     def testLo0IrbVmeToUniqueSequenceNumber(self):
         seqNumSet = set()
         

@@ -423,9 +423,11 @@ class L3ClosMediation():
         spines = []
         for device in pod.devices:
             if (device.role == 'leaf'):
+                logger.debug('device id: %s, name: %s, role: %s' % (device.id, device.name, device.role))
                 leafUplinkPorts = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.sequenceNum).all()
                 leaves.append({'leaf': device, 'leafUplinkPorts': leafUplinkPorts})
             elif (device.role == 'spine'):
+                logger.debug('device id: %s, name: %s, role: %s' % (device.id, device.name, device.role))
                 spinePorts = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).order_by(InterfaceDefinition.sequenceNum).all()
                 spines.append({'spine': device, 'ports': spinePorts})
         
