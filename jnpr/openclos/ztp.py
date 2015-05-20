@@ -176,14 +176,14 @@ class ZtpServer():
             deviceMgmtIp = str(IPNetwork(device.managementIp).ip)
             if device.macAddress :
                 ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
-                # don't start url as /openclos/ip-fabrics, first / causes ZTP problem
-                'configUrl': 'openclos/ip-fabrics/' + pod.id + '/devices/' + device.id + '/config',
+                # don't start url as /openclos/pods, first / causes ZTP problem
+                'configUrl': 'openclos/pods/' + pod.id + '/devices/' + device.id + '/config',
                 'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
                 logger.info('Device: %s, %s used MAC to map in dhcpd.conf' % (device.name, deviceMgmtIp))
             elif device.serialNumber:
                 ztp['devices'].append({'name': device.name, 'serial': device.serialNumber,
-                # don't start url as /openclos/ip-fabrics, first / causes ZTP problem
-                'configUrl': 'openclos/ip-fabrics/' + pod.id + '/devices/' + device.id + '/config',
+                # don't start url as /openclos/pods, first / causes ZTP problem
+                'configUrl': 'openclos/pods/' + pod.id + '/devices/' + device.id + '/config',
                 'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
                 logger.info('Device: %s, %s used Serial to map in dhcpd.conf' % (device.name, deviceMgmtIp))
             else:
@@ -198,8 +198,8 @@ class ZtpServer():
                     setting['leafImageUrl'] = imageUrlPrefix + leafSetting.junosImage
                 else:
                     setting['leafImageUrl'] = None
-                # don't start url as /openclos/ip-fabrics/..., first / causes ZTP problem
-                setting['leafGenericConfigUrl'] = 'openclos/ip-fabrics/' + pod.id + '/leaf-generic-configurations/' + leafSetting.deviceFamily
+                # don't start url as /openclos/pods/..., first / causes ZTP problem
+                setting['leafGenericConfigUrl'] = 'openclos/pods/' + pod.id + '/leaf-generic-configurations/' + leafSetting.deviceFamily
                 '''
                 setting['substringLength'] is the last argument of substring on dhcpd.conf, 
                 should not be hardcoded, as it would change based on device family
