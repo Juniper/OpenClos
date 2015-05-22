@@ -173,106 +173,118 @@ class RestServer():
         bottle.route('/', 'GET', self.getIndex)
         bottle.route('/openclos', 'GET', self.getIndex)
         bottle.route('/openclos/conf', 'GET', self.getOpenClosConfigParams)
-        bottle.route('/openclos/ip-fabrics', 'GET', self.getIpFabrics)
+        bottle.route('/openclos/pods', 'GET', self.getPods)
         bottle.route('/openclos/images/<junosImageName>', 'GET', self.getJunosImage)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'GET', self.getIpFabric)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'GET', self.getCablingPlan)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration','GET', self.getZtpConfig)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'GET', self.getDeviceConfigsInZip)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/leaf-generic-configurations/<deviceModel>', 'GET', self.getLeafGenericConfiguration)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/l2-report', 'GET', self.getL2Report)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/l3-report', 'GET', self.getL3Report)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices', 'GET', self.getDevices)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices/<deviceId>', 'GET', self.getDevice)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/devices/<deviceId>/config', 'GET', self.getDeviceConfig)
+        bottle.route('/openclos/pods/<podId>', 'GET', self.getPod)
+        bottle.route('/openclos/pods/<podId>/cabling-plan', 'GET', self.getCablingPlan)
+        bottle.route('/openclos/pods/<podId>/ztp-configuration','GET', self.getZtpConfig)
+        bottle.route('/openclos/pods/<podId>/device-configuration', 'GET', self.getDeviceConfigsInZip)
+        bottle.route('/openclos/pods/<podId>/leaf-generic-configurations/<deviceModel>', 'GET', self.getLeafGenericConfiguration)
+        bottle.route('/openclos/pods/<podId>/l2-report', 'GET', self.getL2Report)
+        bottle.route('/openclos/pods/<podId>/l3-report', 'GET', self.getL3Report)
+        bottle.route('/openclos/pods/<podId>/devices', 'GET', self.getDevices)
+        bottle.route('/openclos/pods/<podId>/devices/<deviceId>', 'GET', self.getDevice)
+        bottle.route('/openclos/pods/<podId>/devices/<deviceId>/config', 'GET', self.getDeviceConfig)
 
         # POST/PUT APIs
-        bottle.route('/openclos/ip-fabrics', 'POST', self.createIpFabric)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/cabling-plan', 'PUT', self.createCablingPlan)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/device-configuration', 'PUT', self.createDeviceConfiguration)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>/ztp-configuration', 'PUT', self.createZtpConfiguration)
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'PUT', self.reconfigIpFabric)
+        bottle.route('/openclos/pods', 'POST', self.createPod)
+        bottle.route('/openclos/pods/<podId>/cabling-plan', 'PUT', self.createCablingPlan)
+        bottle.route('/openclos/pods/<podId>/device-configuration', 'PUT', self.createDeviceConfiguration)
+        bottle.route('/openclos/pods/<podId>/ztp-configuration', 'PUT', self.createZtpConfiguration)
+        bottle.route('/openclos/pods/<podId>', 'PUT', self.reconfigPod)
         bottle.route('/openclos/conf/', 'PUT', self.setOpenClosConfigParams)
 
         # DELETE APIs
-        bottle.route('/openclos/ip-fabrics/<ipFabricId>', 'DELETE', self.deleteIpFabric)
+        bottle.route('/openclos/pods/<podId>', 'DELETE', self.deletePod)
 
         self.createLinkForConfigs()
 
     def createLinkForConfigs(self):
         # index page should show all top level URLs
         # users whould be able to drill down through navigation
-        self.indexLinks.append(ResourceLink(self.baseUrl, '/openclos/ip-fabrics'))
+        self.indexLinks.append(ResourceLink(self.baseUrl, '/openclos/pods'))
         self.indexLinks.append(ResourceLink(self.baseUrl, '/openclos/conf'))
     
     def getIndex(self, dbSession=None):
         if 'openclos' not in bottle.request.url:
-            bottle.redirect(bottle.request.url + 'openclos')
+            bottle.redirect(str(bottle.request.url).translate(None, ',') + 'openclos')
 
         jsonLinks = []
         for link in self.indexLinks:
             jsonLinks.append({'link': link.toDict()})
 
         jsonBody = \
-            {'href': bottle.request.url,
+            {'href': str(bottle.request.url).translate(None, ','),
              'links': jsonLinks
              }
 
         return jsonBody
     
-    def getIpFabrics(self, dbSession):
+    def getPods(self, dbSession):
         
-        url = bottle.request.url
-        ipFabricsData = {}
+        url = str(bottle.request.url).translate(None, ',')
+        podsData = {}
         listOfIpFbarics = []
-        IpFabrics = self.report.getPods(dbSession)
-        logger.debug("count of ipFabrics: %d", len(IpFabrics))
-        if not IpFabrics :   
-            logger.debug("There are no ipFabrics in the system ")
+        pods = self.report.getPods(dbSession)
+        logger.debug("count of pods: %d", len(pods))
+        if not pods :   
+            logger.debug("There are no pods in the system ")
         
-        for i in range(len(IpFabrics)):
-            ipFabric = {}
-            ipFabric['uri'] = url +'/'+ IpFabrics[i]['id']
-            ipFabric['id'] = IpFabrics[i]['id']
-            ipFabric['name'] = IpFabrics[i]['name']
-            ipFabric['spineDeviceType'] = IpFabrics[i]['spineDeviceType']
-            ipFabric['spineCount'] = IpFabrics[i]['spineCount']
-            ipFabric['leafSettings'] = IpFabrics[i]['leafSettings']
-            ipFabric['leafCount'] = IpFabrics[i]['leafCount']
-            ipFabric['devicePassword'] = IpFabrics[i]['devicePassword']
-            listOfIpFbarics.append(ipFabric)
-        ipFabricsData['ipFabric'] =  listOfIpFbarics
-        ipFabricsData['total'] = len(listOfIpFbarics)
-        ipFabricsData['uri'] = url 
-        return {'ipFabrics' : ipFabricsData}
+        for i in range(len(pods)):
+            pod = {}
+            pod['uri'] = url +'/'+ pods[i]['id']
+            pod['id'] = pods[i]['id']
+            pod['name'] = pods[i]['name']
+            pod['spineDeviceType'] = pods[i]['spineDeviceType']
+            pod['spineCount'] = pods[i]['spineCount']
+            pod['leafSettings'] = pods[i]['leafSettings']
+            pod['leafCount'] = pods[i]['leafCount']
+            pod['devicePassword'] = pods[i]['devicePassword']
+            listOfIpFbarics.append(pod)
+        podsData['pod'] =  listOfIpFbarics
+        podsData['total'] = len(listOfIpFbarics)
+        podsData['uri'] = url 
+        return {'pods' : podsData}
     
-    def getIpFabric(self, dbSession, ipFabricId, requestUrl = None):
+    def getPodFieldListToCopy(self):
+        return ['id', 'name', 'description', 'spineAS', 'spineDeviceType', 'spineCount', 'leafAS', 'leafCount', 
+                'leafUplinkcountMustBeUp', 'loopbackPrefix', 'vlanPrefix', 'interConnectPrefix', 'managementPrefix', 
+                'outOfBandAddressList', 'outOfBandGateway', 'topologyType', 'spineJunosImage', 'hostOrVmCountPerLeaf']
+    
+    def getPod(self, dbSession, podId, requestUrl = None):
         if requestUrl is None:
-            requestUrl = bottle.request.url
-        ipFabric = self.report.getIpFabric(dbSession, ipFabricId)
-        if ipFabric is not None:
+            requestUrl = str(bottle.request.url).translate(None, ',')
+        pod = self.report.getPod(dbSession, podId)
+        if pod is not None:
             outputDict = {} 
-            devices = ipFabric.devices
-            outputDict['id'] = ipFabric.id
-            outputDict['name'] = ipFabric.name
-            outputDict['description'] = ipFabric.description 
-            outputDict['spineAS'] = ipFabric.spineAS
-            outputDict['spineDeviceType'] = ipFabric.spineDeviceType
-            outputDict['spineCount'] = ipFabric.spineCount
-            outputDict['leafAS'] = ipFabric.leafAS
+            devices = pod.devices
+            for field in self.getPodFieldListToCopy():
+                outputDict[field] = pod.__dict__.get(field)
+            
+            '''
+            outputDict['id'] = pod.id
+            outputDict['name'] = pod.name
+            outputDict['description'] = pod.description 
+            outputDict['spineAS'] = pod.spineAS
+            outputDict['spineDeviceType'] = pod.spineDeviceType
+            outputDict['spineCount'] = pod.spineCount
+            outputDict['leafAS'] = pod.leafAS
+            outputDict['leafCount'] = pod.leafCount
+            outputDict['loopbackPrefix'] = pod.loopbackPrefix 
+            outputDict['vlanPrefix'] = pod.vlanPrefix
+            outputDict['interConnectPrefix'] = pod.interConnectPrefix 
+            outputDict['managementPrefix'] = pod.managementPrefix
+            outputDict['outOfBandAddressList'] = pod.outOfBandAddressList
+            outputDict['outOfBandGateway'] = pod.outOfBandGateway 
+            outputDict['topologyType'] = pod.topologyType
+            outputDict['spineJunosImage'] = pod.spineJunosImage
+            outputDict['hostOrVmCountPerLeaf'] = pod.hostOrVmCountPerLeaf
+            '''
             outputDict['leafSettings'] = []
-            for leafSetting in ipFabric.leafSettings:
+            for leafSetting in pod.leafSettings:
                 outputDict['leafSettings'].append({'deviceType': leafSetting.deviceFamily, 'junosImage': leafSetting.junosImage})
-            outputDict['leafCount'] = ipFabric.leafCount
-            outputDict['loopbackPrefix'] = ipFabric.loopbackPrefix 
-            outputDict['vlanPrefix'] = ipFabric.vlanPrefix
-            outputDict['interConnectPrefix'] = ipFabric.interConnectPrefix 
-            outputDict['managementPrefix'] = ipFabric.managementPrefix
-            outputDict['outOfBandAddressList'] = ipFabric.outOfBandAddressList
-            outputDict['outOfBandGateway'] = ipFabric.outOfBandGateway 
-            outputDict['topologyType'] = ipFabric.topologyType
-            outputDict['spineJunosImage'] = ipFabric.spineJunosImage
-            outputDict['devicePassword'] = ipFabric.getCleartextPassword()
+
+            outputDict['devicePassword'] = pod.getCleartextPassword()
             outputDict['uri'] = requestUrl
             outputDict['devices'] = {'uri': requestUrl + '/devices', 'total':len(devices)}
             outputDict['cablingPlan'] = {'uri': requestUrl + '/cabling-plan'}
@@ -281,13 +293,14 @@ class RestServer():
             outputDict['l2Report'] = {'uri': requestUrl + '/l2-report'}
             outputDict['l3Report'] = {'uri': requestUrl + '/l3-report'}
             
-            logger.debug('getIpFabric: %s' % (ipFabricId))
-         
-            return {'ipFabric': outputDict}
+            logger.debug('getPod: %s' % (podId))
+     
+            return {'pod': outputDict}
+
         else:
-            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "Pod with id: %s not found" % (podId))
     
-    def getCablingPlan(self, dbSession, ipFabricId):
+    def getCablingPlan(self, dbSession, podId):
         
         header =  bottle.request.get_header('Accept')
         logger.debug('Accept header before processing: %s' % (header))
@@ -295,72 +308,72 @@ class RestServer():
         header = header.translate(None, ',')
         logger.debug('Accept header after processing: %s' % (header))
 
-        ipFabric = self.report.getIpFabric(dbSession, ipFabricId)
-        if ipFabric is not None:
-            logger.debug('IpFabric name: %s' % (ipFabric.name))
+        pod = self.report.getPod(dbSession, podId)
+        if pod is not None:
+            logger.debug('Pod name: %s' % (pod.name))
             
             if header == 'application/json':
-                cablingPlan = ipFabric.cablingPlan
+                cablingPlan = pod.cablingPlan
                 if cablingPlan is not None and cablingPlan.json is not None:
                     logger.debug('CablingPlan found in DB')
                     return cablingPlan.json
                 else:
-                    raise bottle.HTTPError(404, "IpFabric: %s exists but no CablingPlan found in DB" % (ipFabric.id))
+                    raise bottle.HTTPError(404, "Pod: %s exists but no CablingPlan found in DB" % (pod.id))
                     
             else:
-                ipFabricFolder = ipFabric.id + '-' + ipFabric.name
-                fileName = os.path.join(ipFabricFolder, 'cablingPlan.dot')
+                podFolder = pod.id + '-' + pod.name
+                fileName = os.path.join(podFolder, 'cablingPlan.dot')
                 logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
                 logger.debug('Cabling file name: %s' % (fileName))                
                 cablingPlan = bottle.static_file(fileName, root=webServerRoot)
 
                 if isinstance(cablingPlan, bottle.HTTPError):
-                    raise bottle.HTTPError(404, "IpFabric exists but no CablingPlan found. IpFabric: '%s " % (ipFabricFolder))
+                    raise bottle.HTTPError(404, "Pod exists but no CablingPlan found. Pod: '%s " % (podFolder))
                 return cablingPlan
         
         else:
-            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "Pod with id: %s not found" % (podId))
 
-    def getLeafGenericConfiguration(self, dbSession, ipFabricId, deviceModel):
-        ipFabric = self.report.getIpFabric(dbSession, ipFabricId)
-        if ipFabric is None:
-            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+    def getLeafGenericConfiguration(self, dbSession, podId, deviceModel):
+        pod = self.report.getPod(dbSession, podId)
+        if pod is None:
+            raise bottle.HTTPError(404, "Pod with id: %s not found" % (podId))
         
-        logger.debug('IpFabric name: %s, id: %s' % (ipFabric.name, ipFabricId))
+        logger.debug('Pod name: %s, id: %s' % (pod.name, podId))
         
-        leafSetting = self.__dao.getLeafSetting(dbSession, ipFabricId, deviceModel)
+        leafSetting = self.__dao.getLeafSetting(dbSession, podId, deviceModel)
         if leafSetting is None or leafSetting.config is None:
-            raise bottle.HTTPError(404, "IpFabric exists but no leaf generic config found, probably configuration \
-                was not created. deviceModel: %s, ipFabric name: '%s', id: '%s'" % (deviceModel, ipFabric.name, ipFabricId))
+            raise bottle.HTTPError(404, "Pod exists but no leaf generic config found, probably configuration \
+                was not created. deviceModel: %s, pod name: '%s', id: '%s'" % (deviceModel, pod.name, podId))
         
         bottle.response.headers['Content-Type'] = 'application/json'
         return leafSetting.config
 
-    def getDeviceConfigsInZip(self, dbSession, ipFabricId):
-        ipFabric = self.report.getIpFabric(dbSession, ipFabricId)
-        if ipFabric is None:
-            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+    def getDeviceConfigsInZip(self, dbSession, podId):
+        pod = self.report.getPod(dbSession, podId)
+        if pod is None:
+            raise bottle.HTTPError(404, "Pod with id: %s not found" % (podId))
         
-        logger.debug('IpFabric name: %s' % (ipFabric.name))
+        logger.debug('Pod name: %s' % (pod.name))
 
-        zippedConfigFiles = self.createZipArchive(ipFabric)
+        zippedConfigFiles = self.createZipArchive(pod)
         if zippedConfigFiles is not None:
             bottle.response.headers['Content-Type'] = 'application/zip'
             return zippedConfigFiles
         else:
-            raise bottle.HTTPError(404, "IpFabric exists but no configs for devices.'%s " % (ipFabric.name))
+            raise bottle.HTTPError(404, "Pod exists but no configs for devices.'%s " % (pod.name))
 
-    def createZipArchive(self, ipFabric):
+    def createZipArchive(self, pod):
 
         buff = StringIO.StringIO()
         zipArchive = zipfile.ZipFile(buff, mode='w')
-        for device in ipFabric.devices:
+        for device in pod.devices:
             fileName = device.id + '__' + device.name + '.conf'
             if device.config is not None:
                 zipArchive.writestr(fileName, device.config.config)
                 
-        if ipFabric.leafSettings is not None:
-            for leafSetting in ipFabric.leafSettings:
+        if pod.leafSettings is not None:
+            for leafSetting in pod.leafSettings:
                 if leafSetting.config is not None:
                     zipArchive.writestr(leafSetting.deviceFamily + '.conf', leafSetting.config)
         
@@ -368,13 +381,17 @@ class RestServer():
         logger.debug('zip file content:\n' + str(zipArchive.namelist()))
         return buff.getvalue()
 
-    def getDevices(self, dbSession, ipFabricId):
+    def copyAdditionalDeviceFields(self, dict, device):
+        '''
+        Hook to enhance Device object
+        '''
+    def getDevices(self, dbSession, podId):
         
         devices = {}
         listOfDevices = []
-        ipFabric = self.report.getIpFabric(dbSession, ipFabricId)
-        if ipFabric is not None:
-            for device in ipFabric.devices:
+        pod = self.report.getPod(dbSession, podId)
+        if pod is not None:
+            for device in pod.devices:
                 outputDict = {}
                 outputDict['id'] = device.id
                 outputDict['name'] = device.name
@@ -387,20 +404,22 @@ class RestServer():
                 outputDict['configStatus'] = device.configStatus
                 outputDict['l2Status'] = device.l2Status
                 outputDict['l3Status'] = device.l3Status
-                outputDict['uri'] = bottle.request.url + '/' +device.id
+                outputDict['uri'] = str(bottle.request.url).translate(None, ',') + '/' +device.id
+                self.copyAdditionalDeviceFields(outputDict, device)
+
                 listOfDevices.append(outputDict)
             devices['device'] = listOfDevices
-            devices['uri'] = bottle.request.url
-            devices['total'] = len(ipFabric.devices)
+            devices['uri'] = str(bottle.request.url).translate(None, ',')
+            devices['total'] = len(pod.devices)
             return {'devices' : devices}
         else:
-            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "Pod with id: %s not found" % (podId))
         
-    def getDevice(self, dbSession, ipFabricId, deviceId):
+    def getDevice(self, dbSession, podId, deviceId):
         
-        device = self.isDeviceExists(dbSession, ipFabricId, deviceId)
-        #ipFabricUri is constructed from url
-        url = bottle.request.url
+        device = self.isDeviceExists(dbSession, podId, deviceId)
+        #podUri is constructed from url
+        url = str(bottle.request.url).translate(None, ',')
         uri = url.split("/")
         uri.pop()
         uri.pop()
@@ -425,52 +444,53 @@ class RestServer():
             outputDict['l3StatusReason'] = device.l3StatusReason
             outputDict['serialNumber'] = device.serialNumber
             outputDict['deployStatus'] = device.deployStatus
-            outputDict['uri'] = bottle.request.url
+            outputDict['uri'] = str(bottle.request.url).translate(None, ',')
             outputDict['pod'] = {'uri': ipFbaricUri }
-            outputDict['config'] = {'uri': bottle.request.url + '/config' }
+            outputDict['config'] = {'uri': str(bottle.request.url).translate(None, ',') + '/config' }
+            self.copyAdditionalDeviceFields(outputDict, device)
             
             return {'device': outputDict}
         else:
             raise bottle.HTTPError(404, "device with id: %s not found" % (deviceId))  
         
          
-    def getDeviceConfig(self, dbSession, ipFabricId, deviceId):
+    def getDeviceConfig(self, dbSession, podId, deviceId):
         
-        device = self.isDeviceExists(dbSession, ipFabricId, deviceId)
+        device = self.isDeviceExists(dbSession, podId, deviceId)
         if device is None:
-            raise bottle.HTTPError(404, "No device found with ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
+            raise bottle.HTTPError(404, "No device found with podId: '%s', deviceId: '%s'" % (podId, deviceId))
 
         config = device.config
         if config is None:
-            raise bottle.HTTPError(404, "Device exists but no config found, probably fabric script is not ran. ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
+            raise bottle.HTTPError(404, "Device exists but no config found. podId: '%s', deviceId: '%s'" % (podId, deviceId))
         
         bottle.response.headers['Content-Type'] = 'application/json'
         return config.config
 
     
-    def getZtpConfig(self, dbSession, ipFabricId):
+    def getZtpConfig(self, dbSession, podId):
         
-        ipFabric = self.report.getIpFabric(dbSession, ipFabricId)
-        if ipFabric is not None:
-            logger.debug('Fabric name: %s' % (ipFabric.name))
+        pod = self.report.getPod(dbSession, podId)
+        if pod is not None:
+            logger.debug('pod name: %s' % (pod.name))
             
-            ipFabricFolder = ipFabric.id + '-' + ipFabric.name
-            fileName = os.path.join(ipFabricFolder, "dhcpd.conf")
+            podFolder = pod.id + '-' + pod.name
+            fileName = os.path.join(podFolder, "dhcpd.conf")
             logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))         
             ztpConf = bottle.static_file(fileName, root=webServerRoot)
             if isinstance(ztpConf, bottle.HTTPError):
-                raise bottle.HTTPError(404, "Pod exists but no ztp Config found. Pod name: '%s " % (ipFabric.name))
+                raise bottle.HTTPError(404, "Pod exists but no ztp Config found. Pod name: '%s " % (pod.name))
             return ztpConf
         else:
-            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "Pod with id: %s not found" % (podId))
     
 
-    def isDeviceExists(self, dbSession, ipFabricId, deviceId):
+    def isDeviceExists(self, dbSession, podId, deviceId):
         try:
-            device = dbSession.query(Device).join(Pod).filter(Device.id == deviceId).filter(Pod.id == ipFabricId).one()
+            device = dbSession.query(Device).join(Pod).filter(Device.id == deviceId).filter(Pod.id == podId).one()
             return device
         except (exc.NoResultFound):
-            raise bottle.HTTPError(404, "No device found with ipFabricId: '%s', deviceId: '%s'" % (ipFabricId, deviceId))
+            raise bottle.HTTPError(404, "No device found with podId: '%s', deviceId: '%s'" % (podId, deviceId))
 
     def getJunosImage(self, dbSession, junosImageName):
            
@@ -501,117 +521,124 @@ class RestServer():
 
         return {'OpenClosConf' : confValues }
                     
-    def createIpFabric(self, dbSession):  
+    def createPod(self, dbSession):  
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception = RestError(0, "No json in request object"))
         else:
-            pod = bottle.request.json.get('ipFabric')
+            pod = bottle.request.json.get('pod')
             if pod is None:
                 raise bottle.HTTPError(400, exception = RestError(0, "POST body can not be empty"))
 
         l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
-        ipFabric = self.getPodFromDict(pod)
-        ipFabricName = ipFabric.pop('name')
-        fabricDevices = self.getDevDictFromDict(pod)
+        podDevices = self.getDevDictFromDict(pod)
+        pod = self.getPodFromDict(pod)
+        podName = pod.pop('name')
         try:
-            fabric =  l3ClosMediation.createPod(ipFabricName, ipFabric, fabricDevices)
-            url = bottle.request.url + '/' + fabric.id
-            ipFabric = self.getIpFabric(dbSession, fabric.id, url)
+            createdPod =  l3ClosMediation.createPod(podName, pod, podDevices)
+            url = str(bottle.request.url).translate(None, ',') + '/' + createdPod.id
+            pod = self.getPod(dbSession, createdPod.id, url)
         except ValueError as e:
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
             raise bottle.HTTPError(400, exception = RestError(0, e.message))
         bottle.response.set_header('Location', url)
         bottle.response.status = 201
 
-        return ipFabric
+        return pod
         
-    def createCablingPlan(self, dbSession, ipFabricId):
+    def createCablingPlan(self, dbSession, podId):
         try:
             l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
-            if l3ClosMediation.createCablingPlan(ipFabricId) is True:
+            if l3ClosMediation.createCablingPlan(podId) is True:
                 return bottle.HTTPResponse(status=200)
         except ValueError:
-            raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "Pod with id[%s] not found" % (podId))
 
-    def createDeviceConfiguration(self, dbSession, ipFabricId):
+    def createDeviceConfiguration(self, dbSession, podId):
         try:
             l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
-            if l3ClosMediation.createDeviceConfig(ipFabricId) is True:
+            if l3ClosMediation.createDeviceConfig(podId) is True:
                 return bottle.HTTPResponse(status=200)
         except ValueError:
-            raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "Pod with id[%s] not found" % (podId))
             
-    def createZtpConfiguration(self, dbSession, ipFabricId):
+    def createZtpConfiguration(self, dbSession, podId):
         try:
-            ZtpServer.createPodSpecificDhcpConfFile(self, ipFabricId)
+            ZtpServer.createPodSpecificDhcpConfFile(self, podId)
         except ValueError:
-            raise bottle.HTTPError(404, "Fabric with id[%s] not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "Pod with id[%s] not found" % (podId))
 
-    def reconfigIpFabric(self, dbSession, ipFabricId):
+    def reconfigPod(self, dbSession, podId):
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception = RestError(0, "No json in request object"))
         else:
-            inPod = bottle.request.json.get('ipFabric')
+            inPod = bottle.request.json.get('pod')
             if inPod is None:
                 raise bottle.HTTPError(400, exception = RestError(0, "POST body can not be empty"))
 
         l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
-        ipFabric = self.getPodFromDict(inPod)
-        #ipFabric['id'] = ipFabricId
-        #ipFabric['uri'] = bottle.request.url
-        fabricDevices = self.getDevDictFromDict(inPod)
-        # Pass the ipFabric and fabricDevices dictionaries to config/update API, then return
+        pod = self.getPodFromDict(inPod)
+        #pod['id'] = podId
+        #pod['uri'] = str(bottle.request.url).translate(None, ',')
+        podDevices = self.getDevDictFromDict(inPod)
+        # Pass the pod and podDevices dictionaries to config/update API, then return
         try:
-            updatedFabric = l3ClosMediation.updatePod(ipFabricId, ipFabric, fabricDevices)
-            url = bottle.request.url + '/' + updatedFabric.id
-            return self.getIpFabric(dbSession, ipFabricId, url)
+            updatedPod = l3ClosMediation.updatePod(podId, pod, podDevices)
+            url = str(bottle.request.url).translate(None, ',') + '/' + updatedPod.id
+            return self.getPod(dbSession, podId, url)
         except ValueError as e:
             raise bottle.HTTPError(400, exception = RestError(0, e.message))
     
     def setOpenClosConfigParams(self):
         return bottle.HTTPResponse(status=200)
     
-    def deleteIpFabric(self, dbSession, ipFabricId):
-        ipFabric = self.report.getIpFabric(dbSession, ipFabricId)
-        if ipFabric is not None:
-            self.__dao.deleteObject(dbSession, ipFabric)
-            util.deleteOutFolder(self._conf, ipFabric)
-            logger.debug("IpFabric with id: %s deleted" % (ipFabricId))
+    def deletePod(self, dbSession, podId):
+        pod = self.report.getPod(dbSession, podId)
+        if pod is not None:
+            self.__dao.deleteObject(dbSession, pod)
+            util.deleteOutFolder(self._conf, pod)
+            logger.debug("Pod with id: %s deleted" % (podId))
         else:
-            raise bottle.HTTPError(404, "IpFabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "Pod with id: %s not found" % (podId))
         return bottle.HTTPResponse(status=204)
 
     def getPodFromDict(self, podDict):
-        ipFabric = {}
+        pod = {}
         '''
         # Need to revisit later on to make thing works as below.
         podDict.pop('devices')
-        ipFabric = Pod(**inPod)
+        pod = Pod(**inPod)
         '''
         if podDict is None:
             raise bottle.HTTPError(400, exception = RestError(0, "Invalid value in POST/PUT body."))
-        ipFabric['name'] = podDict.get('name')
-        ipFabric['fabricDeviceType'] = podDict.get('fabricDeviceType')
-        ipFabric['fabricDeviceCount'] = podDict.get('fabricDeviceCount')
-        ipFabric['spineCount'] = podDict.get('spineCount')
-        ipFabric['spineDeviceType'] = podDict.get('spineDeviceType')
-        ipFabric['leafCount'] = podDict.get('leafCount')
-        ipFabric['leafSettings'] = podDict.get('leafSettings')
-        ipFabric['leafUplinkcountMustBeUp'] = podDict.get('leafUplinkcountMustBeUp')
-        ipFabric['interConnectPrefix'] = podDict.get('interConnectPrefix')
-        ipFabric['vlanPrefix'] = podDict.get('vlanPrefix')
-        ipFabric['loopbackPrefix'] = podDict.get('loopbackPrefix')
-        ipFabric['spineAS'] = podDict.get('spineAS')
-        ipFabric['leafAS'] = podDict.get('leafAS')
-        ipFabric['topologyType'] = podDict.get('topologyType')
-        ipFabric['outOfBandAddressList'] = podDict.get('outOfBandAddressList')
-        ipFabric['outOfBandGateway'] = podDict.get('outOfBandGateway')
-        ipFabric['managementPrefix'] = podDict.get('managementPrefix')
-        ipFabric['hostOrVmCountPerLeaf'] = podDict.get('hostOrVmCountPerLeaf')
-        ipFabric['description'] = podDict.get('description')
-        ipFabric['devicePassword'] = podDict.get('devicePassword')
+        
+        for field in self.getPodFieldListToCopy():
+            pod[field] = podDict.get(field)
+        
+        '''
+        pod['name'] = podDict.get('name')
+        pod['description'] = podDict.get('description')
+        pod['spineAS'] = podDict.get('spineAS')
+        pod['spineDeviceType'] = podDict.get('spineDeviceType')
+        pod['spineCount'] = podDict.get('spineCount')
+        pod['leafAS'] = podDict.get('leafAS')
+        pod['leafCount'] = podDict.get('leafCount')
+        pod['leafUplinkcountMustBeUp'] = podDict.get('leafUplinkcountMustBeUp')
+        pod['loopbackPrefix'] = podDict.get('loopbackPrefix')
+        pod['vlanPrefix'] = podDict.get('vlanPrefix')
+        pod['interConnectPrefix'] = podDict.get('interConnectPrefix')
+        pod['managementPrefix'] = podDict.get('managementPrefix')
+        pod['outOfBandAddressList'] = podDict.get('outOfBandAddressList')
+        pod['outOfBandGateway'] = podDict.get('outOfBandGateway')
+        pod['topologyType'] = podDict.get('topologyType')
+        pod['topologyType'] = podDict.get('topologyType')
+        pod['spineJunosImage'] = podDict.get('spineJunosImage')
+        pod['hostOrVmCountPerLeaf'] = podDict.get('hostOrVmCountPerLeaf')
+        '''
 
-        return ipFabric
+        pod['leafSettings'] = podDict.get('leafSettings')
+        pod['devicePassword'] = podDict.get('devicePassword')
+
+        return pod
 
 
     def getDevDictFromDict(self, podDict):
@@ -620,7 +647,7 @@ class RestServer():
         else:
             raise bottle.HTTPError(400, exception = RestError(0, "Invalid value in POST body."))
 
-        fabricDevices = {}
+        podDevices = {}
         spines = []
         leaves = []
         for device in devices:
@@ -639,12 +666,12 @@ class RestServer():
                 leaves.append(temp)
             else:
                 raise bottle.HTTPError(400, exception = RestError(0, "Unexpected role value in device inventory list"))
-            fabricDevices['spines'] = spines
-            fabricDevices['leafs'] = leaves
+            podDevices['spines'] = spines
+            podDevices['leafs'] = leaves
 
-        return fabricDevices
+        return podDevices
 
-    def getL2Report(self, dbSession, ipFabricId):
+    def getL2Report(self, dbSession, podId):
         try:
             cached = bottle.request.query.get('cached', '1')
             if cached == '1':
@@ -652,12 +679,12 @@ class RestServer():
             else:
                 cachedData = False
             bottle.response.headers['Content-Type'] = 'application/json'
-            return self.l2Report.generateReport(ipFabricId, cachedData)
+            return self.l2Report.generateReport(podId, cachedData)
 
         except ValueError:
-            raise bottle.HTTPError(404, "Fabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "Pod with id: %s not found" % (podId))
     
-    def getL3Report(self, dbSession, ipFabricId):
+    def getL3Report(self, dbSession, podId):
         try:
             cached = bottle.request.query.get('cached', '1')
             if cached == '1':
@@ -665,10 +692,10 @@ class RestServer():
             else:
                 cachedData = False
             bottle.response.headers['Content-Type'] = 'application/json'
-            return self.l3Report.generateReport(ipFabricId, cachedData)
+            return self.l3Report.generateReport(podId, cachedData)
 
         except ValueError:
-            raise bottle.HTTPError(404, "Fabric with id: %s not found" % (ipFabricId))
+            raise bottle.HTTPError(404, "Pod with id: %s not found" % (podId))
 
 def main():
     restServer = RestServer()

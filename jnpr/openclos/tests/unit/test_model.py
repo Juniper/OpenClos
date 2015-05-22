@@ -397,11 +397,11 @@ class TestInterfaceDefinition(TestOrm):
     def testConstructorPass(self):
         deviceOne = createDevice(self.session, 'testdevice')
         self.assertTrue(InterfaceDefinition('et-0/0/0', deviceOne, 'downlink') is not None)
-        self.assertTrue(InterfaceDefinition('et-0/0/1', deviceOne, 9000) is not None)
+        self.assertTrue(InterfaceDefinition('et-0/0/1', deviceOne, 'uplink', 9000) is not None)
         
     def testOrm(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        IFD = InterfaceDefinition('et-0/0/0', deviceOne, 9000)
+        IFD = InterfaceDefinition('et-0/0/0', deviceOne, 'uplink')
         self.session.add(IFD)
         self.session.commit()
         
@@ -416,12 +416,12 @@ class TestInterfaceDefinition(TestOrm):
          
     def testQueryOrderBy(self):
         deviceOne = createDevice(self.session, 'testdevice')
-        IFDs = [InterfaceDefinition('et-0/0/0', deviceOne, 9000), InterfaceDefinition('et-0/0/1', deviceOne, 9000), 
-                InterfaceDefinition('et-0/0/2', deviceOne, 9000), InterfaceDefinition('et-0/0/3', deviceOne, 9000), 
-                InterfaceDefinition('et-0/0/10', deviceOne, 9000), InterfaceDefinition('et-0/0/11', deviceOne, 9000),
-                InterfaceDefinition('et-0/0/12', deviceOne, 9000), InterfaceDefinition('et-0/0/13', deviceOne, 9000),
-                InterfaceDefinition('et-0/1/0', deviceOne, 9000), InterfaceDefinition('et-0/1/1', deviceOne, 9000),
-                InterfaceDefinition('et-0/1/2', deviceOne, 9000), InterfaceDefinition('et-0/1/3', deviceOne, 9000)]
+        IFDs = [InterfaceDefinition('et-0/0/0', deviceOne, 'uplink'), InterfaceDefinition('et-0/0/1', deviceOne, 'uplink'), 
+                InterfaceDefinition('et-0/0/2', deviceOne, 'uplink'), InterfaceDefinition('et-0/0/3', deviceOne, 'uplink'), 
+                InterfaceDefinition('et-0/0/10', deviceOne, 'uplink'), InterfaceDefinition('et-0/0/11', deviceOne, 'uplink'),
+                InterfaceDefinition('et-0/0/12', deviceOne, 'uplink'), InterfaceDefinition('et-0/0/13', deviceOne, 'uplink'),
+                InterfaceDefinition('et-0/1/0', deviceOne, 'uplink'), InterfaceDefinition('et-0/1/1', deviceOne, 'uplink'),
+                InterfaceDefinition('et-0/1/2', deviceOne, 'uplink'), InterfaceDefinition('et-0/1/3', deviceOne, 'uplink')]
         self.session.add_all(IFDs)
         self.session.commit()
         

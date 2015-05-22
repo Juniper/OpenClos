@@ -143,10 +143,7 @@ def isSqliteUsed(conf):
     return 'sqlite' in conf.get('dbUrl')
 
 
-fpcPicPortRegx = re.compile(r"[a-z]+-(\d)\/(\d)\/(\d{1,3})\.?(\d{0,2})")
-fakeNameRegx = re.compile(r"uplink-(\d{1,3})\.?(\d{0,2})")
 otherPortRegx = re.compile(r"[0-9A-Za-z]+\.?(\d{0,2})")
-
 def interfaceNameToUniqueSequenceNumber(interfaceName):
     '''    
     :param str: name, examples: 
@@ -158,6 +155,19 @@ def interfaceNameToUniqueSequenceNumber(interfaceName):
     if interfaceName is None or interfaceName == '':
         return None
     
+    sequenceNum = _matchFpcPicPort(interfaceName)
+    if sequenceNum != None:
+        return sequenceNum
+    sequenceNum = _matchFakeName(interfaceName)
+    if sequenceNum != None:
+        return sequenceNum
+
+    match = otherPortRegx.match(interfaceName)
+    if match is not None:
+        return int(interfaceName.encode('hex'), 16)
+
+fpcPicPortRegx = re.compile(r"[a-z]+-(\d)\/(\d)\/(\d{1,3})\.?(\d{0,2})")
+def _matchFpcPicPort(interfaceName):
     match = fpcPicPortRegx.match(interfaceName)
     if match is not None:
         fpc = match.group(1)
@@ -173,26 +183,27 @@ def interfaceNameToUniqueSequenceNumber(interfaceName):
             sequenceNum = 10000000 + 100 * sequenceNum + int(unit)
         
         return sequenceNum
-
-    match = fakeNameRegx.match(interfaceName)
-    if match is not None:
-        port = match.group(1)
-        unit = match.group(2)
-        if not unit:
-            unit = 0
-        
-        sequenceNum = 20000000 + int(port)
-        
-        if unit != 0:
-            sequenceNum = 21000000 + 100 * int(port) + int(unit)
-        
-        return sequenceNum
-
-    match = otherPortRegx.match(interfaceName)
-    if match is not None:
-        return int(interfaceName.encode('hex'), 16)
     
-    
+fakeNameRegxList = [(re.compile(r"uplink-(\d{1,3})\.?(\d{0,2})"), 20000000, 21000000),
+                    (re.compile(r"access-(\d{1,3})\.?(\d{0,2})"), 22000000, 23000000)
+                    ]
+def _matchFakeName(interfaceName):
+    for fakeNameRegx, intfStart, subIntfStart in fakeNameRegxList:
+        match = fakeNameRegx.match(interfaceName)
+        if match is not None:
+            port = match.group(1)
+            unit = match.group(2)
+            if not unit:
+                unit = 0
+            
+            sequenceNum = intfStart + int(port)
+            
+            if unit != 0:
+                sequenceNum = subIntfStart + 100 * int(port) + int(unit)
+            
+            return sequenceNum
+
+
 def getOutFolderPath(conf, ipFabric):
     if 'outputDir' in conf:
         outputDir = os.path.join(conf['outputDir'], ipFabric.id+'-'+ipFabric.name)

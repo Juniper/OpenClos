@@ -12,7 +12,7 @@ from model import InterfaceDefinition, AdditionalLink, BgpLink
 import util
 from propLoader import loadLoggingConfig
 
-cablingPlanTemplateLocation = os.path.join('conf', 'cablingPlanTemplates')
+templateLocation = os.path.join('conf', 'cablingPlanTemplates')
 
 moduleName = 'writer'
 loadLoggingConfig(appName = moduleName)
@@ -70,18 +70,15 @@ class DhcpConfWriter(WriterBase):
         else:
             logger.error('No content, skipping writing single dhcpd.conf for all pods')
 
+cablingPlanTemplatePackage = 'jnpr.openclos'
+
 class CablingPlanWriter(WriterBase):
     def __init__(self, conf, pod, dao):
         WriterBase.__init__(self, conf, pod, dao)
-        self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', cablingPlanTemplateLocation))
+        self.templateEnv = Environment(loader=PackageLoader(cablingPlanTemplatePackage, templateLocation))
         #self.templateEnv.trim_blocks = True
         self.templateEnv.lstrip_blocks = True
-        # load cabling plan template
-        self.template = self.templateEnv.get_template(self._pod.topologyType + '.txt')
-        # load L2Report template
-        self.l2ReportTemplate = self.templateEnv.get_template(self._pod.topologyType + 'L2Report.json')
-        # load L3Report template
-        self.l3ReportTemplate = self.templateEnv.get_template(self._pod.topologyType + 'L3Report.json')
+        self.template = self.templateEnv.get_template(self._pod.topologyType + '.json')
 
     def writeJSON(self):
         if self._pod.topologyType == 'threeStage':
@@ -127,87 +124,6 @@ class CablingPlanWriter(WriterBase):
                 f.write(cablingPlanJson)
         
         return cablingPlanJson
-
-    def getDataFor3StageL2Report(self):            
-        devices = []
-        links = []
-        for device in self._pod.devices:
-            if device.deployStatus == 'deploy':
-                devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployStatus': device.deployStatus})
-                if device.role == 'spine':
-                    continue
-                with self._dao.getReadSession() as session:
-                    leafPeerPorts = self._dao.getConnectedInterconnectIFDsFilterFakeOnes(session, device)
-                    for port in leafPeerPorts:
-                        leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
-                        spinePeerPort = port.peer
-                        spineInterconnectIp = spinePeerPort.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
-                        if spinePeerPort.device.deployStatus == 'deploy':
-                            links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
-                                          'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
-
-        with self._dao.getReadSession() as session:
-            # additional links
-            additionalLinkList = []
-            additionalLinks = session.query(AdditionalLink).all()
-            if additionalLinks is not None:
-                for link in additionalLinks:
-                    additionalLinkList.append({'device1': link.device1, 'port1': link.port1, 'ip1': '', 
-                                               'device2': link.device2, 'port2': link.port2, 'ip2': '', 
-                                               'lldpStatus': link.lldpStatus})
-
-        return {'devices': devices, 'links': links, 'additionalLinks': additionalLinkList}
-        
-    def getThreeStageL2ReportJson(self):
-        '''
-        This method will be called by REST layer
-        :returns str: l2Report in json format.
-        '''
-        data = self.getDataFor3StageL2Report()
-        l2ReportJson = self.l2ReportTemplate.render(devices = data['devices'], links = data['links'], additionalLinks = data['additionalLinks'])
-        return l2ReportJson
-    
-    def writeThreeStageL2ReportJson(self):
-        l2ReportJson = self.getThreeStageL2ReportJson()
-        path = os.path.join(self.outputDir, 'l2Report.json')
-        logger.info('Writing L2Report: %s' % (path))
-        with open(path, 'w') as f:
-                f.write(l2ReportJson)
-        return l2ReportJson
-
-    def getDataFor3StageL3Report(self):            
-        devices = []
-        links = []
-        for device in self._pod.devices:
-            if device.deployStatus == 'deploy':
-                devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l3Status, 'reason': device.l3StatusReason, 'deployStatus': device.deployStatus})
-                if device.role == 'spine':
-                    continue
-                with self._dao.getReadSession() as session:
-                    bgpLinks = session.query(BgpLink).filter(BgpLink.device_id == device.id).all()
-                    for bgpLink in bgpLinks:
-                        links.append({'device1': bgpLink.device1, 'asn1': bgpLink.device1As, 'ip1': bgpLink.device1Ip, 
-                                      'device2': bgpLink.device2, 'asn2': bgpLink.device2As, 'ip2': bgpLink.device2Ip, 
-                                      'inPacket': bgpLink.input_msg_count, 'outPacket': bgpLink.output_msg_count, 'outQueue': bgpLink.out_queue_count, 'lastFlap': bgpLink.flap_count,
-                                      'status': bgpLink.link_state, 'routes': bgpLink.act_rx_acc_route_count})
-        return {'devices': devices, 'links': links}
-        
-    def getThreeStageL3ReportJson(self):
-        '''
-        This method will be called by REST layer
-        :returns str: l3Report in json format.
-        '''
-        data = self.getDataFor3StageL3Report()
-        l3ReportJson = self.l3ReportTemplate.render(devices = data['devices'], links = data['links'])
-        return l3ReportJson
-    
-    def writeThreeStageL3ReportJson(self):
-        l3ReportJson = self.getThreeStageL3ReportJson()
-        path = os.path.join(self.outputDir, 'l3Report.json')
-        logger.info('Writing L3Report: %s' % (path))
-        with open(path, 'w') as f:
-                f.write(l3ReportJson)
-        return l3ReportJson
 
     def writeJSONFiveStageRealEstate(self):
         pass
@@ -323,3 +239,101 @@ class CablingPlanWriter(WriterBase):
     def writeDOTFiveStagePerformance(self):
         pass
         
+class L2ReportWriter(WriterBase):
+    def __init__(self, conf, pod, dao):
+        WriterBase.__init__(self, conf, pod, dao)
+        self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', templateLocation))
+        #self.templateEnv.trim_blocks = True
+        self.templateEnv.lstrip_blocks = True
+        # load L2Report template
+        self.l2ReportTemplate = self.templateEnv.get_template(self._pod.topologyType + 'L2Report.json')
+
+    def getDataFor3StageL2Report(self):            
+        devices = []
+        links = []
+        for device in self._pod.devices:
+            if device.deployStatus == 'deploy':
+                devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployStatus': device.deployStatus})
+                if device.role == 'spine':
+                    continue
+                with self._dao.getReadSession() as session:
+                    leafPeerPorts = self._dao.getConnectedInterconnectIFDsFilterFakeOnes(session, device)
+                    for port in leafPeerPorts:
+                        leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
+                        spinePeerPort = port.peer
+                        spineInterconnectIp = spinePeerPort.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
+                        if spinePeerPort.device.deployStatus == 'deploy':
+                            links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
+                                          'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
+
+        with self._dao.getReadSession() as session:
+            # additional links
+            additionalLinkList = []
+            additionalLinks = session.query(AdditionalLink).all()
+            if additionalLinks is not None:
+                for link in additionalLinks:
+                    additionalLinkList.append({'device1': link.device1, 'port1': link.port1, 'ip1': '', 
+                                               'device2': link.device2, 'port2': link.port2, 'ip2': '', 
+                                               'lldpStatus': link.lldpStatus})
+
+        return {'devices': devices, 'links': links, 'additionalLinks': additionalLinkList}
+        
+    def getThreeStageL2ReportJson(self):
+        '''
+        This method will be called by REST layer
+        :returns str: l2Report in json format.
+        '''
+        data = self.getDataFor3StageL2Report()
+        l2ReportJson = self.l2ReportTemplate.render(devices = data['devices'], links = data['links'], additionalLinks = data['additionalLinks'])
+        return l2ReportJson
+    
+    def writeThreeStageL2ReportJson(self):
+        l2ReportJson = self.getThreeStageL2ReportJson()
+        path = os.path.join(self.outputDir, 'l2Report.json')
+        logger.info('Writing L2Report: %s' % (path))
+        with open(path, 'w') as f:
+                f.write(l2ReportJson)
+        return l2ReportJson
+
+
+class L3ReportWriter(WriterBase):
+    def __init__(self, conf, pod, dao):
+        WriterBase.__init__(self, conf, pod, dao)
+        self.templateEnv = Environment(loader=PackageLoader('jnpr.openclos', templateLocation))
+        #self.templateEnv.trim_blocks = True
+        self.templateEnv.lstrip_blocks = True
+        self.l3ReportTemplate = self.templateEnv.get_template(self._pod.topologyType + 'L3Report.json')
+
+    def getDataFor3StageL3Report(self):            
+        devices = []
+        links = []
+        for device in self._pod.devices:
+            if device.deployStatus == 'deploy':
+                devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l3Status, 'reason': device.l3StatusReason, 'deployStatus': device.deployStatus})
+                if device.role == 'spine':
+                    continue
+                with self._dao.getReadSession() as session:
+                    bgpLinks = session.query(BgpLink).filter(BgpLink.device_id == device.id).all()
+                    for bgpLink in bgpLinks:
+                        links.append({'device1': bgpLink.device1, 'asn1': bgpLink.device1As, 'ip1': bgpLink.device1Ip, 
+                                      'device2': bgpLink.device2, 'asn2': bgpLink.device2As, 'ip2': bgpLink.device2Ip, 
+                                      'inPacket': bgpLink.input_msg_count, 'outPacket': bgpLink.output_msg_count, 'outQueue': bgpLink.out_queue_count, 'lastFlap': bgpLink.flap_count,
+                                      'status': bgpLink.link_state, 'routes': bgpLink.act_rx_acc_route_count})
+        return {'devices': devices, 'links': links}
+        
+    def getThreeStageL3ReportJson(self):
+        '''
+        This method will be called by REST layer
+        :returns str: l3Report in json format.
+        '''
+        data = self.getDataFor3StageL3Report()
+        l3ReportJson = self.l3ReportTemplate.render(devices = data['devices'], links = data['links'])
+        return l3ReportJson
+    
+    def writeThreeStageL3ReportJson(self):
+        l3ReportJson = self.getThreeStageL3ReportJson()
+        path = os.path.join(self.outputDir, 'l3Report.json')
+        logger.info('Writing L3Report: %s' % (path))
+        with open(path, 'w') as f:
+                f.write(l3ReportJson)
+        return l3ReportJson
