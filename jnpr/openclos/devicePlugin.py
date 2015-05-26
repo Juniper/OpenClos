@@ -16,7 +16,7 @@ from jnpr.junos.utils.config import Config
 
 from dao import Dao
 from model import Pod, Device, InterfaceDefinition, AdditionalLink, BgpLink
-from exception import DeviceError
+from exception import DeviceConnectFailed, DeviceRpcFailed, L2DataCollectionFailed, L3DataCollectionFailed, TwoStageConfigurationFailed
 from common import SingletonBase
 from l3Clos import L3ClosMediation
 from propLoader import OpenClosProperty, DeviceSku, loadLoggingConfig
@@ -95,9 +95,9 @@ class DeviceDataCollectorNetconf(object):
         :returns Device: Device, handle to device connection.
         '''
         if self.device.managementIp == None or self.device.username == None:
-            raise ValueError('Device: %s, ip: %s, username: %s' % (self.device.id, self.device.managementIp, self.device.username))
+            raise DeviceConnectFailed('Device: %s, ip: %s, username: %s' % (self.device.id, self.device.managementIp, self.device.username))
         if self.device.encryptedPassword == None:
-            raise ValueError('Device: %s, , ip: %s, password is None' % (self.device.id, self.device.managementIp))
+            raise DeviceConnectFailed('Device: %s, , ip: %s, password is None' % (self.device.id, self.device.managementIp))
         
         try:
             deviceIp = self.device.managementIp.split('/')[0]
@@ -110,12 +110,12 @@ class DeviceDataCollectorNetconf(object):
         except ConnectError as exc:
             logger.error('Device connection failure, %s' % (exc))
             self.deviceConnectionHandle = None
-            raise DeviceError(exc)
+            raise DeviceConnectFailed(self.device.managementIp, exc)
         except Exception as exc:
             logger.error('Unknown error, %s' % (exc))
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
             self.deviceConnectionHandle = None
-            raise DeviceError(exc)
+            raise DeviceConnectFailed(self.device.managementIp, exc)
 
 class L2DataCollector(DeviceDataCollectorNetconf):
     '''
@@ -137,7 +137,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             self.startCollectAndProcessLldp()
         except Exception as exc:
             logger.error('L2 data collection failed for %s, %s' % (self.deviceId, exc))
-            raise
+            raise L2DataCollectionFailed(self.deviceId, exc)
         finally:
             if self._session:
                 self._session.commit()
@@ -160,16 +160,23 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                     # ip address for this leaf. in this case the leaf and all its links should be marked 'unknown'
                     self.updateDeviceL2Status('unknown')
                     self.updateUnknownIfdStatus(self.device.interfaces)
-            except DeviceError as exc:
-                logger.error('Encountered device error for %s, %s' % (self.deviceLogStr, exc))
+            except DeviceConnectFailed as exc:
+                logger.error('Encountered device connect error for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL2Status(None, error = exc)
                 # when we can't connect, mark the links 'unknown' because it is possible the data network is 
                 # still working so we can't mark the links 'error'
                 self.updateUnknownIfdStatus(self.device.interfaces)
+                raise
+            except DeviceRpcFailed as exc:
+                logger.error('Encountered device RPC error for %s, %s' % (self.deviceLogStr, exc))
+                self.updateDeviceL2Status('error', str(exc))
+                self.updateBadIfdStatus(self.device.interfaces)
+                raise
             except Exception as exc:
                 logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL2Status('error', str(exc))
                 self.updateBadIfdStatus(self.device.interfaces)
+                raise
             finally:
                 self.collectionInProgressCache.doneDevice(self.deviceId)
                 logger.debug('Ended L2 data collection for %s' % (self.deviceLogStr))
@@ -202,11 +209,11 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             return links
         except RpcError as exc:
             logger.error('LLDP data collection failure, %s' % (exc))
-            raise DeviceError(exc)
+            raise DeviceRpcError("device '%s': LLDPNeighborTable" % (self.deviceId), exc)
         except Exception as exc:
             logger.error('Unknown error, %s' % (exc))
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
-            raise DeviceError(exc)
+            raise DeviceRpcError("device '%s': LLDPNeighborTable" % (self.deviceId), exc)
 
     def updateDeviceL2Status(self, status, reason = None, error = None):
         '''Possible status values are  'processing', 'good', 'error' '''
@@ -388,7 +395,7 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             self.startCollectAndProcessBgp()
         except Exception as exc:
             logger.error('L3 data collection failed for %s, %s' % (self.deviceId, exc))
-            raise
+            raise L3DataCollectionFailed(self.deviceId, exc)
         finally:
             if self._session:
                 self._session.commit()
@@ -410,16 +417,23 @@ class L3DataCollector(DeviceDataCollectorNetconf):
                     # ip address for this leaf. in this case the leaf and all its links should be marked 'unknown'
                     self.updateDeviceL3Status('unknown')
                     self.updateBgpLinkStatus('unknown')
-            except DeviceError as exc:
-                logger.error('Collect BGP data failed for %s, %s' % (self.deviceLogStr, exc))
+            except DeviceConnectFailed as exc:
+                logger.error('Encountered device connect error for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL3Status(None, error = exc)
                 # when we can't connect, mark the links 'unknown' because it is possible the data network is 
                 # still working so we can't mark the links 'error'
                 self.updateBgpLinkStatus('unknown')
+                raise
+            except DeviceRpcFailed as exc:
+                logger.error('Encountered device RPC error for %s, %s' % (self.deviceLogStr, exc))
+                self.updateDeviceL3Status('error', str(exc))
+                self.updateBgpLinkStatus('bad')
+                raise
             except Exception as exc:
                 logger.error('Collect BGP data failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceL3Status('error', str(exc))
                 self.updateBgpLinkStatus('bad')
+                raise
             finally:
                 self.collectionInProgressCache.doneDevice(self.deviceId)
                 logger.debug('Ended L3 data collection for %s' % (self.deviceLogStr))
@@ -456,11 +470,11 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             return links
         except RpcError as exc:
             logger.error('BGP data collection failure, %s' % (exc))
-            raise DeviceError(exc)
+            raise DeviceRpcError("device '%s': BGPNeighborTable" % (self.deviceId), exc)
         except Exception as exc:
             logger.error('Unknown error, %s' % (exc))
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
-            raise DeviceError(exc)
+            raise DeviceRpcError("device '%s': BGPNeighborTable" % (self.deviceId), exc)
 
     def processBgpData(self, bgpLinks):
         self.persistBgpLinks(bgpLinks)
@@ -562,7 +576,7 @@ class TwoStageConfigurator(L2DataCollector):
                 self.collectLldpAndMatchDevice()
         except Exception as exc:
             logger.error('Two stage configuration failed for %s, %s' % (self.deviceIp, exc))
-            raise
+            raise TwoStageConfigurationFailed(self.deviceId, exc)
         finally:
             if self._session:
                 self._session.commit()
@@ -640,7 +654,7 @@ class TwoStageConfigurator(L2DataCollector):
             if self.deviceConnectionHandle is None:
                 logger.error('All %d attempts failed for %s' % (self.attempt, self.deviceIp))
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
-                return
+                raise DeviceConnectFailed('All %d attempts failed for %s' % (self.attempt, self.deviceIp))
                 
             try:
                 self.device.family = self.deviceConnectionHandle.facts['model'].lower()
@@ -650,10 +664,9 @@ class TwoStageConfigurator(L2DataCollector):
                     return
 
                 lldpData = self.collectLldpFromDevice()
-            except DeviceError as exc:
-                logger.error('Collect LLDP data failed for %s, %s' % (self.deviceIp, exc))
             except Exception as exc:
-                logger.error('Collect LLDP data failed for %s, %s' % (self.deviceIp, exc))
+                logger.error('Failed to execute deleteVcpPorts for %s, %s' % (self.deviceIp, exc))
+                raise DeviceRpcFailed('Failed to execute deleteVcpPorts %s' % (self.deviceIp), exc)
 
             uplinksWithIfds = self.filterUplinkAppendRemotePortIfd(lldpData, self.device.family)
             self.updateSpineStatusFromLldpData([x['ifd2'] for x in uplinksWithIfds])
@@ -671,12 +684,14 @@ class TwoStageConfigurator(L2DataCollector):
                 self.updateDeviceConfigStatus('processing')
                 self.updateDeviceConfiguration()
                 self.updateDeviceConfigStatus('good')
-            except DeviceError as exc:
+            except DeviceRpcError as exc:
                 logger.error('Two stage configuration failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceConfigStatus(None, error = exc)
+                raise
             except Exception as exc:
                 logger.error('Two stage configuration failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceConfigStatus('error', str(exc))
+                raise
             finally:
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 logger.debug('Ended two stage configuration for %s' % (self.deviceLogStr))
@@ -866,7 +881,7 @@ class TwoStageConfigurator(L2DataCollector):
 
         except LockError as exc:
             logger.error('updateDeviceConfiguration failed for %s, LockError: %s, %s, %s' % (self.deviceLogStr, exc, exc.errs, exc.rpc_error))
-            raise DeviceError(exc)
+            raise DeviceRpcError('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
 
         try:
             # make sure no changes are taken from CLI candidate config left over
@@ -883,13 +898,12 @@ class TwoStageConfigurator(L2DataCollector):
             #TODO: eznc Error handling is not giving helpful error message
             logger.error('updateDeviceConfiguration failed for %s, CommitError: %s, %s, %s' % (self.deviceLogStr, exc, exc.errs, exc.rpc_error))
             configurationUnit.rollback() 
-            raise DeviceError(exc)
+            raise DeviceRpcError('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
         except Exception as exc:
             logger.error('updateDeviceConfiguration failed for %s, %s' % (self.deviceLogStr, exc))
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
             configurationUnit.rollback() 
-            raise DeviceError(exc)
-
+            raise DeviceRpcError('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
         finally:
             configurationUnit.unlock()
             logger.debug('Unlock config for %s' % (self.deviceLogStr))

@@ -12,6 +12,7 @@ import contextlib
 from model import Base, Device, InterfaceDefinition, LeafSetting
 from common import SingletonBase
 from propLoader import loadLoggingConfig
+from exception import InvalidConfiguration
 
 moduleName = 'dao'
 loadLoggingConfig(appName = moduleName)
@@ -35,7 +36,7 @@ class AbstractDao(SingletonBase):
                          pool_recycle = 7200, isolation_level = "READ COMMITTED")
         else:
             logger.error('Unsupported DB dialect: %s' % dbUrl)
-            raise ValueError('Unsupported DB dialect: %s' % dbUrl)
+            raise InvalidConfiguration('Unsupported DB dialect: %s' % dbUrl)
         
         Base.metadata.create_all(self.__engine) 
         self.__sessionFactory = sessionmaker(bind=self.__engine)

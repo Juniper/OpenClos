@@ -16,7 +16,7 @@ from writer import DhcpConfWriter
 from propLoader import OpenClosProperty, loadLoggingConfig
 
 from sqlalchemy.orm import exc
-
+from exception import PodNotFound
 
 moduleName = 'ztp'
 loadLoggingConfig(appName = moduleName)
@@ -65,11 +65,11 @@ class ZtpServer():
             try:
                 pod = self._dao.getObjectById(session, Pod, podId)
             except (exc.NoResultFound):
-                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+                raise PodNotFound("Pod[id='%s']: not found" % (podId)) 
             confWriter = DhcpConfWriter(self.__conf, pod, self._dao)
             confWriter.write(self.generatePodSpecificDhcpConf(session, pod.id))
         else:
-            raise ValueError("Pod id can't be None")
+            raise PodNotFound("Pod id can't be None")
 
     def getTemplate(self):
         ''' 

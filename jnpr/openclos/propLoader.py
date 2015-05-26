@@ -10,6 +10,7 @@ import re
 import logging.config
 
 from crypt import Cryptic
+from exception import ValidationError, InvalidConfiguration
 
 moduleName = 'propLoader'
 logger = logging.getLogger(moduleName)
@@ -68,7 +69,7 @@ class OpenClosProperty(PropertyLoader):
                     
     def getDbUrl(self):
         if self._properties.get('dbUrl') is None or self._properties.get('dbUrl')  == '':
-            raise ValueError('DB Url is empty')
+            raise InvalidConfiguration('DB Url is empty')
         
         return self._properties['dbUrl'] 
 
@@ -145,7 +146,7 @@ class DeviceSku(PropertyLoader):
         '''
         if self.skuDetail is None:
             logger.error('deviceFamily.yaml was not loaded properly')
-            raise ValueError('deviceFamily.yaml was not loaded properly')
+            raise InvalidConfiguration('deviceFamily.yaml was not loaded properly')
         return self.skuDetail.keys()
 
     def portRegexToList(self, portRegex):
@@ -162,7 +163,7 @@ class DeviceSku(PropertyLoader):
         portNames = []
         match = portNameRegx.match(portRegex)
         if match is None:
-            raise ValueError("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (portRegex))
+            raise ValidationError("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (portRegex))
         
         preRegx = match.group(1)    # group index starts with 1, NOT 0
         postRegx = match.group(4)
