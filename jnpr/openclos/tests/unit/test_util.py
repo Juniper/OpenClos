@@ -97,6 +97,11 @@ class TestFunctions(unittest.TestCase):
         path = getOutFolderPath({'outputDir': '/var/lib/openclos'}, pod)
         
         self.assertEquals('/var/lib/openclos/'+pod.id+'-'+pod.name, path)
+
+    def testReplaceFpcNumberOfInterface(self):
+        self.assertEquals('et-2/0/10', replaceFpcNumberOfInterface('et-0/0/10', '2'))
+        self.assertEquals('et-5/0/10.0', replaceFpcNumberOfInterface('et-0/0/10.0', '5'))
+        
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
