@@ -203,7 +203,18 @@ def _matchFakeName(interfaceName):
             
             return sequenceNum
 
+def getPortNumberFromName(interfaceName):
+    match = fpcPicPortRegx.match(interfaceName)
+    if match is not None:
+        return match.group(3)
 
+fpcRegx = re.compile(r"([a-z]+)-(\d)\/(.*)")
+def replaceFpcNumberOfInterface(interfaceName, newFpc):
+    match = fpcRegx.match(interfaceName)
+    if match is not None:
+        return match.group(1) + '-' + newFpc + '/' + match.group(3)
+    
+    
 def getOutFolderPath(conf, ipFabric):
     if 'outputDir' in conf:
         outputDir = os.path.join(conf['outputDir'], ipFabric.id+'-'+ipFabric.name)

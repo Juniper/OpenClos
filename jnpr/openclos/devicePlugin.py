@@ -644,10 +644,7 @@ class TwoStageConfigurator(L2DataCollector):
                 
             try:
                 self.device.family = self.deviceConnectionHandle.facts['model'].lower()
-                self.deleteVcpPorts(self.device.family)
-                if self.stopEvent.is_set():
-                    self.configurationInProgressCache.doneDevice(self.deviceIp)
-                    return
+                self.runPreLldpCommands()
 
                 lldpData = self.collectLldpFromDevice()
             except DeviceError as exc:
@@ -664,7 +661,9 @@ class TwoStageConfigurator(L2DataCollector):
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
             
-            self.fixPlugNPlayDevice(device, self.device.family, uplinksWithIfds)
+            self.runPostLldpCommands()
+
+            self.fixInterfaces(device, self.device.family, uplinksWithIfds)
             self.updateSelfDeviceContext(device)
 
             try:
@@ -682,7 +681,16 @@ class TwoStageConfigurator(L2DataCollector):
                 logger.debug('Ended two stage configuration for %s' % (self.deviceLogStr))
         else:
             logger.debug('Two stage configuration is already in progress for %s', (self.deviceLogStr))
+    
+    def runPreLldpCommands(self):
+        self.deleteVcpPorts(self.device.family)
+        if self.stopEvent.is_set():
+            self.configurationInProgressCache.doneDevice(self.deviceIp)
+            return
 
+    def runPostLldpCommands(self):
+        pass
+    
     def deleteVcpPorts(self, deviceFamily):
         if 'ex4300-' not in deviceFamily:
             return
@@ -695,7 +703,7 @@ class TwoStageConfigurator(L2DataCollector):
         logger.debug('Wait for vcpLldpDelay: %d seconds...' % (self.vcpLldpDelay))
         self.stopEvent.wait(self.vcpLldpDelay)        
 
-    def fixPlugNPlayDevice(self, device, deviceFamily, uplinksWithIfd):
+    def fixInterfaces(self, device, deviceFamily, uplinksWithIfd):
         '''
         Fix all plug-n-play leaf stuff, not needed if deviceFamily is unchanged
         :param Device device: matched device found in db
@@ -732,7 +740,7 @@ class TwoStageConfigurator(L2DataCollector):
         updateList = []
         uplinkNamesBasedOnDeviceFamily = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['uplinkPorts']
         # hack :( needed to keep the sequence proper in case2, if device changed from ex to qfx
-        self.markAllUplinkIfdsToUplink_x(device)
+        self.markAllUplinkIfdsToUplink(device)
         
         # case1: fix IFDs based on lldp data
         fixedIfdIds = {}
@@ -762,7 +770,7 @@ class TwoStageConfigurator(L2DataCollector):
         logger.debug('Number of uplink IFD + IFL fixed: %d' % (len(updateList)))
         self._dao.updateObjectsAndCommitNow(self._session, updateList)
 
-    def markAllUplinkIfdsToUplink_x(self, device):
+    def markAllUplinkIfdsToUplink(self, device):
         if device is None:
             return
         allocatedUplinkIfds = self._session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
@@ -847,16 +855,20 @@ class TwoStageConfigurator(L2DataCollector):
             logger.info('Number of matched uplink count: %s, is less than required effectiveLeafUplinkcountMustBeUp: %d' % (maxCount, effectiveLeafUplinkcountMustBeUp))
         
 
-    def updateDeviceConfiguration(self):
-        '''
-        Device Connection should be open by now, no need to connect again 
-        '''
-        logger.debug('updateDeviceConfiguration for %s' % (self.deviceLogStr))
+    def getDeviceConfig(self):
         l3ClosMediation = L3ClosMediation(conf = self._conf)
         config = l3ClosMediation.createLeafConfigFor2Stage(self.device)
         # l3ClosMediation used seperate db sessions to create device config
         # expire device from current session for lazy load with committed data
         self._session.expire(self.device)
+        return config
+        
+    def updateDeviceConfiguration(self):
+        '''
+        Device Connection should be open by now, no need to connect again 
+        '''
+        logger.debug('updateDeviceConfiguration for %s' % (self.deviceLogStr))
+        config = self.getDeviceConfig()
         
         configurationUnit = Config(self.deviceConnectionHandle)
 

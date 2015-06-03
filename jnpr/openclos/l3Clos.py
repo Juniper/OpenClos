@@ -467,7 +467,8 @@ class L3ClosMediation():
         leafSpineDict = self._getLeafSpineFromPod(pod)
         self._allocateIrb(session, pod, pod.vlanPrefix, leafSpineDict['leafs'])
         self._allocateInterconnect(session, pod.interConnectPrefix, leafSpineDict['spines'], leafSpineDict['leafs'])
-        self._allocateAsNumber(session, pod.spineAS, pod.leafAS, leafSpineDict['spines'], leafSpineDict['leafs'])
+        self._allocateAsNumberToSpines(session, pod.spineAS, leafSpineDict['spines'])
+        self._allocateAsNumberToLeafs(session, pod.leafAS, leafSpineDict['leafs'])
         self._allocateManagement(session, pod.managementPrefix, pod.managementStartingIP, pod.managementMask, leafSpineDict['spines'], leafSpineDict['leafs'])
         
     def _allocateManagement(self, session, managementPrefix, managementStartingIP, managementMask, spines, leaves):
@@ -493,8 +494,11 @@ class L3ClosMediation():
         lo0Block = IPNetwork(str(loopbackIp) + "/" + str(cidr))
         lo0Ips = list(lo0Block.iter_hosts())
         
-        interfaces = []
         pod.allocatedLoopbackBlock = str(lo0Block.cidr)
+        self._assignAllocatedLoopbackToDevices(session, devices, lo0Ips)
+
+    def _assignAllocatedLoopbackToDevices(self, session, devices, lo0Ips):
+        interfaces = []
         for device in devices:
             ifl = InterfaceLogical('lo0.0', device, str(lo0Ips.pop(0)) + '/32')
             interfaces.append(ifl)
@@ -513,8 +517,11 @@ class L3ClosMediation():
         irbBlock = IPNetwork(str(irbIp) + "/" + str(cidr))
         irbSubnets = list(irbBlock.subnet(cidrForEachSubnet))
         
-        interfaces = [] 
         pod.allocatedIrbBlock = str(irbBlock.cidr)
+        self._assignAllocatedIrbToDevices(session, leafs, irbSubnets, cidrForEachSubnet)
+
+    def _assignAllocatedIrbToDevices(self, session, leafs, irbSubnets, cidrForEachSubnet):
+        interfaces = [] 
         for leaf in leafs:
             ipAddress = list(irbSubnets.pop(0).iter_hosts())[0]
             # TODO: would be better to get irb.1 from property file as .1 is VLAN ID
@@ -556,14 +563,18 @@ class L3ClosMediation():
                 interfaces.append(leafEndIfl)
         self._dao.createObjects(session, interfaces)
 
-    def _allocateAsNumber(self, session, spineAsn, leafAsn, spines, leafs):
+    def _allocateAsNumberToSpines(self, session, spineAsn, spines):
         devices = []
         for spine in spines:
             spine.asn = spineAsn
             spineAsn += 1
             devices.append(spine)
         spines[0].pod.allocatedSpineAS = spineAsn - 1
+
+        self._dao.updateObjects(session, devices)
         
+    def _allocateAsNumberToLeafs(self, session, leafAsn, leafs):
+        devices = []        
         for leaf in leafs:
             leaf.asn = leafAsn
             leafAsn += 1
@@ -571,7 +582,7 @@ class L3ClosMediation():
         leafs[0].pod.allocatefLeafAS = leafAsn - 1
 
         self._dao.updateObjects(session, devices)
-        
+
     def generateConfig(self, session, pod):
         configWriter = ConfigWriter(self._conf, pod, self._dao)
         modifiedObjects = []
@@ -608,7 +619,6 @@ class L3ClosMediation():
         return baseTemplate.render(hostName=device.name, hashedPassword=device.getHashPassword())
 
     def _createInterfaces(self, session, device): 
-        interfaceStanza = self._templateEnv.get_template('interface_stanza.txt')
         lo0Stanza = self._templateEnv.get_template('lo0_stanza.txt')
         mgmtStanza = self._templateEnv.get_template('mgmt_interface.txt')
         rviStanza = self._templateEnv.get_template('rvi_stanza.txt')
@@ -626,8 +636,15 @@ class L3ClosMediation():
             irbIfl = session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'irb.1').one()
             config += rviStanza.render(address=irbIfl.ipaddress)
             config += self._createAccessPortInterfaces(device.family)
+                
+        config += self._createInterconnectInterfaces(session, device)
+        config += "}\n"
+        return config
 
-        # Interconnect interfaces
+    def _createInterconnectInterfaces(self, session, device): 
+        interfaceStanza = self._templateEnv.get_template('interface_stanza.txt')
+        config = ''
+
         deviceInterconnectIfds = self._dao.getConnectedInterconnectIFDsFilterFakeOnes(session, device)
         for interconnectIfd in deviceInterconnectIfds:
             peerDevice = interconnectIfd.peer.device
@@ -637,10 +654,8 @@ class L3ClosMediation():
                                              unit=namePlusUnit[1],
                                              description="facing_" + peerDevice.name,
                                              address=interconnectIfl.ipaddress)
-                
-        config += "}\n"
         return config
-
+    
     def _createAccessPortInterfaces(self, deviceFamily):
         accessInterface = self._templateEnv.get_template('accessInterface.txt')
         ifdNames = []
