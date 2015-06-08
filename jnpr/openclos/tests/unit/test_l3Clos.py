@@ -318,12 +318,16 @@ class TestL3Clos(unittest.TestCase):
             self.assertEquals(2, configlet.count('route'))
 
     def testCreateAccessInterface(self):
-        configlet = self.l3ClosMediation._createAccessPortInterfaces('qfx5100-48s-6q')
-        self.assertEquals(96, configlet.count('family ethernet-switching'))
-        self.assertTrue('xe-0/0/0' in configlet)
-        self.assertTrue('xe-0/0/47' in configlet)
-        self.assertTrue('ge-0/0/0' in configlet)
-        self.assertTrue('ge-0/0/47' in configlet)
+        with self._dao.getReadSession() as session:
+            from test_model import createPod
+            pod = createPod('test', session)
+            device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
+            configlet = self.l3ClosMediation._createAccessPortInterfaces(device)
+            self.assertEquals(96, configlet.count('family ethernet-switching'))
+            self.assertTrue('xe-0/0/0' in configlet)
+            self.assertTrue('xe-0/0/47' in configlet)
+            self.assertTrue('ge-0/0/0' in configlet)
+            self.assertTrue('ge-0/0/47' in configlet)
 
     def testCreateAccessInterfaceEx4300(self):
         self._conf['deviceFamily']['ex4300-48p'] = {
@@ -331,10 +335,14 @@ class TestL3Clos(unittest.TestCase):
                 "downlinkPorts": 'ge-0/0/[0-47]'
         }
         self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
-        configlet = self.l3ClosMediation._createAccessPortInterfaces('ex4300-48p')
-        self.assertEquals(48, configlet.count('family ethernet-switching'))
-        self.assertTrue('ge-0/0/0' in configlet)
-        self.assertTrue('ge-0/0/47' in configlet)
+        with self._dao.getReadSession() as session:
+            from test_model import createPod
+            pod = createPod('test', session)
+            device = Device("test", "ex4300-48p", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
+            configlet = self.l3ClosMediation._createAccessPortInterfaces(device)
+            self.assertEquals(48, configlet.count('family ethernet-switching'))
+            self.assertTrue('ge-0/0/0' in configlet)
+            self.assertTrue('ge-0/0/47' in configlet)
 
     def testCreateLeafGenericConfig(self):
         self._conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}
