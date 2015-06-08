@@ -142,6 +142,8 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             if self._session:
                 self._session.commit()
                 self._session.remove()
+            if self.deviceConnectionHandle:
+                self.deviceConnectionHandle.close()
     
     def startCollectAndProcessLldp(self):
         if (self.collectionInProgressCache.checkAndAddDevice(self.device.id)):
@@ -400,6 +402,8 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             if self._session:
                 self._session.commit()
                 self._session.remove()
+            if self.deviceConnectionHandle:
+                self.deviceConnectionHandle.close()
 
     def startCollectAndProcessBgp(self):
         if (self.collectionInProgressCache.checkAndAddDevice(self.device.id)):
@@ -581,6 +585,8 @@ class TwoStageConfigurator(L2DataCollector):
             if self._session:
                 self._session.commit()
                 self._session.remove()
+            if self.deviceConnectionHandle:
+                self.deviceConnectionHandle.close()
             
     def findPodByMgmtIp(self, deviceIp):
         logger.debug("Checking all pods for ip %s" % (deviceIp))
@@ -674,10 +680,9 @@ class TwoStageConfigurator(L2DataCollector):
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
             
-            self.runPostLldpCommands()
-
-            self.fixInterfaces(device, self.device.family, uplinksWithIfds)
             self.updateSelfDeviceContext(device)
+            self.runPostLldpCommands()
+            self.fixInterfaces(device, self.device.family, uplinksWithIfds)
 
             try:
                 self.updateDeviceConfigStatus('processing')
@@ -698,7 +703,7 @@ class TwoStageConfigurator(L2DataCollector):
             logger.debug('Two stage configuration is already in progress for %s', (self.deviceLogStr))
     
     def runPreLldpCommands(self):
-        self.deleteVcpPorts(self.device.family)
+        self.deleteVcpPortForEx(self.device.family)
         if self.stopEvent.is_set():
             self.configurationInProgressCache.doneDevice(self.deviceIp)
             return
@@ -706,7 +711,7 @@ class TwoStageConfigurator(L2DataCollector):
     def runPostLldpCommands(self):
         pass
     
-    def deleteVcpPorts(self, deviceFamily):
+    def deleteVcpPortForEx(self, deviceFamily):
         if 'ex4300-' not in deviceFamily:
             return
         for i in xrange(0, 4):

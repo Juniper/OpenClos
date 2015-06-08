@@ -208,6 +208,14 @@ def getPortNumberFromName(interfaceName):
     if match is not None:
         return match.group(3)
 
+def replaceFpcNumberOfInterfaces(interfaceNames, newFpc):
+    fixedInterfaceNames = []
+    for interfaceName in interfaceNames:
+        match = fpcRegx.match(interfaceName)
+        if match is not None:
+            fixedInterfaceNames.append(match.group(1) + '-' + newFpc + '/' + match.group(3))
+    return fixedInterfaceNames
+
 fpcRegx = re.compile(r"([a-z]+)-(\d)\/(.*)")
 def replaceFpcNumberOfInterface(interfaceName, newFpc):
     match = fpcRegx.match(interfaceName)

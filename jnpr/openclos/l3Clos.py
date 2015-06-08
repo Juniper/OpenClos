@@ -24,6 +24,7 @@ from jinja2 import Environment, PackageLoader
 import logging
 from exception import InvalidRequest, ValidationError, PodNotFound
 
+junosTemplatePackage = 'jnpr.openclos'
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 
 moduleName = 'l3Clos'
@@ -39,7 +40,7 @@ class L3ClosMediation():
 
         self._dao = daoClass.getInstance()
 
-        self._templateEnv = Environment(loader=PackageLoader('jnpr.openclos', junosTemplateLocation))
+        self._templateEnv = Environment(loader=PackageLoader(junosTemplatePackage, junosTemplateLocation))
         self._templateEnv.keep_trailing_newline = True
         self.isZtpStaged = util.isZtpStaged(self._conf)
         self.deviceSku = DeviceSku()
@@ -638,7 +639,7 @@ class L3ClosMediation():
         if device.role == 'leaf':
             irbIfl = session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'irb.1').one()
             config += rviStanza.render(address=irbIfl.ipaddress)
-            config += self._createAccessPortInterfaces(device.family)
+            config += self._createAccessPortInterfaces(device)
                 
         config += self._createInterconnectInterfaces(session, device)
         config += "}\n"
@@ -659,13 +660,10 @@ class L3ClosMediation():
                                              address=interconnectIfl.ipaddress)
         return config
     
-    def _createAccessPortInterfaces(self, deviceFamily):
+    def _createAccessPortInterfaces(self, device):
         accessInterface = self._templateEnv.get_template('accessInterface.txt')
-        ifdNames = []
-
-        for ifdName in self.deviceSku.getPortNamesForDeviceFamily(deviceFamily, 'leaf')['downlinkPorts']:
-            ifdNames.append(ifdName)
-
+        
+        ifdNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['downlinkPorts']
         return accessInterface.render(ifdNames=ifdNames)
 
     def _getOpenclosTrapTargetIpFromConf(self):
