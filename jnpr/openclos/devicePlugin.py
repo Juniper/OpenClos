@@ -211,11 +211,11 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             return links
         except RpcError as exc:
             logger.error('LLDP data collection failure, %s' % (exc))
-            raise DeviceRpcError("device '%s': LLDPNeighborTable" % (self.deviceId), exc)
+            raise DeviceRpcFailed("device '%s': LLDPNeighborTable" % (self.deviceId), exc)
         except Exception as exc:
             logger.error('Unknown error, %s' % (exc))
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
-            raise DeviceRpcError("device '%s': LLDPNeighborTable" % (self.deviceId), exc)
+            raise DeviceRpcFailed("device '%s': LLDPNeighborTable" % (self.deviceId), exc)
 
     def updateDeviceL2Status(self, status, reason = None, error = None):
         '''Possible status values are  'processing', 'good', 'error' '''
@@ -474,11 +474,11 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             return links
         except RpcError as exc:
             logger.error('BGP data collection failure, %s' % (exc))
-            raise DeviceRpcError("device '%s': BGPNeighborTable" % (self.deviceId), exc)
+            raise DeviceRpcFailed("device '%s': BGPNeighborTable" % (self.deviceId), exc)
         except Exception as exc:
             logger.error('Unknown error, %s' % (exc))
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
-            raise DeviceRpcError("device '%s': BGPNeighborTable" % (self.deviceId), exc)
+            raise DeviceRpcFailed("device '%s': BGPNeighborTable" % (self.deviceId), exc)
 
     def processBgpData(self, bgpLinks):
         self.persistBgpLinks(bgpLinks)
@@ -680,15 +680,15 @@ class TwoStageConfigurator(L2DataCollector):
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
             
-            self.fixInterfaces(device, self.device.family, uplinksWithIfds)
             self.updateSelfDeviceContext(device)
             self.runPostLldpCommands()
+            self.fixInterfaces(device, self.device.family, uplinksWithIfds)
 
             try:
                 self.updateDeviceConfigStatus('processing')
                 self.updateDeviceConfiguration()
                 self.updateDeviceConfigStatus('good')
-            except DeviceRpcError as exc:
+            except DeviceRpcFailed as exc:
                 logger.error('Two stage configuration failed for %s, %s' % (self.deviceLogStr, exc))
                 self.updateDeviceConfigStatus(None, error = exc)
                 raise
@@ -898,7 +898,7 @@ class TwoStageConfigurator(L2DataCollector):
 
         except LockError as exc:
             logger.error('updateDeviceConfiguration failed for %s, LockError: %s, %s, %s' % (self.deviceLogStr, exc, exc.errs, exc.rpc_error))
-            raise DeviceRpcError('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
+            raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
 
         try:
             # make sure no changes are taken from CLI candidate config left over
@@ -915,12 +915,12 @@ class TwoStageConfigurator(L2DataCollector):
             #TODO: eznc Error handling is not giving helpful error message
             logger.error('updateDeviceConfiguration failed for %s, CommitError: %s, %s, %s' % (self.deviceLogStr, exc, exc.errs, exc.rpc_error))
             configurationUnit.rollback() 
-            raise DeviceRpcError('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
+            raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
         except Exception as exc:
             logger.error('updateDeviceConfiguration failed for %s, %s' % (self.deviceLogStr, exc))
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
             configurationUnit.rollback() 
-            raise DeviceRpcError('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
+            raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
         finally:
             configurationUnit.unlock()
             logger.debug('Unlock config for %s' % (self.deviceLogStr))

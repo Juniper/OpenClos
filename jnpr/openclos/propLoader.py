@@ -10,7 +10,7 @@ import re
 import logging.config
 
 from crypt import Cryptic
-from exception import ValidationError, InvalidConfiguration
+from exception import InvalidConfiguration
 
 moduleName = 'propLoader'
 logger = logging.getLogger(moduleName)
@@ -163,7 +163,7 @@ class DeviceSku(PropertyLoader):
         portNames = []
         match = portNameRegx.match(portRegex)
         if match is None:
-            raise ValidationError("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (portRegex))
+            raise InvalidConfiguration("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (portRegex))
         
         preRegx = match.group(1)    # group index starts with 1, NOT 0
         postRegx = match.group(4)

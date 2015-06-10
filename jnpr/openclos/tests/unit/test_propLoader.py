@@ -7,6 +7,7 @@ import unittest
 import os
 
 from jnpr.openclos.propLoader import PropertyLoader, OpenClosProperty, DeviceSku, loadLoggingConfig
+from jnpr.openclos.exception import InvalidConfiguration
 
 class TestPropertyLoader(unittest.TestCase):
 
@@ -66,13 +67,13 @@ class TestDeviceSku(unittest.TestCase):
         pass
 
     def testExpandPortNameBadRegex1(self):
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(InvalidConfiguration) as ve:
             self.deviceSku.portRegexToList('xe-0/0/[1-1000]')
     def testExpandPortNameBadRegex2(self):
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(InvalidConfiguration) as ve:
             self.deviceSku.portRegexToList('xe-0//[1-10]')
     def testExpandPortNameBadRegex3(self):
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(InvalidConfiguration) as ve:
             self.deviceSku.portRegexToList('-0/0/[1-10]')
     def testExpandPortNameEmpty(self):
         portNames = self.deviceSku.portRegexToList('')
@@ -140,7 +141,7 @@ class TestDeviceSku(unittest.TestCase):
         
     def testGetSupportedDeviceFamilyBadInputFile(self):
         self.deviceSku = DeviceSku('')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(InvalidConfiguration):
             self.deviceSku.getSupportedDeviceFamily()
 
     def testGetSupportedDeviceFamily(self):

@@ -6,7 +6,7 @@ Created on Oct 30, 2014
 import unittest
 
 from jnpr.openclos.devicePlugin import DeviceDataCollectorNetconf, L2DataCollector, L3DataCollector, DeviceOperationInProgressCache, TwoStageConfigurator 
-from jnpr.openclos.exception import DeviceError
+from jnpr.openclos.exception import DeviceConnectFailed, DeviceRpcFailed
 from jnpr.openclos.model import Device, InterfaceDefinition, InterfaceLogical, BgpLink
 from jnpr.openclos import propLoader
 from test_dao import InMemoryDao 
@@ -37,16 +37,14 @@ class TestDeviceDataCollectorNetconf(unittest.TestCase):
         flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", None, "Embe1mpls", "leaf", "", "0.0.0.0", None))
         self.dataCollector.manualInit()
         
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(DeviceConnectFailed) as ve:
             self.dataCollector.connectToDevice()
-        
-        self.assertEquals(ValueError, type(ve.exception))
 
     def testConnectToDeviceConnectError(self):
         flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", "root", "Embe1mpls", "leaf", "", "0.0.0.0", None))
         self.dataCollector.manualInit()
 
-        with self.assertRaises(DeviceError) as de:
+        with self.assertRaises(DeviceConnectFailed) as de:
             self.dataCollector.connectToDevice()
         
         self.assertIsNotNone(de.exception.cause)
@@ -93,7 +91,7 @@ class TestL2DataCollector(unittest.TestCase):
             dataCollector.manualInit()
             dataCollector._session = session
 
-            dataCollector.updateDeviceL2Status(None, error = DeviceError(ValueError("test error")))
+            dataCollector.updateDeviceL2Status(None, error = DeviceRpcFailed("", cause=ValueError("test error")))
             self.assertEqual("error", leaf.l2Status)
             self.assertEqual("test error", leaf.l2StatusReason)
 
@@ -729,7 +727,7 @@ class TestL3DataCollector(unittest.TestCase):
             dataCollector.manualInit()
             dataCollector._session = session
 
-            dataCollector.updateDeviceL3Status(None, error = DeviceError(ValueError("test error")))
+            dataCollector.updateDeviceL3Status(None, error = DeviceRpcFailed("", cause=ValueError("test error")))
             self.assertEqual("error", leaf.l3Status)
             self.assertEqual("test error", leaf.l3StatusReason)
 

@@ -13,6 +13,7 @@ import unittest
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 from jnpr.openclos.model import ManagedElement, Pod, LeafSetting, Device, Interface, InterfaceLogical, InterfaceDefinition, Base, AdditionalLink, CablingPlan, TrapGroup
+from jnpr.openclos.exception import InvalidUplinkThreshold
 
 def createPodObj(name):  
     pod = {}
@@ -136,7 +137,7 @@ class TestPod(TestOrm):
 
     def testPodVaidateLeafUplinkcountMustBeUp(self):
         pod = createPodObj('name')
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(InvalidUplinkThreshold) as ve:
             pod.leafUplinkcountMustBeUp = 1
             pod.validate()
         error = ve.exception.message

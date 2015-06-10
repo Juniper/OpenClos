@@ -22,7 +22,7 @@ import util
 from writer import ConfigWriter, CablingPlanWriter
 from jinja2 import Environment, PackageLoader
 import logging
-from exception import InvalidRequest, ValidationError, PodNotFound
+from exception import InvalidRequest, MissingMandatoryAttribute, PodNotFound, InsufficientLoopbackIp, InsufficientVlanIp, InsufficientInterconnectIp, InsufficientManagementIp, CapacityCannotChange
 
 junosTemplatePackage = 'jnpr.openclos'
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
@@ -183,7 +183,7 @@ class L3ClosMediation():
 
     def _validateAttribute(self, pod, attr, dct):
         if dct.get(attr) is None:
-            raise ValidationError("Pod[id='%s', name='%s']: device '%s' attribute '%s' cannot be None" % (pod.id, pod.name, dct.get('name'), attr))
+            raise MissingMandatoryAttribute("Pod[id='%s', name='%s']: device '%s' attribute '%s' cannot be None" % (pod.id, pod.name, dct.get('name'), attr))
     
     def _validateLoopbackPrefix(self, pod, podDict, inventoryData):
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
@@ -191,7 +191,7 @@ class L3ClosMediation():
         lo0Ips = list(lo0Block.iter_hosts())
         availableIps = len(lo0Ips)
         if availableIps < inventoryDeviceCount:
-            raise ValidationError("Pod[id='%s', name='%s']: loopbackPrefix available IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
+            raise InsufficientLoopbackIp("Pod[id='%s', name='%s']: loopbackPrefix available IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
 
     def _validateVlanPrefix(self, pod, podDict, inventoryData):
         vlanBlock = IPNetwork(podDict['vlanPrefix'])
@@ -201,7 +201,7 @@ class L3ClosMediation():
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
         if vlanBlock.prefixlen > cidr:
-            raise ValidationError("Pod[id='%s', name='%s']: vlanPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, vlanBlock.prefixlen, cidr))
+            raise InsufficientVlanIp("Pod[id='%s', name='%s']: vlanPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, vlanBlock.prefixlen, cidr))
     
     def _validateInterConnectPrefix(self, pod, podDict, inventoryData):
         interConnectBlock = IPNetwork(podDict['interConnectPrefix'])
@@ -216,22 +216,22 @@ class L3ClosMediation():
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
         if interConnectBlock.prefixlen > cidr:
-            raise ValidationError("Pod[id='%s', name='%s']: interConnectPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, interConnectBlock.prefixlen, cidr))
+            raise InsufficientInterconnectIp("Pod[id='%s', name='%s']: interConnectPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, interConnectBlock.prefixlen, cidr))
     
     def _validateManagementPrefix(self, pod, podDict, inventoryData):
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
         managementIps = util.getMgmtIps(podDict.get('managementPrefix'), podDict.get('managementStartingIP'), podDict.get('managementMask'), inventoryDeviceCount)
         availableIps = len(managementIps)
         if availableIps < inventoryDeviceCount:
-            raise ValidationError("Pod[id='%s', name='%s']: managementPrefix avaiable IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
+            raise InsufficientManagementIp("Pod[id='%s', name='%s']: managementPrefix avaiable IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
     
     def _validatePod(self, pod, podDict, inventoryData):
         if inventoryData is None:
-            raise ValidationError("Pod[id='%s', name='%s']: inventory cannot be empty" % (pod.id, pod.name))
+            raise InvalidRequest("Pod[id='%s', name='%s']: inventory cannot be empty" % (pod.id, pod.name))
         
         # if following data changed we need to reallocate resource
         if pod.spineCount != podDict['spineCount'] or pod.leafCount != podDict['leafCount']:
-            raise ValidationError("Pod[id='%s', name='%s']: capacity cannot be changed" % (pod.id, pod.name))
+            raise CapacityCannotChange("Pod[id='%s', name='%s']: capacity cannot be changed" % (pod.id, pod.name))
 
         for spine in inventoryData['spines']:
             self._validateAttribute(pod, 'name', spine)
@@ -249,7 +249,7 @@ class L3ClosMediation():
         expectedDeviceCount = int(podDict['spineCount']) + int(podDict['leafCount'])
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
         if expectedDeviceCount != inventoryDeviceCount:
-            raise ValidationError("Pod[id='%s', name='%s']: inventory device count %d does not match capacity %d" % (pod.id, pod.name, inventoryDeviceCount, expectedDeviceCount))
+            raise CapacityMismatch("Pod[id='%s', name='%s']: inventory device count %d does not match capacity %d" % (pod.id, pod.name, inventoryDeviceCount, expectedDeviceCount))
 
         # validate loopbackPrefix is big enough
         self._validateLoopbackPrefix(pod, podDict, inventoryData)

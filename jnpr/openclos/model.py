@@ -12,7 +12,7 @@ from sqlalchemy.orm import relationship, backref
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 from crypt import Cryptic
 import util
-from exception import ValidationError
+from exception import EnumerationMismatch, InvalidUplinkThreshold, MissingMandatoryAttribute, InvalidIpFormat
 
 Base = declarative_base()
 
@@ -32,7 +32,7 @@ class ManagedElement(object):
         else:
             error = value not in enumList
         if error:
-            raise ValidationError("%s('%s') must be one of %s" % (enumName, value, enumList))
+            raise EnumerationMismatch("%s('%s') must be one of %s" % (enumName, value, enumList))
     
 class Pod(ManagedElement, Base):
     __tablename__ = 'pod'
@@ -185,8 +185,7 @@ class Pod(ManagedElement, Base):
         self.validateRequiredFields()
         self.validateIPaddr()  
         if self.leafUplinkcountMustBeUp < 2 or self.leafUplinkcountMustBeUp > self.spineCount:
-            raise ValidationError('leafUplinkcountMustBeUp(%s) should be between 2 and spineCount(%s)' \
-                % (self.leafUplinkcountMustBeUp, self.spineCount))
+            raise InvalidUplinkThreshold('leafUplinkcountMustBeUp(%s) should be between 2 and spineCount(%s)' % (self.leafUplinkcountMustBeUp, self.spineCount))
         
     def validateRequiredFields(self):
         
@@ -218,7 +217,7 @@ class Pod(ManagedElement, Base):
         if self.encryptedPassword is None:
             error += 'devicePassword'
         if error != '':
-            raise ValidationError('Missing required fields: ' + error)
+            raise MissingMandatoryAttribute('Missing required fields: ' + error)
         
     def validateIPaddr(self):   
         error = ''     
@@ -246,7 +245,7 @@ class Pod(ManagedElement, Base):
         except AddrFormatError:
                 error += 'managementStartingIP'
         if error != '':
-            raise ValidationError('invalid IP format: ' + error)
+            raise InvalidIpFormat('invalid IP format: ' + error)
 
 class LeafSetting(ManagedElement, Base):
     __tablename__ = 'leafSetting'

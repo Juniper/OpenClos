@@ -15,7 +15,7 @@ import util
 import logging
 
 from bottle import error, request, response, PluginError
-from exception import InvalidRequest, ValidationError, PodNotFound, CablingPlanNotFound, ConfigurationNotFound, DeviceNotFound, ImageNotFound, CreatePodFailed, UpdatePodFailed
+from exception import InvalidRequest, PodNotFound, CablingPlanNotFound, DeviceConfigurationNotFound, DeviceNotFound, ImageNotFound, CreatePodFailed, UpdatePodFailed
 from model import Pod, Device
 from dao import Dao
 from report import ResourceAllocationReport, L2Report, L3Report
@@ -162,7 +162,7 @@ class RestServer():
     def error400(error):
         bottle.response.headers['Content-Type'] = 'application/json'
         if error.exception is not None:
-            return json.dumps({'errorCode': error.exception._errorCode , 'errorMessage' : error.exception._errorMessage})
+            return json.dumps({'errorCode': error.exception.code , 'errorMessage' : error.exception.message})
         else:
             return json.dumps({'errorCode': 0, 'errorMessage' : 'A generic error occurred'})
         
@@ -171,7 +171,7 @@ class RestServer():
     def error404(error):
         bottle.response.headers['Content-Type'] = 'application/json'
         if error.exception is not None:
-            return json.dumps({'errorCode': error.exception._errorCode , 'errorMessage' : error.exception._errorMessage})
+            return json.dumps({'errorCode': error.exception.code , 'errorMessage' : error.exception.message})
         else:
             return json.dumps({'errorCode': 0, 'errorMessage' : 'A generic error occurred'})
         
@@ -344,7 +344,7 @@ class RestServer():
             raise bottle.HTTPError(404, exception = PodNotFound(podId))
 
     def getLeafGenericConfiguration(self, dbSession, podId, deviceModel):
-        pod = self.report.getIpFabric(dbSession, podId)
+        pod = self.report.getPod(dbSession, podId)
         if pod is None:
             raise bottle.HTTPError(404, exception = PodNotFound(podId))
         
@@ -352,14 +352,14 @@ class RestServer():
         
         leafSetting = self.__dao.getLeafSetting(dbSession, podId, deviceModel)
         if leafSetting is None or leafSetting.config is None:
-            raise bottle.HTTPError(404, exception = ConfigurationNotFound("Pod exists but no leaf generic config found, probably configuration \
+            raise bottle.HTTPError(404, exception = DeviceConfigurationNotFound("Pod exists but no leaf generic config found, probably configuration \
                 was not created. deviceModel: %s, pod name: '%s', id: '%s'" % (deviceModel, pod.name, podId)))
         
         bottle.response.headers['Content-Type'] = 'application/json'
         return leafSetting.config
 
     def getDeviceConfigsInZip(self, dbSession, podId):
-        pod = self.report.getIpFabric(dbSession, podId)
+        pod = self.report.getPod(dbSession, podId)
         if pod is None:
             raise bottle.HTTPError(404, exception = PodNotFound(podId))
         
@@ -370,7 +370,7 @@ class RestServer():
             bottle.response.headers['Content-Type'] = 'application/zip'
             return zippedConfigFiles
         else:
-            raise bottle.HTTPError(404, exception = ConfigurationNotFound("Pod exists but no configs for devices.'%s " % (pod.name)))
+            raise bottle.HTTPError(404, exception = DeviceConfigurationNotFound("Pod exists but no configs for devices.'%s " % (pod.name)))
 
     def createZipArchive(self, pod):
 
@@ -471,7 +471,7 @@ class RestServer():
 
         config = device.config
         if config is None:
-            raise bottle.HTTPError(404, exception = ConfigurationNotFound("Device exists but no config found, probably fabric script is not ran. podId: '%s', deviceId: '%s'" % (podId, deviceId)))
+            raise bottle.HTTPError(404, exception = DeviceConfigurationNotFound("Device exists but no config found, probably fabric script is not ran. podId: '%s', deviceId: '%s'" % (podId, deviceId)))
         
         bottle.response.headers['Content-Type'] = 'application/json'
         return config.config
@@ -488,7 +488,7 @@ class RestServer():
             logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))         
             ztpConf = bottle.static_file(fileName, root=webServerRoot)
             if isinstance(ztpConf, bottle.HTTPError):
-                raise bottle.HTTPError(404, exception = ConfigurationNotFound("Pod exists but no ztp Config found. Pod name: '%s " % (pod.name)))
+                raise bottle.HTTPError(404, exception = DeviceConfigurationNotFound("Pod exists but no ztp Config found. Pod name: '%s " % (pod.name)))
             return ztpConf
         else:
             raise bottle.HTTPError(404, exception = PodNotFound(podId))
@@ -582,7 +582,7 @@ class RestServer():
         else:
             inPod = bottle.request.json.get('pod')
             if inPod is None:
-                raise bottle.HTTPError(400, exception = InvalidRequest(0, "POST body can not be empty"))
+                raise bottle.HTTPError(400, exception = InvalidRequest("POST body cannot be empty"))
 
         l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
         pod = self.getPodFromDict(inPod)
