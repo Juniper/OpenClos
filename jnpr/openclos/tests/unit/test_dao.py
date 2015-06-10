@@ -10,7 +10,7 @@ from flexmock import flexmock
 import jnpr.openclos.util
 from jnpr.openclos.model import Pod, Device, Interface, InterfaceDefinition, TrapGroup
 from jnpr.openclos.dao import AbstractDao
-
+from jnpr.openclos.exception import InvalidConfiguration
 
 class TestAbstractDao(unittest.TestCase):
     def testInit(self):
@@ -33,7 +33,7 @@ class TestDao(unittest.TestCase):
         class BadDao(AbstractDao):
             def _getDbUrl(self):
                 return 'unknown://'
-        with self.assertRaises(ValueError):
+        with self.assertRaises(InvalidConfiguration):
             BadDao()
 
     def testCreateObjects(self):

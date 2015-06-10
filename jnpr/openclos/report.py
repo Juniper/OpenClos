@@ -12,7 +12,7 @@ from model import Pod, Device
 from devicePlugin import L2DataCollector, L3DataCollector
 from writer import L2ReportWriter, L3ReportWriter
 from propLoader import OpenClosProperty, loadLoggingConfig
-
+from exception import PodNotFound
 
 moduleName = 'report'
 loadLoggingConfig(appName = moduleName)
@@ -86,7 +86,7 @@ class L2Report(Report):
             pod = self.getPod(session, podId)
             if pod is None: 
                 logger.error('No pod found for podId: %s' % (podId))
-                raise ValueError('No pod found for podId: %s' % (podId)) 
+                raise PodNotFound('No pod found for podId: %s' % (podId)) 
             
             if cachedData == False:
                 logger.info('Generating L2Report from real data')
@@ -151,7 +151,7 @@ class L3Report(Report):
             pod = self.getPod(session, podId)
             if pod is None: 
                 logger.error('No pod found for podId: %s' % (podId))
-                raise ValueError('No pod found for podId: %s' % (podId)) 
+                raise PodNotFound('No pod found for podId: %s' % (podId)) 
             
             if cachedData == False:
                 logger.info('Generating L3Report from real data')

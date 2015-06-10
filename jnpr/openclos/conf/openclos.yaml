@@ -66,8 +66,8 @@ DOT :
 # is used to populate dhcpd.conf fot ZTP. If no address is provided
 # REST will start at localhost
 httpServer :
-    ipAddr : localhost
-    port : 80
+    ipAddr : 0.0.0.0
+    port : 8080
 
 # Number of threads used to communicate with devices
 report :

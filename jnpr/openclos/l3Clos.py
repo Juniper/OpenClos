@@ -22,6 +22,7 @@ import util
 from writer import ConfigWriter, CablingPlanWriter
 from jinja2 import Environment, PackageLoader
 import logging
+from exception import InvalidRequest, MissingMandatoryAttribute, PodNotFound, InsufficientLoopbackIp, InsufficientVlanIp, InsufficientInterconnectIp, InsufficientManagementIp, CapacityCannotChange
 
 junosTemplatePackage = 'jnpr.openclos'
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
@@ -166,7 +167,7 @@ class L3ClosMediation():
                        
     def _resolveInventory(self, podDict, inventoryDict):
         if podDict is None:
-            raise ValueError("podDict cannot be None")
+            raise InvalidRequest("podDict cannot be None")
             
         # typical use case for ND REST invocation is to provide an non-empty inventoryDict
         # typical use case for script invocation is to provide an non-empty podDict['inventory']
@@ -182,7 +183,7 @@ class L3ClosMediation():
 
     def _validateAttribute(self, pod, attr, dct):
         if dct.get(attr) is None:
-            raise ValueError("Pod[id='%s', name='%s']: device '%s' attribute '%s' cannot be None" % (pod.id, pod.name, dct.get('name'), attr))
+            raise MissingMandatoryAttribute("Pod[id='%s', name='%s']: device '%s' attribute '%s' cannot be None" % (pod.id, pod.name, dct.get('name'), attr))
     
     def _validateLoopbackPrefix(self, pod, podDict, inventoryData):
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
@@ -190,7 +191,7 @@ class L3ClosMediation():
         lo0Ips = list(lo0Block.iter_hosts())
         availableIps = len(lo0Ips)
         if availableIps < inventoryDeviceCount:
-            raise ValueError("Pod[id='%s', name='%s']: loopbackPrefix available IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
+            raise InsufficientLoopbackIp("Pod[id='%s', name='%s']: loopbackPrefix available IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
 
     def _validateVlanPrefix(self, pod, podDict, inventoryData):
         vlanBlock = IPNetwork(podDict['vlanPrefix'])
@@ -200,7 +201,7 @@ class L3ClosMediation():
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
         if vlanBlock.prefixlen > cidr:
-            raise ValueError("Pod[id='%s', name='%s']: vlanPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, vlanBlock.prefixlen, cidr))
+            raise InsufficientVlanIp("Pod[id='%s', name='%s']: vlanPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, vlanBlock.prefixlen, cidr))
     
     def _validateInterConnectPrefix(self, pod, podDict, inventoryData):
         interConnectBlock = IPNetwork(podDict['interConnectPrefix'])
@@ -215,22 +216,22 @@ class L3ClosMediation():
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
         if interConnectBlock.prefixlen > cidr:
-            raise ValueError("Pod[id='%s', name='%s']: interConnectPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, interConnectBlock.prefixlen, cidr))
+            raise InsufficientInterconnectIp("Pod[id='%s', name='%s']: interConnectPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, interConnectBlock.prefixlen, cidr))
     
     def _validateManagementPrefix(self, pod, podDict, inventoryData):
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
         managementIps = util.getMgmtIps(podDict.get('managementPrefix'), podDict.get('managementStartingIP'), podDict.get('managementMask'), inventoryDeviceCount)
         availableIps = len(managementIps)
         if availableIps < inventoryDeviceCount:
-            raise ValueError("Pod[id='%s', name='%s']: managementPrefix avaiable IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
+            raise InsufficientManagementIp("Pod[id='%s', name='%s']: managementPrefix avaiable IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
     
     def _validatePod(self, pod, podDict, inventoryData):
         if inventoryData is None:
-            raise ValueError("Pod[id='%s', name='%s']: inventory cannot be empty" % (pod.id, pod.name))
+            raise InvalidRequest("Pod[id='%s', name='%s']: inventory cannot be empty" % (pod.id, pod.name))
         
         # if following data changed we need to reallocate resource
         if pod.spineCount != podDict['spineCount'] or pod.leafCount != podDict['leafCount']:
-            raise ValueError("Pod[id='%s', name='%s']: capacity cannot be changed" % (pod.id, pod.name))
+            raise CapacityCannotChange("Pod[id='%s', name='%s']: capacity cannot be changed" % (pod.id, pod.name))
 
         for spine in inventoryData['spines']:
             self._validateAttribute(pod, 'name', spine)
@@ -248,7 +249,7 @@ class L3ClosMediation():
         expectedDeviceCount = int(podDict['spineCount']) + int(podDict['leafCount'])
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
         if expectedDeviceCount != inventoryDeviceCount:
-            raise ValueError("Pod[id='%s', name='%s']: inventory device count %d does not match capacity %d" % (pod.id, pod.name, inventoryDeviceCount, expectedDeviceCount))
+            raise CapacityMismatch("Pod[id='%s', name='%s']: inventory device count %d does not match capacity %d" % (pod.id, pod.name, inventoryDeviceCount, expectedDeviceCount))
 
         # validate loopbackPrefix is big enough
         self._validateLoopbackPrefix(pod, podDict, inventoryData)
@@ -330,13 +331,13 @@ class L3ClosMediation():
         by UUID, a ValueException is thrown
         '''
         if podId is None: 
-            raise ValueError("Pod id cannot be None")
+            raise InvalidRequest("Pod id cannot be None")
 
         with self._dao.getReadWriteSession() as session:        
             try:
                 pod = self._dao.getObjectById(session, Pod, podId)
             except (exc.NoResultFound):
-                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+                raise PodNotFound(podId, exc) 
 
             # inventory can come from either podDict or inventoryDict
             inventoryData = self._resolveInventory(podDict, inventoryDict)
@@ -359,13 +360,13 @@ class L3ClosMediation():
         by UUID, a ValueException is thrown
         '''
         if podId is None: 
-            raise ValueError("Pod id cannot be None")
+            raise InvalidRequest("Pod id cannot be None")
 
         with self._dao.getReadWriteSession() as session:        
             try:
                 pod = self._dao.getObjectById(session, Pod, podId)
             except (exc.NoResultFound):
-                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+                raise PodNotFound(podId, exc) 
 
             self._dao.deleteObject(session, pod)
             logger.info("Pod[id='%s', name='%s']: deleted" % (pod.id, pod.name)) 
@@ -376,13 +377,13 @@ class L3ClosMediation():
         It also creates the output folders for pod
         '''
         if podId is None: 
-            raise ValueError("Pod id cannot be None")
+            raise InvalidRequest("Pod id cannot be None")
 
         with self._dao.getReadWriteSession() as session:        
             try:
                 pod = self._dao.getObjectById(session, Pod, podId)
             except (exc.NoResultFound):
-                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+                raise PodNotFound(podId, exc) 
  
             if len(pod.devices) > 0:
                 cablingPlanWriter = CablingPlanWriter(self._conf, pod, self._dao)
@@ -395,7 +396,8 @@ class L3ClosMediation():
                 
                 return True
             else:
-                raise ValueError("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
+                logger.warning("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
+                return False
             
     def createDeviceConfig(self, podId):
         '''
@@ -403,13 +405,13 @@ class L3ClosMediation():
         It also creates the output folders for pod
         '''
         if podId is None: 
-            raise ValueError("Pod id cannot be None")
+            raise InvalidRequest("Pod id cannot be None")
 
         with self._dao.getReadWriteSession() as session:        
             try:
                 pod = self._dao.getObjectById(session, Pod, podId)
             except (exc.NoResultFound):
-                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+                raise PodNotFound(podId, exc) 
  
             if len(pod.devices) > 0:
                 # create configuration
@@ -417,7 +419,8 @@ class L3ClosMediation():
         
                 return True
             else:
-                raise ValueError("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
+                logger.warning("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
+                return False
 
     def _createLinkBetweenIfds(self, session, pod):
         leaves = []

@@ -17,6 +17,7 @@ import subprocess
 import concurrent.futures
 from devicePlugin import TwoStageConfigurator 
 from propLoader import OpenClosProperty, loadLoggingConfig
+from exception import TrapDaemonError
 
 moduleName = 'trapd'
 loadLoggingConfig(appName = moduleName)
@@ -138,9 +139,10 @@ class TrapReceiver():
         try:
             # Dispatcher will never finish as job#1 never reaches zero
             self.transportDispatcher.runDispatcher()
-        except:
+        except Exception as exc:
+            logger.error("Encounted error '%s' on trap receiver %s:%d" % (exc, self.target, self.port))
             self.transportDispatcher.closeDispatcher()
-            raise
+            raise TrapDaemonError("Trap receiver %s:%d" % (self.target, self.port), exc)
         else:
             self.transportDispatcher.closeDispatcher()
 

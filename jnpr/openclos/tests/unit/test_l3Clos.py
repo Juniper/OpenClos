@@ -13,6 +13,7 @@ from flexmock import flexmock
 from jnpr.openclos.l3Clos import L3ClosMediation
 from jnpr.openclos.model import Pod, Device, InterfaceLogical, InterfaceDefinition, TrapGroup
 from test_dao import InMemoryDao 
+from jnpr.openclos.exception import PodNotFound
 
 def getPodDict():
     return {"devicePassword": "Embe1mpls", "leafCount": 3, "leafSettings": [{"deviceType":"qfx5100-48s-6q"}], 
@@ -92,7 +93,7 @@ class TestL3Clos(unittest.TestCase):
             self.assertEqual(2, deployCount)
 
     def testUpdatePodInvalidId(self):
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(PodNotFound) as ve:
             self.l3ClosMediation.updatePod("invalid_id", None)
 
     def createPodSpineLeaf(self):
