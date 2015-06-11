@@ -99,31 +99,51 @@ class OpenClosProperty(PropertyLoader):
 portNameRegx = re.compile(r"([a-z]+-\d\/\d\/\[)(\d{1,3})-(\d{1,3})(\])")
 class DeviceSku(PropertyLoader):
     def __init__(self, fileName = 'deviceFamily.yaml'):
-        self.skuDetail = None
+        self.skuDetail = {}
+        self.threeStageSkuDetail = {}
+        self.fiveStageSkuDetail = {}
+        
         fileNameWithPath = self.getFileNameWithPath(fileName)
         skuDetail = self.loadProperty(fileNameWithPath)
         
         if skuDetail is not None and skuDetail.get('deviceFamily') is not None:
             self.skuDetail = skuDetail.get('deviceFamily')
-            for deviceFamily, value in self.skuDetail.iteritems():
-                logger.debug(deviceFamily)
-                for role, ports in value.iteritems():
-                    uplink = ports.get('uplinkPorts')
-                    if isinstance(uplink, list):
-                        ports['uplinkPorts'] = self.portRegexListToList(uplink)
-                    else:
-                        ports['uplinkPorts'] = self.portRegexToList(uplink)
+            self.populateDeviceFamily(self.skuDetail)
+            
+        if skuDetail is not None and skuDetail.get('3Stage') is not None:
+            self.threeStageSkuDetail = skuDetail.get('3Stage')
+            self.populate3StageOverride(self.threeStageSkuDetail)
 
-                    downlink = ports.get('downlinkPorts')
-                    if isinstance(downlink, list):
-                        ports['downlinkPorts'] = self.portRegexListToList(downlink)
-                    else:
-                        ports['downlinkPorts'] = self.portRegexToList(downlink)
+        if skuDetail is not None and skuDetail.get('5Stage') is not None:
+            self.fiveStageSkuDetail = skuDetail.get('5Stage')
+            self.populate5StageOverride(self.fiveStageSkuDetail)
 
-                    logger.debug("\t%s" % (role))
-                    logger.debug("\t\t%s" % (ports.get('uplinkPorts')))
-                    logger.debug("\t\t%s" % (ports.get('downlinkPorts')))
-                    
+    def populateDeviceFamily(self, skuDetail):
+        for deviceFamily, value in skuDetail.iteritems():
+            logger.debug(deviceFamily)
+            for role, ports in value.iteritems():
+                uplink = ports.get('uplinkPorts')
+                if isinstance(uplink, list):
+                    ports['uplinkPorts'] = self.portRegexListToList(uplink)
+                else:
+                    ports['uplinkPorts'] = self.portRegexToList(uplink)
+
+                downlink = ports.get('downlinkPorts')
+                if isinstance(downlink, list):
+                    ports['downlinkPorts'] = self.portRegexListToList(downlink)
+                else:
+                    ports['downlinkPorts'] = self.portRegexToList(downlink)
+
+                #logger.debug("\t%s" % (role))
+                #logger.debug("\t\t%s" % (ports.get('uplinkPorts')))
+                #logger.debug("\t\t%s" % (ports.get('downlinkPorts')))
+        
+    def populate3StageOverride(self, threeStage):
+        self.populateDeviceFamily(threeStage)
+    
+    def populate5StageOverride(self, fiveStage):
+        self.populateDeviceFamily(fiveStage)
+
     def getPortNamesForDeviceFamily(self, deviceFamily, role, topology = '3Stage'):
         if self.skuDetail is None:
             logger.error('deviceFamily.yaml was not loaded properly')
@@ -134,6 +154,11 @@ class DeviceSku(PropertyLoader):
             return {'uplinkPorts': [], 'downlinkPorts': []}
         
         try:
+            try:
+                if topology == '3Stage':
+                    return self.threeStageSkuDetail[deviceFamily][role]
+            except KeyError as ke:
+                pass
             return self.skuDetail[deviceFamily][role]
         except KeyError as ke:
             logger.error("No ports found, deviceFamily: %s, role: %s, topology: %s. KeyError: %s" % (deviceFamily, role, topology, ke))
@@ -144,7 +169,7 @@ class DeviceSku(PropertyLoader):
         :returns list: device model/family (exactly as it is appeared on junos)
     
         '''
-        if self.skuDetail is None:
+        if not self.skuDetail:
             logger.error('deviceFamily.yaml was not loaded properly')
             raise InvalidConfiguration('deviceFamily.yaml was not loaded properly')
         return self.skuDetail.keys()
