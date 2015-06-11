@@ -22,7 +22,7 @@ import util
 from writer import ConfigWriter, CablingPlanWriter
 from jinja2 import Environment, PackageLoader
 import logging
-from exception import InvalidRequest, MissingMandatoryAttribute, PodNotFound, InsufficientLoopbackIp, InsufficientVlanIp, InsufficientInterconnectIp, InsufficientManagementIp, CapacityCannotChange
+from exception import InvalidRequest, MissingMandatoryAttribute, PodNotFound, InsufficientLoopbackIp, InsufficientVlanIp, InsufficientInterconnectIp, InsufficientManagementIp, CapacityCannotChange, CapacityMismatch
 
 junosTemplatePackage = 'jnpr.openclos'
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
