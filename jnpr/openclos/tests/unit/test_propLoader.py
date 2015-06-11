@@ -120,9 +120,25 @@ class TestDeviceSku(unittest.TestCase):
         self.assertEqual(32, len(ports['downlinkPorts']))
         
         ports = self.deviceSku.getPortNamesForDeviceFamily('qfx5100-24q-2p', 'spine')
+        self.assertEqual(0, len(ports['uplinkPorts']))
+        self.assertEqual(32, len(ports['downlinkPorts']))
+        
+        ports = self.deviceSku.getPortNamesForDeviceFamily('qfx5100-24q-2p', 'spine', '5-Stage')
         self.assertEqual(16, len(ports['uplinkPorts']))
         self.assertEqual(16, len(ports['downlinkPorts']))
+
+        ports = self.deviceSku.getPortNamesForDeviceFamily('qfx10002-36q', 'fabric')
+        self.assertEqual(0, len(ports['uplinkPorts']))
+        self.assertEqual(36, len(ports['downlinkPorts']))
         
+        ports = self.deviceSku.getPortNamesForDeviceFamily('qfx10002-36q', 'spine')
+        self.assertEqual(0, len(ports['uplinkPorts']))
+        self.assertEqual(36, len(ports['downlinkPorts']))
+        
+        ports = self.deviceSku.getPortNamesForDeviceFamily('qfx10002-36q', 'spine', '5-Stage')
+        self.assertEqual(18, len(ports['uplinkPorts']))
+        self.assertEqual(18, len(ports['downlinkPorts']))
+
         ports = self.deviceSku.getPortNamesForDeviceFamily('qfx5100-24q-2p', 'leaf')
         self.assertEqual(0, len(ports['uplinkPorts']))
         self.assertEqual(0, len(ports['downlinkPorts']))
