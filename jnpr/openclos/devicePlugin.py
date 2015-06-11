@@ -680,9 +680,9 @@ class TwoStageConfigurator(L2DataCollector):
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
             
+            self.fixInterfaces(device, self.device.family, uplinksWithIfds)
             self.updateSelfDeviceContext(device)
             self.runPostLldpCommands()
-            self.fixInterfaces(device, self.device.family, uplinksWithIfds)
 
             try:
                 self.updateDeviceConfigStatus('processing')
