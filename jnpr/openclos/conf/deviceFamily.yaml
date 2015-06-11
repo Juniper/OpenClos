@@ -61,11 +61,19 @@ deviceFamily:
             downlinkPorts: 'ge-0/0/[0-47]'
 
 # additional customization of port allocation based on topology
-3-Stage:
+3Stage:
     qfx5100-24q-2p:
         spine:
             uplinkPorts: 
             downlinkPorts: ['et-0/0/[0-23]', 'et-0/1/[0-3]', 'et-0/2/[0-3]']
+    qfx10002-36q:
+        spine:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[0-35]'
+    qfx10002-72q:
+        spine:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[0-71]'
 
-5-Stage:
+5Stage:
         
