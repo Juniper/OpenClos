@@ -60,7 +60,7 @@ class TestOpenClosProperty(unittest.TestCase):
 
 class TestDeviceSku(unittest.TestCase):
     def setUp(self):
-        loadLoggingConfig(appName='rest')
+        #loadLoggingConfig(appName = 'unittest')
         self.deviceSku = DeviceSku()
 
     def tearDown(self):
@@ -167,17 +167,11 @@ class TestDeviceSku(unittest.TestCase):
 
 class TestMethod(unittest.TestCase):
     def testLoadLoggingConfig(self):
-        loadLoggingConfig(appName='rest')
+        loadLoggingConfig(appName = 'unittest')
         import logging
         self.assertEquals(0, len(logging.getLogger('unknown').handlers))
         self.assertEquals(2, len(logging.getLogger('rest').handlers))
-        self.assertTrue('openclos-rest.log' in logging.getLogger('rest').handlers[1].baseFilename)
-
-    def testLoadLoggingForTest(self):
-        loadLoggingConfig()
-        import logging
-        self.assertEquals(0, len(logging.getLogger('unknown').handlers))
-        self.assertEquals(1, len(logging.getLogger('rest').handlers))
+        self.assertTrue('openclos-unittest.log' in logging.getLogger('rest').handlers[1].baseFilename)
 
 
 

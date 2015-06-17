@@ -14,7 +14,6 @@ Running the test:
 
 '''
 
-from jnpr.openclos.rest import moduleName
 from jnpr.openclos.propLoader import loadLoggingConfig
 
 from locust import HttpLocust, TaskSet, task
@@ -23,6 +22,7 @@ import random
 import time
 import logging
 
+moduleName = 'stressRest'
 
 def getFabricPostBody():
     fabric = random.choice(ipFabrics)
@@ -31,7 +31,7 @@ def getFabricPostBody():
 
 class MyTaskSet(TaskSet):
     def on_start(self):
-        loadLoggingConfig()
+        loadLoggingConfig(appName = moduleName)
         self.logger = logging.getLogger(moduleName)
         self.fabricCount = 0
         '''
