@@ -300,7 +300,7 @@ class TestL2DataCollector(unittest.TestCase):
 
 class TestDataCollectorInProgressCache(unittest.TestCase):
     def setUp(self):
-        propLoader.loadLoggingConfig()
+        propLoader.loadLoggingConfig(appName = 'unittest')
 
     def testSingleton(self):
         cache1 = DeviceOperationInProgressCache.getInstance()

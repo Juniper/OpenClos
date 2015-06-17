@@ -35,7 +35,7 @@ handlers:
         class: logging.StreamHandler
         formatter: detailed
     file:
-        filename: openclos-%(appName).log
+        filename: '%(fullPath)openclos-%(appName).log'
         class: logging.handlers.RotatingFileHandler
         formatter: detailed
         maxBytes: 1048576

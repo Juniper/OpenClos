@@ -12,9 +12,6 @@ import logging.config
 from crypt import Cryptic
 from exception import InvalidConfiguration
 
-moduleName = 'propLoader'
-logger = logging.getLogger(moduleName)
-
 propertyFileLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 currentWorkingDir = os.getcwd()
 
@@ -216,13 +213,23 @@ class DeviceSku(PropertyLoader):
         return portNames
 
 
-
-def loadLoggingConfig(logConfFile = 'logging.yaml', appName = None):
+'''
+If you run OpenClos as integrated with ND, prior to calling loadLoggingConfig, you will call setFileHandlerFullPath 
+to have logs stored in a non-default location. 
+If you run OpenClos as standalone application, you don't need to call setFileHandlerFullPath. The logs are stored in 
+default location which is the current directory where l3Clos.py/rest.py/trapd.py is called from.
+'''
+fileHandlerFullPath = ''
+def setFileHandlerFullPath(fullPath):
+    global fileHandlerFullPath
+    fileHandlerFullPath = fullPath
+    
+def loadLoggingConfig(logConfFile = 'logging.yaml', appName = ''):
     logConf = getLoggingHandlers(logConfFile, appName)
     if logConf is not None:
         logging.config.dictConfig(logConf)
     
-def getLoggingHandlers(logConfFile = 'logging.yaml', appName = None):
+def getLoggingHandlers(logConfFile = 'logging.yaml', appName = ''):
     '''
     Loads global configuration and creates hash 'logConf'
     '''
@@ -233,13 +240,15 @@ def getLoggingHandlers(logConfFile = 'logging.yaml', appName = None):
         if logConf is not None:
             handlers = logConf.get('handlers')
             if handlers is not None:
-                
-                if appName is None:
-                    removeLoggingHandler('file', logConf)
-                                                        
                 for handlerName, handlerDict in handlers.items():
                     filename = handlerDict.get('filename')
                     if filename is not None:
+                        global fileHandlerFullPath
+                        # sanity check in case caller sets fileHandlerFullPath to None
+                        # default location is the current directory where appName module is called from
+                        if fileHandlerFullPath is None:
+                            fileHandlerFullPath = ''
+                        filename = filename.replace('%(fullPath)', fileHandlerFullPath)
                         filename = filename.replace('%(appName)', appName)
                         handlerDict['filename'] = filename
                             
@@ -251,10 +260,6 @@ def getLoggingHandlers(logConfFile = 'logging.yaml', appName = None):
     finally:
         logConfStream.close()
     
-    
-def removeLoggingHandler(name, logConf):
-    for key, logger in logConf['loggers'].iteritems():
-        logger['handlers'].remove(name)
-
-    logConf['handlers'].pop(name)
-
+moduleName = 'propLoader'
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
