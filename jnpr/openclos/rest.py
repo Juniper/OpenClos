@@ -548,7 +548,7 @@ class RestServer():
             pod = self.getPod(dbSession, createdPod.id, url)
         except Exception as e:
             logger.debug('StackTrace: %s' % (traceback.format_exc()))
-            raise bottle.HTTPError(400, exception = CreatePodFailed(podName, e))
+            raise bottle.HTTPError(400, exception = e)
         bottle.response.set_header('Location', url)
         bottle.response.status = 201
 
@@ -595,7 +595,7 @@ class RestServer():
             url = str(bottle.request.url).translate(None, ',') + '/' + updatedPod.id
             return self.getPod(dbSession, podId, url)
         except Exception as e:
-            raise bottle.HTTPError(400, exception = UpdatePodFailed(podId, e))
+            raise bottle.HTTPError(400, exception = e)
     
     def setOpenClosConfigParams(self):
         return bottle.HTTPResponse(status=200)
