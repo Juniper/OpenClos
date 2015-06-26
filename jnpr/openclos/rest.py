@@ -98,7 +98,8 @@ class ResourceLink():
 class RestServer():
     def __init__(self, conf = {}, daoClass = Dao):
         if any(conf) == False:
-            self._conf = OpenClosProperty(appName = moduleName).getProperties()
+            self._openclosProperty = OpenClosProperty(appName = moduleName)
+            self._conf = self._openclosProperty.getProperties()
 
             global webServerRoot
             webServerRoot = self._conf['outputDir']
@@ -151,7 +152,7 @@ class RestServer():
         if logger.isEnabledFor(logging.DEBUG):
             debugRest = True
 
-        if util.isSqliteUsed(self._conf):
+        if self._openclosProperty.isSqliteUsed():
             bottle.run(self.app, host=self.host, port=self.port, debug=debugRest)
         else:
             bottle.run(self.app, host=self.host, port=self.port, debug=debugRest, server='paste')

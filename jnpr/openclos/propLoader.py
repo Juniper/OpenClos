@@ -70,6 +70,9 @@ class OpenClosProperty(PropertyLoader):
         
         return self._properties['dbUrl'] 
 
+    def isSqliteUsed(self):
+        return 'sqlite' in self._properties.get('dbUrl')
+
     def fixSqlliteDbUrlForRelativePath(self, dbUrl):
         # sqlite:////absolute-path/sqllite3.db
         # sqlite:///relative-path/sqllite3.db
