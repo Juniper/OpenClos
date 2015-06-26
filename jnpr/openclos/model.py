@@ -7,7 +7,15 @@ Created on Jul 8, 2014
 import uuid
 import math
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Enum, BLOB, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Enum, UniqueConstraint, Index
+
+import propLoader
+if propLoader.OpenClosProperty().isSqliteUsed():
+    from sqlalchemy import BLOB
+else:
+    from sqlalchemy.dialects.mysql import MEDIUMBLOB as BLOB
+
+
 from sqlalchemy.orm import relationship, backref
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 from crypt import Cryptic

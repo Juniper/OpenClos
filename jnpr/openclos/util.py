@@ -139,10 +139,6 @@ def getImageNameForDevice(pod, device):
     
     return None
 
-def isSqliteUsed(conf):
-    return 'sqlite' in conf.get('dbUrl')
-
-
 otherPortRegx = re.compile(r"[0-9A-Za-z]+\.?(\d{0,2})")
 def interfaceNameToUniqueSequenceNumber(interfaceName):
     '''    
