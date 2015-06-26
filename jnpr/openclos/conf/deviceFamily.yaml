@@ -39,6 +39,13 @@ deviceFamily:
         leaf:
             uplinkPorts: 'et-0/0/[96-103]'
             downlinkPorts: ['xe-0/0/[0-95]', 'ge-0/0/[0-95]']
+    qfx5200-32c:
+        spine:
+            uplinkPorts: 'et-0/0/[00-15]'
+            downlinkPorts: 'et-0/0/[16-31]'
+        leaf:
+            uplinkPorts: 'et-0/0/[00-03]'
+            downlinkPorts: 'et-0/0/[04-31]'
     ex4300-24p:
         leaf:
             uplinkPorts: 'et-0/1/[0-3]'
