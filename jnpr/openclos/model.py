@@ -318,12 +318,13 @@ class Device(ManagedElement, Base):
         self.deployStatus = deployStatus
         self.serialNumber = serialNumber
         
-    def update(self, name, username, password, macAddress, deployStatus, serialNumber):
+    def update(self, name, family, username, password, macAddress, deployStatus, serialNumber):
         '''
         Updates Device object.
         '''
         self.name = name
         self.username = username
+        self.family = family
         if password is not None and len(password) > 0:
             self.encryptedPassword = self.cryptic.encrypt(password)
         self.macAddress = macAddress

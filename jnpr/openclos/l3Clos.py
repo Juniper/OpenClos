@@ -153,6 +153,8 @@ class L3ClosMediation():
         '''
 
     def _deployInventory(self, pod, inventory, role):
+        # return a list of devices whose family has changed
+        devicesFamilyChanged = []
         for inv in inventory:
             for device in pod.devices:
                 # find match by role/id/name
@@ -163,8 +165,16 @@ class L3ClosMediation():
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' provisioned" % (pod.id, pod.name, device.role, device.name))
                     elif device.deployStatus == 'provision' and inv.get('deployStatus') == 'deploy':
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' deployed" % (pod.id, pod.name, device.role, device.name))
-                    device.update(inv['name'], inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus'), inv.get('serialNumber'))
-                       
+                    
+                    # we need this list to fix interface names
+                    if device.family != inv.get('family'):
+                        logger.debug("Pod[id='%s', name='%s']: %s device '%s' family changed from %s to %s" % (pod.id, pod.name, device.role, device.name, device.family, inv.get('family')))
+                        devicesFamilyChanged.append(device)
+                    
+                    # update all fields 
+                    device.update(inv['name'], inv.get('family'), inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus'), inv.get('serialNumber'))
+        return devicesFamilyChanged
+        
     def _resolveInventory(self, podDict, inventoryDict):
         if podDict is None:
             raise InvalidRequest("podDict cannot be None")
@@ -264,7 +274,7 @@ class L3ClosMediation():
         self._validateManagementPrefix(pod, podDict, inventoryData)
                 
         
-    def _diffInventory(self, pod, inventoryData):
+    def _diffInventory(self, session, pod, inventoryData):
         # Compare new inventory that user provides against old inventory that we stored in the database.
         inventoryChanged = True
         
@@ -280,9 +290,14 @@ class L3ClosMediation():
             # save the new inventory to database
             pod.inventoryData = base64.b64encode(zlib.compress(json.dumps(inventoryData)))
 
-            # deploy the new devices and undeploy deleted devices
+            # deploy the new spines and undeploy deleted spines
             self._deployInventory(pod, inventoryData['spines'], 'spine')
-            self._deployInventory(pod, inventoryData['leafs'], 'leaf')
+            
+            # deploy the new leaves and undeploy deleted leaves
+            leavesFamilyChanged = self._deployInventory(pod, inventoryData['leafs'], 'leaf')
+
+            # fix interface names if any
+            self.fixInterfaceNames(session, pod, leavesFamilyChanged)
         else:
             logger.debug("Pod[id='%s', name='%s']: inventory not changed" % (pod.id, pod.name))
 
@@ -298,6 +313,57 @@ class L3ClosMediation():
         else:
             return False
             
+    def fixIfdIflName(self, ifd, name):
+        if ifd is None:
+            return []
+        
+        logger.debug("Fixing device: %s IFD port: %s -> %s" % (ifd.device.name, ifd.name, name))
+        ifd.updateName(name)
+        updateList = [ifd]
+
+        newIFL = name + '.0'
+        for ifl in ifd.layerAboves:
+            logger.debug("Fixing device: %s IFL port: %s -> %s" % (ifd.device.name, ifl.name, newIFL))
+            ifl.updateName(newIFL)
+            updateList.append(ifl)
+        
+        return updateList
+
+    def fixUplinkPorts(self, session, device):
+        # we have 2 lists:
+        # 1. all the uplink interfaces in the db for this leaf (number N)
+        # 2. all the uplink interfaces based on this leaf's device family (number M)
+        # the algorithm: 
+        # for the N interfaces in list 1, replace the name with the name in list 2
+        # if N <= M, we are done
+        # if N > M, after we process first M interfaces, we replace the rest (N-M) interfaces with fake names 'uplink-'
+        
+        # list 1
+        allocatedUplinkIfds = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
+            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.type == 'physical').order_by(InterfaceDefinition.sequenceNum).all()
+            
+        # list 2
+        uplinkNamesBasedOnDeviceFamily = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['uplinkPorts']
+        
+        updateList = []
+        # fake uplink port starts from 0
+        listIndex = 0
+        for allocatedIfd in allocatedUplinkIfds:
+            if uplinkNamesBasedOnDeviceFamily:
+                updateList += self.fixIfdIflName(allocatedIfd, uplinkNamesBasedOnDeviceFamily.pop(0))
+            else:
+                updateList += self.fixIfdIflName(allocatedIfd, 'uplink-' + str(listIndex))
+            listIndex += 1
+        
+        #logger.debug('Number of uplink IFD + IFL for device %s fixed: %d' % (device.name, len(updateList)))
+        self._dao.updateObjectsAndCommitNow(session, updateList)
+        
+    def fixInterfaceNames(self, session, pod, devices):
+        for device in devices:
+            # sanity check
+            if device.role == 'leaf':
+                self.fixUplinkPorts(session, device)
+        
     def _updatePodData(self, session, pod, podDict, inventoryData):
         # if following data changed we need to reallocate resource
         if self._needToRebuild(pod, podDict) == True:
@@ -315,8 +381,8 @@ class L3ClosMediation():
             self._allocateResource(session, pod)
         else:        
             # compare new inventory that user provides against old inventory that we stored in the database
-            self._diffInventory(pod, inventoryData)
-                
+            self._diffInventory(session, pod, inventoryData)
+            
         # update pod itself
         pod.update(pod.id, pod.name, podDict)
         self._dao.updateObjects(session, [pod])
