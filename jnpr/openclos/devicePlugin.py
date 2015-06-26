@@ -674,7 +674,7 @@ class TwoStageConfigurator(L2DataCollector):
             uplinksWithIfds = self.filterUplinkAppendRemotePortIfd(lldpData, self.device.family)
             self.updateSpineStatusFromLldpData([x['ifd2'] for x in uplinksWithIfds])
 
-            device = self.findMatchedDevice(uplinksWithIfds, self.device.family)
+            device = self.findMatchedDevice(uplinksWithIfds)
             if device is None:
                 logger.info('Did not find good enough match for %s' % (self.deviceIp))
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
@@ -815,7 +815,7 @@ class TwoStageConfigurator(L2DataCollector):
         
         return updateList
         
-    def findMatchedDevice(self, uplinksWithIfd, deviceFamily):
+    def findMatchedDevice(self, uplinksWithIfd):
         '''
         Process LLDP data from device and match to a Device
         :param dict uplinksWithIfd:
@@ -824,7 +824,6 @@ class TwoStageConfigurator(L2DataCollector):
             device2: remote device
             port2: remote interface
             ifd2: remote IFD
-        :param str deviceFamily: deviceFamily (qfx5100-96s-8q)
         :returns Device: 
         '''
             
