@@ -664,6 +664,7 @@ class TwoStageConfigurator(L2DataCollector):
                 
             try:
                 self.device.family = self.deviceConnectionHandle.facts['model'].lower()
+                self.device.serialNumber = self.deviceConnectionHandle.facts['serialnumber']
                 self.runPreLldpCommands()
 
                 lldpData = self.collectLldpFromDevice()
@@ -681,10 +682,13 @@ class TwoStageConfigurator(L2DataCollector):
                 return
             
             self.fixInterfaces(device, self.device.family, uplinksWithIfds)
+            # persist serialNumber
+            device.serialNumber = self.device.serialNumber
+            self._dao.updateObjectsAndCommitNow(self._session, [device])
             self.updateSelfDeviceContext(device)
-            self.runPostLldpCommands()
 
             try:
+                self.runPostLldpCommands()
                 self.updateDeviceConfigStatus('processing')
                 self.updateDeviceConfiguration()
                 self.updateDeviceConfigStatus('good')
