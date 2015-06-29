@@ -10,6 +10,7 @@ import json
 import math
 import zlib
 import base64
+import itertools
 
 from netaddr import IPNetwork
 from sqlalchemy.orm import exc
@@ -340,7 +341,7 @@ class L3ClosMediation():
         
         # list 1
         allocatedUplinkIfds = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
-            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.type == 'physical').order_by(InterfaceDefinition.sequenceNum).all()
+            filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.sequenceNum).all()
             
         # list 2
         uplinkNamesBasedOnDeviceFamily = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['uplinkPorts']
@@ -348,9 +349,10 @@ class L3ClosMediation():
         updateList = []
         # fake uplink port starts from 0
         listIndex = 0
-        for allocatedIfd in allocatedUplinkIfds:
-            if uplinkNamesBasedOnDeviceFamily:
-                updateList += self.fixIfdIflName(allocatedIfd, uplinkNamesBasedOnDeviceFamily.pop(0))
+
+        for allocatedIfd, uplinkNameBasedOnDeviceFamily in itertools.izip_longest(allocatedUplinkIfds, uplinkNamesBasedOnDeviceFamily):
+            if uplinkNameBasedOnDeviceFamily:
+                updateList += self.fixIfdIflName(allocatedIfd, uplinkNameBasedOnDeviceFamily)
             else:
                 updateList += self.fixIfdIflName(allocatedIfd, 'uplink-' + str(listIndex))
             listIndex += 1
