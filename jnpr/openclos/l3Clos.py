@@ -201,8 +201,9 @@ class L3ClosMediation():
         lo0Block = IPNetwork(podDict['loopbackPrefix'])
         lo0Ips = list(lo0Block.iter_hosts())
         availableIps = len(lo0Ips)
+        cidr = 32 - int(math.ceil(math.log(inventoryDeviceCount, 2)))
         if availableIps < inventoryDeviceCount:
-            raise InsufficientLoopbackIp("Pod[id='%s', name='%s']: loopbackPrefix available IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
+            raise InsufficientLoopbackIp("Pod[id='%s', name='%s']: loopbackPrefix minimum required: %s/%d" % (pod.id, pod.name, lo0Block.ip, cidr))
 
     def _validateVlanPrefix(self, pod, podDict, inventoryData):
         vlanBlock = IPNetwork(podDict['vlanPrefix'])
@@ -212,7 +213,7 @@ class L3ClosMediation():
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
         if vlanBlock.prefixlen > cidr:
-            raise InsufficientVlanIp("Pod[id='%s', name='%s']: vlanPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, vlanBlock.prefixlen, cidr))
+            raise InsufficientVlanIp("Pod[id='%s', name='%s']: vlanPrefix minimum required: %s/%d" % (pod.id, pod.name, vlanBlock.ip, cidr))
     
     def _validateInterConnectPrefix(self, pod, podDict, inventoryData):
         interConnectBlock = IPNetwork(podDict['interConnectPrefix'])
@@ -227,14 +228,22 @@ class L3ClosMediation():
         numOfBits = int(math.ceil(math.log(numOfIps, 2))) 
         cidr = 32 - numOfBits
         if interConnectBlock.prefixlen > cidr:
-            raise InsufficientInterconnectIp("Pod[id='%s', name='%s']: interConnectPrefix avaiable block /%d not enough: required /%d" % (pod.id, pod.name, interConnectBlock.prefixlen, cidr))
+            raise InsufficientInterconnectIp("Pod[id='%s', name='%s']: interConnectPrefix minimum required: %s/%d" % (pod.id, pod.name, interConnectBlock.ip, cidr))
     
     def _validateManagementPrefix(self, pod, podDict, inventoryData):
         inventoryDeviceCount = len(inventoryData['spines']) + len(inventoryData['leafs'])
-        managementIps = util.getMgmtIps(podDict.get('managementPrefix'), podDict.get('managementStartingIP'), podDict.get('managementMask'), inventoryDeviceCount)
+        prefix = podDict.get('managementPrefix')
+        startingIp = podDict.get('managementStartingIP')
+        mask = podDict.get('managementMask')
+        managementIps = util.getMgmtIps(prefix, startingIp, mask, inventoryDeviceCount)
         availableIps = len(managementIps)
+        cidr = 32 - int(math.ceil(math.log(inventoryDeviceCount, 2)))
         if availableIps < inventoryDeviceCount:
-            raise InsufficientManagementIp("Pod[id='%s', name='%s']: managementPrefix avaiable IPs %d not enough: required %d" % (pod.id, pod.name, availableIps, inventoryDeviceCount))
+            if startingIp is not None:
+                firstIp = startingIp
+            elif prefix is not None:
+                firstIp = prefix.split('/')[0]
+            raise InsufficientManagementIp("Pod[id='%s', name='%s']: managementPrefix minimum required: %s/%d" % (pod.id, pod.name, firstIp, cidr))
     
     def _validatePod(self, pod, podDict, inventoryData):
         if inventoryData is None:
