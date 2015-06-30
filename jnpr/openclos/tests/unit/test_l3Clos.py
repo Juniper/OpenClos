@@ -323,7 +323,7 @@ class TestL3Clos(unittest.TestCase):
             from test_model import createPod
             pod = createPod('test', session)
             device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
-            configlet = self.l3ClosMediation._createAccessPortInterfaces(device)
+            configlet = self.l3ClosMediation._createAccessPortInterfaces(session, device)
             self.assertEquals(96, configlet.count('family ethernet-switching'))
             self.assertTrue('xe-0/0/0' in configlet)
             self.assertTrue('xe-0/0/47' in configlet)
@@ -340,7 +340,7 @@ class TestL3Clos(unittest.TestCase):
             from test_model import createPod
             pod = createPod('test', session)
             device = Device("test", "ex4300-48p", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
-            configlet = self.l3ClosMediation._createAccessPortInterfaces(device)
+            configlet = self.l3ClosMediation._createAccessPortInterfaces(session, device)
             self.assertEquals(48, configlet.count('family ethernet-switching'))
             self.assertTrue('ge-0/0/0' in configlet)
             self.assertTrue('ge-0/0/47' in configlet)
