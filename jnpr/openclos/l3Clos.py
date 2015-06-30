@@ -716,7 +716,7 @@ class L3ClosMediation():
         if device.role == 'leaf':
             irbIfl = session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'irb.1').one()
             config += rviStanza.render(address=irbIfl.ipaddress)
-            config += self._createAccessPortInterfaces(device)
+            config += self._createAccessPortInterfaces(session, device)
                 
         config += self._createInterconnectInterfaces(session, device)
         config += "}\n"
@@ -737,7 +737,7 @@ class L3ClosMediation():
                                              address=interconnectIfl.ipaddress)
         return config
     
-    def _createAccessPortInterfaces(self, device):
+    def _createAccessPortInterfaces(self, session, device):
         accessInterface = self._templateEnv.get_template('accessInterface.txt')
         
         ifdNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['downlinkPorts']
