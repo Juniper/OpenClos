@@ -560,22 +560,28 @@ class RestServer():
             l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
             if l3ClosMediation.createCablingPlan(podId) is True:
                 return bottle.HTTPResponse(status=200)
+        except PodNotFound as e:
+            raise bottle.HTTPError(404, exception = e)
         except Exception as e:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId, e))
+            raise bottle.HTTPError(500, exception = e)
 
     def createDeviceConfiguration(self, dbSession, podId):
         try:
             l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
             if l3ClosMediation.createDeviceConfig(podId) is True:
                 return bottle.HTTPResponse(status=200)
+        except PodNotFound as e:
+            raise bottle.HTTPError(404, exception = e)
         except Exception as e:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId, e))
+            raise bottle.HTTPError(500, exception = e)
             
     def createZtpConfiguration(self, dbSession, podId):
         try:
-            ZtpServer.createPodSpecificDhcpConfFile(self, podId)
+            ZtpServer().createPodSpecificDhcpConfFile(dbSession, podId)
+        except PodNotFound as e:
+            raise bottle.HTTPError(404, exception = e)
         except Exception as e:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId, e))
+            raise bottle.HTTPError(500, exception = e)
 
     def reconfigPod(self, dbSession, podId):
         if bottle.request.json is None:
