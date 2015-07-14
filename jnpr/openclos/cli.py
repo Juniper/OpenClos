@@ -237,7 +237,7 @@ class CLIShell ( cmd.Cmd ):
 #------------------------------------------------------------------------------
     def default ( self, line ):
         results = self.cli_util.get_match ( line )
-
+	
         # Case 1: Invalid command. Print error
         if ( len ( results ) == 0 ):
             print "\nCommand not recognized"
@@ -333,6 +333,7 @@ class CLIShell ( cmd.Cmd ):
 #------------------------------------------------------------------------------
     def cli_command_complete ( self, current_line ):
         results = self.cli_util.get_match ( current_line )
+	
         if ( len ( results ) == 1 ):
             if ( re.search ( "<", results [ 0 ] ) == None ):
                 # word complete case
@@ -363,6 +364,7 @@ class CLIShell ( cmd.Cmd ):
                         match_object = re.search ( "-", results [ 0 ] )
                         if ( match_object != None ):
                             results [ 0 ] = self.handle_hypenation ( results [0], current_line, match_object.end () )
+		    results.insert ( 0, "" )
                     return results
                 else:
                     results.insert ( 0, "" )

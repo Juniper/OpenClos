@@ -203,7 +203,7 @@ class CLIUtil:
     
         if ( unmatched_string [ 0 ] == "_" ):
             # attach possible matches
-            possible_option = unmatched_string.replace ( "_", " " ) + ( " " * self.get_indentation ( full_cmd ) )
+            possible_option = unmatched_string.replace ( "_", " " ) + ( " " * self.get_indentation ( full_cmd ) )	
             possible_option = possible_option + "<" + cmd_helper.cmd_desc + ">"
             ret_list.append ( possible_option )
         else:
@@ -256,7 +256,7 @@ class CLIUtil:
             cmd_helper = self.cmd_graph [ haystack ]
 
             # Case 1: Full command is provided, without macro expansion
-            if ( len_needle == len_haystack ):
+	    if ( len_needle == len_haystack ):
                 # check if we have a match
                 if ( re.match ( needle, haystack ) != None ):
                     if ( cmd_helper.cmd_macro != "" ):

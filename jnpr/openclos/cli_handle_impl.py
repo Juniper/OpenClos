@@ -246,10 +246,10 @@ class CLIImplementor:
         
         ## Regenerate devices configuration, cabling plan and ZTP configuration
         l3ClosMediation.createCablingPlan( pod_id )
-        l3ClosMediation.createDeviceConfig( pod_id )
+	l3ClosMediation.createDeviceConfig( pod_id )
         
         ztpServer = ZtpServer()
-        ztpServer.createPodSpecificDhcpConfFile ( pod_id )
+        ztpServer.createPodSpecificDhcpConfFile ( session, pod_id )
     
 #------------------------------------------------------------------------------
     def handle_update_password ( self, *args ):
@@ -257,11 +257,11 @@ class CLIImplementor:
 
 #------------------------------------------------------------------------------
     def handle_run_reports ( self, *args ):
-        print "TODO: handle_run_reports"
+        print "Currently not supported in stand-alone system"
 
 #------------------------------------------------------------------------------
     def handle_run_rest_server ( self, *args ):
-        print "TODO: handle_run_rest_server"
+        print "Currently not supported in stand-alone system"
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
