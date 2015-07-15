@@ -174,6 +174,17 @@ class L3ClosMediation():
                     
                     # update all fields 
                     device.update(inv['name'], inv.get('family'), inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus'), inv.get('serialNumber'))
+                    
+                    # In case of ztpStage is true and this is a leaf and deployStatus changes to provision:
+                    # The device is going to be removed and the management ip will eventually expire and go back to DHCP pool.
+                    # We need to reset managementIp field for this device to None because soon another leaf will probably get the 
+                    # same management ip address from DHCP. We want avoid the getDevices REST API returns 
+                    # 2 devices having the same management ip.
+                    # Note we don't do this when ztpStaged is false because all the management ip are pre-allocated 
+                    # in that case and will never change.
+                    if role == 'leaf' and self.isZtpStaged and device.deployStatus == 'provision':
+                        device.managementIp = None
+
         return devicesFamilyChanged
         
     def _resolveInventory(self, podDict, inventoryDict):
