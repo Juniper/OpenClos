@@ -162,26 +162,36 @@ def interfaceNameToUniqueSequenceNumber(interfaceName):
     if match is not None:
         return int(interfaceName.encode('hex'), 16)
 
-fpcPicPortRegx = re.compile(r"[a-z]+-(\d)\/(\d)\/(\d{1,3})\.?(\d{0,2})")
+fpcPicPortRegx = re.compile(r"([a-z]+)-(\d)\/(\d)\/(\d{1,3})\.?(\d{0,2})")
 def _matchFpcPicPort(interfaceName):
     match = fpcPicPortRegx.match(interfaceName)
     if match is not None:
-        fpc = match.group(1)
-        pic = match.group(2)
-        port = match.group(3)
-        unit = match.group(4)
+        speed = match.group(1)
+        fpc = match.group(2)
+        pic = match.group(3)
+        port = match.group(4)
+        unit = match.group(5)
         if not unit:
             unit = 0
+            
+        if 'et' in speed:
+            speedInt = 1
+        elif 'xe' in speed:
+            speedInt = 2
+        elif 'ge' in speed:
+            speedInt = 3
+        else:
+            speedInt = 4
         
-        sequenceNum = 10000 * int(fpc) + 1000 * int(pic) + int(port)
+        sequenceNum = 100000 * speedInt + 10000 * int(fpc) + 1000 * int(pic) + int(port)
         
         if unit != 0:
-            sequenceNum = 10000000 + 100 * sequenceNum + int(unit)
+            sequenceNum = 100 * sequenceNum + int(unit)
         
         return sequenceNum
     
-fakeNameRegxList = [(re.compile(r"uplink-(\d{1,3})\.?(\d{0,2})"), 20000000, 21000000),
-                    (re.compile(r"access-(\d{1,3})\.?(\d{0,2})"), 22000000, 23000000)
+fakeNameRegxList = [(re.compile(r"uplink-(\d{1,3})\.?(\d{0,2})"), 90000000, 91000000),
+                    (re.compile(r"access-(\d{1,3})\.?(\d{0,2})"), 92000000, 93000000)
                     ]
 def _matchFakeName(interfaceName):
     for fakeNameRegx, intfStart, subIntfStart in fakeNameRegxList:
