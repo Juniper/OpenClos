@@ -212,7 +212,7 @@ def _matchFakeName(interfaceName):
 def getPortNumberFromName(interfaceName):
     match = fpcPicPortRegx.match(interfaceName)
     if match is not None:
-        return match.group(3)
+        return match.group(4)
 
 def replaceFpcNumberOfInterfaces(interfaceNames, newFpc):
     fixedInterfaceNames = []
