@@ -14,7 +14,7 @@ Command context from the openclos CLI will invoke one or more functions (or hand
 import os
 import re
 import collections
-
+import readline
 # Python frameworks required for openclos
 import yaml
 
@@ -27,7 +27,6 @@ import dao
 import rest
 import propLoader
 from report import ResourceAllocationReport
-
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 class CLIImplementor:
@@ -167,6 +166,7 @@ class CLIImplementor:
                 ret_list.insert ( 0, "Error:" )
                 ret_list.append ( "No POD definitions found in the database" )
             return ret_list
+    
 
 #------------------------------------------------------------------------------
     def list_all_yaml_files ( self, *args ):
@@ -183,6 +183,15 @@ class CLIImplementor:
 
         return ret_list
 
+#------------------------------------------------------------------------------
+
+    def list_all_devices_from_pod (self, *args):
+	ret_list = []
+	ret_list.append("1")
+	ret_list.append("2")
+	ret_list.append("3")
+	return ret_list
+	
 #------------------------------------------------------------------------------
     def handle_create_cabling_plan ( self, pod_id ):
         l3ClosMediation = L3ClosMediation ()
@@ -218,7 +227,7 @@ class CLIImplementor:
         if not os.path.isfile(generatedDhcpConf):
             print "DHCP configuration file has not been generated for Pod %s yet, will generate it first" % pod_id
             ztpServer = ZtpServer()
-            ztpServer.createPodSpecificDhcpConfFile ( pod_id )
+            ztpServer.createPodSpecificDhcpConfFile ( session, pod_id )
 
         if util.isPlatformUbuntu():
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
@@ -252,9 +261,22 @@ class CLIImplementor:
         ztpServer.createPodSpecificDhcpConfFile ( session, pod_id )
     
 #------------------------------------------------------------------------------
-    def handle_update_password ( self, *args ):
-        print "TODO: handle_update_password"
+    def handle_update_password ( self, pod_name, *args ):
+	print "TODO: handle_update_password"
 
+    def handle_update_password_for_device ( self, *args):
+	print "TODO: handle_update_password_for_device"
+
+    def handle_new_password (self,*args):
+	print "handle new password"
+    def prompt_new_password (self, *args):
+        #print "prompt new password"
+	ret_list = []
+	ret_list.append("password_a")
+	ret_list.append("password_b")
+	ret_list.append("password_c")
+	return ret_list
+	
 #------------------------------------------------------------------------------
     def handle_run_reports ( self, *args ):
         print "Currently not supported in stand-alone system"

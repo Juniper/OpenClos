@@ -8,28 +8,24 @@ create:
                 from-file:
                     Desc: Export POD definitions from a file to the database
                     Macro: list_all_yaml_files
-                    MacroName: file-name 
                     Handle: handle_create_pods_from_file
         cabling-plan:
             Args:
                 for-pod:
                     Desc: Create cabling plan for a pre-defined POD
                     Macro: list_all_pods_from_db
-                    MacroName: pod-id 
                     Handle: handle_create_cabling_plan
         device-config:
             Args:
                 for-pod:
                     Desc: Create device configuration for a pre-defined POD
                     Macro: list_all_pods_from_db
-                    MacroName: pod-id 
                     Handle: handle_create_device_config
         ztp-config:
             Args:
                 for-pod:
                     Desc: Create ZTP configuration for a pre-defined POD
                     Macro: list_all_pods_from_db
-                    MacroName: pod-id 
                     Handle: handle_create_ztp_config
                     
 update:
@@ -39,21 +35,23 @@ update:
             Args:
                 for-pod:
                     Desc: Update password for all devices in all PODs
-                    Macro: list_all_pods_from_db
-                    Handle: handle_update_password
-                    MacroName: pod-id 
+                    Macro: list_all_pods_from_db 
+                    #Handle: handle_update_password
+                    #Handle: list_all_pods_from_db
                     Args:
-                        for-device:
-                            Desc: Update password for single device
-                            Macro: list_all_devices_from_pod
-                            MacroName: device-id 
-                            Handle: handle_update_password_for_device
+                        <podid>:
+                            Desc: Enter
+                            Handle: handle_update_password
+                            Args:
+                                for-device:
+                                    Desc: Update password for single device
+                                    Handle: handle_update_password_for_device
+                    Handle: handle_update_password
         pods:
             Args:
                 for-pod:
                     Desc: Update POD configuration
                     Macro: list_all_pods_from_db
-                    MacroName: pod-id 
                     Handle: handle_update_pods   
                     
 deploy:
@@ -64,7 +62,6 @@ deploy:
                 for-pod:
                     Desc: Deploy ZTP configuration for a pre-defined POD
                     Macro: list_all_pods_from_db
-                    MacroName: pod-id 
                     Handle: handle_deploy_ztp_config
                     
 run:
@@ -75,7 +72,6 @@ run:
                 for-pod:
                     Desc: Generate reports
                     Macro: list_all_pods_from_db
-                    MacroName: pod-id 
                     Handle: handle_run_reports
         REST:
             Args:
