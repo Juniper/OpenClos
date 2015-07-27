@@ -53,7 +53,6 @@ class CLIUtil:
         self.yaml_file_stream = open ( commandConfFile, 'r' )
         #raw_graph = yaml.load ( self.yaml_file_stream )
 	raw_graph = yaml.load(self.yaml_file_stream, Loader=yamlordereddictloader.Loader)
-        #print raw_graph
 	#self.cmd_graph = {}
 	self.cmd_graph=collections.OrderedDict()
         self.indentation = 8
@@ -83,7 +82,6 @@ class CLIUtil:
 		   cmd_macroname="",
                    cmd_desc="", *args ):
 
-	#print cmds
 	for cmd in cmds:
             if ( cmd_root == "" ):
                 cmd_compound = cmd
@@ -91,8 +89,6 @@ class CLIUtil:
                 cmd_compound = cmd_root + "_" + cmd
 
             cmd_data = cmds [ cmd ]
-	    #print "cmd"
-	    #print cmd
 
             # Get command access
             if cmd_data.has_key ( "Access" ):
@@ -112,7 +108,6 @@ class CLIUtil:
             
 	    if cmd_data.has_key ( "MacroName" ):
 		cmd_macroname = cmd_data [ "MacroName" ]
-		#cmd_compound = cmd_compound + "_" + "<"+ cmd_macroname + ">"
 	    elif ( cmd_macroname != "" ):
 		cmd_macroname = ""
 
@@ -123,10 +118,6 @@ class CLIUtil:
                 cmd_desc = ""
 	
 	    if cmd_data.has_key ( "Handle" ):
-		#print "cmd_handle that matters"
-		#print cmd_compound
-		#print cmd_handle
-			#print "atleast this works"
                 if cmd_data.has_key ( "MacroName" ):
 			cmd_compound = cmd_compound + "_" + "<"+ cmd_macroname + ">"
 			self.cmd_graph [ cmd_compound ] = CLICommand ( cmd_access, 
@@ -142,21 +133,12 @@ class CLIUtil:
                                                                cmd_desc )
 			
                 
-		#print "cmd GRAPH"
-		#print self.cmd_graph
 		if ( len ( cmd_compound ) > self.indentation ):
                     self.indentation = len ( cmd_compound )
 
             # Parse the arguments
             if cmd_data.has_key ( "Args" ):
                 cmd_args = cmd_data [ "Args" ]
-		#print "cmd_args"
-		#print cmd_args
-		#if (re.search(cmd_args,"<podid>")!=None):
-		#if "<podid>" not in cmd_args:
-		#if flag!=1:
-		#for arg in cmd_args:
-			#if re.match(arg,"<podid>")==None:
 		self.dump_cmd ( cmd_args, 
                                 cmd_compound, 
                                 cmd_access,
@@ -283,12 +265,16 @@ class CLIUtil:
 	haystack=haystack_temp
 	return haystack
 
+    def return_graph ( self):
+	return self.cmd_graph
+
 
 #------------------------------------------------------------------------------
 # Lot of reference here to needle and haystack, needle being the current
 # command context of the CLI, and haystack being the command model dict
 # created during CLIUtil instantiation
 #------------------------------------------------------------------------------
+    cmd_macroname = ""
     def get_match ( self, cmd ):
         if  ( len ( cmd ) == 0 or re.search ( "[a-z|A-Z|0-9]", cmd ) == None ):
 	    return self.get_all_cmds ()
@@ -301,6 +287,7 @@ class CLIUtil:
         ret_list = []
 	cmd_macro_list_all = []
 	cmd_macro = ""
+	global cmd_macroname
 	match_object = None	
 	cmd_graph_temp = self.cmd_graph
 
@@ -348,6 +335,7 @@ class CLIUtil:
 		    if balance_cmd[1]=="<":
 			start_pos = haystack.find("<")
 			end_pos = haystack.find (">")
+			cmd_macroname = haystack[start_pos:end_pos+1]
 			if abs(end_pos - len_haystack)<=1:
 				del cmd_graph_temp [haystack]
 				haystack = self.replace_variable(haystack, start_pos, end_pos)
@@ -360,25 +348,22 @@ class CLIUtil:
                                             cmd_graph_temp [ haystack ],
                                             ret_list )
 			
-	# Replacing <macro-name> by macro when appearing in between handle		
+	# Replacing <macro-name> by macro when appearing in between handle
+	    
 	if cmd_macro in cmd_macro_list_all:	
 		needle_modified = needle.strip(cmd_macro)
 		for haystack in cmd_graph_temp:
-			if "<" and ">" in haystack:
+			if cmd_macroname in haystack:
 				match_object = re.match(needle_modified, haystack)
 				if match_object != None:
-					cmd_helper = cmd_graph_temp[haystack]
-                			cmd_macro_list = self.get_macro_list ( CLIImplementor(), cmd_helper.cmd_macro )
-
-					if cmd_macro in cmd_macro_list or haystack.count("<")>1:
-						if cmd_macro not in haystack:
-							start_pos=haystack.find("<")
-							end_pos=haystack.find(">")
-							del cmd_graph_temp [haystack]
-							haystack_temp = haystack[:start_pos]+cmd_macro+haystack[end_pos+1:]
-							haystack=haystack_temp
-							cmd_graph_temp [haystack] = CLICommand ( cmd_helper.cmd_access, cmd_helper.cmd_handle, cmd_helper.cmd_macro, cmd_helper.cmd_macroname, cmd_helper.cmd_desc )
-							cmd_macro = ""
+            				cmd_helper = cmd_graph_temp [ haystack ]
+                        		cmd_macro_list = self.get_macro_list ( CLIImplementor(), cmd_helper.cmd_macro )
+					start_pos=haystack.find("<")
+					end_pos=haystack.find(">")
+					del cmd_graph_temp [haystack]
+					haystack_temp = haystack[:start_pos]+cmd_macro+haystack[end_pos+1:]
+					haystack=haystack_temp
+					cmd_graph_temp [haystack] = CLICommand ( cmd_helper.cmd_access, cmd_helper.cmd_handle, cmd_helper.cmd_macro, cmd_helper.cmd_macroname, cmd_helper.cmd_desc )
 	
 
 	return ret_list

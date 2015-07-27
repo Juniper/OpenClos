@@ -279,6 +279,8 @@ class CLIShell ( cmd.Cmd ):
                 #     print type ( e )
                 #     print e
 
+	#print self.cli_util.return_graph()
+	
         return None
 
 #------------------------------------------------------------------------------
