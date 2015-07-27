@@ -67,7 +67,7 @@ DOT :
 # REST will start at localhost
 httpServer :
     ipAddr : 0.0.0.0
-    port : 8888
+    port : 20080
 
 # Number of threads used to communicate with devices
 report :
