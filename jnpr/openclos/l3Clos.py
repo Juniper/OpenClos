@@ -339,15 +339,20 @@ class L3ClosMediation():
             return []
         
         logger.debug("Fixing device: %s IFD port: %s -> %s" % (ifd.device.name, ifd.name, name))
-        ifd.updateName(name)
-        updateList = [ifd]
 
+        updateList = []
         newIFL = name + '.0'
         for ifl in ifd.layerAboves:
             logger.debug("Fixing device: %s IFL port: %s -> %s" % (ifd.device.name, ifl.name, newIFL))
             ifl.updateName(newIFL)
             updateList.append(ifl)
-        
+
+        # SQLAlchemy Hack: calling ifd.layerAboves causes premature session flush
+        # which causes unique constrain with updateName() with sequence number 
+        # so moving updateName down
+        ifd.updateName(name)
+        updateList.append(ifd)        
+
         return updateList
 
     def fixUplinkPorts(self, session, device):
@@ -378,7 +383,7 @@ class L3ClosMediation():
             listIndex += 1
         
         #logger.debug('Number of uplink IFD + IFL for device %s fixed: %d' % (device.name, len(updateList)))
-        self._dao.updateObjectsAndCommitNow(session, updateList)
+        self._dao.updateObjects(session, updateList)
         
     def fixInterfaceNames(self, session, pod, devices):
         for device in devices:
