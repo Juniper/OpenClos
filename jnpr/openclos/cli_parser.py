@@ -227,7 +227,7 @@ class CLIUtil:
 	    # attach possible matches
             possible_option = unmatched_string.replace ( "_", " " ) + ( " " * self.get_indentation ( full_cmd ) )	
             possible_option = possible_option + "<" + cmd_helper.cmd_desc + ">"
-            ret_list.append ( possible_option )
+	    ret_list.append ( possible_option )
         else:
             # Get part of the command from part_cmd
             match_object = re.search ( "_", part_cmd )
@@ -340,7 +340,8 @@ class CLIUtil:
 				del cmd_graph_temp [haystack]
 				haystack = self.replace_variable(haystack, start_pos, end_pos)
 				cmd_graph_temp [haystack] = CLICommand ( cmd_helper.cmd_access, cmd_helper.cmd_handle, cmd_helper.cmd_macro, cmd_helper.cmd_macroname, cmd_helper.cmd_desc )
-                    		
+                    #print needle
+		    #print haystack 		
 
 		    self.complete_command ( needle, 
                                             haystack, 
@@ -350,7 +351,7 @@ class CLIUtil:
 			
 	# Replacing <macro-name> by macro when appearing in between handle
 	    
-	if cmd_macro in cmd_macro_list_all:	
+	if cmd_macro in cmd_macro_list_all:
 		needle_modified = needle.strip(cmd_macro)
 		for haystack in cmd_graph_temp:
 			if cmd_macroname in haystack:
@@ -367,6 +368,9 @@ class CLIUtil:
 	
 
 	return ret_list
+
+    def return_cmd_graph (self):
+	return self.cmd_graph 
 
 #------------------------------------------------------------------------------
     def chomp ( self, token ):

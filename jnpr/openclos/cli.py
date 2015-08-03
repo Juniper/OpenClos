@@ -143,6 +143,7 @@ class CLIShell ( cmd.Cmd ):
         if self.use_rawinput and self.completekey:
             try:
                 self.old_completer = self.rl.get_completer()
+		print self.complete
 		self.rl.set_completer ( self.complete )
                 self.rl.set_completion_display_matches_hook ( self.post_complete)
                 self.rl.parse_and_bind ( self.completekey+": complete" )
@@ -214,8 +215,8 @@ class CLIShell ( cmd.Cmd ):
             else:
                 compfunc = self.completenames
             self.completion_matches = compfunc ( text, line, begidx, endidx )
-	    #print self.completion_matches
         try:
+	    #print self.completion_matches[state]
             return self.completion_matches [ state ]
         except IndexError:
             return None
