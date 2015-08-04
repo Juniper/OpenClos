@@ -26,6 +26,7 @@ from ztp import ZtpServer
 import dao
 import rest
 import propLoader
+import cli_parser
 from report import ResourceAllocationReport
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -153,6 +154,8 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def list_all_pods_from_db ( self, add_help=None, *args ):
         ret_list = []
+	#print "Previous macros entered"
+	#print cli_parser.return_entered_macro()
         report = ResourceAllocationReport()
         with report._dao.getReadSession() as session:
             pod_objects = report._dao.getAll(session, Pod)
