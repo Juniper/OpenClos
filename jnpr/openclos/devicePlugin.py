@@ -23,6 +23,7 @@ from propLoader import OpenClosProperty, DeviceSku, loadLoggingConfig
 import util
 
 from netaddr import IPAddress, IPNetwork
+from jnpr.openclos.exception import SkipCommit
 
 moduleName = 'devicePlugin'
 loadLoggingConfig(appName = moduleName)
@@ -688,7 +689,11 @@ class TwoStageConfigurator(L2DataCollector):
             self.updateSelfDeviceContext(device)
 
             try:
-                self.runPostLldpCommands()
+                try:
+                    self.runPostLldpCommands()
+                except SkipCommit:
+                    self.updateDeviceConfigStatus('good')
+                    return
                 self.updateDeviceConfigStatus('processing')
                 self.updateDeviceConfiguration()
                 self.updateDeviceConfigStatus('good')
@@ -701,11 +706,14 @@ class TwoStageConfigurator(L2DataCollector):
                 self.updateDeviceConfigStatus('error', str(exc))
                 raise
             finally:
-                self.configurationInProgressCache.doneDevice(self.deviceIp)
+                self.releaseConfigurationInProgressLock(self.deviceIp)
                 logger.debug('Ended two stage configuration for %s' % (self.deviceLogStr))
         else:
             logger.debug('Two stage configuration is already in progress for %s', (self.deviceLogStr))
     
+    def releaseConfigurationInProgressLock(self, deviceIp):
+        self.configurationInProgressCache.doneDevice(deviceIp)
+        
     def runPreLldpCommands(self):
         self.deleteVcpPortForEx(self.device.family)
         if self.stopEvent.is_set():
