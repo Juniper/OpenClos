@@ -366,7 +366,7 @@ class CLIUtil:
 					haystack=haystack_temp
 					cmd_graph_temp [haystack] = CLICommand ( cmd_helper.cmd_access, cmd_helper.cmd_handle, cmd_helper.cmd_macro, cmd_helper.cmd_macroname, cmd_helper.cmd_desc )
 	
-
+	print ret_list
 	return ret_list
 
     def return_cmd_graph (self):
