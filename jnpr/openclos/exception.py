@@ -256,3 +256,12 @@ class TrapDaemonError(BaseError):
         super(TrapDaemonError, self).__init__(error.EC_TRAP_DAEMON_ERROR,
             error.getErrorMessage(error.EC_TRAP_DAEMON_ERROR) % (reason), 
             cause)
+
+class SkipCommit(BaseError):
+    '''
+    Dummy error to indicate skip device commit
+    '''
+    def __init__(self, reason=None, cause=None):
+        super(SkipCommit, self).__init__(error.EC_OK, reason, cause)
+    
+    
