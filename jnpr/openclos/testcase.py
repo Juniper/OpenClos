@@ -5,11 +5,11 @@ from cli_handle_impl import CLIImplementor
 cmds=["update_password_for-pod_<podid>", 
 "update_password_for-pod_<podid>_for-device_<deviceid>", 
 "update_pods_for-pod_<podid>", 
-"show_pods_detail_all"]
+"show_pods_detail_all",
+"show_pods_detail_for-pod_<podid>"]
 
-needle= "update password for-pod 
-f72e8af5-94c8-4ccc-9b3a-be002ed8bab7 for-device 2"
-
+#needle= "update password for-pod f72e8af5-94c8-4ccc-9b3a-be002ed8bab7 for-device"# 2"
+needle = "show pods detail for-pod f72e8af5-94c8-4ccc-9b3a-be002ed8bab7 "
 
 #Need to be altered once integrated
 cli_util=cli_parser.CLIUtil()

@@ -48,12 +48,12 @@ update:
                             Macro: list_all_devices_from_pod
                             MacroName: deviceid 
                             Handle: handle_update_password_for_device
-                            Args:
-                                set-password:
-                                    Desc: Enter new password
-                                    Macro: prompt_new_password
-                                    MacroName: passwordname
-                                    Handle: handle_new_password
+                            #Args:
+                                #set-password:
+                                    #Desc: Enter new password
+                                    #Macro: prompt_new_password
+                                    #MacroName: passwordname
+                                    #Handle: handle_new_password
         pods:
             Args:
                 for-pod:
