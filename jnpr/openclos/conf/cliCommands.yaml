@@ -8,7 +8,7 @@ create:
                 from-file:
                     Desc: Export POD definitions from a file to the database
                     Macro: list_all_yaml_files
-                    MacroName: filename 
+                    MacroName: file-name 
                     Handle: handle_create_pods_from_file
         cabling-plan:
             Args:
@@ -48,12 +48,6 @@ update:
                             Macro: list_all_devices_from_pod
                             MacroName: deviceid 
                             Handle: handle_update_password_for_device
-                            #Args:
-                                #set-password:
-                                    #Desc: Enter new password
-                                    #Macro: prompt_new_password
-                                    #MacroName: passwordname
-                                    #Handle: handle_new_password
         pods:
             Args:
                 for-pod:
