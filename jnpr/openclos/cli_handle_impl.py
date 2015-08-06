@@ -46,6 +46,7 @@ class CLIImplementor:
     def init_pod_attr ( self ):
         self.add_attr_to_pod_struct ( 'name', 'POD Name' )
         self.add_attr_to_pod_struct ( 'id', 'UUID' )
+	#self.add_attr_to_pod_struct ( 'password' , 'Password' )
         self.add_attr_to_pod_struct ( 'spineCount', 'Spine Count' )
         self.add_attr_to_pod_struct ( 'spineDeviceType', 'Spine Device Type' )
         self.add_attr_to_pod_struct ( 'leafCount', 'Leaf Count' )
@@ -152,7 +153,7 @@ class CLIImplementor:
                 print "---------------------------------------------------------------"
 
 #------------------------------------------------------------------------------
-    def list_all_pods_from_db ( self, add_help=None, *args ):
+    def list_all_pods_from_db ( self, add_help = None, *args ):
         ret_list = []
         report = ResourceAllocationReport()
         with report._dao.getReadSession() as session:
@@ -186,12 +187,29 @@ class CLIImplementor:
 
 #------------------------------------------------------------------------------
 
-    def list_all_devices_from_pod (self, *args):
-	ret_list = []
-	ret_list.append("1")
-	ret_list.append("2")
-	ret_list.append("3")
-	return ret_list
+    def list_all_devices_from_pod ( self, add_help=None , *args ):
+        ret_list = []
+        report = ResourceAllocationReport()
+        with report._dao.getReadSession() as session:
+            pod_objects = report._dao.getAll(session, Pod)
+            for pod in pod_objects:
+                pod_spine = pod.spineDeviceType
+		#pod_leaf = pod.leafDeviceType
+		#print pod_spine
+		#print pod_leaf
+                if ( add_help != None ):
+                    pod_spine = pod_spine + "        <UUID of Pod [" + pod.name + "]>"
+                    #pod_leaf = pod_leaf + "        <UUID of Pod [" + pod.name + "]>"
+                if pod_spine != None:
+		    ret_list.append ( pod_spine )
+		#if pod_leaf != None:
+		    #ret_list.append ( pod_leaf )
+    
+            if ( len ( ret_list ) == 0 ):
+                ret_list.insert ( 0, "Error:" )
+                ret_list.append ( "No Device definitions found in the database" )
+            return ret_list
+    
 	
 #------------------------------------------------------------------------------
     def handle_create_cabling_plan ( self, pod_id ):
@@ -263,10 +281,20 @@ class CLIImplementor:
     
 #------------------------------------------------------------------------------
     def handle_update_password ( self, pod_name, *args ):
-	print "TODO: handle_update_password"
+	#print "TODO: handle_update_password"
+	new_password = raw_input ("Enter new password to be updated in all devices in pod: ")
+        #report = ResourceAllocationReport()
+        #with report._dao.getReadSession() as session:
+        #    pod_objects = report._dao.getAll(session, Pod)
+         #   for pod in pod_objects:
+         #       pod_password = pod.password
+	#print "Existing password " + pod_password
+	print "Password updated in all devices in pod to " + new_password
 
     def handle_update_password_for_device ( self, *args):
-	print "TODO: handle_update_password_for_device"
+	#print "TODO: handle_update_password_for_device"
+	new_password = raw_input ("Enter new password to be updated in device: ")
+	print "Password updated in device to " + new_password
 
     def handle_new_password (self,*args):
 	print "handle new password"

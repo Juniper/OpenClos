@@ -198,15 +198,13 @@ class CLIUtil:
 
 #------------------------------------------------------------------------------
     def match_macro ( self, macro_list, needle, ret_list ):
-	#global entered_macro
 	for haystack in macro_list:
             if ( re.match ( needle, haystack ) != None ):
             	if ( len ( needle ) == len ( haystack ) ):
 		    self.add_enter_instruction ( ret_list )
                 elif ( len ( needle ) < len ( haystack ) ):
-                    ret_list.append ( haystack )
-	   	#if haystack not in entered_macro:
-		 #   entered_macro.append(haystack)
+		    if haystack not in ret_list:
+                    	ret_list.append ( haystack )
             #else:
                 #print ""
 
@@ -321,6 +319,7 @@ class CLIUtil:
 	    # Compare and complete macros case
 	    elif match_macros!=None:
 		for macro_name in macro_dict.keys():
+		  if macro_name in cmd_helper.cmd_macroname:
 		    # try-catch block to get all match groups
 		    try:
 			macro_needle = match_macros.group(macro_name)

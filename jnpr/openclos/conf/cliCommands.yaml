@@ -8,7 +8,7 @@ create:
                 from-file:
                     Desc: Export POD definitions from a file to the database
                     Macro: list_all_yaml_files
-                    MacroName: file-name 
+                    MacroName: filename 
                     Handle: handle_create_pods_from_file
         cabling-plan:
             Args:
