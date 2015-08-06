@@ -154,11 +154,11 @@ class TestDeviceSku(unittest.TestCase):
         ports = self.deviceSku.getPortNamesForDeviceFamily('qfx5100-48s-6q', 'leaf')
         self.assertEqual(6, len(ports['uplinkPorts']))
         self.assertEqual(96, len(ports['downlinkPorts']))   # 48 xe and 48 ge ports
-	ports=self.deviceSku.getPortNamesForDeviceFamily('qfx5200-32c','spine')
+	ports=self.deviceSku.getPortNamesForDeviceFamily('qfx5200-32c-32q','spine')
 	self.assertEqual(0, len(ports['uplinkPorts']))
 	self.assertEqual(32, len(ports['downlinkPorts']))
 
-	ports=self.deviceSku.getPortNamesForDeviceFamily('qfx5200-32c','leaf')
+	ports=self.deviceSku.getPortNamesForDeviceFamily('qfx5200-32c-32q','leaf')
 	self.assertEqual(8, len(ports['uplinkPorts']))
 	self.assertEqual(28, len(ports['downlinkPorts']))
 
