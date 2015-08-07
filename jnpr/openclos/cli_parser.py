@@ -30,7 +30,7 @@ import propLoader
 
 # cli related classes
 from cli_handle_impl import CLIImplementor
-
+global_needle = None
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 class CLICommand:
@@ -159,6 +159,10 @@ class CLIUtil:
         return cmd.replace ( " ", "_" )
 
 #------------------------------------------------------------------------------
+    def return_graph (self):
+	return self.cmd_graph
+
+#------------------------------------------------------------------------------
     def get_indentation ( self, cmd ):
         return ( self.indentation + 8 - len ( cmd ) )
 
@@ -197,6 +201,7 @@ class CLIUtil:
         
 
 #------------------------------------------------------------------------------
+
     def match_macro ( self, macro_list, needle, ret_list ):
 	for haystack in macro_list:
             if ( re.match ( needle, haystack ) != None ):
@@ -269,17 +274,19 @@ class CLIUtil:
 #------------------------------------------------------------------------------
 
     def get_match (self, needle):
+	global global_needle
+	global_needle = needle
 	macro_dict = {}
 	ret_list = []
-	# flag variable to denote if macro has been 
+	# flag variable to denote if macro has been appended 
 	flag=0
 
 	if len(needle)==0 or re.search("[a-z|A-Z|0-9]", needle)==None:
-	    return cli_util.get_all_cmds()
+	    return self.get_all_cmds()
 	if needle[-1]==" ":
 	    needle=needle[0:-1]
 
-	needle = cli_util.normalize_command(needle)
+	needle = self.normalize_command(needle)
 	
 	for haystack_orig in self.cmd_graph:
 	    cmd_helper = self.cmd_graph [ haystack_orig ]		
@@ -293,13 +300,14 @@ class CLIUtil:
 	    haystack = haystack_orig.replace("<","(?P<")
 	    haystack = haystack.replace(">", ">.*)")
 	    
+	    # Matching using regex search and match
 	    match_macros = re.search(haystack,needle)
 	    if len(haystack_orig)<len(needle):	
 		match_object = re.match(haystack_orig,needle)
 	    else:
 		match_object = re.match(needle,haystack_orig)
 		
-	    # Complete partial command case
+	    # Complete partially entered command
 	    if match_object!=None:
 		balance_haystack = haystack_orig[match_object.end():]
 		if balance_haystack!="":
@@ -307,16 +315,13 @@ class CLIUtil:
 			# check to retrieve corresponding macro list
 			if cmd_helper.cmd_macroname in haystack_orig.partition(">")[0]:
 			    self.include_macro(macro_dict[cmd_helper.cmd_macroname],ret_list)
-		    	else:
-		            haystack_orig=haystack_orig.replace(" ","_")
-		            self.complete_command(needle,haystack_orig,match_object.end(), cmd_helper, ret_list)
-		    else:
-		        haystack_orig=haystack_orig.replace(" ","_")
-		        self.complete_command(needle,haystack_orig,match_object.end(), cmd_helper, ret_list)
+			    break
+		    haystack_orig=haystack_orig.replace(" ","_")
+		    self.complete_command(needle,haystack_orig,match_object.end(), cmd_helper, ret_list)
 		else:
 		    self.add_enter_instruction ( ret_list )
 		
-	    # Compare and complete macros case
+	    # Compare and complete macros 
 	    elif match_macros!=None:
 		for macro_name in macro_dict.keys():
 		  if macro_name in cmd_helper.cmd_macroname:
@@ -340,7 +345,7 @@ class CLIUtil:
 		    except IndexError:
 			break
 
-	    # Find point of match and return remaining command case
+	    # Find point of match and return remaining command
 	    else:
 		needle_temp = needle
 		haystack_temp = haystack_orig
@@ -478,6 +483,32 @@ class CLIUtil:
                     print "    Handler not implemented"
 
 # end class CLIUtil
+
+def get_previous_macro():
+	global global_needle
+	if global_needle[-1]==" ":
+	    global_needle=global_needle[0:-1]
+
+	global_needle = cli_util.normalize_command(global_needle)
+	list_of_cmds = cli_util.return_graph()
+	entered_macro = []
+	for haystack in list_of_cmds:
+	    
+		# For regex operations
+		haystack = haystack.replace("<","(?P<")
+		haystack = haystack.replace(">", ">.*)")
+		match_macros = re.search (haystack,global_needle)
+		if match_macros!=None:
+			i=0
+		    	while True:
+				try:
+					macro_value = match_macros.group(i)
+					if "_" not in macro_value:
+						entered_macro.append(macro_value)
+					i=i+1
+		    		except IndexError:
+					break
+	return entered_macro[-1:]
 
 #------------------------------------------------------------------------------
 #                              MAIN

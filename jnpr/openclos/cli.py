@@ -42,6 +42,7 @@ import propLoader
 # CLI related classes
 from cli_parser import CLIUtil
 from cli_parser import CLIImplementor
+#global_needle = None
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -59,8 +60,6 @@ class ReadlineWrapper:
 
 #------------------------------------------------------------------------------
     def set_completer ( self, comp_func ):
-	#print "in set_completer"
-	#print comp_func
         if util.isPlatformWindows ():
             import pyreadline
             Readline ().set_completer ( comp_func )
@@ -138,12 +137,12 @@ class CLIShell ( cmd.Cmd ):
     rl = ReadlineWrapper ()
 
 #------------------------------------------------------------------------------
+
     def cmdloop ( self, intro=None ):
         self.preloop ()
         if self.use_rawinput and self.completekey:
             try:
                 self.old_completer = self.rl.get_completer()
-		print self.complete
 		self.rl.set_completer ( self.complete )
                 self.rl.set_completion_display_matches_hook ( self.post_complete)
                 self.rl.parse_and_bind ( self.completekey+": complete" )
@@ -240,6 +239,8 @@ class CLIShell ( cmd.Cmd ):
 
 #------------------------------------------------------------------------------
     def default ( self, line ):
+	global global_needle 
+	global_needle = line
         results = self.cli_util.get_match ( line )
 	
         # Case 1: Invalid command. Print error
@@ -280,8 +281,6 @@ class CLIShell ( cmd.Cmd ):
                 #     print type ( e )
                 #     print e
 
-	#print self.cli_util.return_graph()
-	
         return None
 
 #------------------------------------------------------------------------------
@@ -390,6 +389,9 @@ class CLIShell ( cmd.Cmd ):
     def completedefault(self, text, *ignored):
         current_line = self.rl.get_line_buffer ()
         return self.cli_command_complete ( current_line )
+
+    def get_needle (self, cmd):
+	return cmd
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------

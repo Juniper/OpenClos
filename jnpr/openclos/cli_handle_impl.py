@@ -46,7 +46,7 @@ class CLIImplementor:
     def init_pod_attr ( self ):
         self.add_attr_to_pod_struct ( 'name', 'POD Name' )
         self.add_attr_to_pod_struct ( 'id', 'UUID' )
-	#self.add_attr_to_pod_struct ( 'password' , 'Password' )
+	#self.add_attr_to_pod_struct ( 'devicePassword' , 'Password' )
         self.add_attr_to_pod_struct ( 'spineCount', 'Spine Count' )
         self.add_attr_to_pod_struct ( 'spineDeviceType', 'Spine Device Type' )
         self.add_attr_to_pod_struct ( 'leafCount', 'Leaf Count' )
@@ -189,21 +189,19 @@ class CLIImplementor:
 
     def list_all_devices_from_pod ( self, add_help=None , *args ):
         ret_list = []
+	previous_macro = cli_parser.get_previous_macro()
+	if previous_macro:
+		print "Previous macro entered"
+		print previous_macro
         report = ResourceAllocationReport()
         with report._dao.getReadSession() as session:
             pod_objects = report._dao.getAll(session, Pod)
             for pod in pod_objects:
                 pod_spine = pod.spineDeviceType
-		#pod_leaf = pod.leafDeviceType
-		#print pod_spine
-		#print pod_leaf
                 if ( add_help != None ):
                     pod_spine = pod_spine + "        <UUID of Pod [" + pod.name + "]>"
-                    #pod_leaf = pod_leaf + "        <UUID of Pod [" + pod.name + "]>"
                 if pod_spine != None:
 		    ret_list.append ( pod_spine )
-		#if pod_leaf != None:
-		    #ret_list.append ( pod_leaf )
     
             if ( len ( ret_list ) == 0 ):
                 ret_list.insert ( 0, "Error:" )
@@ -281,31 +279,15 @@ class CLIImplementor:
     
 #------------------------------------------------------------------------------
     def handle_update_password ( self, pod_name, *args ):
-	#print "TODO: handle_update_password"
-	new_password = raw_input ("Enter new password to be updated in all devices in pod: ")
-        #report = ResourceAllocationReport()
-        #with report._dao.getReadSession() as session:
-        #    pod_objects = report._dao.getAll(session, Pod)
-         #   for pod in pod_objects:
-         #       pod_password = pod.password
-	#print "Existing password " + pod_password
-	print "Password updated in all devices in pod to " + new_password
+	print "TODO: handle_update_password"
+	#new_password = raw_input ("Enter new password to be updated in all devices in pod: ")
+	#print "Password updated in all devices in pod to " + new_password
 
     def handle_update_password_for_device ( self, *args):
-	#print "TODO: handle_update_password_for_device"
-	new_password = raw_input ("Enter new password to be updated in device: ")
-	print "Password updated in device to " + new_password
+	print "TODO: handle_update_password_for_device"
+	#new_password = raw_input ("Enter new password to be updated in device: ")
+	#print "Password updated in device to " + new_password
 
-    def handle_new_password (self,*args):
-	print "handle new password"
-    def prompt_new_password (self, *args):
-        #print "prompt new password"
-	ret_list = []
-	ret_list.append("password_a")
-	ret_list.append("password_b")
-	ret_list.append("password_c")
-	return ret_list
-	
 #------------------------------------------------------------------------------
     def handle_run_reports ( self, *args ):
         print "Currently not supported in stand-alone system"
