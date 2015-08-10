@@ -28,6 +28,8 @@ import rest
 import propLoader
 import cli_parser
 from report import ResourceAllocationReport
+
+prior_macro = None
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 class CLIImplementor:
@@ -187,12 +189,13 @@ class CLIImplementor:
 
 #------------------------------------------------------------------------------
 
-    def list_all_devices_from_pod ( self, add_help=None , *args ):
+    def list_all_devices_from_pod ( self , add_help=None , *args ):
         ret_list = []
-	previous_macro = cli_parser.get_previous_macro()
-	if previous_macro:
-		print "Previous macro entered"
-		print previous_macro
+	# Previous macro entered can be retrieved if necessary for further processing
+	#previous_macro = cli_parser.get_previous_macro()
+	#if previous_macro:
+		#print "Previous macro entered"
+		#print previous_macro
         report = ResourceAllocationReport()
         with report._dao.getReadSession() as session:
             pod_objects = report._dao.getAll(session, Pod)
