@@ -24,6 +24,12 @@ create:
                     Macro: list_all_pods_from_db
                     MacroName: podid 
                     Handle: handle_create_device_config
+                    Args:
+                        for-device:
+                            Desc: Create something
+                            Macro: test_macro
+                            MacroName: testMacro
+                            Handle: handle_testing_something
         ztp-config:
             Args:
                 for-pod:

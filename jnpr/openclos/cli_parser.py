@@ -31,6 +31,7 @@ import propLoader
 # cli related classes
 from cli_handle_impl import CLIImplementor
 global_needle = None
+entered_macro=[]
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 class CLICommand:
@@ -114,6 +115,7 @@ class CLIUtil:
 			print cmd_compound + "_<" + cmd_data["MacroName"] +">"
 			break 
 		cmd_macroname = cmd_data [ "MacroName" ]
+		cmd_compound = cmd_compound + "_<" + cmd_macroname + ">"
 	    elif ( cmd_macroname != "" ):
 		cmd_macroname = ""
 
@@ -124,20 +126,12 @@ class CLIUtil:
                 cmd_desc = ""
 	
 	    if cmd_data.has_key ( "Handle" ):
-                if cmd_data.has_key ( "MacroName" ):
-			cmd_compound = cmd_compound + "_" + "<"+ cmd_macroname + ">"
-			self.cmd_graph [ cmd_compound ] = CLICommand ( cmd_access, 
+                #if cmd_data.has_key ( "MacroName" ):
+		self.cmd_graph [ cmd_compound ] = CLICommand ( cmd_access, 
                                                                cmd_handle,
                                                                cmd_macro,
 							       cmd_macroname,
                                                                cmd_desc )	
-	    	else:
-			self.cmd_graph [ cmd_compound ] = CLICommand ( cmd_access, 
-                                                               cmd_handle,
-                                                               cmd_macro,
-							       cmd_macroname,
-                                                               cmd_desc )
-			
                 
 		if ( len ( cmd_compound ) > self.indentation ):
                     self.indentation = len ( cmd_compound )
@@ -176,8 +170,9 @@ class CLIUtil:
 #------------------------------------------------------------------------------
     def get_macro_list ( self, class_instance, macro_txt, add_help=None ):
 	fn_macro = self.get_implementor_handle ( class_instance, macro_txt )	
-        return fn_macro ( add_help )
-
+        prev_macro = self.get_previous_macro()
+	return fn_macro ( prev_macro, add_help )
+	
 #------------------------------------------------------------------------------
     def include_macro ( self, macro_list, ret_list ):
         for item in macro_list:
@@ -285,8 +280,10 @@ class CLIUtil:
 	    return self.get_all_cmds()
 	if needle[-1]==" ":
 	    needle=needle[0:-1]
-
+	#needle = re.sub(' +',' ',needle)
 	needle = self.normalize_command(needle)
+	while needle[-1]=="_":
+	    needle=needle[0:-1]
 	
 	for haystack_orig in self.cmd_graph:
 	    cmd_helper = self.cmd_graph [ haystack_orig ]		
@@ -367,7 +364,7 @@ class CLIUtil:
 			    balance_haystack=balance_haystack[1:]
 			if balance_haystack[0]!="<":
 			    match_object = re.match(macro_needle,balance_haystack)
-			    if match_object!=None:
+			    if match_object!=None and flag==0:
 				    end_pos = haystack_orig.find(balance_haystack)
 				    self.complete_command(haystack_orig[:end_pos],haystack_orig,end_pos, cmd_helper, ret_list)
 					
@@ -482,16 +479,17 @@ class CLIUtil:
                 else:
                     print "    Handler not implemented"
 
-# end class CLIUtil
+#------------------------------------------------------------------------------
 
-def get_previous_macro():
+    def get_previous_macro(self):
 	global global_needle
+	global entered_macro
 	if global_needle[-1]==" ":
 	    global_needle=global_needle[0:-1]
 
 	global_needle = cli_util.normalize_command(global_needle)
 	list_of_cmds = cli_util.return_graph()
-	entered_macro = []
+	#entered_macro = []
 	for haystack in list_of_cmds:
 	    
 		# For regex operations
@@ -508,8 +506,10 @@ def get_previous_macro():
 					i=i+1
 		    		except IndexError:
 					break
-	return entered_macro[-1:]
+	ret_val = str(entered_macro[-1:]).strip('[]')
+	return ret_val
 
+# end class CLIUtil
 #------------------------------------------------------------------------------
 #                              MAIN
 #------------------------------------------------------------------------------

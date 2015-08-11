@@ -17,7 +17,7 @@ import collections
 import readline
 # Python frameworks required for openclos
 import yaml
-
+import inspect
 # openclos classes
 import util
 from l3Clos import L3ClosMediation
@@ -155,7 +155,7 @@ class CLIImplementor:
                 print "---------------------------------------------------------------"
 
 #------------------------------------------------------------------------------
-    def list_all_pods_from_db ( self, add_help = None, *args ):
+    def list_all_pods_from_db ( self, prev_macro, add_help = None, *args ):
         ret_list = []
         report = ResourceAllocationReport()
         with report._dao.getReadSession() as session:
@@ -189,13 +189,8 @@ class CLIImplementor:
 
 #------------------------------------------------------------------------------
 
-    def list_all_devices_from_pod ( self , add_help=None , *args ):
+    def list_all_devices_from_pod ( self , prev_macro, add_help=None , *args ):
         ret_list = []
-	# Previous macro entered can be retrieved if necessary for further processing
-	#previous_macro = cli_parser.get_previous_macro()
-	#if previous_macro:
-		#print "Previous macro entered"
-		#print previous_macro
         report = ResourceAllocationReport()
         with report._dao.getReadSession() as session:
             pod_objects = report._dao.getAll(session, Pod)
@@ -298,6 +293,16 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def handle_run_rest_server ( self, *args ):
         print "Currently not supported in stand-alone system"
+#------------------------------------------------------------------------------
+    def test_macro ( self, prev_macro, add_help=None, *args ):
+	ret_list = []
+	#if prev_macro:
+		#print "Previous Macro"
+		#print prev_macro
+	return [prev_macro , "test-arg"]
 
+    def handle_testing_something ( self, *args ):
+        print "Testing complete"
+#------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
