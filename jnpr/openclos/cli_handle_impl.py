@@ -26,10 +26,7 @@ from ztp import ZtpServer
 import dao
 import rest
 import propLoader
-import cli_parser
 from report import ResourceAllocationReport
-
-prior_macro = None
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 class CLIImplementor:
@@ -48,7 +45,6 @@ class CLIImplementor:
     def init_pod_attr ( self ):
         self.add_attr_to_pod_struct ( 'name', 'POD Name' )
         self.add_attr_to_pod_struct ( 'id', 'UUID' )
-	#self.add_attr_to_pod_struct ( 'devicePassword' , 'Password' )
         self.add_attr_to_pod_struct ( 'spineCount', 'Spine Count' )
         self.add_attr_to_pod_struct ( 'spineDeviceType', 'Spine Device Type' )
         self.add_attr_to_pod_struct ( 'leafCount', 'Leaf Count' )
@@ -278,13 +274,9 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def handle_update_password ( self, pod_name, *args ):
 	print "TODO: handle_update_password"
-	#new_password = raw_input ("Enter new password to be updated in all devices in pod: ")
-	#print "Password updated in all devices in pod to " + new_password
 
     def handle_update_password_for_device ( self, *args):
 	print "TODO: handle_update_password_for_device"
-	#new_password = raw_input ("Enter new password to be updated in device: ")
-	#print "Password updated in device to " + new_password
 
 #------------------------------------------------------------------------------
     def handle_run_reports ( self, *args ):

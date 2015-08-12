@@ -42,7 +42,6 @@ import propLoader
 # CLI related classes
 from cli_parser import CLIUtil
 from cli_parser import CLIImplementor
-#global_needle = None
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -215,7 +214,6 @@ class CLIShell ( cmd.Cmd ):
                 compfunc = self.completenames
             self.completion_matches = compfunc ( text, line, begidx, endidx )
         try:
-	    #print self.completion_matches[state]
             return self.completion_matches [ state ]
         except IndexError:
             return None

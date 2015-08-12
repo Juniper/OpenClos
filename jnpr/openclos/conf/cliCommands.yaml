@@ -28,7 +28,7 @@ create:
                         for-device:
                             Desc: Create something
                             Macro: test_macro
-                            MacroName: testMacro
+                            MacroName: deviceid
                             Handle: handle_testing_something
         ztp-config:
             Args:
@@ -41,19 +41,6 @@ create:
 update:
     Access: WRITE
     Args:
-        password:
-            Args:
-                for-pod:
-                    Desc: Update password for all devices in all PODs
-                    Macro: list_all_pods_from_db
-                    Handle: handle_update_password
-                    MacroName: podid 
-                    Args:
-                        for-device:
-                            Desc: Update password for single device
-                            Macro: list_all_devices_from_pod
-                            MacroName: deviceid 
-                            Handle: handle_update_password_for_device
         pods:
             Args:
                 for-pod:
