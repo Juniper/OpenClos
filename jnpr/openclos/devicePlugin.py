@@ -253,7 +253,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
 
     def getAllocatedConnectedUplinkIfds(self):
         uplinkIfds = self._session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == self.device.id).\
-            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.sequenceNum).all()
+            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.sequenceNum).all()
         
         allocatedUplinks = {}
         for uplink in uplinkIfds:
@@ -788,7 +788,7 @@ class TwoStageConfigurator(L2DataCollector):
             
         # case2: fix remaining IFDs based on device family
         allocatedUplinkIfds = self._session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
-            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.sequenceNum).all()
+            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.sequenceNum).all()
         
         listIndex = 0
         for allocatedIfd in allocatedUplinkIfds:
@@ -805,11 +805,11 @@ class TwoStageConfigurator(L2DataCollector):
     def markAllUplinkIfdsToUplink(self, device):
         if device is None:
             return
-        allocatedUplinkIfds = self._session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
-            filter(InterfaceDefinition.role == 'uplink').filter(InterfaceDefinition.peer is not None).order_by(InterfaceDefinition.sequenceNum).all()
+        uplinkIfds = self._session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).\
+            filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.sequenceNum).all()
         
         listIndex = 0
-        for allocatedIfd in allocatedUplinkIfds:
+        for allocatedIfd in uplinkIfds:
             allocatedIfd.updateName('uplink-' + str(listIndex))
             listIndex += 1
             
