@@ -160,11 +160,15 @@ class L3ClosMediation():
             for device in pod.devices:
                 # find match by role/id/name
                 if device.role == role and (device.id == inv.get('id') or device.name == inv['name']):
-                    if device.deployStatus == inv.get('deployStatus'):
+                    newDeployStatus = inv.get('deployStatus')
+                    if newDeployStatus is None:
+                        newDeployStatus = 'provision'
+                        
+                    if device.deployStatus == newDeployStatus:
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' deploy status unchanged" % (pod.id, pod.name, device.role, device.name))
-                    elif device.deployStatus == 'deploy' and (inv.get('deployStatus') is None or inv.get('deployStatus') == 'provision'):
+                    elif device.deployStatus == 'deploy' and newDeployStatus == 'provision':
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' provisioned" % (pod.id, pod.name, device.role, device.name))
-                    elif device.deployStatus == 'provision' and inv.get('deployStatus') == 'deploy':
+                    elif device.deployStatus == 'provision' and newDeployStatus == 'deploy':
                         logger.debug("Pod[id='%s', name='%s']: %s device '%s' deployed" % (pod.id, pod.name, device.role, device.name))
                     
                     # we need this list to fix interface names
@@ -173,7 +177,7 @@ class L3ClosMediation():
                         devicesFamilyChanged.append(device)
                     
                     # update all fields 
-                    device.update(inv['name'], inv.get('family'), inv.get('username'), inv.get('password'), inv.get('macAddress'), inv.get('deployStatus'), inv.get('serialNumber'))
+                    device.update(inv['name'], inv.get('family'), inv.get('username'), inv.get('password'), inv.get('macAddress'), newDeployStatus, inv.get('serialNumber'))
                     
                     # In case of ztpStage is true and this is a leaf and deployStatus changes to provision:
                     # The device is going to be removed and the management ip will eventually expire and go back to DHCP pool.
