@@ -272,13 +272,6 @@ class CLIImplementor:
         ztpServer.createPodSpecificDhcpConfFile ( session, pod_id )
     
 #------------------------------------------------------------------------------
-    def handle_update_password ( self, pod_name, *args ):
-	print "TODO: handle_update_password"
-
-    def handle_update_password_for_device ( self, *args):
-	print "TODO: handle_update_password_for_device"
-
-#------------------------------------------------------------------------------
     def handle_run_reports ( self, *args ):
         print "Currently not supported in stand-alone system"
 
@@ -289,9 +282,9 @@ class CLIImplementor:
     def test_macro ( self, prev_macro, add_help=None, *args ):
 	ret_list = []
 	#if prev_macro:
-		#print "Previous Macro"
+		#print "\nPrevious Macro"
 		#print prev_macro
-	return [prev_macro , "test-arg"]
+	return [ prev_macro , "test-arg"]
 
     def handle_testing_something ( self, *args ):
         print "Testing complete"

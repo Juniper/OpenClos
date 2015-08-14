@@ -31,7 +31,7 @@ import propLoader
 # cli related classes
 from cli_handle_impl import CLIImplementor
 global_needle = None
-entered_macro=[]
+entered_macro = []
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 class CLICommand:
@@ -198,13 +198,16 @@ class CLIUtil:
 #------------------------------------------------------------------------------
 
     def match_macro ( self, macro_list, needle, ret_list ):
+	global entered_macro
 	for haystack in macro_list:
             if ( re.match ( needle, haystack ) != None ):
             	if ( len ( needle ) == len ( haystack ) ):
 		    self.add_enter_instruction ( ret_list )
+		    entered_macro.append(haystack)
                 elif ( len ( needle ) < len ( haystack ) ):
 		    if haystack not in ret_list:
                     	ret_list.append ( haystack )
+			entered_macro.append(haystack)
             #else:
                 #print ""
 
@@ -280,7 +283,6 @@ class CLIUtil:
 	    return self.get_all_cmds()
 	if needle[-1]==" ":
 	    needle=needle[0:-1]
-	#needle = re.sub(' +',' ',needle)
 	needle = self.normalize_command(needle)
 	while needle[-1]=="_":
 	    needle=needle[0:-1]
@@ -488,26 +490,11 @@ class CLIUtil:
 	    global_needle=global_needle[0:-1]
 
 	global_needle = cli_util.normalize_command(global_needle)
-	list_of_cmds = cli_util.return_graph()
-	#entered_macro = []
-	for haystack in list_of_cmds:
-	    
-		# For regex operations
-		haystack = haystack.replace("<","(?P<")
-		haystack = haystack.replace(">", ">.*)")
-		match_macros = re.search (haystack,global_needle)
-		if match_macros!=None:
-			i=0
-		    	while True:
-				try:
-					macro_value = match_macros.group(i)
-					if "_" not in macro_value:
-						entered_macro.append(macro_value)
-					i=i+1
-		    		except IndexError:
-					break
-	ret_val = str(entered_macro[-1:]).strip('[]')
-	return ret_val
+	prev_macro = None
+	for each_macro in entered_macro:
+		if each_macro in global_needle:
+			prev_macro = each_macro
+	return prev_macro
 
 # end class CLIUtil
 #------------------------------------------------------------------------------
