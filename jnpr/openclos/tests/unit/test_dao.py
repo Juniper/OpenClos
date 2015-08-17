@@ -103,7 +103,7 @@ class TestDao(unittest.TestCase):
         with self.__dao.getReadWriteSession() as session:
             device = createDevice(session, "test")
             fakeSession = flexmock(session)
-            fakeSession.should_receive('query.filter.filter.order_by.all').\
+            fakeSession.should_receive('query.filter.filter.filter.order_by.all').\
                 and_return([InterfaceDefinition("et-0/1/0", None, 'uplink'), InterfaceDefinition("et-0/1/1", None, 'uplink'), 
                             InterfaceDefinition("uplink-2", None, 'uplink'), InterfaceDefinition("uplink-3", None, 'uplink')])
         

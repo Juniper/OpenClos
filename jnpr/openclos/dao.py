@@ -145,7 +145,9 @@ class AbstractDao(SingletonBase):
         2. port name is uplink-* for device with known family 
         '''
         interconnectPorts = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
-            .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.sequenceNum).all()
+            .filter(InterfaceDefinition.peer != None)\
+            .filter((InterfaceDefinition.role == 'uplink') | (InterfaceDefinition.role == 'downlink'))\
+            .order_by(InterfaceDefinition.sequenceNum).all()
 
         ports = []        
         for port in interconnectPorts:

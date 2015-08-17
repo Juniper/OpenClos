@@ -429,7 +429,7 @@ class InterfaceDefinition(Interface):
     id = Column(String(60), ForeignKey('interface.id' ), primary_key=True)
     role = Column(String(60))
     mtu = Column(Integer)
-    lldpStatus = Column(Enum('unknown', 'good', 'error'), default = 'unknown') 
+    status = Column(Enum('unknown', 'good', 'error'), default = 'unknown') 
         
     __mapper_args__ = {
         'polymorphic_identity':'physical',
