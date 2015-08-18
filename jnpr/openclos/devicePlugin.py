@@ -344,8 +344,8 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         modifiedObjects = []
         goodSpines = []
         for ifd in ifds:
-            ifd.lldpStatus = 'good'
-            ifd.peer.lldpStatus = 'good'
+            ifd.status = 'good'
+            ifd.peer.status = 'good'
             goodSpines.append(ifd.peer)
             modifiedObjects.append(ifd)
             modifiedObjects.append(ifd.peer)
@@ -356,7 +356,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
     def updateIfdStatus(self, ifds, status):
         modifiedObjects = []
         for ifd in ifds:
-            ifd.lldpStatus = status
+            ifd.status = status
             modifiedObjects.append(ifd)
 
         self._dao.updateObjectsAndCommitNow(self._session, modifiedObjects)

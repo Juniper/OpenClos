@@ -92,7 +92,7 @@ class CablingPlanWriter(WriterBase):
         devices = []
         links = []
         for device in self._pod.devices:
-            devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'status': device.l2Status, 'reason': device.l2StatusReason, 'deployStatus': device.deployStatus})
+            devices.append({'id': device.id, 'name': device.name, 'family': device.family, 'role': device.role, 'deployStatus': device.deployStatus})
             if device.role == 'spine':
                 continue
             with self._dao.getReadSession() as session:
@@ -101,8 +101,8 @@ class CablingPlanWriter(WriterBase):
                     leafInterconnectIp = port.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
                     spinePeerPort = port.peer
                     spineInterconnectIp = spinePeerPort.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
-                    links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
-                                  'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
+                    links.append({'linkType': 'interconnect', 'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
+                                  'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp})
 
         return {'devices': devices, 'links': links}
     
@@ -263,8 +263,8 @@ class L2ReportWriter(WriterBase):
                         spinePeerPort = port.peer
                         spineInterconnectIp = spinePeerPort.layerAboves[0].ipaddress #there is single IFL as layerAbove, so picking first one
                         if spinePeerPort.device.deployStatus == 'deploy':
-                            links.append({'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
-                                          'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'lldpStatus': port.lldpStatus})
+                            links.append({'linkType': 'interconnect', 'device1': device.name, 'port1': port.name, 'ip1': leafInterconnectIp, 
+                                          'device2': spinePeerPort.device.name, 'port2': spinePeerPort.name, 'ip2': spineInterconnectIp, 'status': port.status})
 
         with self._dao.getReadSession() as session:
             # additional links
@@ -272,8 +272,8 @@ class L2ReportWriter(WriterBase):
             additionalLinks = session.query(AdditionalLink).all()
             if additionalLinks is not None:
                 for link in additionalLinks:
-                    additionalLinkList.append({'device1': link.device1, 'port1': link.port1, 'ip1': '', 
-                                               'device2': link.device2, 'port2': link.port2, 'ip2': '', 
+                    additionalLinkList.append({'device1': link.device1, 'port1': link.port1, 
+                                               'device2': link.device2, 'port2': link.port2, 
                                                'lldpStatus': link.lldpStatus})
 
         return {'devices': devices, 'links': links, 'additionalLinks': additionalLinkList}

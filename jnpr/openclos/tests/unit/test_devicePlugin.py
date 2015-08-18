@@ -209,9 +209,9 @@ class TestL2DataCollector(unittest.TestCase):
         
             dataCollector.updateBadIfdStatus([IFDs[4], IFDs[5]])
     
-            self.assertEqual('error', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().lldpStatus)
-            self.assertEqual('error', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().lldpStatus)
-            self.assertEqual('unknown', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().lldpStatus)
+            self.assertEqual('error', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().status)
+            self.assertEqual('error', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().status)
+            self.assertEqual('unknown', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().status)
 
     def testUpdateGoodIfdStatus(self):
         with self._dao.getReadSession() as session:
@@ -223,11 +223,11 @@ class TestL2DataCollector(unittest.TestCase):
         
             dataCollector.updateGoodIfdStatus([IFDs[4], IFDs[5]])
     
-            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().lldpStatus)
-            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().lldpStatus)
-            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[0].id).one().lldpStatus)
-            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[2].id).one().lldpStatus)
-            self.assertEqual('unknown', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().lldpStatus)
+            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().status)
+            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().status)
+            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[0].id).one().status)
+            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[2].id).one().status)
+            self.assertEqual('unknown', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().status)
             
             spine = IFDs[0].device
             self.assertEqual('deploy', spine.deployStatus)

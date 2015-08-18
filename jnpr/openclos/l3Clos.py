@@ -407,7 +407,7 @@ class L3ClosMediation():
             logger.debug("Pod[id='%s', name='%s']: building inventory and resource..." % (pod.id, pod.name))
             self._createSpineAndIfds(session, pod, inventoryData['spines'])
             self._createLeafAndIfds(session, pod, inventoryData['leafs'])
-            self._createLinkBetweenIfds(session, pod)
+            self._createLinks(session, pod)
             pod.devices.sort(key=lambda dev: dev.name) # Hack to order lists by name
             self._allocateResource(session, pod)
         else:        
@@ -519,7 +519,10 @@ class L3ClosMediation():
                 logger.warning("Pod[id='%s', name='%s']: inventory is empty" % (pod.id, pod.name)) 
                 return False
 
-    def _createLinkBetweenIfds(self, session, pod):
+    def _createLinks(self, session, pod):
+        self._createInterconnectLinks(session, pod)
+        
+    def _createInterconnectLinks(self, session, pod):
         leaves = []
         spines = []
         for device in pod.devices:
@@ -529,7 +532,7 @@ class L3ClosMediation():
                 leaves.append({'leaf': device, 'leafUplinkPorts': leafUplinkPorts})
             elif (device.role == 'spine'):
                 logger.debug('device id: %s, name: %s, role: %s' % (device.id, device.name, device.role))
-                spinePorts = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).order_by(InterfaceDefinition.sequenceNum).all()
+                spinePorts = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id).filter(InterfaceDefinition.role == 'downlink').order_by(InterfaceDefinition.sequenceNum).all()
                 spines.append({'spine': device, 'ports': spinePorts})
         
         leafIndex = 0
@@ -649,7 +652,7 @@ class L3ClosMediation():
         spines[0].pod.allocatedInterConnectBlock = str(interconnectBlock.cidr)
 
         for spine in spines:
-            ifdsHasPeer = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == spine.id).filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.sequenceNum).all()
+            ifdsHasPeer = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == spine.id).filter(InterfaceDefinition.peer != None).filter(InterfaceDefinition.role == 'downlink').order_by(InterfaceDefinition.sequenceNum).all()
             for spineIfdHasPeer in ifdsHasPeer:
                 subnet =  interconnectSubnets.pop(0)
                 ips = list(subnet)
