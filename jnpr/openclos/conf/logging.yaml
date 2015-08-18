@@ -1,7 +1,7 @@
 version: 1
 loggers:
     l3Clos :
-        level: DEBUG
+        level: INFO
         handlers: [console, file] 
     report : 
         level: INFO
@@ -10,13 +10,13 @@ loggers:
         level: INFO
         handlers: [console, file] 
     rest : 
-        level: DEBUG
+        level: INFO
         handlers: [console, file] 
     writer : 
         level: INFO
         handlers: [console, file] 
     devicePlugin : 
-        level: DEBUG
+        level: INFO
         handlers: [console, file] 
     trapd : 
         level: INFO
