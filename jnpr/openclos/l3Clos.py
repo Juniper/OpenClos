@@ -798,10 +798,10 @@ class L3ClosMediation():
 
         gateway = pod.outOfBandGateway
         if gateway is None:
-            gateway = util.loadClosDefinition()['ztp']['dhcpOptionRoute']
+            gateway = util.loadClosDefinition()['ztp'].get('dhcpOptionRoute')
        
         oobList = set(oobList)
-        if oobList:
+        if oobList and gateway:
             return {'networks': oobList, 'gateway': gateway}
         else:
             return {}
