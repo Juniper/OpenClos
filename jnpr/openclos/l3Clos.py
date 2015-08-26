@@ -401,7 +401,11 @@ class L3ClosMediation():
             logger.debug("Pod[id='%s', name='%s']: rebuilding required" % (pod.id, pod.name))
             if len(pod.devices) > 0:
                 self._dao.deleteObjects(session, pod.devices)
+                session.expire(pod)
 
+        # update pod itself
+        pod.update(pod.id, pod.name, podDict)
+        
         # first time
         if len(pod.devices) == 0:
             logger.debug("Pod[id='%s', name='%s']: building inventory and resource..." % (pod.id, pod.name))
@@ -410,12 +414,13 @@ class L3ClosMediation():
             self._createLinks(session, pod)
             pod.devices.sort(key=lambda dev: dev.name) # Hack to order lists by name
             self._allocateResource(session, pod)
+            # save the new inventory to database
+            pod.inventoryData = base64.b64encode(zlib.compress(json.dumps(inventoryData)))
         else:        
             # compare new inventory that user provides against old inventory that we stored in the database
             self._diffInventory(session, pod, inventoryData)
             
-        # update pod itself
-        pod.update(pod.id, pod.name, podDict)
+        # commit everything to db
         self._dao.updateObjects(session, [pod])
             
         # TODO move the backup operation to CLI 
