@@ -1,0 +1,17 @@
+language: python
+
+python:
+  - "2.7"
+
+addons:
+  apt:
+    packages:
+    - python-dev
+    - libxml2-dev
+    - libxslt1-dev
+
+# command to install dependencies
+install: "pip install --egg -r requirements.txt"
+
+# command to run tests
+script: nosetests --exe --with-coverage --cover-package=jnpr.openclos --cover-erase

@@ -1,6 +1,9 @@
 from setuptools import setup, find_packages
 from os import path
 
+lines = [line.strip() for line in open('requirements.txt')]
+requirements = [line for line in lines if line and not line.startswith(('-', '#'))]
+
 setup(
     name='OpenClos',
     namespace_packages=['jnpr'],
@@ -64,7 +67,7 @@ setup(
     # project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/technical.html#install-requires-vs-requirements-files
-    install_requires=['netaddr', 'sqlalchemy >= 0.9.6', 'pyyaml', 'nose', 'coverage', 'jinja2', 'flexmock', 'pydot', 'bottle', 'webtest', 'junos-eznc', 'futures', 'pysnmp', 'netifaces', 'paste' ],
+    install_requires=requirements,
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
