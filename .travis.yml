@@ -8,7 +8,7 @@ addons:
     packages:
     - python-dev
     - libxml2-dev
-    - libxslt-dev
+    - libxslt1-dev
 
 # command to install dependencies
 install: "pip install --egg -r requirements.txt"
