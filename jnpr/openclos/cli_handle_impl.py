@@ -14,10 +14,10 @@ Command context from the openclos CLI will invoke one or more functions (or hand
 import os
 import re
 import collections
-
+import readline
 # Python frameworks required for openclos
 import yaml
-
+import inspect
 # openclos classes
 import util
 from l3Clos import L3ClosMediation
@@ -27,7 +27,6 @@ import dao
 import rest
 import propLoader
 from report import ResourceAllocationReport
-
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 class CLIImplementor:
@@ -152,7 +151,7 @@ class CLIImplementor:
                 print "---------------------------------------------------------------"
 
 #------------------------------------------------------------------------------
-    def list_all_pods_from_db ( self, add_help=None, *args ):
+    def list_all_pods_from_db ( self, prev_macro, add_help = None, *args ):
         ret_list = []
         report = ResourceAllocationReport()
         with report._dao.getReadSession() as session:
@@ -167,6 +166,7 @@ class CLIImplementor:
                 ret_list.insert ( 0, "Error:" )
                 ret_list.append ( "No POD definitions found in the database" )
             return ret_list
+    
 
 #------------------------------------------------------------------------------
     def list_all_yaml_files ( self, *args ):
@@ -183,6 +183,26 @@ class CLIImplementor:
 
         return ret_list
 
+#------------------------------------------------------------------------------
+
+    def list_all_devices_from_pod ( self , prev_macro, add_help=None , *args ):
+        ret_list = []
+        report = ResourceAllocationReport()
+        with report._dao.getReadSession() as session:
+            pod_objects = report._dao.getAll(session, Pod)
+            for pod in pod_objects:
+                pod_spine = pod.spineDeviceType
+                if ( add_help != None ):
+                    pod_spine = pod_spine + "        <UUID of Pod [" + pod.name + "]>"
+                if pod_spine != None:
+		    ret_list.append ( pod_spine )
+    
+            if ( len ( ret_list ) == 0 ):
+                ret_list.insert ( 0, "Error:" )
+                ret_list.append ( "No Device definitions found in the database" )
+            return ret_list
+    
+	
 #------------------------------------------------------------------------------
     def handle_create_cabling_plan ( self, pod_id ):
         l3ClosMediation = L3ClosMediation ()
@@ -218,7 +238,7 @@ class CLIImplementor:
         if not os.path.isfile(generatedDhcpConf):
             print "DHCP configuration file has not been generated for Pod %s yet, will generate it first" % pod_id
             ztpServer = ZtpServer()
-            ztpServer.createPodSpecificDhcpConfFile ( pod_id )
+            ztpServer.createPodSpecificDhcpConfFile ( session, pod_id )
 
         if util.isPlatformUbuntu():
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
@@ -246,22 +266,28 @@ class CLIImplementor:
         
         ## Regenerate devices configuration, cabling plan and ZTP configuration
         l3ClosMediation.createCablingPlan( pod_id )
-        l3ClosMediation.createDeviceConfig( pod_id )
+	l3ClosMediation.createDeviceConfig( pod_id )
         
         ztpServer = ZtpServer()
-        ztpServer.createPodSpecificDhcpConfFile ( pod_id )
+        ztpServer.createPodSpecificDhcpConfFile ( session, pod_id )
     
 #------------------------------------------------------------------------------
-    def handle_update_password ( self, *args ):
-        print "TODO: handle_update_password"
-
-#------------------------------------------------------------------------------
     def handle_run_reports ( self, *args ):
-        print "TODO: handle_run_reports"
+        print "Currently not supported in stand-alone system"
 
 #------------------------------------------------------------------------------
     def handle_run_rest_server ( self, *args ):
-        print "TODO: handle_run_rest_server"
+        print "Currently not supported in stand-alone system"
+#------------------------------------------------------------------------------
+    def test_macro ( self, prev_macro, add_help=None, *args ):
+	ret_list = []
+	#if prev_macro:
+		#print "\nPrevious Macro"
+		#print prev_macro
+	return [ prev_macro , "test-arg"]
 
+    def test_handle ( self, *args ):
+        print "Testing complete"
+#------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------

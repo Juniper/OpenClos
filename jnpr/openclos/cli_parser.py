@@ -16,11 +16,13 @@ cliCommands.yaml and providing functions for:
 # Standard Python libraries
 import os
 import re
-import inspect
 import subprocess
-
+import inspect
+import readline
 # Packages required for openclos
 import yaml
+import collections
+#import yamlordereddictloader
 
 # openclos classes
 import util
@@ -28,16 +30,18 @@ import propLoader
 
 # cli related classes
 from cli_handle_impl import CLIImplementor
-
+global_needle = None
+entered_macro = []
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 class CLICommand:
 
-    def __init__ ( self, cmd_access, cmd_handle, cmd_macro, cmd_desc ):
+    def __init__ ( self, cmd_access, cmd_handle, cmd_macro, cmd_macroname, cmd_desc ):
         self.cmd_access = cmd_access
         self.cmd_handle = cmd_handle
         self.cmd_macro  = cmd_macro
-        self.cmd_desc   = cmd_desc
+	self.cmd_macroname = cmd_macroname
+        self.cmd_desc   =  cmd_desc
 
 # end class CLICommand
 
@@ -46,11 +50,13 @@ class CLICommand:
 class CLIUtil:
 
     def __init__ ( self ):
-        commandConfFile = os.path.join ( propLoader.propertyFileLocation, 
+	commandConfFile = os.path.join ( propLoader.propertyFileLocation, 
                                          'cliCommands.yaml' )
         self.yaml_file_stream = open ( commandConfFile, 'r' )
         raw_graph = yaml.load ( self.yaml_file_stream )
-        self.cmd_graph = {}
+	#raw_graph = yaml.load(self.yaml_file_stream, Loader=yamlordereddictloader.Loader)
+	#self.cmd_graph = {}
+	self.cmd_graph=collections.OrderedDict()
         self.indentation = 8
         self.dump_cmd ( raw_graph )
         self.yaml_file_stream.close ()
@@ -67,6 +73,7 @@ class CLIUtil:
         # no match found
         return 0
 
+
 #------------------------------------------------------------------------------
     # Parse through the dictionary iteratively:
     def dump_cmd ( self,
@@ -75,9 +82,9 @@ class CLIUtil:
                    cmd_access="READ",
                    cmd_handle="",
                    cmd_macro="",
-                   cmd_desc="" ):
-
-        for cmd in cmds:
+		   cmd_macroname="",
+                   cmd_desc="", *args ):
+	for cmd in cmds:
             if ( cmd_root == "" ):
                 cmd_compound = cmd
             else:
@@ -100,35 +107,54 @@ class CLIUtil:
                 cmd_macro = cmd_data [ "Macro" ]
             elif ( cmd_macro != "" ):
                 cmd_macro = ""
-                
+            
+	    if cmd_data.has_key ( "MacroName" ):
+		if "-" in cmd_data [ "MacroName" ]:
+			print "Macro name cannot contain the character '-'"
+			print "Excluding the handle"
+			print cmd_compound + "_<" + cmd_data["MacroName"] +">"
+			break 
+		cmd_macroname = cmd_data [ "MacroName" ]
+		cmd_compound = cmd_compound + "_<" + cmd_macroname + ">"
+	    elif ( cmd_macroname != "" ):
+		cmd_macroname = ""
 
             # Get command description
             if cmd_data.has_key ( "Desc" ):
                 cmd_desc = cmd_data [ "Desc" ]
             elif ( cmd_desc != "" ):
                 cmd_desc = ""
+	
+	    if cmd_data.has_key ( "Handle" ):
+                #if cmd_data.has_key ( "MacroName" ):
+		self.cmd_graph [ cmd_compound ] = CLICommand ( cmd_access, 
+                                                               cmd_handle,
+                                                               cmd_macro,
+							       cmd_macroname,
+                                                               cmd_desc )	
+                
+		if ( len ( cmd_compound ) > self.indentation ):
+                    self.indentation = len ( cmd_compound )
 
             # Parse the arguments
             if cmd_data.has_key ( "Args" ):
                 cmd_args = cmd_data [ "Args" ]
-                self.dump_cmd ( cmd_args, 
+		self.dump_cmd ( cmd_args, 
                                 cmd_compound, 
                                 cmd_access,
                                 cmd_handle,
                                 cmd_macro,
+				cmd_macroname,
                                 cmd_desc )
-
-            if cmd_data.has_key ( "Handle" ):
-                self.cmd_graph [ cmd_compound ] = CLICommand ( cmd_access, 
-                                                               cmd_handle,
-                                                               cmd_macro,
-                                                               cmd_desc )
-                if ( len ( cmd_compound ) > self.indentation ):
-                    self.indentation = len ( cmd_compound )
+	
 
 #------------------------------------------------------------------------------
     def normalize_command ( self, cmd ):
         return cmd.replace ( " ", "_" )
+
+#------------------------------------------------------------------------------
+    def return_graph (self):
+	return self.cmd_graph
 
 #------------------------------------------------------------------------------
     def get_indentation ( self, cmd ):
@@ -143,9 +169,10 @@ class CLIUtil:
 
 #------------------------------------------------------------------------------
     def get_macro_list ( self, class_instance, macro_txt, add_help=None ):
-        fn_macro = self.get_implementor_handle ( class_instance, macro_txt )
-        return fn_macro ( add_help )
-
+	fn_macro = self.get_implementor_handle ( class_instance, macro_txt )	
+        prev_macro = self.get_previous_macro()
+	return fn_macro ( prev_macro, add_help )
+	
 #------------------------------------------------------------------------------
     def include_macro ( self, macro_list, ret_list ):
         for item in macro_list:
@@ -169,16 +196,20 @@ class CLIUtil:
         
 
 #------------------------------------------------------------------------------
+
     def match_macro ( self, macro_list, needle, ret_list ):
-        for haystack in macro_list:
-            if ( len ( needle ) == len ( haystack ) ):
-                if ( re.match ( needle, haystack ) != None ):
-                    self.add_enter_instruction ( ret_list )
-            elif ( len ( needle ) < len ( haystack ) ):
-                if ( re.match ( needle, haystack ) != None ):
-                    ret_list.append ( haystack )
-            else:
-                print ""
+	global entered_macro
+	for haystack in macro_list:
+            if ( re.match ( needle, haystack ) != None ):
+            	if ( len ( needle ) == len ( haystack ) ):
+		    self.add_enter_instruction ( ret_list )
+		    entered_macro.append(haystack)
+                elif ( len ( needle ) < len ( haystack ) ):
+		    if haystack not in ret_list:
+                    	ret_list.append ( haystack )
+			entered_macro.append(haystack)
+            #else:
+                #print ""
 
 #------------------------------------------------------------------------------
     def option_exists ( self, consider_option, ret_list ):
@@ -202,10 +233,10 @@ class CLIUtil:
             unmatched_string = "_" + unmatched_string
     
         if ( unmatched_string [ 0 ] == "_" ):
-            # attach possible matches
-            possible_option = unmatched_string.replace ( "_", " " ) + ( " " * self.get_indentation ( full_cmd ) )
+	    # attach possible matches
+            possible_option = unmatched_string.replace ( "_", " " ) + ( " " * self.get_indentation ( full_cmd ) )	
             possible_option = possible_option + "<" + cmd_helper.cmd_desc + ">"
-            ret_list.append ( possible_option )
+	    ret_list.append ( possible_option )
         else:
             # Get part of the command from part_cmd
             match_object = re.search ( "_", part_cmd )
@@ -222,12 +253,12 @@ class CLIUtil:
             if ( self.option_exists ( complete_word, ret_list ) == 0 ):
                  ret_list.append ( complete_word )
 
-        return ret_list
+	return ret_list
         
 
 #------------------------------------------------------------------------------
     def get_all_cmds ( self ):
-        ret_list = []
+	ret_list = []
         for cmd in self.cmd_graph:
             cmd_str = cmd.replace ( "_", " " )
             cmd_str = cmd_str + ( " " * self.get_indentation ( cmd ) ) + "<" + self.cmd_graph [ cmd ].cmd_desc + ">"
@@ -239,59 +270,135 @@ class CLIUtil:
 # command context of the CLI, and haystack being the command model dict
 # created during CLIUtil instantiation
 #------------------------------------------------------------------------------
-    def get_match ( self, cmd ):
-        if  ( len ( cmd ) == 0 or re.search ( "[a-z|A-Z|0-9]", cmd ) == None ):
-            return self.get_all_cmds ()
 
-        # chomp input string
-        if ( cmd [ -1 ] == " " ):
-            cmd = cmd [ 0:-1 ]
+    def get_match (self, needle):
+	global global_needle
+	global_needle = needle
+	macro_dict = {}
+	ret_list = []
+	# flag variable to denote if macro has been appended 
+	flag=0
 
-        needle = self.normalize_command ( cmd )
-        ret_list = []
+	if len(needle)==0 or re.search("[a-z|A-Z|0-9]", needle)==None:
+	    return self.get_all_cmds()
+	if needle[-1]==" ":
+	    needle=needle[0:-1]
+	needle = self.normalize_command(needle)
+	while needle[-1]=="_":
+	    needle=needle[0:-1]
+	
+	for haystack_orig in self.cmd_graph:
+	    cmd_helper = self.cmd_graph [ haystack_orig ]		
+	    
+	    # Creating macro list for easy lookup and retrieval
+	    if cmd_helper.cmd_macro!="":
+		cmd_macro_list = self.get_macro_list(CLIImplementor(),cmd_helper.cmd_macro)
+		macro_dict[cmd_helper.cmd_macroname]=cmd_macro_list
+	    
+	    # For regex operations
+	    haystack = haystack_orig.replace("<","(?P<")
+	    haystack = haystack.replace(">", ">.*)")
+	    
+	    # Matching using regex search and match
+	    match_macros = re.search(haystack,needle)
+	    if len(haystack_orig)<len(needle):	
+		match_object = re.match(haystack_orig,needle)
+	    else:
+		match_object = re.match(needle,haystack_orig)
+		
+	    # Complete partially entered command
+	    if match_object!=None:
+		balance_haystack = haystack_orig[match_object.end():]
+		if balance_haystack!="":
+		    if balance_haystack[1]=="<" and cmd_helper.cmd_macro!="":
+			# check to retrieve corresponding macro list
+			if cmd_helper.cmd_macroname in haystack_orig.partition(">")[0]:
+			    self.include_macro(macro_dict[cmd_helper.cmd_macroname],ret_list)
+			    break
+		    haystack_orig=haystack_orig.replace(" ","_")
+		    self.complete_command(needle,haystack_orig,match_object.end(), cmd_helper, ret_list)
+		else:
+		    self.add_enter_instruction ( ret_list )
+		
+	    # Compare and complete macros 
+	    elif match_macros!=None:
+		for macro_name in macro_dict.keys():
+		  if macro_name in cmd_helper.cmd_macroname:
+		    # try-catch block to get all match groups
+		    try:
+			macro_needle = match_macros.group(macro_name)
+			if "_" in macro_needle:
+			    continue
+			
+			for each_macro in macro_dict[macro_name]:
+			    if macro_needle in each_macro:
+				self.match_macro(macro_dict[macro_name],macro_needle,ret_list)
+				flag=1
+				break
+						
+			if flag==0:
+			    #print "Invalid macro. Possible options:"
+			    self.include_macro(macro_dict[macro_name],ret_list)
+						
+					
+		    except IndexError:
+			break
 
-        for haystack in self.cmd_graph:
-            len_haystack = len ( haystack )
-            len_needle   = len ( needle )
-            cmd_helper = self.cmd_graph [ haystack ]
+	    # Find point of match and return remaining command
+	    else:
+		needle_temp = needle
+		haystack_temp = haystack_orig
+		
+		# loop till all macros of commands are validated
+		while True:
+		    index_of_diff = 0
+		    for char_a, char_b in zip(list(haystack_temp), list(needle_temp)):
+			if char_a!=char_b:
+			    break
+			index_of_diff=index_of_diff+1
+		    
+		    if index_of_diff!=0:
+			macro_needle = needle_temp[index_of_diff:]
+			macro_needle = macro_needle.split("_",1)[-1]
+			balance_haystack = haystack_temp[index_of_diff:]
+				
+			if balance_haystack[0]=="_":
+			    balance_haystack=balance_haystack[1:]
+			if balance_haystack[0]!="<":
+			    match_object = re.match(macro_needle,balance_haystack)
+			    if match_object!=None and flag==0:
+				    end_pos = haystack_orig.find(balance_haystack)
+				    self.complete_command(haystack_orig[:end_pos],haystack_orig,end_pos, cmd_helper, ret_list)
+					
+			if balance_haystack[0]=="<":
+			    balance_haystack=balance_haystack.split("_",1)[-1]
+			    match_object = re.match(macro_needle, balance_haystack)
+			    for key in macro_dict:
+				if macro_needle in macro_dict[key]:
+				    end_pos = haystack_orig.find(balance_haystack)
+				    self.complete_command(haystack_orig[:end_pos],haystack_orig,end_pos, cmd_helper, ret_list)
 
-            # Case 1: Full command is provided, without macro expansion
-            if ( len_needle == len_haystack ):
-                # check if we have a match
-                if ( re.match ( needle, haystack ) != None ):
-                    if ( cmd_helper.cmd_macro != "" ):
-                        self.include_macro ( self.get_macro_list ( CLIImplementor (), cmd_helper.cmd_macro, "add help" ), ret_list )
-                    else:
-                        self.add_enter_instruction ( ret_list )
+			   #  When needle ends with a macro
+			    if match_object==None or macro_needle=="":
+				#print "Incorrect command. Possible options:"
+				if balance_haystack[0]=="<" and cmd_helper.cmd_macro!="":
+				    self.include_macro(macro_dict[cmd_helper.cmd_macroname],ret_list)
+				else:
+				  if flag==0:
+				    end_pos = haystack_orig.find(balance_haystack)
+				    self.complete_command(haystack_orig[:end_pos],haystack_orig,end_pos, cmd_helper, ret_list)
+				break
 
-            # Case 2: Full command is provided with macro expansion
-            elif ( len_needle > len_haystack ):
-                match_object = re.match ( haystack, needle )
-                if ( match_object != None ):
-                    # Match exists - so get the macro
-                    cmd_macro = needle [ match_object.end (): ]
-                    if ( cmd_macro [ 0 ] == "_" and len ( cmd_macro ) > 1 ):
-                        cmd_macro = cmd_macro [ 1: ]
-
-                    if ( cmd_helper.cmd_macro != "" ):
-                        cmd_macro_list = self.get_macro_list ( CLIImplementor(),
-                                                          cmd_helper.cmd_macro )
-                        self.match_macro ( cmd_macro_list, cmd_macro, ret_list )
-
-            # Case 3: Part command is provided
-            elif ( len_needle < len_haystack ):
-                match_object = re.match ( needle, haystack )
-                if ( match_object != None ):
-                    # Match exists - get rest of the command
-                    balance_cmd = haystack [ match_object.end (): ]
-                    self.complete_command ( needle, 
-                                            haystack, 
-                                            match_object.end (), 
-                                            self.cmd_graph [ haystack ],
-                                            ret_list )
-                
-
-        return ret_list
+			    # When needle extends beyond current macro
+			    else:
+				haystack_temp = balance_haystack
+		      		needle_temp = macro_needle
+		        else:
+			    break
+		    else:
+		    	break	
+	return ret_list
+		
 
 #------------------------------------------------------------------------------
     def chomp ( self, token ):
@@ -305,7 +412,6 @@ class CLIUtil:
             token = token [ ( match_object.end () - 1): ]
 
         token = token [ ::-1 ]
-
         return token
 
 #------------------------------------------------------------------------------
@@ -315,16 +421,28 @@ class CLIUtil:
         best_cmd_match = ""
         best_cmd_args  = ""
         best_cmd_handle = None
-
-        for command in self.cmd_graph:
-            match_object = re.match ( command, 
+        
+	for command in self.cmd_graph:
+	    cmd_helper = self.cmd_graph[command]
+	    
+	    # For regex operations
+	    command_temp = command.replace("<","(?P<")
+	    command_temp = command_temp.replace(">", ">.*)")
+            
+	    match_object = re.match ( command_temp, 
                            self.normalize_command ( full_cmd_context ) )
+	    
             if ( match_object != None ):
                 # Okay - we found a match. Get macros if included
-                command_args = ""
-                # TODO - different impl here for multiple args support
-                if ( len ( full_cmd_context ) > len ( command ) ):
-                    command_args = self.chomp ( full_cmd_context [ match_object.end (): ] )
+                command_args = ""		
+		match_macros = re.search ( command_temp,self.normalize_command(full_cmd_context))
+	    	if match_macros != None and cmd_helper.cmd_macroname!="":
+		    macro_needle = match_macros.group(cmd_helper.cmd_macroname)
+      		    command_args = macro_needle 
+                
+		#if ( len ( full_cmd_context ) > len ( command ) ):
+                    #command_args = self.chomp ( full_cmd_context [ match_object.end (): ] )
+		command_args = self.chomp (command_args)
                 if ( len ( best_cmd_match ) < len ( command ) ):
                     best_cmd_match = command
                     best_cmd_args  = command_args
@@ -363,17 +481,29 @@ class CLIUtil:
                 else:
                     print "    Handler not implemented"
 
-# end class CLIUtil
-#------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
+    def get_previous_macro(self):
+	global global_needle
+	global entered_macro
+	if global_needle[-1]==" ":
+	    global_needle=global_needle[0:-1]
+
+	global_needle = cli_util.normalize_command(global_needle)
+	prev_macro = None
+	for each_macro in entered_macro:
+		if each_macro in global_needle:
+			prev_macro = each_macro
+	return prev_macro
+
+# end class CLIUtil
 #------------------------------------------------------------------------------
 #                              MAIN
 #------------------------------------------------------------------------------
 cli_util = CLIUtil ()
     
 
-match_options = [ "create cabling",
+match_options = [ "create",
 #                  "create cabling-plan",
 #                  "create cabling-",
 #                  "create cabling",
@@ -390,9 +520,9 @@ match_options = [ "create cabling",
 #                  "run r",
 #                  "run RE",
 #                  "create cab",
-                  "create pods",
-                  "create pods from",
-                  "create pods from-file",
+                  "update",
+                  "deploy",
+                  "run",
                   "" ]
 
 if __name__ == '__main__':
