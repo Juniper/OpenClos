@@ -22,7 +22,7 @@ import readline
 # Packages required for openclos
 import yaml
 import collections
-import yamlordereddictloader
+#import yamlordereddictloader
 
 # openclos classes
 import util
@@ -53,8 +53,8 @@ class CLIUtil:
 	commandConfFile = os.path.join ( propLoader.propertyFileLocation, 
                                          'cliCommands.yaml' )
         self.yaml_file_stream = open ( commandConfFile, 'r' )
-        #raw_graph = yaml.load ( self.yaml_file_stream )
-	raw_graph = yaml.load(self.yaml_file_stream, Loader=yamlordereddictloader.Loader)
+        raw_graph = yaml.load ( self.yaml_file_stream )
+	#raw_graph = yaml.load(self.yaml_file_stream, Loader=yamlordereddictloader.Loader)
 	#self.cmd_graph = {}
 	self.cmd_graph=collections.OrderedDict()
         self.indentation = 8

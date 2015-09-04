@@ -286,7 +286,7 @@ class CLIImplementor:
 		#print prev_macro
 	return [ prev_macro , "test-arg"]
 
-    def handle_testing_something ( self, *args ):
+    def test_handle ( self, *args ):
         print "Testing complete"
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
