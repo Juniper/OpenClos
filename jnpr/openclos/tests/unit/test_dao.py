@@ -10,7 +10,7 @@ from flexmock import flexmock
 import jnpr.openclos.util
 from jnpr.openclos.model import Pod, Device, Interface, InterfaceDefinition, TrapGroup
 from jnpr.openclos.dao import AbstractDao
-
+from jnpr.openclos.exception import InvalidConfiguration
 
 class TestAbstractDao(unittest.TestCase):
     def testInit(self):
@@ -19,7 +19,7 @@ class TestAbstractDao(unittest.TestCase):
 
 class InMemoryDao(AbstractDao):
     def _getDbUrl(self):
-        jnpr.openclos.util.loadLoggingConfig()
+        jnpr.openclos.propLoader.loadLoggingConfig(appName = 'unittest')
         return 'sqlite:///'
 
 class TestDao(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestDao(unittest.TestCase):
         class BadDao(AbstractDao):
             def _getDbUrl(self):
                 return 'unknown://'
-        with self.assertRaises(ValueError):
+        with self.assertRaises(InvalidConfiguration):
             BadDao()
 
     def testCreateObjects(self):
@@ -103,7 +103,7 @@ class TestDao(unittest.TestCase):
         with self.__dao.getReadWriteSession() as session:
             device = createDevice(session, "test")
             fakeSession = flexmock(session)
-            fakeSession.should_receive('query.filter.filter.order_by.all').\
+            fakeSession.should_receive('query.filter.filter.filter.order_by.all').\
                 and_return([InterfaceDefinition("et-0/1/0", None, 'uplink'), InterfaceDefinition("et-0/1/1", None, 'uplink'), 
                             InterfaceDefinition("uplink-2", None, 'uplink'), InterfaceDefinition("uplink-3", None, 'uplink')])
         
@@ -117,7 +117,7 @@ class TestDao(unittest.TestCase):
 
         class MySqlDao(AbstractDao):
             def _getDbUrl(self):
-                jnpr.openclos.util.loadLoggingConfig()
+                jnpr.openclos.propLoader.loadLoggingConfig(appName = 'unittest')
                 return 'mysql://root:<password>@localhost/openclos'
 
         dao = MySqlDao.getInstance()

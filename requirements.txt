@@ -1,0 +1,22 @@
+--index-url https://pypi.python.org/simple/
+
+netaddr
+sqlalchemy>=0.9.6
+pyyaml
+jinja2
+pydot
+bottle
+junos-eznc
+futures
+pysnmp
+netifaces
+paste
+
+# modules needed for test
+nose
+coverage
+webtest
+flexmock
+
+# install self
+-e .

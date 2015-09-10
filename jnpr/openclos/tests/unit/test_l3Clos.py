@@ -13,6 +13,13 @@ from flexmock import flexmock
 from jnpr.openclos.l3Clos import L3ClosMediation
 from jnpr.openclos.model import Pod, Device, InterfaceLogical, InterfaceDefinition, TrapGroup
 from test_dao import InMemoryDao 
+from jnpr.openclos.exception import PodNotFound
+
+def getPodDict():
+    return {"devicePassword": "Embe1mpls", "leafCount": 3, "leafSettings": [{"deviceType":"qfx5100-48s-6q"}], 
+               "spineAS": 100, "spineCount": 2, "spineDeviceType": "qfx5100-24q-2p", "interConnectPrefix": "192.168.0.0/24", 
+               "vlanPrefix": "172.16.0.0/22", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0/24", "leafAS": 200, 
+               "managementPrefix": "192.168.48.216/24", "hostOrVmCountPerLeaf": 254, "inventory" : "inventoryUnitTest.json"}
 
 class TestL3Clos(unittest.TestCase):
     def setUp(self):
@@ -52,21 +59,15 @@ class TestL3Clos(unittest.TestCase):
         with self._dao.getReadSession() as session:
             self.assertEqual(0, len(self._dao.getAll(session, Pod)))
 
-    def getPodDict(self):
-        return {"devicePassword": "Embe1mpls", "leafCount": 3, "leafSettings": [{"deviceType":"qfx5100-48s-6q"}], 
-                   "spineAS": 100, "spineCount": 2, "spineDeviceType": "qfx5100-24q-2p", "interConnectPrefix": "192.168.0.0/24", 
-                   "vlanPrefix": "172.16.0.0/22", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0/24", "leafAS": 200, 
-                   "managementPrefix": "172.32.30.101/24", "hostOrVmCountPerLeaf": 254, "inventory" : "inventoryUnitTest.json"}
-
     def testCreatePod(self):
-        podDict = self.getPodDict()
+        podDict = getPodDict()
         self.l3ClosMediation.createPod('pod1', podDict)
         
         with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(Pod).count())
 
     def testUpdatePod(self):
-        podDict = self.getPodDict()
+        podDict = getPodDict()
         pod = self.l3ClosMediation.createPod('pod1', podDict)
 
         inventoryDict = {
@@ -92,11 +93,11 @@ class TestL3Clos(unittest.TestCase):
             self.assertEqual(2, deployCount)
 
     def testUpdatePodInvalidId(self):
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(PodNotFound) as ve:
             self.l3ClosMediation.updatePod("invalid_id", None)
 
     def createPodSpineLeaf(self):
-        podDict = self.getPodDict()
+        podDict = getPodDict()
         pod = self.l3ClosMediation.createPod('pod1', podDict)
         return pod
     
@@ -144,14 +145,14 @@ class TestL3Clos(unittest.TestCase):
             self.assertEqual('uplink-1', spine02Port2.peer.name)
             self.assertEqual('leaf-03', spine02Port2.peer.device.name)
 
-    def testCreateLeafIfds(self):
+    def testCreateLeafAndIfds(self):
         with self._dao.getReadSession() as session:
             from test_model import createPod
             pod = createPod('test', session)
             pod.spineCount = 6
             leaves = [{ "name" : "leaf-01", "family" : "ex4300-24p", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus": "deploy" }]
     
-            self.l3ClosMediation._createLeafIfds(session, pod, leaves)
+            self.l3ClosMediation._createLeafAndIfds(session, pod, leaves)
             interfaces = session.query(InterfaceDefinition).all()
             self.assertEqual(6, len(interfaces))
         
@@ -173,14 +174,18 @@ class TestL3Clos(unittest.TestCase):
             ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.name == 'spine-02').filter(Device.pod_id == pod.id).one()
             self.assertEqual('10.0.0.5/32', ifl.ipaddress)
             self.assertEqual('10.0.0.0/29', pod.allocatedLoopbackBlock)
+            self.assertEqual(5, session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'lo0.0').filter(Device.pod_id == pod.id).count())
+            
 
     def testAllocateIrb(self):
         pod = self.createPodSpineLeaf()
         
         with self._dao.getReadSession() as session:
+            self.assertEqual('172.16.0.0/22', pod.allocatedIrbBlock)
             ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.name == 'leaf-01').filter(Device.pod_id == pod.id).one()
             self.assertEqual('172.16.0.1/24', ifl.ipaddress)
-            self.assertEqual('172.16.0.0/22', pod.allocatedIrbBlock)
+            ifl = session.query(InterfaceLogical).join(Device).filter(InterfaceLogical.name == 'irb.1').filter(Device.name == 'leaf-02').filter(Device.pod_id == pod.id).one()
+            self.assertEqual('172.16.1.1/24', ifl.ipaddress)
 
     def testAllocateInterconnect(self):
         pod = self.createPodSpineLeaf()
@@ -314,10 +319,16 @@ class TestL3Clos(unittest.TestCase):
             self.assertEquals(2, configlet.count('route'))
 
     def testCreateAccessInterface(self):
-        configlet = self.l3ClosMediation._createAccessPortInterfaces('qfx5100-48s-6q')
-        self.assertEquals(48, configlet.count('family ethernet-switching'))
-        self.assertTrue('xe-0/0/0' in configlet)
-        self.assertTrue('xe-0/0/47' in configlet)
+        with self._dao.getReadSession() as session:
+            from test_model import createPod
+            pod = createPod('test', session)
+            device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
+            configlet = self.l3ClosMediation._createAccessPortInterfaces(session, device)
+            self.assertEquals(96, configlet.count('family ethernet-switching'))
+            self.assertTrue('xe-0/0/0' in configlet)
+            self.assertTrue('xe-0/0/47' in configlet)
+            self.assertTrue('ge-0/0/0' in configlet)
+            self.assertTrue('ge-0/0/47' in configlet)
 
     def testCreateAccessInterfaceEx4300(self):
         self._conf['deviceFamily']['ex4300-48p'] = {
@@ -325,10 +336,14 @@ class TestL3Clos(unittest.TestCase):
                 "downlinkPorts": 'ge-0/0/[0-47]'
         }
         self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
-        configlet = self.l3ClosMediation._createAccessPortInterfaces('ex4300-48p')
-        self.assertEquals(48, configlet.count('family ethernet-switching'))
-        self.assertTrue('ge-0/0/0' in configlet)
-        self.assertTrue('ge-0/0/47' in configlet)
+        with self._dao.getReadSession() as session:
+            from test_model import createPod
+            pod = createPod('test', session)
+            device = Device("test", "ex4300-48p", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
+            configlet = self.l3ClosMediation._createAccessPortInterfaces(session, device)
+            self.assertEquals(48, configlet.count('family ethernet-switching'))
+            self.assertTrue('ge-0/0/0' in configlet)
+            self.assertTrue('ge-0/0/47' in configlet)
 
     def testCreateLeafGenericConfig(self):
         self._conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '5.6.7.8'}}

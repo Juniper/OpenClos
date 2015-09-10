@@ -7,11 +7,20 @@ Created on Jul 8, 2014
 import uuid
 import math
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Enum, BLOB, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Enum, UniqueConstraint, Index
+
+import propLoader
+if propLoader.OpenClosProperty().isSqliteUsed():
+    from sqlalchemy import BLOB
+else:
+    from sqlalchemy.dialects.mysql import MEDIUMBLOB as BLOB
+
+
 from sqlalchemy.orm import relationship, backref
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 from crypt import Cryptic
 import util
+from exception import EnumerationMismatch, InvalidUplinkThreshold, MissingMandatoryAttribute, InvalidIpFormat
 
 Base = declarative_base()
 
@@ -31,12 +40,12 @@ class ManagedElement(object):
         else:
             error = value not in enumList
         if error:
-            raise ValueError("%s('%s') must be one of %s" % (enumName, value, enumList))
+            raise EnumerationMismatch("%s('%s') must be one of %s" % (enumName, value, enumList))
     
 class Pod(ManagedElement, Base):
     __tablename__ = 'pod'
     id = Column(String(60), primary_key=True)
-    name = Column(String(100), index=True, nullable = False)
+    name = Column(String(255), index=True, nullable = False)
     description = Column(String(256))
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
@@ -72,14 +81,20 @@ class Pod(ManagedElement, Base):
         '''
         super(Pod, self).__init__()
         self.update(None, name, podDict)
-        
+    
+    def copyAdditionalFields(self, podDict):
+        '''
+        Hook for enhancements, add additional fields 
+        and get initialized
+        '''
+    
     def update(self, id, name, podDict):
         '''
         Updates a Pod ORM object from dict
         '''
-        if id is not None:
+        if id:
             self.id = id
-        elif 'id' in podDict:
+        elif podDict.get('id'):
             self.id = podDict.get('id')
         else:
             self.id = str(uuid.uuid4())
@@ -132,7 +147,8 @@ class Pod(ManagedElement, Base):
         devicePassword = podDict.get('devicePassword')
         if devicePassword is not None and len(devicePassword) > 0:
             self.encryptedPassword = self.cryptic.encrypt(devicePassword)
-
+        self.copyAdditionalFields(podDict)
+        
     def calculateEffectiveLeafUplinkcountMustBeUp(self):
         # if user configured a value, use it always 
         if self.leafUplinkcountMustBeUp is not None and self.leafUplinkcountMustBeUp > 0:
@@ -177,8 +193,7 @@ class Pod(ManagedElement, Base):
         self.validateRequiredFields()
         self.validateIPaddr()  
         if self.leafUplinkcountMustBeUp < 2 or self.leafUplinkcountMustBeUp > self.spineCount:
-            raise ValueError('leafUplinkcountMustBeUp(%s) should be between 2 and spineCount(%s)' \
-                % (self.leafUplinkcountMustBeUp, self.spineCount))
+            raise InvalidUplinkThreshold('leafUplinkcountMustBeUp(%s) should be between 2 and spineCount(%s)' % (self.leafUplinkcountMustBeUp, self.spineCount))
         
     def validateRequiredFields(self):
         
@@ -210,7 +225,7 @@ class Pod(ManagedElement, Base):
         if self.encryptedPassword is None:
             error += 'devicePassword'
         if error != '':
-            raise ValueError('Missing required fields: ' + error)
+            raise MissingMandatoryAttribute('Missing required fields: ' + error)
         
     def validateIPaddr(self):   
         error = ''     
@@ -238,7 +253,7 @@ class Pod(ManagedElement, Base):
         except AddrFormatError:
                 error += 'managementStartingIP'
         if error != '':
-            raise ValueError('invalid IP format: ' + error)
+            raise InvalidIpFormat('invalid IP format: ' + error)
 
 class LeafSetting(ManagedElement, Base):
     __tablename__ = 'leafSetting'
@@ -267,7 +282,7 @@ class CablingPlan(ManagedElement, Base):
 class Device(ManagedElement, Base):
     __tablename__ = 'device'
     id = Column(String(60), primary_key=True)
-    name = Column(String(100), nullable = False)
+    name = Column(String(255), nullable = False)
     username = Column(String(100), default = 'root')
     encryptedPassword = Column(String(100)) # 2-way encrypted
     role = Column(Enum('spine', 'leaf'))
@@ -311,12 +326,13 @@ class Device(ManagedElement, Base):
         self.deployStatus = deployStatus
         self.serialNumber = serialNumber
         
-    def update(self, name, username, password, macAddress, deployStatus, serialNumber):
+    def update(self, name, family, username, password, macAddress, deployStatus, serialNumber):
         '''
         Updates Device object.
         '''
         self.name = name
         self.username = username
+        self.family = family
         if password is not None and len(password) > 0:
             self.encryptedPassword = self.cryptic.encrypt(password)
         self.macAddress = macAddress
@@ -413,7 +429,7 @@ class InterfaceDefinition(Interface):
     id = Column(String(60), ForeignKey('interface.id' ), primary_key=True)
     role = Column(String(60))
     mtu = Column(Integer)
-    lldpStatus = Column(Enum('unknown', 'good', 'error'), default = 'unknown') 
+    status = Column(Enum('unknown', 'good', 'error'), default = 'unknown') 
         
     __mapper_args__ = {
         'polymorphic_identity':'physical',

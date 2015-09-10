@@ -12,77 +12,14 @@ import datetime
 import shutil
 from netaddr import IPNetwork
 import netifaces
-import logging.config
-from crypt import Cryptic
-
-#__all__ = ['getPortNamesForDeviceFamily', 'expandPortName']
-configLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
+from propLoader import propertyFileLocation
 
 TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT=5
 TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL=30 # in seconds
 TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY=40 # in seconds
 
-conf = None
-
-def loadConfig(confFile = 'openclos.yaml', appName = None):
-    '''
-    Loads global configuration and creates hash 'conf'
-    '''
-    global conf
     
-    if conf:
-        return conf
-    
-    try:
-        confStream = open(os.path.join(configLocation, confFile), 'r')
-        conf = yaml.load(confStream)
-        if conf is not None:
-            if 'dbUrl' in conf:
-                if 'dbDialect' in conf:
-                    print "Warning: dbUrl and dbDialect both exist. dbDialect ignored"
-                # dbUrl is used by sqlite only
-                conf['dbUrl'] = fixSqlliteDbUrlForRelativePath(conf['dbUrl'])
-            elif 'dbDialect' in conf:
-                db_pass = Cryptic ().decrypt ( conf['dbPassword'] )
-                conf['dbUrl'] = conf['dbDialect'] + '://' + conf['dbUser'] + ':' + db_pass + '@' + conf['dbHost'] + '/' + conf['dbName'] 
-            if 'outputDir' in conf:
-                conf['outputDir'] = fixOutputDirForRelativePath(conf['outputDir'])
-        
-    except (OSError, IOError) as e:
-        print "File error:", e
-        return None
-    except (yaml.scanner.ScannerError) as e:
-        print "YAML error:", e
-        confStream.close()
-        return None
-    finally:
-        pass
-    
-    loadLoggingConfig(appName = appName)
-    return conf
-
-def fixOutputDirForRelativePath(outputDir):
-    # /absolute-path/out
-    # relative-path/out
-    if (os.path.abspath(outputDir) != outputDir):
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), outputDir)
-    else:
-        return outputDir
-
-def fixSqlliteDbUrlForRelativePath(dbUrl):
-    # sqlite:////absolute-path/sqllite3.db
-    # sqlite:///relative-path/sqllite3.db
-    match = re.match(r"sqlite:(\/+)(.*)\/(.*)", dbUrl)
-    if match is not None:
-        isRelative = (len(match.group(1)) == 3)
-        if isRelative:
-            relativeDir = match.group(2)
-            absoluteDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), relativeDir)
-            dbUrl = 'sqlite:///' + absoluteDir + os.path.sep + match.group(3)
-
-    return dbUrl
-
-def loadClosDefinition(closDefination = os.path.join(configLocation, 'closTemplate.yaml')):
+def loadClosDefinition(closDefination = os.path.join(propertyFileLocation, 'closTemplate.yaml')):
     '''
     Loads clos definition from yaml file
     '''
@@ -98,87 +35,6 @@ def loadClosDefinition(closDefination = os.path.join(configLocation, 'closTempla
         stream.close()
     finally:
         pass
-
-
-def getSupportedDeviceFamily(conf):
-    '''
-    :param dict: conf -- device family configuration in dict format, not the whole conf, conf['deviceFamily']
-    :returns list: device model/family (exactly as it is appeared on junos)
-
-    '''
-    if conf is None:
-        raise ValueError("Missing configuration data")
-    return conf.keys()
-    
-
-def getPortNamesForDeviceFamily(deviceFamily, conf):
-    '''
-    returns all port names for a device family grouped by uplink/downlink
-    ex - xe-0/0/0, xe-0/0/1 ... xe-0/0/47
-    For some device family (qfx5100-24q-2p) there is no specific uplink/downlink, 
-    for those it is just a list in the dict.
-    
-    :param str: deviceFamily -- example qfx5100-24q-2p
-    :param dict: conf -- device family configuration in dict format, example in openclos.yaml
-    :returns dict: portNames
-        uplinkPorts: 
-        downlinkPorts:
-        ports: list of ports that are not tagged, example qfx5100-24q-2p 
-    '''
-
-    if conf is None:
-        raise ValueError("Missing configuration data")
-    
-    if deviceFamily not in conf:
-        raise ValueError("Unknown device family: %s" % (deviceFamily))
-    
-    portMapping = conf[deviceFamily]
-    portNames = {'uplinkPorts': [], 'downlinkPorts': [], 'ports': []}
-    if 'uplinkPorts' in portMapping:
-        portNames['uplinkPorts'] = expandPortName(portMapping['uplinkPorts'])
-    if 'downlinkPorts' in portMapping:
-        portNames['downlinkPorts'] = expandPortName(portMapping['downlinkPorts'])
-    if 'ports' in portMapping:
-        portNames['ports'] = expandPortName(portMapping['ports'])
-    return portNames
-
-
-portNameRegx = re.compile(r"([a-z]+-\d\/\d\/\[)(\d{1,3})-(\d{1,3})(\])")
-def expandPortName(portName):
-    '''    
-    Expands portname regular expression to a list
-    ex - [xe-0/0/0, xe-0/0/1 ... xe-0/0/47]
-    Currently it does not expands all junos regex, only few limited 
-
-    Keyword arguments:
-    portName -- port name in junos regular expression. 
-                it could be a single string in format: xe-0/0/[0-10]
-                or it could be a list of strings where each string is in format: ['xe-0/0/[0-10]', 'et-0/0/[0-3]']
-    '''
-    if not portName or portName == '':
-        return []
-    
-    portList = []
-    if isinstance(portName, list) == True:
-        portList = portName
-    else:
-        portList.append(portName)
-    
-    portNames = []
-    for port in portList:
-        match = portNameRegx.match(port)
-        if match is None:
-            raise ValueError("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (port))
-        
-        preRegx = match.group(1)    # group index starts with 1, NOT 0
-        postRegx = match.group(4)
-        startNum = int(match.group(2))
-        endNum = int(match.group(3))
-        
-        for id in range(startNum, endNum + 1):
-            portNames.append(preRegx[:-1] + str(id) + postRegx[1:])
-        
-    return portNames
 
 def isPlatformUbuntu():
     #return 'ubuntu' in platform.platform().lower()
@@ -273,47 +129,6 @@ def enumerateRoutableIpv4Addresses():
                     addrs.append(ipv4AddrInfo['addr'])
     return addrs
 
-def loadLoggingConfig(logConfFile = 'logging.yaml', appName = None):
-    logConf = getLoggingHandlers(logConfFile, appName)
-    if logConf is not None:
-        logging.config.dictConfig(logConf)
-    
-def getLoggingHandlers(logConfFile = 'logging.yaml', appName = None):
-    '''
-    Loads global configuration and creates hash 'logConf'
-    '''
-    try:
-        logConfStream = open(os.path.join(configLocation, logConfFile), 'r')
-        logConf = yaml.load(logConfStream)
-
-        if logConf is not None:
-            handlers = logConf.get('handlers')
-            if handlers is not None:
-                
-                if appName is None:
-                    removeLoggingHandler('file', logConf)
-                                                        
-                for handlerName, handlerDict in handlers.items():
-                    filename = handlerDict.get('filename')
-                    if filename is not None:
-                        filename = filename.replace('%(appName)', appName)
-                        handlerDict['filename'] = filename
-                            
-            return logConf
-    except (OSError, IOError) as e:
-        print "File error:", e
-    except (yaml.scanner.ScannerError) as e:
-        print "YAML error:", e
-    finally:
-        logConfStream.close()
-    
-    
-def removeLoggingHandler(name, logConf):
-    for key, logger in logConf['loggers'].iteritems():
-        logger['handlers'].remove(name)
-
-    logConf['handlers'].pop(name)
-
 def getImageNameForDevice(pod, device):
     if device.role == 'spine':
         return pod.spineJunosImage
@@ -324,14 +139,7 @@ def getImageNameForDevice(pod, device):
     
     return None
 
-def isSqliteUsed(conf):
-    return 'sqlite' in conf.get('dbUrl')
-
-
-fpcPicPortRegx = re.compile(r"[a-z]+-(\d)\/(\d)\/(\d{1,3})\.?(\d{0,2})")
-fakeNameRegx = re.compile(r"uplink-(\d{1,3})\.?(\d{0,2})")
 otherPortRegx = re.compile(r"[0-9A-Za-z]+\.?(\d{0,2})")
-
 def interfaceNameToUniqueSequenceNumber(interfaceName):
     '''    
     :param str: name, examples: 
@@ -343,39 +151,82 @@ def interfaceNameToUniqueSequenceNumber(interfaceName):
     if interfaceName is None or interfaceName == '':
         return None
     
-    match = fpcPicPortRegx.match(interfaceName)
-    if match is not None:
-        fpc = match.group(1)
-        pic = match.group(2)
-        port = match.group(3)
-        unit = match.group(4)
-        if not unit:
-            unit = 0
-        
-        sequenceNum = 10000 * int(fpc) + 1000 * int(pic) + int(port)
-        
-        if unit != 0:
-            sequenceNum = 10000000 + 100 * sequenceNum + int(unit)
-        
+    sequenceNum = _matchFpcPicPort(interfaceName)
+    if sequenceNum != None:
         return sequenceNum
-
-    match = fakeNameRegx.match(interfaceName)
-    if match is not None:
-        port = match.group(1)
-        unit = match.group(2)
-        if not unit:
-            unit = 0
-        
-        sequenceNum = 20000000 + int(port)
-        
-        if unit != 0:
-            sequenceNum = 21000000 + 100 * int(port) + int(unit)
-        
+    sequenceNum = _matchFakeName(interfaceName)
+    if sequenceNum != None:
         return sequenceNum
 
     match = otherPortRegx.match(interfaceName)
     if match is not None:
         return int(interfaceName.encode('hex'), 16)
+
+fpcPicPortRegx = re.compile(r"([a-z]+)-(\d)\/(\d)\/(\d{1,3})\.?(\d{0,2})")
+def _matchFpcPicPort(interfaceName):
+    match = fpcPicPortRegx.match(interfaceName)
+    if match is not None:
+        speed = match.group(1)
+        fpc = match.group(2)
+        pic = match.group(3)
+        port = match.group(4)
+        unit = match.group(5)
+        if not unit:
+            unit = 0
+            
+        if 'et' in speed:
+            speedInt = 1
+        elif 'xe' in speed:
+            speedInt = 2
+        elif 'ge' in speed:
+            speedInt = 3
+        else:
+            speedInt = 4
+        
+        sequenceNum = 100000 * speedInt + 10000 * int(fpc) + 1000 * int(pic) + int(port)
+        
+        if unit != 0:
+            sequenceNum = 100 * sequenceNum + int(unit)
+        
+        return sequenceNum
+    
+fakeNameRegxList = [(re.compile(r"uplink-(\d{1,3})\.?(\d{0,2})"), 90000000, 91000000),
+                    (re.compile(r"access-(\d{1,3})\.?(\d{0,2})"), 92000000, 93000000)
+                    ]
+def _matchFakeName(interfaceName):
+    for fakeNameRegx, intfStart, subIntfStart in fakeNameRegxList:
+        match = fakeNameRegx.match(interfaceName)
+        if match is not None:
+            port = match.group(1)
+            unit = match.group(2)
+            if not unit:
+                unit = 0
+            
+            sequenceNum = intfStart + int(port)
+            
+            if unit != 0:
+                sequenceNum = subIntfStart + 100 * int(port) + int(unit)
+            
+            return sequenceNum
+
+def getPortNumberFromName(interfaceName):
+    match = fpcPicPortRegx.match(interfaceName)
+    if match is not None:
+        return match.group(4)
+
+def replaceFpcNumberOfInterfaces(interfaceNames, newFpc):
+    fixedInterfaceNames = []
+    for interfaceName in interfaceNames:
+        match = fpcRegx.match(interfaceName)
+        if match is not None:
+            fixedInterfaceNames.append(match.group(1) + '-' + newFpc + '/' + match.group(3))
+    return fixedInterfaceNames
+
+fpcRegx = re.compile(r"([a-z]+)-(\d)\/(.*)")
+def replaceFpcNumberOfInterface(interfaceName, newFpc):
+    match = fpcRegx.match(interfaceName)
+    if match is not None:
+        return match.group(1) + '-' + newFpc + '/' + match.group(3)
     
     
 def getOutFolderPath(conf, ipFabric):
@@ -396,14 +247,6 @@ def createOutFolder(conf, ipFabric):
 def deleteOutFolder(conf, ipFabric):
     path = getOutFolderPath(conf, ipFabric)
     shutil.rmtree(path, ignore_errors=True)
-
-def getDbUrl():
-    if conf is None:
-        raise ValueError('Configuration is not loaded using "util.loadConfig"')
-    elif conf.get('dbUrl') is None or conf.get('dbUrl')  == '':
-        raise ValueError('DB Url is empty')
-    
-    return conf['dbUrl'] 
     
 def stripNetmaskFromIpString(ipString):
     pos = ipString.find('/')

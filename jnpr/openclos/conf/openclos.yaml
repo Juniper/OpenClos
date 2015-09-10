@@ -48,47 +48,6 @@ debugRest : true
 #"file" will allow device configuration to store in DB and File
 writeConfigInFile : false
 
-    
-# Device family and port names
-# qfx5100-24q-2p ports could be [0-32] with two four-port expansion modules
-# unlike 48s or 96s for 24Q there is no specific uplink/downlink
-deviceFamily :
-    qfx5100-24q-2p :
-        uplinkPorts : 
-        downlinkPorts : 
-        ports : ['et-0/0/[0-23]', 'et-0/1/[0-3]', 'et-0/2/[0-3]']
-    qfx5100-48s-6q :
-        uplinkPorts : 'et-0/0/[48-53]'
-        downlinkPorts : ['xe-0/0/[0-47]', 'ge-0/0/[0-47]']
-        ports :
-    qfx5100-48t-6q :
-        uplinkPorts : 'et-0/0/[48-53]' 
-        downlinkPorts : 'xe-0/0/[0-47]'
-        ports :  
-    qfx5100-96s-8q :
-        uplinkPorts : 'et-0/0/[96-103]'
-        downlinkPorts : ['xe-0/0/[0-95]', 'ge-0/0/[0-95]']
-        ports :
-    ex4300-24p :
-        uplinkPorts : 'et-0/1/[0-3]'
-        downlinkPorts : 'ge-0/0/[0-23]'
-        ports :
-    ex4300-24t :
-        uplinkPorts : 'et-0/1/[0-3]'
-        downlinkPorts : 'ge-0/0/[0-23]'
-        ports :
-    ex4300-32f :
-        uplinkPorts : ['et-0/1/[0-1]', 'et-0/2/[0-1]']
-        downlinkPorts : 'ge-0/0/[0-31]'
-        ports :
-    ex4300-48p :
-        uplinkPorts : 'et-0/1/[0-3]'
-        downlinkPorts : 'ge-0/0/[0-47]'
-        ports :
-    ex4300-48t :
-        uplinkPorts : 'et-0/1/[0-3]'
-        downlinkPorts : 'ge-0/0/[0-47]'
-        ports :
 
 # List of colors used in the DOT file to represent interconnects 
 DOT :
@@ -107,8 +66,8 @@ DOT :
 # is used to populate dhcpd.conf fot ZTP. If no address is provided
 # REST will start at localhost
 httpServer :
-    ipAddr : localhost
-    port : 80
+    ipAddr : 0.0.0.0
+    port : 20080
 
 # Number of threads used to communicate with devices
 report :

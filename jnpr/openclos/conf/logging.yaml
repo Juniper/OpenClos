@@ -24,6 +24,9 @@ loggers:
     dao : 
         level: INFO
         handlers: [console, file] 
+    propLoader : 
+        level: INFO
+        handlers: [console, file] 
 formatters:
     detailed:
         format: '%(asctime)s [%(name)-12s] [%(levelname)-8s] [%(thread)8x] %(message)s'
@@ -32,7 +35,7 @@ handlers:
         class: logging.StreamHandler
         formatter: detailed
     file:
-        filename: openclos-%(appName).log
+        filename: '%(fullPath)openclos-%(appName).log'
         class: logging.handlers.RotatingFileHandler
         formatter: detailed
         maxBytes: 1048576

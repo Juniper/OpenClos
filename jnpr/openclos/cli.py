@@ -31,12 +31,13 @@ import cmd
 import threading
 import re
 import os
-
+import inspect
 # Python frameworks required for openclos
 import yaml
 
 # openclos classes
 import util
+import propLoader
 
 # CLI related classes
 from cli_parser import CLIUtil
@@ -98,7 +99,7 @@ class ReadlineWrapper:
             return Readline ().get_line_buffer ()
         else:
             import readline
-            return readline.get_line_buffer ()
+	    return readline.get_line_buffer()
 
 #------------------------------------------------------------------------------
     def get_begidx ( self ):
@@ -135,12 +136,13 @@ class CLIShell ( cmd.Cmd ):
     rl = ReadlineWrapper ()
 
 #------------------------------------------------------------------------------
+
     def cmdloop ( self, intro=None ):
         self.preloop ()
         if self.use_rawinput and self.completekey:
             try:
                 self.old_completer = self.rl.get_completer()
-                self.rl.set_completer ( self.complete )
+		self.rl.set_completer ( self.complete )
                 self.rl.set_completion_display_matches_hook ( self.post_complete)
                 self.rl.parse_and_bind ( self.completekey+": complete" )
             except ImportError:
@@ -235,8 +237,10 @@ class CLIShell ( cmd.Cmd ):
 
 #------------------------------------------------------------------------------
     def default ( self, line ):
+	global global_needle 
+	global_needle = line
         results = self.cli_util.get_match ( line )
-
+	
         # Case 1: Invalid command. Print error
         if ( len ( results ) == 0 ):
             print "\nCommand not recognized"
@@ -332,6 +336,7 @@ class CLIShell ( cmd.Cmd ):
 #------------------------------------------------------------------------------
     def cli_command_complete ( self, current_line ):
         results = self.cli_util.get_match ( current_line )
+	
         if ( len ( results ) == 1 ):
             if ( re.search ( "<", results [ 0 ] ) == None ):
                 # word complete case
@@ -354,15 +359,16 @@ class CLIShell ( cmd.Cmd ):
                 match_object = re.search ( "[a-z|A-Z|0-9|<]", results [ 0 ] )
                 if ( match_object != None ):
                     results [ 0 ] = results [ 0 ] [ (match_object.end () - 1): ]
-                #match_object = re.search ( "<enter>", results [ 0 ] )
+		#match_object = re.search ( "<enter>", results [ 0 ] )
                 if ( self.cli_util.string_has_enter ( results [ 0 ] ) == 0 ):
                     match_object = re.search ( " ", results [ 0 ] )
                     if ( match_object != None ):
-                        results [ 0 ] = results [ 0 ] [ :match_object.end () ]
-                        match_object = re.search ( "-", results [ 0 ] )
+                        #results [ 0 ] = results [ 0 ] [ :match_object.end () ]
+			match_object = re.search ( "-", results [ 0 ] )
                         if ( match_object != None ):
                             results [ 0 ] = self.handle_hypenation ( results [0], current_line, match_object.end () )
-                    return results
+		    results.insert ( 0, "" )
+		    return results
                 else:
                     results.insert ( 0, "" )
                     return results
@@ -375,12 +381,15 @@ class CLIShell ( cmd.Cmd ):
 #------------------------------------------------------------------------------
     def completenames(self, text, *ignored):
         current_line = self.rl.get_line_buffer ()
-        return self.cli_command_complete ( current_line )
+	return self.cli_command_complete (current_line)
 
 #------------------------------------------------------------------------------
     def completedefault(self, text, *ignored):
         current_line = self.rl.get_line_buffer ()
         return self.cli_command_complete ( current_line )
+
+    def get_needle (self, cmd):
+	return cmd
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -453,7 +462,7 @@ if __name__ == '__main__':
     # keylogger = KeyLogging ()
     # keylogger.start ()
 
-    openclosConfFile = os.path.join ( util.configLocation,
+    openclosConfFile = os.path.join ( propLoader.propertyFileLocation,
                                       'openclos.yaml' )
     yaml_file_stream = open ( openclosConfFile, 'r' )
     cli_config = yaml.load ( yaml_file_stream )

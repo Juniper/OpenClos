@@ -1,0 +1,79 @@
+# Device port usage based on device family and topology
+# qfx5100-24q-2p ports could have 32 ports with two four-port expansion modules
+# When used as Fabric, all ports are downlink ports
+# When used as Spine in 3-Stage topology, all ports are used as downlink
+# When used as Spine in 5-Stage topology, ports are split between uplink and downlink 
+
+deviceFamily:
+    qfx5100-24q-2p:
+        fabric:
+            uplinkPorts: 
+            downlinkPorts: ['et-0/0/[0-23]', 'et-0/1/[0-3]', 'et-0/2/[0-3]']
+        spine:
+            uplinkPorts: ['et-0/0/[16-23]', 'et-0/1/[0-3]', 'et-0/2/[0-3]']
+            downlinkPorts: 'et-0/0/[0-15]'
+    qfx10002-36q:
+        fabric:
+            uplinkPorts: 
+            downlinkPorts: 'et-0/0/[0-35]'
+        spine:
+            uplinkPorts: 'et-0/0/[18-35]'
+            downlinkPorts: 'et-0/0/[0-17]'
+    qfx10002-72q:
+        fabric:
+            uplinkPorts: 
+            downlinkPorts: 'et-0/0/[0-71]'
+        spine:
+            uplinkPorts: 'et-0/0/[36-71]'
+            downlinkPorts: 'et-0/0/[0-35]'
+    
+    qfx5100-48s-6q:
+        leaf:
+            uplinkPorts: 'et-0/0/[48-53]'
+            downlinkPorts: ['xe-0/0/[0-47]', 'ge-0/0/[0-47]']
+    qfx5100-48t-6q:
+        leaf:
+            uplinkPorts: 'et-0/0/[48-53]' 
+            downlinkPorts: 'xe-0/0/[0-47]'
+    qfx5100-96s-8q:
+        leaf:
+            uplinkPorts: 'et-0/0/[96-103]'
+            downlinkPorts: ['xe-0/0/[0-95]', 'ge-0/0/[0-95]']
+    ex4300-24p:
+        leaf:
+            uplinkPorts: 'et-0/1/[0-3]'
+            downlinkPorts: 'ge-0/0/[0-23]'
+    ex4300-24t:
+        leaf:
+            uplinkPorts: 'et-0/1/[0-3]'
+            downlinkPorts: 'ge-0/0/[0-23]'
+    ex4300-32f:
+        leaf:
+            uplinkPorts: ['et-0/1/[0-1]', 'et-0/2/[0-1]']
+            downlinkPorts: 'ge-0/0/[0-31]'
+    ex4300-48p:
+        leaf:
+            uplinkPorts: 'et-0/1/[0-3]'
+            downlinkPorts: 'ge-0/0/[0-47]'
+    ex4300-48t:
+        leaf:
+            uplinkPorts: 'et-0/1/[0-3]'
+            downlinkPorts: 'ge-0/0/[0-47]'
+
+# additional customization of port allocation based on topology
+3Stage:
+    qfx5100-24q-2p:
+        spine:
+            uplinkPorts: 
+            downlinkPorts: ['et-0/0/[0-23]', 'et-0/1/[0-3]', 'et-0/2/[0-3]']
+    qfx10002-36q:
+        spine:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[0-35]'
+    qfx10002-72q:
+        spine:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[0-71]'
+
+5Stage:
+        
