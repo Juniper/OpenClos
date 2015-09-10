@@ -5,10 +5,10 @@ Created on Oct 30, 2014
 '''
 import unittest
 
-import jnpr.openclos.util
 from jnpr.openclos.devicePlugin import DeviceDataCollectorNetconf, L2DataCollector, L3DataCollector, DeviceOperationInProgressCache, TwoStageConfigurator 
-from jnpr.openclos.exception import DeviceError
+from jnpr.openclos.exception import DeviceConnectFailed, DeviceRpcFailed
 from jnpr.openclos.model import Device, InterfaceDefinition, InterfaceLogical, BgpLink
+from jnpr.openclos import propLoader
 from test_dao import InMemoryDao 
 
 from jnpr.junos.exception import ConnectError
@@ -37,16 +37,14 @@ class TestDeviceDataCollectorNetconf(unittest.TestCase):
         flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", None, "Embe1mpls", "leaf", "", "0.0.0.0", None))
         self.dataCollector.manualInit()
         
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaises(DeviceConnectFailed) as ve:
             self.dataCollector.connectToDevice()
-        
-        self.assertEquals(ValueError, type(ve.exception))
 
     def testConnectToDeviceConnectError(self):
         flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", "root", "Embe1mpls", "leaf", "", "0.0.0.0", None))
         self.dataCollector.manualInit()
 
-        with self.assertRaises(DeviceError) as de:
+        with self.assertRaises(DeviceConnectFailed) as de:
             self.dataCollector.connectToDevice()
         
         self.assertIsNotNone(de.exception.cause)
@@ -93,7 +91,7 @@ class TestL2DataCollector(unittest.TestCase):
             dataCollector.manualInit()
             dataCollector._session = session
 
-            dataCollector.updateDeviceL2Status(None, error = DeviceError(ValueError("test error")))
+            dataCollector.updateDeviceL2Status(None, error = DeviceRpcFailed("", cause=ValueError("test error")))
             self.assertEqual("error", leaf.l2Status)
             self.assertEqual("test error", leaf.l2StatusReason)
 
@@ -211,9 +209,9 @@ class TestL2DataCollector(unittest.TestCase):
         
             dataCollector.updateBadIfdStatus([IFDs[4], IFDs[5]])
     
-            self.assertEqual('error', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().lldpStatus)
-            self.assertEqual('error', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().lldpStatus)
-            self.assertEqual('unknown', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().lldpStatus)
+            self.assertEqual('error', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().status)
+            self.assertEqual('error', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().status)
+            self.assertEqual('unknown', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().status)
 
     def testUpdateGoodIfdStatus(self):
         with self._dao.getReadSession() as session:
@@ -225,11 +223,11 @@ class TestL2DataCollector(unittest.TestCase):
         
             dataCollector.updateGoodIfdStatus([IFDs[4], IFDs[5]])
     
-            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().lldpStatus)
-            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().lldpStatus)
-            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[0].id).one().lldpStatus)
-            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[2].id).one().lldpStatus)
-            self.assertEqual('unknown', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().lldpStatus)
+            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[4].id).one().status)
+            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[5].id).one().status)
+            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[0].id).one().status)
+            self.assertEqual('good', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[2].id).one().status)
+            self.assertEqual('unknown', session.query(InterfaceDefinition).filter(InterfaceDefinition.id == IFDs[6].id).one().status)
             
             spine = IFDs[0].device
             self.assertEqual('deploy', spine.deployStatus)
@@ -302,7 +300,7 @@ class TestL2DataCollector(unittest.TestCase):
 
 class TestDataCollectorInProgressCache(unittest.TestCase):
     def setUp(self):
-        jnpr.openclos.util.loadLoggingConfig()
+        propLoader.loadLoggingConfig(appName = 'unittest')
 
     def testSingleton(self):
         cache1 = DeviceOperationInProgressCache.getInstance()
@@ -729,7 +727,7 @@ class TestL3DataCollector(unittest.TestCase):
             dataCollector.manualInit()
             dataCollector._session = session
 
-            dataCollector.updateDeviceL3Status(None, error = DeviceError(ValueError("test error")))
+            dataCollector.updateDeviceL3Status(None, error = DeviceRpcFailed("", cause=ValueError("test error")))
             self.assertEqual("error", leaf.l3Status)
             self.assertEqual("test error", leaf.l3StatusReason)
 

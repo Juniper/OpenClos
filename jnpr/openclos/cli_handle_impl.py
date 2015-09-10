@@ -14,10 +14,10 @@ Command context from the openclos CLI will invoke one or more functions (or hand
 import os
 import re
 import collections
-
+import readline
 # Python frameworks required for openclos
 import yaml
-
+import inspect
 # openclos classes
 import util
 from l3Clos import L3ClosMediation
@@ -25,8 +25,8 @@ from model import Pod
 from ztp import ZtpServer
 import dao
 import rest
-
-
+import propLoader
+from report import ResourceAllocationReport
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 class CLIImplementor:
@@ -72,7 +72,7 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def create_pods ( self, pod_definition_file ):
         ret_list = []
-        pods_yaml_file = os.path.join ( util.configLocation,
+        pods_yaml_file = os.path.join ( propLoader.propertyFileLocation,
                                         pod_definition_file )
 
         try:
@@ -135,51 +135,74 @@ class CLIImplementor:
 
 #------------------------------------------------------------------------------
     def handle_show_pod_detail ( self, pod_id, *args ):
-        l3ClosMediation = L3ClosMediation ()
-        pod_object = l3ClosMediation.__dao.getObjectById ( Pod, pod_id )
-        self.show_pod_detail ( pod_object )
+        report = ResourceAllocationReport()
+        with report._dao.getReadSession() as session:
+            pod_object = report._dao.getObjectById(session, Pod, pod_id)
+            self.show_pod_detail ( pod_object )
 
 #------------------------------------------------------------------------------
     def handle_show_all_pods_detail ( self, *args ):
         print "---------------------------------------------------------------"
-        l3ClosMediation = L3ClosMediation ()
-        pod_objects = l3ClosMediation.__dao.getAll ( Pod )
-        for pod in pod_objects:
-            self.show_pod_detail ( pod )
-            print "---------------------------------------------------------------"
+        report = ResourceAllocationReport()
+        with report._dao.getReadSession() as session:
+            pod_objects = report._dao.getAll(session, Pod)
+            for pod in pod_objects:
+                self.show_pod_detail ( pod )
+                print "---------------------------------------------------------------"
 
 #------------------------------------------------------------------------------
-    def list_all_pods_from_db ( self, add_help=None, *args ):
+    def list_all_pods_from_db ( self, prev_macro, add_help = None, *args ):
         ret_list = []
-        l3ClosMediation = L3ClosMediation ()
-        pod_objects = l3ClosMediation.__dao.getAll ( Pod )
-        for pod in pod_objects:
-            pod_str = pod.id
-            if ( add_help != None ):
-                pod_str = pod_str + "        <UUID of Pod [" + pod.name + "]>"
-            ret_list.append ( pod_str )
-
-        if ( len ( ret_list ) == 0 ):
-            ret_list.insert ( 0, "Error:" )
-            ret_list.append ( "No POD definitions found in the database" )
-        return ret_list
+        report = ResourceAllocationReport()
+        with report._dao.getReadSession() as session:
+            pod_objects = report._dao.getAll(session, Pod)
+            for pod in pod_objects:
+                pod_str = pod.id
+                if ( add_help != None ):
+                    pod_str = pod_str + "        <UUID of Pod [" + pod.name + "]>"
+                ret_list.append ( pod_str )
+    
+            if ( len ( ret_list ) == 0 ):
+                ret_list.insert ( 0, "Error:" )
+                ret_list.append ( "No POD definitions found in the database" )
+            return ret_list
+    
 
 #------------------------------------------------------------------------------
     def list_all_yaml_files ( self, *args ):
         ret_list = []
-        util.loadConfig ()
-        for conf_file in os.listdir ( util.configLocation ):
-            if ( os.path.isfile ( os.path.join ( util.configLocation, conf_file ) ) ):
+        for conf_file in os.listdir ( propLoader.propertyFileLocation ):
+            if ( os.path.isfile ( os.path.join ( propLoader.propertyFileLocation, conf_file ) ) ):
                 m = re.search ( ".yaml", conf_file )
                 if ( m != None ):
                     ret_list.append ( conf_file )
 
         if ( len ( ret_list ) == 0 ):
             ret_list.insert ( 0, "Error:" )
-            ret_list.append ( "No yaml files found at <[" + util.configLocation + "]>" )
+            ret_list.append ( "No yaml files found at <[" + propLoader.propertyFileLocation + "]>" )
 
         return ret_list
 
+#------------------------------------------------------------------------------
+
+    def list_all_devices_from_pod ( self , prev_macro, add_help=None , *args ):
+        ret_list = []
+        report = ResourceAllocationReport()
+        with report._dao.getReadSession() as session:
+            pod_objects = report._dao.getAll(session, Pod)
+            for pod in pod_objects:
+                pod_spine = pod.spineDeviceType
+                if ( add_help != None ):
+                    pod_spine = pod_spine + "        <UUID of Pod [" + pod.name + "]>"
+                if pod_spine != None:
+		    ret_list.append ( pod_spine )
+    
+            if ( len ( ret_list ) == 0 ):
+                ret_list.insert ( 0, "Error:" )
+                ret_list.append ( "No Device definitions found in the database" )
+            return ret_list
+    
+	
 #------------------------------------------------------------------------------
     def handle_create_cabling_plan ( self, pod_id ):
         l3ClosMediation = L3ClosMediation ()
@@ -193,26 +216,29 @@ class CLIImplementor:
 
 #------------------------------------------------------------------------------
     def handle_create_ztp_config ( self, pod_name ):
-        ztpServer = ZtpServer()
-        ztpServer.createPodSpecificDhcpConfFile ( pod_name )
+        report = ResourceAllocationReport()
+        with report._dao.getReadSession() as session:
+            ztpServer = ZtpServer()
+            ztpServer.createPodSpecificDhcpConfFile ( session, pod_name )
 
 #------------------------------------------------------------------------------
     def handle_deploy_ztp_config ( self, pod_id ):
         
         ## Find the Pod Object
-        l3ClosMediation = L3ClosMediation ()
-        pod = l3ClosMediation.dao.getObjectById ( Pod, pod_id )
+        report = ResourceAllocationReport()
+        with report._dao.getReadSession() as session:
+            pod_object = report._dao.getObjectById(session, Pod, pod_id)
+            podDirectoryName = "%s-%s" % ( pod_id, pod_object.name )
         
         installedDhcpConf = "/etc/dhcp/dhcpd.conf"
         
         ## Generate the path to the dhcp conf
-        podDirectoryName = "%s-%s" % ( pod_id, pod.name )
         generatedDhcpConf = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out', podDirectoryName, "dhcpd.conf" )
         
         if not os.path.isfile(generatedDhcpConf):
-            print "DHCP configuration file has not been generated for Pod %s yet, will generate it first" % pod.id
+            print "DHCP configuration file has not been generated for Pod %s yet, will generate it first" % pod_id
             ztpServer = ZtpServer()
-            ztpServer.createPodSpecificDhcpConfFile ( pod.id )
+            ztpServer.createPodSpecificDhcpConfFile ( session, pod_id )
 
         if util.isPlatformUbuntu():
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
@@ -230,29 +256,38 @@ class CLIImplementor:
         
         ## Get Object for this Pod based on ID
         ## Get Data from config file
-        pod = l3ClosMediation.dao.getObjectById ( Pod, pod_id )
+        report = ResourceAllocationReport()
+        with report._dao.getReadSession() as session:
+            pod_object = report._dao.getObjectById(session, Pod, pod_id)
+            pod_name = pod_object.name
         pods_from_conf = l3ClosMediation.loadClosDefinition()
         
-        l3ClosMediation.updatePod( pod.id, pods_from_conf[pod.name] )
+        l3ClosMediation.updatePod( pod_id, pods_from_conf[pod_name] )
         
         ## Regenerate devices configuration, cabling plan and ZTP configuration
-        l3ClosMediation.createCablingPlan( pod.id )
-        l3ClosMediation.createDeviceConfig( pod.id )
+        l3ClosMediation.createCablingPlan( pod_id )
+	l3ClosMediation.createDeviceConfig( pod_id )
         
         ztpServer = ZtpServer()
-        ztpServer.createPodSpecificDhcpConfFile ( pod.id )
+        ztpServer.createPodSpecificDhcpConfFile ( session, pod_id )
     
 #------------------------------------------------------------------------------
-    def handle_update_password ( self, *args ):
-        print "TODO: handle_update_password"
-
-#------------------------------------------------------------------------------
     def handle_run_reports ( self, *args ):
-        print "TODO: handle_run_reports"
+        print "Currently not supported in stand-alone system"
 
 #------------------------------------------------------------------------------
     def handle_run_rest_server ( self, *args ):
-        print "TODO: handle_run_rest_server"
+        print "Currently not supported in stand-alone system"
+#------------------------------------------------------------------------------
+    def test_macro ( self, prev_macro, add_help=None, *args ):
+	ret_list = []
+	#if prev_macro:
+		#print "\nPrevious Macro"
+		#print prev_macro
+	return [ prev_macro , "test-arg"]
 
+    def test_handle ( self, *args ):
+        print "Testing complete"
+#------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------

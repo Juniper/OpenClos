@@ -6,21 +6,21 @@ Created on Aug 26, 2014
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import exc
-import util
 import logging 
 import contextlib
 
 from model import Base, Device, InterfaceDefinition, LeafSetting
 from common import SingletonBase
+from propLoader import loadLoggingConfig
+from exception import InvalidConfiguration
 
 moduleName = 'dao'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 
 
 class AbstractDao(SingletonBase):
     def __init__(self):
-        global logger
-        logger = logging.getLogger(moduleName)
         debugSql = False
         if logger.isEnabledFor(logging.DEBUG):
             debugSql = True
@@ -36,7 +36,7 @@ class AbstractDao(SingletonBase):
                          pool_recycle = 7200, isolation_level = "READ COMMITTED")
         else:
             logger.error('Unsupported DB dialect: %s' % dbUrl)
-            raise ValueError('Unsupported DB dialect: %s' % dbUrl)
+            raise InvalidConfiguration('Unsupported DB dialect: %s' % dbUrl)
         
         Base.metadata.create_all(self.__engine) 
         self.__sessionFactory = sessionmaker(bind=self.__engine)
@@ -145,7 +145,9 @@ class AbstractDao(SingletonBase):
         2. port name is uplink-* for device with known family 
         '''
         interconnectPorts = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == device.id)\
-            .filter(InterfaceDefinition.peer != None).order_by(InterfaceDefinition.sequenceNum).all()
+            .filter(InterfaceDefinition.peer != None)\
+            .filter((InterfaceDefinition.role == 'uplink') | (InterfaceDefinition.role == 'downlink'))\
+            .order_by(InterfaceDefinition.sequenceNum).all()
 
         ports = []        
         for port in interconnectPorts:
@@ -156,6 +158,7 @@ class AbstractDao(SingletonBase):
 
 class Dao(AbstractDao):
     def _getDbUrl(self):
-        return util.getDbUrl()
+        from propLoader import OpenClosProperty
+        return OpenClosProperty().getDbUrl()
     
     

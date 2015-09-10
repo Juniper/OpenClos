@@ -13,24 +13,25 @@ import util
 from model import Pod
 from dao import Dao
 from writer import DhcpConfWriter
-from sqlalchemy.orm import exc
+from propLoader import OpenClosProperty, loadLoggingConfig
 
+from sqlalchemy.orm import exc
+from exception import PodNotFound
 
 moduleName = 'ztp'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 
 ztpTemplateLocation = os.path.join('conf', 'ztp')
 
 
 class ZtpServer():
     def __init__(self, conf = {}, templateEnv = None, daoClass = Dao):
-        global logger
         if any(conf) == False:
-            self.__conf = util.loadConfig(appName = moduleName)
+            self.__conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self.__conf = conf
 
-        logger = logging.getLogger(moduleName)
         self._dao = daoClass.getInstance()
 
         if templateEnv is None:
@@ -64,11 +65,11 @@ class ZtpServer():
             try:
                 pod = self._dao.getObjectById(session, Pod, podId)
             except (exc.NoResultFound):
-                raise ValueError("Pod[id='%s']: not found" % (podId)) 
+                raise PodNotFound("Pod[id='%s']: not found" % (podId)) 
             confWriter = DhcpConfWriter(self.__conf, pod, self._dao)
             confWriter.write(self.generatePodSpecificDhcpConf(session, pod.id))
         else:
-            raise ValueError("Pod id can't be None")
+            raise PodNotFound("Pod id can't be None")
 
     def getTemplate(self):
         ''' 
@@ -175,14 +176,14 @@ class ZtpServer():
             deviceMgmtIp = str(IPNetwork(device.managementIp).ip)
             if device.macAddress :
                 ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
-                # don't start url as /openclos/ip-fabrics, first / causes ZTP problem
-                'configUrl': 'openclos/ip-fabrics/' + pod.id + '/devices/' + device.id + '/config',
+                # don't start url as /openclos/pods, first / causes ZTP problem
+                'configUrl': 'openclos/pods/' + pod.id + '/devices/' + device.id + '/config',
                 'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
                 logger.info('Device: %s, %s used MAC to map in dhcpd.conf' % (device.name, deviceMgmtIp))
             elif device.serialNumber:
                 ztp['devices'].append({'name': device.name, 'serial': device.serialNumber,
-                # don't start url as /openclos/ip-fabrics, first / causes ZTP problem
-                'configUrl': 'openclos/ip-fabrics/' + pod.id + '/devices/' + device.id + '/config',
+                # don't start url as /openclos/pods, first / causes ZTP problem
+                'configUrl': 'openclos/pods/' + pod.id + '/devices/' + device.id + '/config',
                 'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
                 logger.info('Device: %s, %s used Serial to map in dhcpd.conf' % (device.name, deviceMgmtIp))
             else:
@@ -197,8 +198,8 @@ class ZtpServer():
                     setting['leafImageUrl'] = imageUrlPrefix + leafSetting.junosImage
                 else:
                     setting['leafImageUrl'] = None
-                # don't start url as /openclos/ip-fabrics/..., first / causes ZTP problem
-                setting['leafGenericConfigUrl'] = 'openclos/ip-fabrics/' + pod.id + '/leaf-generic-configurations/' + leafSetting.deviceFamily
+                # don't start url as /openclos/pods/..., first / causes ZTP problem
+                setting['leafGenericConfigUrl'] = 'openclos/pods/' + pod.id + '/leaf-generic-configurations/' + leafSetting.deviceFamily
                 '''
                 setting['substringLength'] is the last argument of substring on dhcpd.conf, 
                 should not be hardcoded, as it would change based on device family

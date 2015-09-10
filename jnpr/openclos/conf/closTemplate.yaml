@@ -4,10 +4,13 @@ ztp:
     # and ZTP process will be broken, can be overridden at each pod for Spine/Leaf
     # this field is optional
     junosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+    
     dhcpSubnet : 10.0.2.0/24
-    # This is the Gateway address for any out-of-band network including 
-    # management network, this will get configured using static route
-    dhcpOptionRoute : 10.0.2.254
+    # dhcpOptionRoute is the Gateway address for any out-of-band network including 
+    # management network, this will get configured using static route.
+    # by default openclos would run on same subnet as devices.
+    # dhcpOptionRoute : 10.0.2.254
+    
     # Following two fields are optional, if not provided start and end
     # includes complete dhcp subnet, example for 10.0.2.0/24
     # dhcpOptionRangeStart: 10.0.2.1, dhcpOptionRangeEnd: 10.0.2.255

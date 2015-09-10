@@ -37,7 +37,7 @@ class TestTrapReceiver(unittest.TestCase):
         else:
             return False
 
-    @unittest.skipIf(sys.platform.startswith("win"), "Don't run on Windows")
+    @unittest.skipIf(sys.platform.startswith("win") or os.getenv('TRAVIS') == 'true', "Don't run on Windows or Travis")
     def testStart(self):
         self.__conf = {}
         self.__conf['snmpTrap'] = {}

@@ -7,32 +7,32 @@ import logging
 from sqlalchemy.orm import exc
 import concurrent.futures
 
-import util
 from dao import Dao
-from model import Pod, Device, InterfaceLogical
+from model import Pod, Device
 from devicePlugin import L2DataCollector, L3DataCollector
-from writer import CablingPlanWriter
+from writer import L2ReportWriter, L3ReportWriter
+from propLoader import OpenClosProperty, loadLoggingConfig
+from exception import PodNotFound
 
 moduleName = 'report'
-logger = None
+loadLoggingConfig(appName = moduleName)
+logger = logging.getLogger(moduleName)
 maxThreads = 10
 
 class Report(object):
     def __init__(self, conf = {}, daoClass = Dao):
-        global logger
         if any(conf) == False:
-            self._conf = util.loadConfig(appName = moduleName)
+            self._conf = OpenClosProperty(appName = moduleName).getProperties()
         else:
             self._conf = conf
 
-        logger = logging.getLogger(moduleName)
         self._dao = daoClass.getInstance()
 
-    def getIpFabric(self, session, ipFabricId):
+    def getPod(self, session, podId):
         try:
-            return self._dao.getObjectById(session, Pod, ipFabricId)
+            return self._dao.getObjectById(session, Pod, podId)
         except (exc.NoResultFound) as e:
-            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s" % (ipFabricId, e.message)) 
+            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s" % (podId, e.message)) 
             
 class ResourceAllocationReport(Report):
     def __init__(self, conf = {}, daoClass = Dao):
@@ -83,10 +83,10 @@ class L2Report(Report):
             
     def generateReport(self, podId, cachedData = True, writeToFile = False):
         with self._dao.getReadSession() as session:
-            pod = self.getIpFabric(session, podId)
+            pod = self.getPod(session, podId)
             if pod is None: 
                 logger.error('No pod found for podId: %s' % (podId))
-                raise ValueError('No pod found for podId: %s' % (podId)) 
+                raise PodNotFound('No pod found for podId: %s' % (podId)) 
             
             if cachedData == False:
                 logger.info('Generating L2Report from real data')
@@ -109,11 +109,11 @@ class L2Report(Report):
                 logger.info('Done processing all devices')
             else:
                 logger.info('Generating L2Report from cached data')
-            cablingPlanWriter = CablingPlanWriter(self._conf, pod, self._dao)
+            l2ReportWriter = L2ReportWriter(self._conf, pod, self._dao)
             if writeToFile:
-                return cablingPlanWriter.writeThreeStageL2ReportJson()
+                return l2ReportWriter.writeThreeStageL2ReportJson()
             else:
-                return cablingPlanWriter.getThreeStageL2ReportJson()
+                return l2ReportWriter.getThreeStageL2ReportJson()
 
 class L3Report(Report):
     def __init__(self, conf = {},  daoClass = Dao):
@@ -148,10 +148,10 @@ class L3Report(Report):
         
     def generateReport(self, podId, cachedData = True, writeToFile = False):
         with self._dao.getReadSession() as session:
-            pod = self.getIpFabric(session, podId)
+            pod = self.getPod(session, podId)
             if pod is None: 
                 logger.error('No pod found for podId: %s' % (podId))
-                raise ValueError('No pod found for podId: %s' % (podId)) 
+                raise PodNotFound('No pod found for podId: %s' % (podId)) 
             
             if cachedData == False:
                 logger.info('Generating L3Report from real data')
@@ -177,16 +177,16 @@ class L3Report(Report):
                 logger.info('Done processing all devices')
             else:
                 logger.info('Generating L3Report from cached data')
-            cablingPlanWriter = CablingPlanWriter(self._conf, pod, self._dao)
+            l3ReportWriter = L3ReportWriter(self._conf, pod, self._dao)
             if writeToFile:
-                return cablingPlanWriter.writeThreeStageL3ReportJson()
+                return l3ReportWriter.writeThreeStageL3ReportJson()
             else:
-                return cablingPlanWriter.getThreeStageL3ReportJson()
+                return l3ReportWriter.getThreeStageL3ReportJson()
 
 if __name__ == '__main__':
     report = ResourceAllocationReport()
     with report._dao.getReadSession() as session:
-        pods = report.getPods(session);
+        pods = report.getPods(session)
         print pods
 
     l2Report = L2Report()

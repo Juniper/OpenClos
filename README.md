@@ -1,6 +1,8 @@
 ![OpenClos](openClosLogo.jpeg)
 ==============================
 
+[![UnitTest Status](https://travis-ci.org/Juniper/OpenClos.svg?branch=devR2.5)](https://travis-ci.org/Juniper/OpenClos)
+
 OpenClos is a Python script library that helps you automate the design, deployment, and maintenance
 of a Layer 3 IP fabric built on Border Gateway Protocol (BGP).
 
