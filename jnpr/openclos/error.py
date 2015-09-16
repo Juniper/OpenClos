@@ -1,3 +1,4 @@
+#pylint: disable=C0326
 '''
 Created on May 11, 2015
 

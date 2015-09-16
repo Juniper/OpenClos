@@ -45,7 +45,7 @@ class ManagedElement(object):
 class Pod(ManagedElement, Base):
     __tablename__ = 'pod'
     id = Column(String(60), primary_key=True)
-    name = Column(String(255), index=True, nullable = False)
+    name = Column(String(255), index=True, nullable=False)
     description = Column(String(256))
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
@@ -64,7 +64,7 @@ class Pod(ManagedElement, Base):
     leafAS = Column(BigInteger)
     topologyType = Column(Enum('threeStage', 'fiveStageRealEstate', 'fiveStagePerformance'))
     outOfBandAddressList = Column(String(512))  # comma separated values
-    outOfBandGateway =  Column(String(32))
+    outOfBandGateway = Column(String(32))
     allocatedInterConnectBlock = Column(String(32))
     allocatedIrbBlock = Column(String(32))
     allocatedLoopbackBlock = Column(String(32))
@@ -113,7 +113,7 @@ class Pod(ManagedElement, Base):
             self.leafSettings = []
             for leafSetting in leafSettings:
                 junosImage = leafSetting.get('junosImage')
-                self.leafSettings.append(LeafSetting(leafSetting['deviceType'], self.id, junosImage = junosImage))
+                self.leafSettings.append(LeafSetting(leafSetting['deviceType'], self.id, junosImage=junosImage))
         
         self.leafUplinkcountMustBeUp = podDict.get('leafUplinkcountMustBeUp')
         if self.leafUplinkcountMustBeUp is None:
@@ -233,36 +233,36 @@ class Pod(ManagedElement, Base):
         try:
             IPNetwork(self.interConnectPrefix)  
         except AddrFormatError:
-                error += 'interConnectPrefix, ' 
+            error += 'interConnectPrefix, ' 
         try:
             IPNetwork(self.vlanPrefix)  
         except AddrFormatError:
-                error += 'vlanPrefix, '
+            error += 'vlanPrefix, '
         try:
             IPNetwork(self.loopbackPrefix)  
         except AddrFormatError:
-                error += 'loopbackPrefix'
+            error += 'loopbackPrefix'
         try:
             if self.managementPrefix is not None:
                 IPNetwork(self.managementPrefix)  
         except AddrFormatError:
-                error += 'managementPrefix'
+            error += 'managementPrefix'
         try:
             if self.managementStartingIP is not None:
                 IPAddress(self.managementStartingIP)  
         except AddrFormatError:
-                error += 'managementStartingIP'
+            error += 'managementStartingIP'
         if error != '':
             raise InvalidIpFormat('invalid IP format: ' + error)
 
 class LeafSetting(ManagedElement, Base):
     __tablename__ = 'leafSetting'
     deviceFamily = Column(String(100), primary_key=True)
-    pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False, primary_key=True)
+    pod_id = Column(String(60), ForeignKey('pod.id'), nullable=False, primary_key=True)
     junosImage = Column(String(126))
     config = Column(BLOB)
 
-    def __init__(self, deviceFamily, podId, junosImage = None, config = None):
+    def __init__(self, deviceFamily, podId, junosImage=None, config=None):
         self.deviceFamily = deviceFamily
         self.pod_id = podId
         self.junosImage = junosImage
@@ -270,11 +270,11 @@ class LeafSetting(ManagedElement, Base):
     
 class CablingPlan(ManagedElement, Base):
     __tablename__ = 'cablingPlan'
-    pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False, primary_key=True)
+    pod_id = Column(String(60), ForeignKey('pod.id'), nullable=False, primary_key=True)
     json = Column(BLOB)
     dot = Column(BLOB)
 
-    def __init__(self, podId, json = None, dot = None):
+    def __init__(self, podId, json=None, dot=None):
         self.pod_id = podId
         self.json = json
         self.dot = dot
@@ -282,25 +282,25 @@ class CablingPlan(ManagedElement, Base):
 class Device(ManagedElement, Base):
     __tablename__ = 'device'
     id = Column(String(60), primary_key=True)
-    name = Column(String(255), nullable = False)
-    username = Column(String(100), default = 'root')
+    name = Column(String(255), nullable=False)
+    username = Column(String(100), default='root')
     encryptedPassword = Column(String(100)) # 2-way encrypted
     role = Column(Enum('spine', 'leaf'))
     macAddress = Column(String(32))
     serialNumber = Column(String(32))
     managementIp = Column(String(32))
-    family = Column(String(100), default = 'unknown')
+    family = Column(String(100), default='unknown')
     asn = Column(BigInteger)
-    l2Status = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
+    l2Status = Column(Enum('unknown', 'processing', 'good', 'error'), default='unknown')
     l2StatusReason = Column(String(256)) # will be populated only when status is error
-    l3Status = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
+    l3Status = Column(Enum('unknown', 'processing', 'good', 'error'), default='unknown')
     l3StatusReason = Column(String(256)) # will be populated only when status is error
-    configStatus = Column(Enum('unknown', 'processing', 'good', 'error'), default = 'unknown')
+    configStatus = Column(Enum('unknown', 'processing', 'good', 'error'), default='unknown')
     configStatusReason = Column(String(256)) # will be populated only when status is error
     config = relationship("DeviceConfig", uselist=False, cascade='all, delete, delete-orphan')
-    pod_id = Column(String(60), ForeignKey('pod.id'), nullable = False)
+    pod_id = Column(String(60), ForeignKey('pod.id'), nullable=False)
     pod = relationship("Pod", backref=backref('devices', order_by=name, cascade='all, delete, delete-orphan'))
-    deployStatus = Column(Enum('deploy', 'provision'), default = 'provision')
+    deployStatus = Column(Enum('deploy', 'provision'), default='provision')
     cryptic = Cryptic()
     __table_args__ = (
         Index('pod_id_name_uindex', 'pod_id', 'name', unique=True),
@@ -360,7 +360,7 @@ class Device(ManagedElement, Base):
 
 class DeviceConfig(ManagedElement, Base):
     __tablename__ = 'deviceConfig'
-    device_id = Column(String(60), ForeignKey('device.id'), nullable = False, primary_key=True)
+    device_id = Column(String(60), ForeignKey('device.id'), nullable=False, primary_key=True)
     config = Column(BLOB)
 
     def __init__(self, deviceId, config):
@@ -373,16 +373,16 @@ class Interface(ManagedElement, Base):
     # getting list of interface order by name returns 
     # et-0/0/0, et-0/0/1, et-0/0/11, et/0/0/12, to fix this sequencing
     # adding order_number, so that the list would be et-0/0/0, et-0/0/1, et-0/0/2, et/0/0/3    
-    name = Column(String(100), nullable = False)
-    sequenceNum = Column(BigInteger, nullable = False)
+    name = Column(String(100), nullable=False)
+    sequenceNum = Column(BigInteger, nullable=False)
     type = Column(String(100))
-    device_id = Column(String(60), ForeignKey('device.id'), nullable = False)
-    device = relationship("Device",backref=backref('interfaces', order_by=sequenceNum, cascade='all, delete, delete-orphan'))
+    device_id = Column(String(60), ForeignKey('device.id'), nullable=False)
+    device = relationship("Device", backref=backref('interfaces', order_by=sequenceNum, cascade='all, delete, delete-orphan'))
     peer_id = Column(String(60), ForeignKey('interface.id'))
     peer = relationship('Interface', foreign_keys=[peer_id], uselist=False, post_update=True, )
     layer_below_id = Column(String(60), ForeignKey('interface.id'))
     layerAboves = relationship('Interface', foreign_keys=[layer_below_id])
-    deployStatus = Column(Enum('deploy', 'provision'), default = 'provision')
+    deployStatus = Column(Enum('deploy', 'provision'), default='provision')
     __table_args__ = (
         Index('device_id_sequence_num_uindex', 'device_id', 'sequenceNum', unique=True),
     )
@@ -406,7 +406,7 @@ class Interface(ManagedElement, Base):
         
 class InterfaceLogical(Interface):
     __tablename__ = 'IFL'
-    id = Column(String(60), ForeignKey('interface.id' ), primary_key=True)
+    id = Column(String(60), ForeignKey('interface.id'), primary_key=True)
     ipaddress = Column(String(40))
     mtu = Column(Integer)
     
@@ -426,10 +426,10 @@ class InterfaceLogical(Interface):
 
 class InterfaceDefinition(Interface):
     __tablename__ = 'IFD'
-    id = Column(String(60), ForeignKey('interface.id' ), primary_key=True)
+    id = Column(String(60), ForeignKey('interface.id'), primary_key=True)
     role = Column(String(60))
     mtu = Column(Integer)
-    status = Column(Enum('unknown', 'good', 'error'), default = 'unknown') 
+    status = Column(Enum('unknown', 'good', 'error'), default='unknown') 
         
     __mapper_args__ = {
         'polymorphic_identity':'physical',
@@ -443,11 +443,11 @@ class InterfaceDefinition(Interface):
 class TrapGroup(ManagedElement, Base):
     __tablename__ = 'trapGroup'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(100), index=True, nullable = False)
+    name = Column(String(100), index=True, nullable=False)
     targetAddress = Column(String(60))
-    port = Column(Integer, default = 162)
+    port = Column(Integer, default=162)
 
-    def __init__ (self, name, targetAddress, port):
+    def __init__(self, name, targetAddress, port):
         self.name = name
         self.targetAddress = targetAddress
         self.port = port
@@ -459,7 +459,7 @@ class AdditionalLink(ManagedElement, Base):
     port1 = Column(String(100))
     device2 = Column(String(60)) # free form in case device does not exist in device table
     port2 = Column(String(100))
-    lldpStatus = Column(Enum('unknown', 'good', 'error'), default = 'unknown') 
+    lldpStatus = Column(Enum('unknown', 'good', 'error'), default='unknown') 
     __table_args__ = (
         UniqueConstraint('device1', 'port1', name='device1_port1_uc'),
     )
@@ -475,8 +475,8 @@ class AdditionalLink(ManagedElement, Base):
 class BgpLink(ManagedElement, Base):
     __tablename__ = 'bgpLink'
     id = Column(String(60), primary_key=True)
-    device_id=Column(String(60))
-    pod_id=Column(String(60))
+    device_id = Column(String(60))
+    pod_id = Column(String(60))
     device1 = Column(String(100)) # free form in case device does not exist in device table
     device1Ip = Column(String(60))
     device1As = Column(Integer)
@@ -487,15 +487,15 @@ class BgpLink(ManagedElement, Base):
     output_msg_count = Column(Integer)
     out_queue_count = Column(Integer)
     flap_count = Column(Integer)
-    link_state = Column(String(100),default = 'unknown')
+    link_state = Column(String(100), default='unknown')
     act_rx_acc_route_count = Column(String(100))
 
 
     def __init__(self, podId, deviceId, linkDict):
 
         self.id = str(uuid.uuid4())
-        self.pod_id= podId
-        self.device_id=deviceId
+        self.pod_id = podId
+        self.device_id = deviceId
         self.device1 = linkDict.get('device1')
         self.device1Ip = linkDict.get('device1Ip')
         self.device1As = linkDict.get('device1as')

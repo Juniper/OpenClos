@@ -14,12 +14,12 @@ from netaddr import IPNetwork
 import netifaces
 from propLoader import propertyFileLocation
 
-TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT=5
-TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL=30 # in seconds
-TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY=40 # in seconds
+TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT = 5
+TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL = 30 # in seconds
+TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY = 40 # in seconds
 
     
-def loadClosDefinition(closDefination = os.path.join(propertyFileLocation, 'closTemplate.yaml')):
+def loadClosDefinition(closDefination=os.path.join(propertyFileLocation, 'closTemplate.yaml')):
     '''
     Loads clos definition from yaml file
     '''
@@ -28,10 +28,10 @@ def loadClosDefinition(closDefination = os.path.join(propertyFileLocation, 'clos
         yamlStream = yaml.load(stream)
         
         return yamlStream
-    except (OSError, IOError) as e:
-        print "File error:", e
-    except (yaml.scanner.ScannerError) as e:
-        print "YAML error:", e
+    except (OSError, IOError) as exc:
+        print "File error:", exc
+    except (yaml.scanner.ScannerError) as exc:
+        print "YAML error:", exc
         stream.close()
     finally:
         pass
@@ -80,8 +80,8 @@ def getMgmtIps(prefix, startingIP, mask, count):
         start = ipNetworkList.index(ipNetwork.ip)
         end = start + count
         ipList = ipNetworkList[start:end]
-        for ip in ipList:
-            mgmtIps.append(str(ip) + '/' + str(ipNetwork.prefixlen))
+        for ipAddr in ipList:
+            mgmtIps.append(str(ipAddr) + '/' + str(ipNetwork.prefixlen))
 
     return mgmtIps
 
@@ -162,9 +162,9 @@ def interfaceNameToUniqueSequenceNumber(interfaceName):
     if match is not None:
         return int(interfaceName.encode('hex'), 16)
 
-fpcPicPortRegx = re.compile(r"([a-z]+)-(\d)\/(\d)\/(\d{1,3})\.?(\d{0,2})")
+fpcPicRegx = re.compile(r"([a-z]+)-(\d)\/(\d)\/(\d{1,3})\.?(\d{0,2})")
 def _matchFpcPicPort(interfaceName):
-    match = fpcPicPortRegx.match(interfaceName)
+    match = fpcPicRegx.match(interfaceName)
     if match is not None:
         speed = match.group(1)
         fpc = match.group(2)
@@ -190,11 +190,11 @@ def _matchFpcPicPort(interfaceName):
         
         return sequenceNum
     
-fakeNameRegxList = [(re.compile(r"uplink-(\d{1,3})\.?(\d{0,2})"), 90000000, 91000000),
+FAKE_NAME_REGX_LIST = [(re.compile(r"uplink-(\d{1,3})\.?(\d{0,2})"), 90000000, 91000000),
                     (re.compile(r"access-(\d{1,3})\.?(\d{0,2})"), 92000000, 93000000)
                     ]
 def _matchFakeName(interfaceName):
-    for fakeNameRegx, intfStart, subIntfStart in fakeNameRegxList:
+    for fakeNameRegx, intfStart, subIntfStart in FAKE_NAME_REGX_LIST:
         match = fakeNameRegx.match(interfaceName)
         if match is not None:
             port = match.group(1)
@@ -210,7 +210,7 @@ def _matchFakeName(interfaceName):
             return sequenceNum
 
 def getPortNumberFromName(interfaceName):
-    match = fpcPicPortRegx.match(interfaceName)
+    match = fpcPicRegx.match(interfaceName)
     if match is not None:
         return match.group(4)
 

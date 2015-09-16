@@ -11,7 +11,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # http://packaging.python.org/en/latest/tutorial.html#version
-    version='2.5.dev1',
+    version='3.0.dev1',
 
     description='OpenClos Python project',
     long_description= \
@@ -73,7 +73,7 @@ setup(
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     package_data={
-        'jnpr.openclos': ['conf/*.yaml', 'conf/*.json', 'conf/junosTemplates/*', 'conf/cablingPlanTemplates/*', 'conf/ztp/*', 'conf/junosEznc/*', 'data/.dat', 'script/*', 'tests/*.py', 'tests/unit/*.py'],
+        'jnpr.openclos': ['conf/*.yaml', 'conf/*.json', 'conf/junosTemplates/*', 'conf/cablingPlanTemplates/*', 'conf/ztp/*', 'conf/junosEznc/*', 'data/.dat', 'script/*', 'tests/*.py', 'tests/unit/*.py', '.pylintrc'],
         '': ['./*.txt'],
     },
 

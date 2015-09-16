@@ -16,8 +16,8 @@ propertyFileLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 currentWorkingDir = os.getcwd()
 
 class PropertyLoader:
-    
-    def getFileNameWithPath(self, fileName):
+    @staticmethod
+    def getFileNameWithPath(fileName):
         '''
         File location search path - 
         1. current working directory
@@ -29,43 +29,44 @@ class PropertyLoader:
         elif os.path.isfile(os.path.join(propertyFileLocation, fileName)):
             return os.path.join(propertyFileLocation, fileName)
         else:
-            logger.error('file: "%s" not found at 1. %s, 2. %s' % (fileName, propertyFileLocation, currentWorkingDir))            
+            logger.error('file: "%s" not found at 1. %s, 2. %s', fileName, propertyFileLocation, currentWorkingDir)           
 
-    def loadProperty(self, fileName):
+    @staticmethod
+    def loadProperty(fileName):
         if not fileName:
             return
 
         try:    
             with open(fileName, 'r') as fStream:
                 return yaml.load(fStream)
-        except (OSError, IOError) as e:
-            logger.error("File error: %s" % (e))
-        except (yaml.scanner.ScannerError) as e:
-            logger.error("YAML error: %s" % (e))
+        except (OSError, IOError) as exc:
+            logger.error("File error: %s", exc)
+        except (yaml.scanner.ScannerError) as exc:
+            logger.error("YAML error: %s", exc)
 
     
 class OpenClosProperty(PropertyLoader):
-    def __init__(self, fileName = 'openclos.yaml', appName = None):
+    def __init__(self, fileName='openclos.yaml', appName=None):
         fileNameWithPath = os.path.join(propertyFileLocation, fileName)
-        self._properties = self.loadProperty(fileNameWithPath)
+        self._properties = PropertyLoader.loadProperty(fileNameWithPath)
         
         if self._properties is not None:
             if 'dbUrl' in self._properties:
                 if 'dbDialect' in self._properties:
                     print "Warning: dbUrl and dbDialect both exist. dbDialect ignored"
                 # dbUrl is used by sqlite only
-                self._properties['dbUrl'] = self.fixSqlliteDbUrlForRelativePath(self._properties['dbUrl'])
+                self._properties['dbUrl'] = OpenClosProperty.fixSqlliteDbUrlForRelativePath(self._properties['dbUrl'])
             elif 'dbDialect' in self._properties:
-                dbPass = Cryptic ().decrypt ( self._properties['dbPassword'] )
+                dbPass = Cryptic().decrypt(self._properties['dbPassword'])
                 self._properties['dbUrl'] = self._properties['dbDialect'] + '://' + self._properties['dbUser'] + ':' + dbPass + '@' + self._properties['dbHost'] + '/' + self._properties['dbName'] 
             if 'outputDir' in self._properties:
-                self._properties['outputDir'] = self.fixOutputDirForRelativePath(self._properties['outputDir'])
+                self._properties['outputDir'] = OpenClosProperty.fixOutputDirForRelativePath(self._properties['outputDir'])
 
     def getProperties(self):
         return self._properties
                     
     def getDbUrl(self):
-        if self._properties.get('dbUrl') is None or self._properties.get('dbUrl')  == '':
+        if self._properties.get('dbUrl') is None or self._properties.get('dbUrl') == '':
             raise InvalidConfiguration('DB Url is empty')
         
         return self._properties['dbUrl'] 
@@ -73,7 +74,8 @@ class OpenClosProperty(PropertyLoader):
     def isSqliteUsed(self):
         return 'sqlite' in self._properties.get('dbUrl')
 
-    def fixSqlliteDbUrlForRelativePath(self, dbUrl):
+    @staticmethod
+    def fixSqlliteDbUrlForRelativePath(dbUrl):
         # sqlite:////absolute-path/sqllite3.db
         # sqlite:///relative-path/sqllite3.db
         match = re.match(r"sqlite:(\/+)(.*)\/(.*)", dbUrl)
@@ -86,10 +88,11 @@ class OpenClosProperty(PropertyLoader):
     
         return dbUrl
 
-    def fixOutputDirForRelativePath(self, outputDir):
+    @staticmethod
+    def fixOutputDirForRelativePath(outputDir):
         # /absolute-path/out
         # relative-path/out
-        if (os.path.abspath(outputDir) != outputDir):
+        if os.path.abspath(outputDir) != outputDir:
             return os.path.join(os.path.dirname(os.path.abspath(__file__)), outputDir)
         else:
             return outputDir
@@ -98,70 +101,73 @@ class OpenClosProperty(PropertyLoader):
 
 portNameRegx = re.compile(r"([a-z]+-\d\/\d\/\[)(\d{1,3})-(\d{1,3})(\])")
 class DeviceSku(PropertyLoader):
-    def __init__(self, fileName = 'deviceFamily.yaml'):
+    def __init__(self, fileName='deviceFamily.yaml'):
         self.skuDetail = {}
         self.threeStageSkuDetail = {}
         self.fiveStageSkuDetail = {}
         
-        fileNameWithPath = self.getFileNameWithPath(fileName)
-        skuDetail = self.loadProperty(fileNameWithPath)
+        fileNameWithPath = PropertyLoader.getFileNameWithPath(fileName)
+        skuDetail = PropertyLoader.loadProperty(fileNameWithPath)
         
         if skuDetail is not None and skuDetail.get('deviceFamily') is not None:
             self.skuDetail = skuDetail.get('deviceFamily')
-            self.populateDeviceFamily(self.skuDetail)
+            DeviceSku.populateDeviceFamily(self.skuDetail)
             
         if skuDetail is not None and skuDetail.get('3Stage') is not None:
             self.threeStageSkuDetail = skuDetail.get('3Stage')
-            self.populate3StageOverride(self.threeStageSkuDetail)
+            DeviceSku.populate3StageOverride(self.threeStageSkuDetail)
 
         if skuDetail is not None and skuDetail.get('5Stage') is not None:
             self.fiveStageSkuDetail = skuDetail.get('5Stage')
-            self.populate5StageOverride(self.fiveStageSkuDetail)
+            DeviceSku.populate5StageOverride(self.fiveStageSkuDetail)
 
-    def populateDeviceFamily(self, skuDetail):
+    @staticmethod
+    def populateDeviceFamily(skuDetail):
         for deviceFamily, value in skuDetail.iteritems():
             logger.debug(deviceFamily)
             for role, ports in value.iteritems():
                 uplink = ports.get('uplinkPorts')
                 if isinstance(uplink, list):
-                    ports['uplinkPorts'] = self.portRegexListToList(uplink)
+                    ports['uplinkPorts'] = DeviceSku.portRegexListToList(uplink)
                 else:
-                    ports['uplinkPorts'] = self.portRegexToList(uplink)
+                    ports['uplinkPorts'] = DeviceSku.portRegexToList(uplink)
 
                 downlink = ports.get('downlinkPorts')
                 if isinstance(downlink, list):
-                    ports['downlinkPorts'] = self.portRegexListToList(downlink)
+                    ports['downlinkPorts'] = DeviceSku.portRegexListToList(downlink)
                 else:
-                    ports['downlinkPorts'] = self.portRegexToList(downlink)
+                    ports['downlinkPorts'] = DeviceSku.portRegexToList(downlink)
 
                 #logger.debug("\t%s" % (role))
                 #logger.debug("\t\t%s" % (ports.get('uplinkPorts')))
                 #logger.debug("\t\t%s" % (ports.get('downlinkPorts')))
         
-    def populate3StageOverride(self, threeStage):
-        self.populateDeviceFamily(threeStage)
+    @staticmethod
+    def populate3StageOverride(threeStage):
+        DeviceSku.populateDeviceFamily(threeStage)
     
-    def populate5StageOverride(self, fiveStage):
-        self.populateDeviceFamily(fiveStage)
+    @staticmethod
+    def populate5StageOverride(fiveStage):
+        DeviceSku.populateDeviceFamily(fiveStage)
 
-    def getPortNamesForDeviceFamily(self, deviceFamily, role, topology = '3Stage'):
+    def getPortNamesForDeviceFamily(self, deviceFamily, role, topology='3Stage'):
         if self.skuDetail is None:
             logger.error('deviceFamily.yaml was not loaded properly')
             return {'uplinkPorts': [], 'downlinkPorts': []}
         
         if deviceFamily is None or role is None:
-            logger.error("No ports found, deviceFamily: %s, role: %s, topology: %s" % (deviceFamily, role, topology))
+            logger.error("No ports found, deviceFamily: %s, role: %s, topology: %s", deviceFamily, role, topology)
             return {'uplinkPorts': [], 'downlinkPorts': []}
         
         try:
             try:
                 if topology == '3Stage':
                     return self.threeStageSkuDetail[deviceFamily][role]
-            except KeyError as ke:
+            except KeyError:
                 pass
             return self.skuDetail[deviceFamily][role]
-        except KeyError as ke:
-            logger.error("No ports found, deviceFamily: %s, role: %s, topology: %s. KeyError: %s" % (deviceFamily, role, topology, ke))
+        except KeyError as kerr:
+            logger.error("No ports found, deviceFamily: %s, role: %s, topology: %s. KeyError: %s", deviceFamily, role, topology, kerr)
         return {'uplinkPorts': [], 'downlinkPorts': []}
 
     def getSupportedDeviceFamily(self):
@@ -174,7 +180,8 @@ class DeviceSku(PropertyLoader):
             raise InvalidConfiguration('deviceFamily.yaml was not loaded properly')
         return self.skuDetail.keys()
 
-    def portRegexToList(self, portRegex):
+    @staticmethod
+    def portRegexToList(portRegex):
         '''    
         Expands port regular expression to a list of port names
         :param string: 'et-0/0/[0-15]'
@@ -199,8 +206,9 @@ class DeviceSku(PropertyLoader):
             portNames.append(preRegx[:-1] + str(id) + postRegx[1:])
             
         return portNames
-  
-    def portRegexListToList(self, portRegexList):
+        
+    @staticmethod
+    def portRegexListToList(portRegexList):
         '''    
         Expands list of port regular expression to a list of port names
         :param list: ['xe-0/0/[0-10]', 'et-0/0/[0-3]']
@@ -211,7 +219,7 @@ class DeviceSku(PropertyLoader):
 
         portNames = []
         for portRegex in portRegexList:
-            portNames += self.portRegexToList(portRegex)
+            portNames += DeviceSku.portRegexToList(portRegex)
             
         return portNames
 
@@ -227,12 +235,12 @@ def setFileHandlerFullPath(fullPath):
     global fileHandlerFullPath
     fileHandlerFullPath = fullPath
     
-def loadLoggingConfig(logConfFile = 'logging.yaml', appName = ''):
+def loadLoggingConfig(logConfFile='logging.yaml', appName=''):
     logConf = getLoggingHandlers(logConfFile, appName)
     if logConf is not None:
         logging.config.dictConfig(logConf)
     
-def getLoggingHandlers(logConfFile = 'logging.yaml', appName = ''):
+def getLoggingHandlers(logConfFile='logging.yaml', appName=''):
     '''
     Loads global configuration and creates hash 'logConf'
     '''
@@ -256,13 +264,13 @@ def getLoggingHandlers(logConfFile = 'logging.yaml', appName = ''):
                         handlerDict['filename'] = filename
                             
             return logConf
-    except (OSError, IOError) as e:
-        print "File error:", e
-    except (yaml.scanner.ScannerError) as e:
-        print "YAML error:", e
+    except (OSError, IOError) as exc:
+        print "File error:", exc
+    except (yaml.scanner.ScannerError) as exc:
+        print "YAML error:", exc
     finally:
         logConfStream.close()
     
 moduleName = 'propLoader'
-loadLoggingConfig(appName = moduleName)
+loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)

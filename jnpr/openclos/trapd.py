@@ -20,7 +20,7 @@ from propLoader import OpenClosProperty, loadLoggingConfig
 from exception import TrapDaemonError
 
 moduleName = 'trapd'
-loadLoggingConfig(appName = moduleName)
+loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 
 DEFAULT_HOST = "0.0.0.0"
@@ -37,44 +37,26 @@ def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
             if msgVer in api.protoModules:
                 pMod = api.protoModules[msgVer]
             else:
-                logger.error('Unsupported SNMP version %s' % msgVer)
+                logger.error('Unsupported SNMP version %s', msgVer)
                 return
             reqMsg, wholeMsg = decoder.decode(
                 wholeMsg, asn1Spec=pMod.Message(),
                 )
-            logger.info('Notification message from %s:%s ' % (
-                transportAddress[0], transportAddress[1]
-                )
-            )
+            logger.info('Notification message from %s:%s ', transportAddress[0], transportAddress[1])
             reqPDU = pMod.apiMessage.getPDU(reqMsg)
             if reqPDU.isSameTypeWith(pMod.TrapPDU()):
                 if msgVer == api.protoVersion1:
-                    logger.debug('Enterprise: %s' % (
-                        pMod.apiTrapPDU.getEnterprise(reqPDU).prettyPrint()
-                        )
-                    )
-                    logger.debug('Agent Address: %s' % (
-                        pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint()
-                        )
-                    )
-                    logger.debug('Generic Trap: %s' % (
-                        pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint()
-                        )
-                    )
-                    logger.debug('Specific Trap: %s' % (
-                        pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint()
-                        )
-                    )
-                    logger.debug('Uptime: %s' % (
-                        pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint()
-                        )
-                    )
+                    logger.debug('Enterprise: %s', pMod.apiTrapPDU.getEnterprise(reqPDU).prettyPrint())
+                    logger.debug('Agent Address: %s', pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint())
+                    logger.debug('Generic Trap: %s', pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint())
+                    logger.debug('Specific Trap: %s', pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint())
+                    logger.debug('Uptime: %s', pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint())
                     varBinds = pMod.apiTrapPDU.getVarBindList(reqPDU)
                 else:
                     varBinds = pMod.apiPDU.getVarBindList(reqPDU)
                 logger.debug('Var-binds:')
                 for oid, val in varBinds:
-                    logger.debug('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
+                    logger.debug('%s = %s', oid.prettyPrint(), val.prettyPrint())
                     
     
     # start the 2-stage configuration in a separate thread
@@ -86,16 +68,16 @@ def onTrap(transportDispatcher, transportDomain, transportAddress, wholeMsg):
             returnValue = proc.wait()
             if returnValue != 0:
                 # 2-stage configuration callback returns non-zero value indicating we SHOULD NOT continue
-                logger.debug('twoStageConfigurationCallback "%s" returns %d, trap ignored' % (callback, returnValue))
+                logger.debug('twoStageConfigurationCallback "%s" returns %d, trap ignored', callback, returnValue)
                 return
             
         configurator = TwoStageConfigurator(deviceIp=transportAddress[0], stopEvent=trapReceiver.stopEvent)
         trapReceiver.executor.submit(configurator.start2StageConfiguration)        
 
 class TrapReceiver():
-    def __init__(self, conf = {}):
+    def __init__(self, conf={}):
         if conf is None or any(conf) == False:
-            self.__conf = OpenClosProperty(appName = moduleName).getProperties()
+            self.__conf = OpenClosProperty(appName=moduleName).getProperties()
         else:
             self.__conf = conf
 
@@ -107,17 +89,17 @@ class TrapReceiver():
         if 'snmpTrap' in self.__conf and 'openclos_trap_group' in self.__conf['snmpTrap'] and 'target' in self.__conf['snmpTrap']['openclos_trap_group']:
             self.target = self.__conf['snmpTrap']['openclos_trap_group']['target']
         else:
-            logger.info("snmpTrap:openclos_trap_group:target is missing from configuration. using %s" % (self.target))                
+            logger.info("snmpTrap:openclos_trap_group:target is missing from configuration. using %s", self.target)
 
         if 'snmpTrap' in self.__conf and 'openclos_trap_group' in self.__conf['snmpTrap'] and 'port' in self.__conf['snmpTrap']['openclos_trap_group']:
             self.port = int(self.__conf['snmpTrap']['openclos_trap_group']['port'])
         else:
-            logger.info("snmpTrap:openclos_trap_group:port is missing from configuration. using %d" % (self.port))                
+            logger.info("snmpTrap:openclos_trap_group:port is missing from configuration. using %d", self.port)
             
         if 'snmpTrap' in self.__conf and 'threadCount' in self.__conf['snmpTrap']:
-            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self.__conf['snmpTrap']['threadCount'])
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.__conf['snmpTrap']['threadCount'])
         else:
-            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = DEFAULT_MAX_THREADS)
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=DEFAULT_MAX_THREADS)
 
         # event to stop from sleep
         self.stopEvent = Event()
@@ -140,7 +122,7 @@ class TrapReceiver():
             # Dispatcher will never finish as job#1 never reaches zero
             self.transportDispatcher.runDispatcher()
         except Exception as exc:
-            logger.error("Encounted error '%s' on trap receiver %s:%d" % (exc, self.target, self.port))
+            logger.error("Encounted error '%s' on trap receiver %s:%d", exc, self.target, self.port)
             self.transportDispatcher.closeDispatcher()
             raise TrapDaemonError("Trap receiver %s:%d" % (self.target, self.port), exc)
         else:
@@ -150,7 +132,7 @@ class TrapReceiver():
         logger.info("Starting trap receiver...")
         self.thread = Thread(target=self.threadFunction, args=())
         self.thread.start()
-        logger.info("Trap receiver started on %s:%d" % (self.target, self.port))
+        logger.info("Trap receiver started on %s:%d", self.target, self.port)
 
     def stop(self):
         logger.info("Stopping trap receiver...")
@@ -162,7 +144,7 @@ class TrapReceiver():
 
         
 def trap_receiver_signal_handler(signal, frame):
-    logger.debug("received signal %d" % signal)
+    logger.debug("received signal %d", signal)
     trapReceiver.stop()
     sys.exit(0)
 
