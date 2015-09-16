@@ -15,6 +15,7 @@ include MANIFEST.in
 include README.md
 include AUTHORS
 include requirements.txt
+include jnpr/openclos/.pylintrc
 
 #exclude all bytecode
 global-exclude *.pyo

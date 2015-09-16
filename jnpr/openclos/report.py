@@ -15,14 +15,14 @@ from propLoader import OpenClosProperty, loadLoggingConfig
 from exception import PodNotFound
 
 moduleName = 'report'
-loadLoggingConfig(appName = moduleName)
+loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 maxThreads = 10
 
 class Report(object):
-    def __init__(self, conf = {}, daoClass = Dao):
+    def __init__(self, conf={}, daoClass=Dao):
         if any(conf) == False:
-            self._conf = OpenClosProperty(appName = moduleName).getProperties()
+            self._conf = OpenClosProperty(appName=moduleName).getProperties()
         else:
             self._conf = conf
 
@@ -31,11 +31,11 @@ class Report(object):
     def getPod(self, session, podId):
         try:
             return self._dao.getObjectById(session, Pod, podId)
-        except (exc.NoResultFound) as e:
-            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s" % (podId, e.message)) 
+        except (exc.NoResultFound) as ex:
+            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s", podId, ex.message)
             
 class ResourceAllocationReport(Report):
-    def __init__(self, conf = {}, daoClass = Dao):
+    def __init__(self, conf={}, daoClass=Dao):
         super(ResourceAllocationReport, self).__init__(conf, daoClass)
         
     def getPods(self, session):
@@ -59,13 +59,13 @@ class ResourceAllocationReport(Report):
         return pods
     
 class L2Report(Report):
-    def __init__(self, conf = {},  daoClass = Dao):
+    def __init__(self, conf={}, daoClass=Dao):
         super(L2Report, self).__init__(conf, daoClass)
         
         if self._conf.get('report') and self._conf['report'].get('threadCount'):
-            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self._conf['report']['threadCount'])
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=self._conf['report']['threadCount'])
         else:
-            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = maxThreads)
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=maxThreads)
         
     def resetSpineL2Status(self, devices):
         with self._dao.getReadWriteSession() as session:
@@ -81,11 +81,11 @@ class L2Report(Report):
             if len(devicesToBeUpdated) > 0:
                 self._dao.updateObjects(session, devicesToBeUpdated)
             
-    def generateReport(self, podId, cachedData = True, writeToFile = False):
+    def generateReport(self, podId, cachedData=True, writeToFile=False):
         with self._dao.getReadSession() as session:
             pod = self.getPod(session, podId)
             if pod is None: 
-                logger.error('No pod found for podId: %s' % (podId))
+                logger.error('No pod found for podId: %s', podId)
                 raise PodNotFound('No pod found for podId: %s' % (podId)) 
             
             if cachedData == False:
@@ -116,13 +116,13 @@ class L2Report(Report):
                 return l2ReportWriter.getThreeStageL2ReportJson()
 
 class L3Report(Report):
-    def __init__(self, conf = {},  daoClass = Dao):
+    def __init__(self, conf={}, daoClass=Dao):
         super(L3Report, self).__init__(conf, daoClass)
         
         if self._conf.get('report') and self._conf['report'].get('threadCount'):
-            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self._conf['report']['threadCount'])
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=self._conf['report']['threadCount'])
         else:
-            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = maxThreads)
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=maxThreads)
         
     def resetSpineL3Status(self, devices):
         with self._dao.getReadWriteSession() as session:
@@ -142,15 +142,15 @@ class L3Report(Report):
         devices = session.query(Device).filter(Device.pod_id == podId).all()
         for device in devices:
             if device.asn is not None:
-                logger.debug("[%d]->[%s]" %(device.asn, device.name))
+                logger.debug("[%d]->[%s]", device.asn, device.name)
                 map[device.asn] = device
         return map
         
-    def generateReport(self, podId, cachedData = True, writeToFile = False):
+    def generateReport(self, podId, cachedData=True, writeToFile=False):
         with self._dao.getReadSession() as session:
             pod = self.getPod(session, podId)
             if pod is None: 
-                logger.error('No pod found for podId: %s' % (podId))
+                logger.error('No pod found for podId: %s', podId)
                 raise PodNotFound('No pod found for podId: %s' % (podId)) 
             
             if cachedData == False:

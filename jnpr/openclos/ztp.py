@@ -19,16 +19,16 @@ from sqlalchemy.orm import exc
 from exception import PodNotFound
 
 moduleName = 'ztp'
-loadLoggingConfig(appName = moduleName)
+loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 
 ztpTemplateLocation = os.path.join('conf', 'ztp')
 
 
 class ZtpServer():
-    def __init__(self, conf = {}, templateEnv = None, daoClass = Dao):
+    def __init__(self, conf={}, templateEnv=None, daoClass=Dao):
         if any(conf) == False:
-            self.__conf = OpenClosProperty(appName = moduleName).getProperties()
+            self.__conf = OpenClosProperty(appName=moduleName).getProperties()
         else:
             self.__conf = conf
 
@@ -58,13 +58,13 @@ class ZtpServer():
         if util.isPlatformUbuntu():
             ztp = self.populateDhcpGlobalSettings()
             dhcpTemplate = self.templateEnv.get_template('ubuntu.1stage.dhcp.conf')
-            return dhcpTemplate.render(ztp = self.populateDhcpDeviceSpecificSettingForAllPods(session, ztp))
+            return dhcpTemplate.render(ztp=self.populateDhcpDeviceSpecificSettingForAllPods(session, ztp))
 
     def createPodSpecificDhcpConfFile(self, session, podId):
         if podId is not None:
             try:
                 pod = self._dao.getObjectById(session, Pod, podId)
-            except (exc.NoResultFound):
+            except exc.NoResultFound:
                 raise PodNotFound("Pod[id='%s']: not found" % (podId)) 
             confWriter = DhcpConfWriter(self.__conf, pod, self._dao)
             confWriter.write(self.generatePodSpecificDhcpConf(session, pod.id))
@@ -101,7 +101,7 @@ class ZtpServer():
         
         dhcpTemplate = self.getTemplate()
         ztp = self.populateDhcpDeviceSpecificSetting(session, podId, ztp)
-        conf = dhcpTemplate.render(ztp = ztp)
+        conf = dhcpTemplate.render(ztp=ztp)
             
         #logger.debug('dhcpd.conf\n%s' % (conf))
         return conf
@@ -135,17 +135,17 @@ class ZtpServer():
 
         return ztp
     
-    def populateDhcpDeviceSpecificSettingForAllPods(self, session, ztp = {}):
+    def populateDhcpDeviceSpecificSettingForAllPods(self, session, ztp={}):
         pods = self._dao.getAll(session, Pod)
         for pod in pods:
             ztp = self.populateDhcpDeviceSpecificSetting(session, pod.id, ztp)
         return ztp
 
-    def populateDhcpDeviceSpecificSetting(self, session, podId, ztp = {}):
+    def populateDhcpDeviceSpecificSetting(self, session, podId, ztp={}):
         '''
         don't start any url as /openclos/... first / causes ZTP problem
         '''
-        imageUrlPrefix =  'openclos/images/'       
+        imageUrlPrefix = 'openclos/images/'       
         
         if ztp.get('devices') is None:
             ztp['devices'] = []
@@ -170,24 +170,24 @@ class ZtpServer():
                 else:
                     imageUrl = None
             else:
-                logger.error('PodId: %s, Pod: %s, Device: %s with unknown role: %s' % (pod.id, pod.name, device.name, device.role))
+                logger.error('PodId: %s, Pod: %s, Device: %s with unknown role: %s', pod.id, pod.name, device.name, device.role)
                 continue
             
             deviceMgmtIp = str(IPNetwork(device.managementIp).ip)
-            if device.macAddress :
+            if device.macAddress:
                 ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
                 # don't start url as /openclos/pods, first / causes ZTP problem
                 'configUrl': 'openclos/pods/' + pod.id + '/devices/' + device.id + '/config',
                 'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
-                logger.info('Device: %s, %s used MAC to map in dhcpd.conf' % (device.name, deviceMgmtIp))
+                logger.info('Device: %s, %s used MAC to map in dhcpd.conf', device.name, deviceMgmtIp)
             elif device.serialNumber:
                 ztp['devices'].append({'name': device.name, 'serial': device.serialNumber,
                 # don't start url as /openclos/pods, first / causes ZTP problem
                 'configUrl': 'openclos/pods/' + pod.id + '/devices/' + device.id + '/config',
                 'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
-                logger.info('Device: %s, %s used Serial to map in dhcpd.conf' % (device.name, deviceMgmtIp))
+                logger.info('Device: %s, %s used Serial to map in dhcpd.conf', device.name, deviceMgmtIp)
             else:
-                logger.error('Device: %s, %s does not have MAC or SerialNumber, not added in dhcpd.conf' % (device.name, deviceMgmtIp))
+                logger.error('Device: %s, %s does not have MAC or SerialNumber, not added in dhcpd.conf', device.name, deviceMgmtIp)
                 
         if util.isZtpStaged(self.__conf):
             ztp['leafs'] = []

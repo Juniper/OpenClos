@@ -15,7 +15,7 @@ from propLoader import loadLoggingConfig
 from exception import InvalidConfiguration
 
 moduleName = 'dao'
-loadLoggingConfig(appName = moduleName)
+loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 
 
@@ -30,10 +30,10 @@ class AbstractDao(SingletonBase):
         dbUrl = self._getDbUrl()
         
         if 'sqlite:' in dbUrl:
-            self.__engine = sqlalchemy.create_engine(dbUrl, echo = debugSql)
+            self.__engine = sqlalchemy.create_engine(dbUrl, echo=debugSql)
         elif 'mysql:' in dbUrl:
-            self.__engine = sqlalchemy.create_engine(dbUrl, echo = debugSql,
-                         pool_recycle = 7200, isolation_level = "READ COMMITTED")
+            self.__engine = sqlalchemy.create_engine(dbUrl, echo=debugSql,
+                         pool_recycle=7200, isolation_level="READ COMMITTED")
         else:
             logger.error('Unsupported DB dialect: %s' % dbUrl)
             raise InvalidConfiguration('Unsupported DB dialect: %s' % dbUrl)
@@ -114,27 +114,27 @@ class AbstractDao(SingletonBase):
         return session.query(objectType).order_by(objectType.name).all()
     
     def getObjectById(self, session, objectType, id):
-        return session.query(objectType).filter_by(id = id).one()
+        return session.query(objectType).filter_by(id=id).one()
 
     def getUniqueObjectByName(self, session, objectType, name):
         try:
-            return session.query(objectType).filter_by(name = name).one()
+            return session.query(objectType).filter_by(name=name).one()
         except (exc.NoResultFound, exc.MultipleResultsFound) as ex:
             logger.info(str(ex))
 
     def getObjectsByName(self, session, objectType, name):
-        return session.query(objectType).filter_by(name = name).all()
+        return session.query(objectType).filter_by(name=name).all()
 
     def getIfdByDeviceNamePortName(self, session, deviceName, portName):
         try:
-            device = session.query(Device).filter_by(name = deviceName).one()
-            return session.query(InterfaceDefinition).filter_by(device_id = device.id).filter_by(name = portName).one()
+            device = session.query(Device).filter_by(name=deviceName).one()
+            return session.query(InterfaceDefinition).filter_by(device_id=device.id).filter_by(name=portName).one()
         except (exc.NoResultFound, exc.MultipleResultsFound) as ex:
             logger.info(str(ex))
 
     def getLeafSetting(self, session, podId, deviceFamily):
         try:
-            return session.query(LeafSetting).filter_by(pod_id = podId).filter_by(deviceFamily = deviceFamily).one()
+            return session.query(LeafSetting).filter_by(pod_id=podId).filter_by(deviceFamily=deviceFamily).one()
         except (exc.NoResultFound) as ex:
             logger.info(str(ex))
 

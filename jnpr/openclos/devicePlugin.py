@@ -26,7 +26,7 @@ from netaddr import IPAddress, IPNetwork
 from jnpr.openclos.exception import SkipCommit
 
 moduleName = 'devicePlugin'
-loadLoggingConfig(appName = moduleName)
+loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 
 junosEzTableLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf', 'junosEznc')
@@ -38,7 +38,7 @@ class DeviceOperationInProgressCache(SingletonBase):
         
     def isDeviceInProgress(self, deviceId):
         with self.__lock:
-            return (self.__cache.has_key(deviceId))
+            return self.__cache.has_key(deviceId)
 
     def doneDevice(self, deviceId):
         with self.__lock:
@@ -46,7 +46,7 @@ class DeviceOperationInProgressCache(SingletonBase):
     
     def checkAndAddDevice(self, deviceId):
         with self.__lock:
-            if (self.__cache.has_key(deviceId)):
+            if self.__cache.has_key(deviceId):
                 return False
             else:
                 self.__cache[deviceId] = time.time()
@@ -66,9 +66,9 @@ class DeviceDataCollectorNetconf(object):
     Base class for any device data collector based on NetConf 
     Uses junos-eznc to connect to device
     '''
-    def __init__(self, deviceId, conf = {}, daoClass = Dao):
+    def __init__(self, deviceId, conf={}, daoClass=Dao):
         if any(conf) == False:
-            self._conf = OpenClosProperty(appName = moduleName).getProperties()
+            self._conf = OpenClosProperty(appName=moduleName).getProperties()
         else:
             self._conf = conf
 
@@ -105,16 +105,16 @@ class DeviceDataCollectorNetconf(object):
             devicePassword = self.device.getCleartextPassword()
             deviceConnection = DeviceConnection(host=deviceIp, user=self.device.username, password=devicePassword, port=22)
             deviceConnection.open()
-            logger.debug('Connected to device: %s' % (self.device.managementIp))
+            logger.debug('Connected to device: %s', self.device.managementIp)
             self.deviceConnectionHandle = deviceConnection
             return deviceConnection
         except ConnectError as exc:
-            logger.error('Device connection failure, %s' % (exc))
+            logger.error('Device connection failure, %s', exc)
             self.deviceConnectionHandle = None
             raise DeviceConnectFailed(self.device.managementIp, exc)
         except Exception as exc:
-            logger.error('Unknown error, %s' % (exc))
-            logger.debug('StackTrace: %s' % (traceback.format_exc()))
+            logger.error('Unknown error, %s', exc)
+            logger.debug('StackTrace: %s', traceback.format_exc())
             self.deviceConnectionHandle = None
             raise DeviceConnectFailed(self.device.managementIp, exc)
 
@@ -125,7 +125,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
     Perform manual "init" from  start2StageZtpConfig/startL2Report to make sure it is done 
     from child thread's context
     '''
-    def __init__(self, deviceId, conf = {}, daoClass = Dao):
+    def __init__(self, deviceId, conf={}, daoClass=Dao):
         self.collectionInProgressCache = L2DataCollectorInProgressCache.getInstance()
         super(L2DataCollector, self).__init__(deviceId, conf, daoClass)
 
@@ -137,7 +137,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             self.manualInit()
             self.startCollectAndProcessLldp()
         except Exception as exc:
-            logger.error('L2 data collection failed for %s, %s' % (self.deviceId, exc))
+            logger.error('L2 data collection failed for %s, %s', self.deviceId, exc)
             raise L2DataCollectionFailed(self.deviceId, exc)
         finally:
             if self._session:
@@ -147,8 +147,8 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                 self.deviceConnectionHandle.close()
     
     def startCollectAndProcessLldp(self):
-        if (self.collectionInProgressCache.checkAndAddDevice(self.device.id)):
-            logger.debug('Started L2 data collection for %s' % (self.deviceLogStr))
+        if self.collectionInProgressCache.checkAndAddDevice(self.device.id):
+            logger.debug('Started L2 data collection for %s', self.deviceLogStr)
             try:
                 if self.device.managementIp is not None:
                     self.updateDeviceL2Status('processing')
@@ -164,32 +164,32 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                     self.updateDeviceL2Status('unknown')
                     self.updateUnknownIfdStatus(self.device.interfaces)
             except DeviceConnectFailed as exc:
-                logger.error('Encountered device connect error for %s, %s' % (self.deviceLogStr, exc))
-                self.updateDeviceL2Status(None, error = exc)
+                logger.error('Encountered device connect error for %s, %s', self.deviceLogStr, exc)
+                self.updateDeviceL2Status(None, error=exc)
                 # when we can't connect, mark the links 'unknown' because it is possible the data network is 
                 # still working so we can't mark the links 'error'
                 self.updateUnknownIfdStatus(self.device.interfaces)
                 raise
             except DeviceRpcFailed as exc:
-                logger.error('Encountered device RPC error for %s, %s' % (self.deviceLogStr, exc))
+                logger.error('Encountered device RPC error for %s, %s', self.deviceLogStr, exc)
                 self.updateDeviceL2Status('error', str(exc))
                 self.updateBadIfdStatus(self.device.interfaces)
                 raise
             except Exception as exc:
-                logger.error('Collect LLDP data failed for %s, %s' % (self.deviceLogStr, exc))
+                logger.error('Collect LLDP data failed for %s, %s', self.deviceLogStr, exc)
                 self.updateDeviceL2Status('error', str(exc))
                 self.updateBadIfdStatus(self.device.interfaces)
                 raise
             finally:
                 self.collectionInProgressCache.doneDevice(self.deviceId)
-                logger.debug('Ended L2 data collection for %s' % (self.deviceLogStr))
+                logger.debug('Ended L2 data collection for %s', self.deviceLogStr)
                 
         else:
             logger.debug('L2 data collection is already in progress for %s', (self.deviceLogStr))
             
     def validateDeviceL2Status(self, goodBadCount):
         effectiveLeafUplinkcountMustBeUp = self.device.pod.calculateEffectiveLeafUplinkcountMustBeUp()
-        if (goodBadCount['goodUplinkCount'] < effectiveLeafUplinkcountMustBeUp):
+        if goodBadCount['goodUplinkCount'] < effectiveLeafUplinkcountMustBeUp:
             errorStr = 'Good uplink count: %d is less than required limit: %d' % \
                 (goodBadCount['goodUplinkCount'], effectiveLeafUplinkcountMustBeUp)
             self.updateDeviceL2Status('error', errorStr)
@@ -197,7 +197,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             self.updateDeviceL2Status('good')
 
     def collectLldpFromDevice(self):
-        logger.debug('Start LLDP data collector for %s' % (self.deviceLogStr))
+        logger.debug('Start LLDP data collector for %s', self.deviceLogStr)
 
         try:
             lldpTable = loadyaml(os.path.join(junosEzTableLocation, 'lldp.yaml'))['LLDPNeighborTable'] 
@@ -205,20 +205,20 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             lldpData = table.get()
             links = {}
             for link in lldpData:
-                logger.debug('device1: %s, port1: %s, device2: %s, port2: %s' % (link.device1, link.port1, link.device2, link.port2))
+                logger.debug('device1: %s, port1: %s, device2: %s, port2: %s', link.device1, link.port1, link.device2, link.port2)
                 links[link.port1] = {'device1': link.device1, 'port1': link.port1, 'device2': link.device2, 'port2': link.port2}
                 
-            logger.debug('End LLDP data collector for %s' % (self.deviceLogStr))
+            logger.debug('End LLDP data collector for %s', self.deviceLogStr)
             return links
         except RpcError as exc:
-            logger.error('LLDP data collection failure, %s' % (exc))
+            logger.error('LLDP data collection failure, %s', exc)
             raise DeviceRpcFailed("device '%s': LLDPNeighborTable" % (self.deviceId), exc)
         except Exception as exc:
-            logger.error('Unknown error, %s' % (exc))
-            logger.debug('StackTrace: %s' % (traceback.format_exc()))
+            logger.error('Unknown error, %s', exc)
+            logger.debug('StackTrace: %s', traceback.format_exc())
             raise DeviceRpcFailed("device '%s': LLDPNeighborTable" % (self.deviceId), exc)
 
-    def updateDeviceL2Status(self, status, reason = None, error = None):
+    def updateDeviceL2Status(self, status, reason=None, error=None):
         '''Possible status values are  'processing', 'good', 'error' '''
         if error is None:
             self.device.l2Status = status
@@ -228,7 +228,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             self.device.l2StatusReason = str(error.cause)
         self._dao.updateObjectsAndCommitNow(self._session, [self.device])
 
-    def updateDeviceConfigStatus(self, status, reason = None, error = None):
+    def updateDeviceConfigStatus(self, status, reason=None, error=None):
         '''Possible status values are  'processing', 'good', 'error' '''
         if error is None:
             self.device.configStatus = status
@@ -262,7 +262,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
                 continue
             allocatedUplinks[uplink.name] = uplink
             
-        logger.debug('%s, configured connected uplink count %s' % (self.deviceLogStr, len(allocatedUplinks.keys())))
+        logger.debug('%s, configured connected uplink count %s', self.deviceLogStr, len(allocatedUplinks.keys()))
         return allocatedUplinks
         
     def filterUplinkFromLldpData(self, lldpData, deviceFamily):
@@ -283,7 +283,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
 
         filteredNames = set(uplinkNames).intersection(set(lldpData.keys()))
         filteredUplinks = {name:lldpData[name] for name in filteredNames}
-        logger.debug('Number of uplink IFDs found from LLDP data is %d' % (len(filteredUplinks)))
+        logger.debug('Number of uplink IFDs found from LLDP data is %d', len(filteredUplinks))
         return filteredUplinks
 
     def processLlDpData(self, uplinkLldpData, allocatedConnectedUplinkIfds):
@@ -303,8 +303,8 @@ class L2DataCollector(DeviceDataCollectorNetconf):
 
         lldpPortNames = set(uplinkLldpData.keys())
         allocatedConnectedPortNames = set(allocatedConnectedUplinkIfds.keys())
-        logger.debug('lldpPortNames: %s' % lldpPortNames)
-        logger.debug('allocatedConnectedPortNames: %s' % allocatedConnectedPortNames)
+        logger.debug('lldpPortNames: %s', lldpPortNames)
+        logger.debug('allocatedConnectedPortNames: %s', allocatedConnectedPortNames)
         
         goodIfds = []
         badIfds = []
@@ -312,25 +312,25 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         #case 1: link in lldp is not in allocatedConnected
         additional = lldpPortNames.difference(allocatedConnectedPortNames)
         self.persistAdditionalLinks([uplinkLldpData[name] for name in additional])
-        logger.debug('additional: %s' % additional)
+        logger.debug('additional: %s', additional)
         
         #case 2: ifd in allocatedConnected is not in lldp
         notConnected = allocatedConnectedPortNames.difference(lldpPortNames)
-        logger.debug('not connected: %s' % notConnected)
+        logger.debug('not connected: %s', notConnected)
         badIfds += [allocatedConnectedUplinkIfds[name] for name in notConnected]
         
-        connected =  lldpPortNames.intersection(allocatedConnectedPortNames)
+        connected = lldpPortNames.intersection(allocatedConnectedPortNames)
         for name in connected:
             link = uplinkLldpData[name]
             ifd = allocatedConnectedUplinkIfds[name]
             
             if link['device2'] == ifd.peer.device.name and link['port2'] == ifd.peer.name:
                 #case 3: perfect match, connected as allocation logic
-                logger.debug('connected: good: remote peer match: (%s, %s)'% (link['device2'], link['port2']))
+                logger.debug('connected: good: remote peer match: (%s, %s)', link['device2'], link['port2'])
                 goodIfds.append(ifd)
             else:
                 #case 4: bad connected, lldp and allocatedConnected portName match, but remote ports does not
-                logger.debug('connected: bad: remote peer mismatch: (%s, %s) vs (%s, %s)' % (link['device2'], link['port2'], ifd.peer.device.name, ifd.peer.name))
+                logger.debug('connected: bad: remote peer mismatch: (%s, %s) vs (%s, %s)', link['device2'], link['port2'], ifd.peer.device.name, ifd.peer.name)
                 badIfds.append(ifd)
         
         self.updateGoodIfdStatus(goodIfds)
@@ -338,7 +338,7 @@ class L2DataCollector(DeviceDataCollectorNetconf):
         
         logger.debug('Total uplink count: %d, good: %d, error: %d, additionalLink: %d', 
                      len(allocatedConnectedUplinkIfds), len(goodIfds), len(badIfds), len(additional))
-        return {'goodUplinkCount': len(goodIfds), 'badUplinkCount': len(badIfds), 'additionalLinkCount': len(additional)};
+        return {'goodUplinkCount': len(goodIfds), 'badUplinkCount': len(badIfds), 'additionalLinkCount': len(additional)}
 
     def updateGoodIfdStatus(self, ifds):
         modifiedObjects = []
@@ -384,7 +384,7 @@ class L3DataCollector(DeviceDataCollectorNetconf):
     Perform manual "init" from startL3Report to make sure it is done
     from child thread's context.
     '''
-    def __init__(self, deviceId, conf = {}, daoClass = Dao, deviceAsn2NameMap = {}):
+    def __init__(self, deviceId, conf={}, daoClass=Dao, deviceAsn2NameMap={}):
         self.collectionInProgressCache = L3DataCollectorInProgressCache.getInstance()
         self.deviceAsn2NameMap = deviceAsn2NameMap
         super(L3DataCollector, self).__init__(deviceId, conf, daoClass)
@@ -397,7 +397,7 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             self.manualInit()
             self.startCollectAndProcessBgp()
         except Exception as exc:
-            logger.error('L3 data collection failed for %s, %s' % (self.deviceId, exc))
+            logger.error('L3 data collection failed for %s, %s', self.deviceId, exc)
             raise L3DataCollectionFailed(self.deviceId, exc)
         finally:
             if self._session:
@@ -407,8 +407,8 @@ class L3DataCollector(DeviceDataCollectorNetconf):
                 self.deviceConnectionHandle.close()
 
     def startCollectAndProcessBgp(self):
-        if (self.collectionInProgressCache.checkAndAddDevice(self.device.id)):
-            logger.debug('Started L3 data collection for %s' % (self.deviceLogStr))
+        if self.collectionInProgressCache.checkAndAddDevice(self.device.id):
+            logger.debug('Started L3 data collection for %s', self.deviceLogStr)
             try:
                 if self.device.managementIp is not None:
                     self.updateDeviceL3Status('processing')
@@ -423,30 +423,30 @@ class L3DataCollector(DeviceDataCollectorNetconf):
                     self.updateDeviceL3Status('unknown')
                     self.updateBgpLinkStatus('unknown')
             except DeviceConnectFailed as exc:
-                logger.error('Encountered device connect error for %s, %s' % (self.deviceLogStr, exc))
-                self.updateDeviceL3Status(None, error = exc)
+                logger.error('Encountered device connect error for %s, %s', self.deviceLogStr, exc)
+                self.updateDeviceL3Status(None, error=exc)
                 # when we can't connect, mark the links 'unknown' because it is possible the data network is 
                 # still working so we can't mark the links 'error'
                 self.updateBgpLinkStatus('unknown')
                 raise
             except DeviceRpcFailed as exc:
-                logger.error('Encountered device RPC error for %s, %s' % (self.deviceLogStr, exc))
+                logger.error('Encountered device RPC error for %s, %s', self.deviceLogStr, exc)
                 self.updateDeviceL3Status('error', str(exc))
                 self.updateBgpLinkStatus('bad')
                 raise
             except Exception as exc:
-                logger.error('Collect BGP data failed for %s, %s' % (self.deviceLogStr, exc))
+                logger.error('Collect BGP data failed for %s, %s', self.deviceLogStr, exc)
                 self.updateDeviceL3Status('error', str(exc))
                 self.updateBgpLinkStatus('bad')
                 raise
             finally:
                 self.collectionInProgressCache.doneDevice(self.deviceId)
-                logger.debug('Ended L3 data collection for %s' % (self.deviceLogStr))
+                logger.debug('Ended L3 data collection for %s', self.deviceLogStr)
         else:
-            logger.debug('L3 data collection is already in progress for %s', (self.deviceLogStr))
+            logger.debug('L3 data collection is already in progress for %s', self.deviceLogStr)
 
     def collectBgpFromDevice(self):
-        logger.debug('Start BGP data collector for %s' % (self.deviceLogStr))
+        logger.debug('Start BGP data collector for %s', self.deviceLogStr)
 
         try:
             bgpTable = loadyaml(os.path.join(junosEzTableLocation, 'BGP.yaml'))['BGPNeighborTable']
@@ -464,21 +464,21 @@ class L3DataCollector(DeviceDataCollectorNetconf):
                 if device2Obj is not None:
                     device2Name = device2Obj.name
                 else:
-                    logger.debug('Cannot find device2 by AS %d' % device2Asn)
+                    logger.debug('Cannot find device2 by AS %d', device2Asn)
                     device2Name = None
                     
-                logger.debug('device1: %s, device1Ip: %s, device1as1: %s, device2: %s, device2Ip: %s, device2as: %s, inputMsgCount: %s, outputMsgCount: %s, outQueueCount: %s , linkState : %s, active/receive/acceptCount: %s/%s/%s, flapCount : %s' % (device1Name, device1Ip, link.local_as, device2Name, device2Ip, link.peer_as, link.in_msg, link.out_msg, link.out_queue, link.state, link.act_count, link.rx_count, link.acc_count, link.flap_count ) )
-                links.append({'device1': device1Name, 'device1Ip': device1Ip , 'device1as': link.local_as, 'device2': device2Name, 'device2Ip': device2Ip, 'device2as': link.peer_as, 'inputMsgCount': link.in_msg,
-                                  'outputMsgCount': link.out_msg, 'outQueueCount': link.out_queue , 'linkState' : link.state, 'activeReceiveAcceptCount': (str(link.act_count) +'/' + str(link.rx_count) + '/' + str(link.acc_count)), 'flapCount': link.flap_count, 'device2Obj': device2Obj})
+                logger.debug('device1: %s, device1Ip: %s, device1as1: %s, device2: %s, device2Ip: %s, device2as: %s, inputMsgCount: %s, outputMsgCount: %s, outQueueCount: %s , linkState : %s, active/receive/acceptCount: %s/%s/%s, flapCount : %s', device1Name, device1Ip, link.local_as, device2Name, device2Ip, link.peer_as, link.in_msg, link.out_msg, link.out_queue, link.state, link.act_count, link.rx_count, link.acc_count, link.flap_count)
+                links.append({'device1': device1Name, 'device1Ip': device1Ip, 'device1as': link.local_as, 'device2': device2Name, 'device2Ip': device2Ip, 'device2as': link.peer_as, 'inputMsgCount': link.in_msg,
+                                  'outputMsgCount': link.out_msg, 'outQueueCount': link.out_queue, 'linkState': link.state, 'activeReceiveAcceptCount': (str(link.act_count) +'/' + str(link.rx_count) + '/' + str(link.acc_count)), 'flapCount': link.flap_count, 'device2Obj': device2Obj})
                     
-            logger.debug('End BGP data collector for %s' % (self.deviceLogStr))
+            logger.debug('End BGP data collector for %s', self.deviceLogStr)
             return links
         except RpcError as exc:
-            logger.error('BGP data collection failure, %s' % (exc))
+            logger.error('BGP data collection failure, %s', exc)
             raise DeviceRpcFailed("device '%s': BGPNeighborTable" % (self.deviceId), exc)
         except Exception as exc:
-            logger.error('Unknown error, %s' % (exc))
-            logger.debug('StackTrace: %s' % (traceback.format_exc()))
+            logger.error('Unknown error, %s', exc)
+            logger.debug('StackTrace: %s', traceback.format_exc())
             raise DeviceRpcFailed("device '%s': BGPNeighborTable" % (self.deviceId), exc)
 
     def processBgpData(self, bgpLinks):
@@ -505,7 +505,7 @@ class L3DataCollector(DeviceDataCollectorNetconf):
         if len(devicesToBeUpdated) > 0:
             self._dao.updateObjectsAndCommitNow(self._session, devicesToBeUpdated)
             
-    def updateDeviceL3Status(self, status, reason = None, error = None):
+    def updateDeviceL3Status(self, status, reason=None, error=None):
         '''Possible status values are  'processing', 'good', 'error' '''
         if error is None:
             self.device.l3Status = status
@@ -525,7 +525,7 @@ class TwoStageConfigurator(L2DataCollector):
     Perform manual "init" from  start2StageZtpConfig/startL2Report to make sure it is done 
     from child thread's context
     '''
-    def __init__(self, deviceIp, conf = {}, daoClass = Dao, stopEvent = None):
+    def __init__(self, deviceIp, conf={}, daoClass=Dao, stopEvent=None):
         self.configurationInProgressCache = TwoStageConfigInProgressCache.getInstance()
         super(TwoStageConfigurator, self).__init__(None, conf, daoClass)
         self.deviceIp = deviceIp
@@ -545,7 +545,7 @@ class TwoStageConfigurator(L2DataCollector):
         
         self.pod = self.findPodByMgmtIp(self.deviceIp)
         if self.pod is None:
-            logger.error("Couldn't find any pod containing %s" % (self.deviceLogStr))
+            logger.error("Couldn't find any pod containing %s", self.deviceLogStr)
             self.configurationInProgressCache.doneDevice(self.deviceIp)
             return False
         return True
@@ -555,7 +555,7 @@ class TwoStageConfigurator(L2DataCollector):
         self.deviceId = self.device.id
         self.deviceLogStr = 'device name: %s, ip: %s, id: %s' % (self.device.name, self.device.managementIp, self.device.id)
 
-    def updateDeviceConfigStatus(self, status, reason = None, error = None):
+    def updateDeviceConfigStatus(self, status, reason=None, error=None):
         '''Possible status values are  'processing', 'good', 'error' '''
         if error is None:
             self.device.configStatus = status
@@ -580,7 +580,7 @@ class TwoStageConfigurator(L2DataCollector):
             if self.manualInit():
                 self.collectLldpAndMatchDevice()
         except Exception as exc:
-            logger.error('Two stage configuration failed for %s, %s' % (self.deviceIp, exc))
+            logger.error('Two stage configuration failed for %s, %s', self.deviceIp, exc)
             raise TwoStageConfigurationFailed(self.deviceId, exc)
         finally:
             if self._session:
@@ -590,10 +590,10 @@ class TwoStageConfigurator(L2DataCollector):
                 self.deviceConnectionHandle.close()
             
     def findPodByMgmtIp(self, deviceIp):
-        logger.debug("Checking all pods for ip %s" % (deviceIp))
+        logger.debug("Checking all pods for ip %s", deviceIp)
         pods = self._dao.getAll(self._session, Pod)
         for pod in pods:
-            logger.debug("Checking pod[id='%s', name='%s']: %s" % (pod.id, pod.name, pod.managementPrefix))
+            logger.debug("Checking pod[id='%s', name='%s']: %s", pod.id, pod.name, pod.managementPrefix)
             ipNetwork = IPNetwork(pod.managementPrefix)
             ipNetworkList = list(ipNetwork)
             start = ipNetworkList.index(ipNetwork.ip)
@@ -601,7 +601,7 @@ class TwoStageConfigurator(L2DataCollector):
             ipList = ipNetworkList[start:end]
             deviceIpAddr = IPAddress(deviceIp)
             if deviceIpAddr in ipList:
-                logger.debug("Found pod[id='%s', name='%s']" % (pod.id, pod.name))
+                logger.debug("Found pod[id='%s', name='%s']", pod.id, pod.name)
                 return pod
         
     def filterUplinkAppendRemotePortIfd(self, lldpData, deviceFamily):
@@ -616,7 +616,7 @@ class TwoStageConfigurator(L2DataCollector):
             ifd2: remote IFD from db
         '''
         if not lldpData:
-            logger.debug('NO LLDP data found for device: %s' % (self.deviceIp))
+            logger.debug('NO LLDP data found for device: %s', self.deviceIp)
             return lldpData
 
         uplinkNames = self.deviceSku.getPortNamesForDeviceFamily(deviceFamily, 'leaf')['uplinkPorts']
@@ -627,39 +627,38 @@ class TwoStageConfigurator(L2DataCollector):
                 if ifd2 is not None:
                     link['ifd2'] = ifd2
                     upLinks.append(link)
-                    logger.debug('Found IFD deviceName: %s, portName: %s' % (link['device2'], link['port2']))
-        logger.debug('Number of uplink IFDs found from LLDP data is %d' % (len(upLinks)))
+                    logger.debug('Found IFD deviceName: %s, portName: %s', link['device2'], link['port2'])
+        logger.debug('Number of uplink IFDs found from LLDP data is %d', len(upLinks))
         return upLinks
 
     def collectLldpAndMatchDevice(self):
-        if (self.configurationInProgressCache.checkAndAddDevice(self.deviceIp)):
-            
+        if self.configurationInProgressCache.checkAndAddDevice(self.deviceIp):
             # for real device the password is coming from pod
             tmpDevice = Device(self.deviceIp, None, 'root', self.pod.getCleartextPassword(), 'leaf', None, self.deviceIp, None)
             tmpDevice.id = self.deviceIp
             self.updateSelfDeviceContext(tmpDevice)
             
-            logger.debug('Started two stage configuration for %s' % (self.deviceIp))
+            logger.debug('Started two stage configuration for %s', self.deviceIp)
             
             for i in range(1, self.attempt+1):
                 # wait first: this will replace the original delay design 
-                logger.debug('Wait for %d seconds...' % (self.interval))
+                logger.debug('Wait for %d seconds...', self.interval)
                 # don't do unnecessary context switch
                 if self.interval > 0:
                     self.stopEvent.wait(self.interval)
                     if self.stopEvent.is_set():
                         return
                         
-                logger.debug('Connecting to %s: attempt %d' % (self.deviceIp, i))
+                logger.debug('Connecting to %s: attempt %d', self.deviceIp, i)
                 try:
                     self.connectToDevice()
-                    logger.debug('Connected to %s' % (self.deviceIp))
+                    logger.debug('Connected to %s', self.deviceIp)
                     break
                 except Exception as exc:
                     pass
 
             if self.deviceConnectionHandle is None:
-                logger.error('All %d attempts failed for %s' % (self.attempt, self.deviceIp))
+                logger.error('All %d attempts failed for %s', self.attempt, self.deviceIp)
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 raise DeviceConnectFailed('All %d attempts failed for %s' % (self.attempt, self.deviceIp))
                 
@@ -670,7 +669,7 @@ class TwoStageConfigurator(L2DataCollector):
 
                 lldpData = self.collectLldpFromDevice()
             except Exception as exc:
-                logger.error('Failed to execute deleteVcpPorts for %s, %s' % (self.deviceIp, exc))
+                logger.error('Failed to execute deleteVcpPorts for %s, %s', self.deviceIp, exc)
                 raise DeviceRpcFailed('Failed to execute deleteVcpPorts %s' % (self.deviceIp), exc)
 
             uplinksWithIfds = self.filterUplinkAppendRemotePortIfd(lldpData, self.device.family)
@@ -678,7 +677,7 @@ class TwoStageConfigurator(L2DataCollector):
 
             device = self.findMatchedDevice(uplinksWithIfds)
             if device is None:
-                logger.info('Did not find good enough match for %s' % (self.deviceIp))
+                logger.info('Did not find good enough match for %s', self.deviceIp)
                 self.configurationInProgressCache.doneDevice(self.deviceIp)
                 return
             
@@ -698,16 +697,16 @@ class TwoStageConfigurator(L2DataCollector):
                 self.updateDeviceConfiguration()
                 self.updateDeviceConfigStatus('good')
             except DeviceRpcFailed as exc:
-                logger.error('Two stage configuration failed for %s, %s' % (self.deviceLogStr, exc))
-                self.updateDeviceConfigStatus(None, error = exc)
+                logger.error('Two stage configuration failed for %s, %s', self.deviceLogStr, exc)
+                self.updateDeviceConfigStatus(None, error=exc)
                 raise
             except Exception as exc:
-                logger.error('Two stage configuration failed for %s, %s' % (self.deviceLogStr, exc))
+                logger.error('Two stage configuration failed for %s, %s', self.deviceLogStr, exc)
                 self.updateDeviceConfigStatus('error', str(exc))
                 raise
             finally:
                 self.releaseConfigurationInProgressLock(self.deviceIp)
-                logger.debug('Ended two stage configuration for %s' % (self.deviceLogStr))
+                logger.debug('Ended two stage configuration for %s', self.deviceLogStr)
         else:
             logger.debug('Two stage configuration is already in progress for %s', (self.deviceLogStr))
     
@@ -728,11 +727,11 @@ class TwoStageConfigurator(L2DataCollector):
             return
         for i in xrange(0, 4):
             rsp = self.deviceConnectionHandle.rpc.request_virtual_chassis_vc_port_delete_pic_slot(pic_slot='1', port=str(i))
-            logger.debug('Deleted vcp slot: 1, port: %d, error: %s' % (i, rsp.find('.//multi-routing-engine-item/error/message')))
+            logger.debug('Deleted vcp slot: 1, port: %d, error: %s', i, rsp.find('.//multi-routing-engine-item/error/message'))
         
         # Wait for some time get lldp advertisement on et-* ports
         # default advertisement interval 30secs
-        logger.debug('Wait for vcpLldpDelay: %d seconds...' % (self.vcpLldpDelay))
+        logger.debug('Wait for vcpLldpDelay: %d seconds...', self.vcpLldpDelay)
         self.stopEvent.wait(self.vcpLldpDelay)        
 
     def fixInterfaces(self, device, deviceFamily, uplinksWithIfd):
@@ -743,10 +742,10 @@ class TwoStageConfigurator(L2DataCollector):
         :param dict uplinksWithIfd: lldp links for uplink
         '''
         if device.family == deviceFamily:
-            logger.debug('DeviceFamily(%s) is not changed, nothing to fix' % (deviceFamily))
+            logger.debug('DeviceFamily(%s) is not changed, nothing to fix', deviceFamily)
             return
         
-        logger.info('DeviceFamily is changed, from: %s, to: %s' % (device.family, deviceFamily))
+        logger.info('DeviceFamily is changed, from: %s, to: %s', device.family, deviceFamily)
         device.family = deviceFamily
         self._dao.updateObjectsAndCommitNow(self._session, [device])
         self.fixAccessPorts(device)
@@ -799,7 +798,7 @@ class TwoStageConfigurator(L2DataCollector):
                     updateList += self.fixIfdIflName(allocatedIfd, 'uplink-' + str(listIndex))
             listIndex += 1
         
-        logger.debug('Number of uplink IFD + IFL fixed: %d' % (len(updateList)))
+        logger.debug('Number of uplink IFD + IFL fixed: %d', len(updateList))
         self._dao.updateObjectsAndCommitNow(self._session, updateList)
 
     def markAllUplinkIfdsToUplink(self, device):
@@ -817,13 +816,13 @@ class TwoStageConfigurator(L2DataCollector):
         if ifd is None:
             return []
         ifd.updateName(name)
-        logger.debug("Fixed device: %s, uplink port: %s" % (ifd.device.name, ifd.name))
+        logger.debug("Fixed device: %s, uplink port: %s", ifd.device.name, ifd.name)
         updateList = [ifd]
 
         for ifl in ifd.layerAboves:
             ifl.updateName(ifd.name + '.0')
             updateList.append(ifl)
-            logger.debug("Fixed device: %s, uplink port: %s" % (ifd.device.name, ifl.name))
+            logger.debug("Fixed device: %s, uplink port: %s", ifd.device.name, ifl.name)
         
         return updateList
         
@@ -840,10 +839,10 @@ class TwoStageConfigurator(L2DataCollector):
         '''
             
         if uplinksWithIfd is None:
-            logger.error('Device: %s, no matched uplink IFD, skipping findMatchedDevice' % (self.deviceIp, len(uplinksWithIfd)))
+            logger.error('Device: %s, no matched uplink IFD, skipping findMatchedDevice', self.deviceIp, len(uplinksWithIfd))
             return
         elif len(uplinksWithIfd) < 2:
-            logger.error('Device: %s, number of matched uplink IFD count: %d, too less to continue findMatchedDevice, skipping' % (self.deviceIp, len(uplinksWithIfd)))
+            logger.error('Device: %s, number of matched uplink IFD count: %d, too less to continue findMatchedDevice, skipping', self.deviceIp, len(uplinksWithIfd))
             return
         
         # check if they belong to same IpFabric same Device
@@ -865,9 +864,9 @@ class TwoStageConfigurator(L2DataCollector):
         # Take max count as BEST match
         keyForMaxCount = max(tentativeFabricDevice.iterkeys(), key=lambda k: tentativeFabricDevice[k])
         maxCount = tentativeFabricDevice[keyForMaxCount]
-        logger.debug('Best match device id: %s, matched uplink count: %d' % (keyForMaxCount, maxCount))
+        logger.debug('Best match device id: %s, matched uplink count: %d', keyForMaxCount, maxCount)
         if maxCount < 2:
-            logger.info('Device: %s, number of matched uplink count is %d (too less), skipping findMatchedDevice' % (self.deviceIp, maxCount))
+            logger.info('Device: %s, number of matched uplink count is %d (too less), skipping findMatchedDevice', self.deviceIp, maxCount)
             return
 
         device = self._dao.getObjectById(self._session, Device, keyForMaxCount)
@@ -876,18 +875,18 @@ class TwoStageConfigurator(L2DataCollector):
         # mark as 'deploy' automatically because this is a plug-and-play leaf
         device.deployStatus = 'deploy'
         self._dao.updateObjectsAndCommitNow(self._session, [device])
-        logger.debug('updated deployStatus for name: %s, id:%s, deployStatus: %s' % (device.name, device.id, device.deployStatus))
+        logger.debug('updated deployStatus for name: %s, id:%s, deployStatus: %s', device.name, device.id, device.deployStatus)
         
         # Is BEST match good enough match
         effectiveLeafUplinkcountMustBeUp = device.pod.calculateEffectiveLeafUplinkcountMustBeUp()
         if maxCount >= effectiveLeafUplinkcountMustBeUp:
             return device
         else:
-            logger.info('Number of matched uplink count: %s, is less than required effectiveLeafUplinkcountMustBeUp: %d' % (maxCount, effectiveLeafUplinkcountMustBeUp))
+            logger.info('Number of matched uplink count: %s, is less than required effectiveLeafUplinkcountMustBeUp: %d', maxCount, effectiveLeafUplinkcountMustBeUp)
         
 
     def getDeviceConfig(self):
-        l3ClosMediation = L3ClosMediation(conf = self._conf)
+        l3ClosMediation = L3ClosMediation(conf=self._conf)
         config = l3ClosMediation.createLeafConfigFor2Stage(self.device)
         # l3ClosMediation used seperate db sessions to create device config
         # expire device from current session for lazy load with committed data
@@ -898,43 +897,43 @@ class TwoStageConfigurator(L2DataCollector):
         '''
         Device Connection should be open by now, no need to connect again 
         '''
-        logger.debug('updateDeviceConfiguration for %s' % (self.deviceLogStr))
+        logger.debug('updateDeviceConfiguration for %s', self.deviceLogStr)
         config = self.getDeviceConfig()
         
         configurationUnit = Config(self.deviceConnectionHandle)
 
         try:
             configurationUnit.lock()
-            logger.debug('Lock config for %s' % (self.deviceLogStr))
+            logger.debug('Lock config for %s', self.deviceLogStr)
 
         except LockError as exc:
-            logger.error('updateDeviceConfiguration failed for %s, LockError: %s, %s, %s' % (self.deviceLogStr, exc, exc.errs, exc.rpc_error))
+            logger.error('updateDeviceConfiguration failed for %s, LockError: %s, %s, %s', self.deviceLogStr, exc, exc.errs, exc.rpc_error)
             raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
 
         try:
             # make sure no changes are taken from CLI candidate config left over
             configurationUnit.rollback() 
-            logger.debug('Rollback any other config for %s' % (self.deviceLogStr))
+            logger.debug('Rollback any other config for %s', self.deviceLogStr)
             configurationUnit.load(config, format='text')
-            logger.debug('Load generated config as candidate, for %s' % (self.deviceLogStr))
+            logger.debug('Load generated config as candidate, for %s', self.deviceLogStr)
 
             #print configurationUnit.diff()
             #print configurationUnit.commit_check()
             configurationUnit.commit()
-            logger.info('Committed twoStage config for %s' % (self.deviceLogStr))
+            logger.info('Committed twoStage config for %s', self.deviceLogStr)
         except CommitError as exc:
             #TODO: eznc Error handling is not giving helpful error message
-            logger.error('updateDeviceConfiguration failed for %s, CommitError: %s, %s, %s' % (self.deviceLogStr, exc, exc.errs, exc.rpc_error))
+            logger.error('updateDeviceConfiguration failed for %s, CommitError: %s, %s, %s', self.deviceLogStr, exc, exc.errs, exc.rpc_error)
             configurationUnit.rollback() 
             raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
         except Exception as exc:
-            logger.error('updateDeviceConfiguration failed for %s, %s' % (self.deviceLogStr, exc))
-            logger.debug('StackTrace: %s' % (traceback.format_exc()))
+            logger.error('updateDeviceConfiguration failed for %s, %s', self.deviceLogStr, exc)
+            logger.debug('StackTrace: %s', traceback.format_exc())
             configurationUnit.rollback() 
             raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
         finally:
             configurationUnit.unlock()
-            logger.debug('Unlock config for %s' % (self.deviceLogStr))
+            logger.debug('Unlock config for %s', self.deviceLogStr)
 
 
 
@@ -952,6 +951,6 @@ if __name__ == "__main__":
     pod = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
     raw_input("pause...")
     leaf1 = l3ClosMediation.__dao.Session.query(Device).filter(Device.name == 'clos-leaf-01').one()
-    c = L2DataCollector(leaf1.id)
-    c.startL2Report()
+    collector = L2DataCollector(leaf1.id)
+    collector.startL2Report()
         

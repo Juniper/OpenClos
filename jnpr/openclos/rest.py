@@ -24,7 +24,7 @@ from ztp import ZtpServer
 from propLoader import OpenClosProperty, DeviceSku, loadLoggingConfig
 
 moduleName = 'rest'
-loadLoggingConfig(appName = moduleName)
+loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 
 webServerRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
@@ -32,28 +32,29 @@ junosImageRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf'
 
 def loggingPlugin(callback):
     def wrapper(*args, **kwargs):
-        msg = '"{} {} {}"'.format(request.method, request.path,
-                                        request.environ.get('SERVER_PROTOCOL', ''))
+        msg = '"{} {} {}"'.format(request.method, 
+                                  request.path,
+                                  request.environ.get('SERVER_PROTOCOL', ''))
         
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug('%s REQUEST: %s' % (msg, request._get_body_string()))
+            logger.debug('%s REQUEST: %s', msg, request._get_body_string())
         else:
-            logger.info('%s REQUEST:' % (msg))
+            logger.info('%s REQUEST:', msg)
         
         try:
             responseBody = callback(*args, **kwargs)
-        except bottle.HTTPError as exc:
-            logger.error('HTTPError: status: %s, body: %s, exception: %s' % (exc.status, exc.body, exc.exception))
+        except bottle.HTTPError as err:
+            logger.error('HTTPError: status: %s, body: %s, exception: %s', err.status, err.body, err.exception)
             raise
         except Exception as exc:
-            logger.error('Unknown error: %s' % (exc))
-            logger.info('StackTrace: %s' % (traceback.format_exc()))
+            logger.error('Unknown error: %s', exc)
+            logger.info('StackTrace: %s', traceback.format_exc())
             raise
        
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug('%s RESPONSE %s: %s' % (msg, response.status_code, responseBody))
+            logger.debug('%s RESPONSE %s: %s', msg, response.status_code, responseBody)
         else:
-            logger.info('%s RESPONSE %s:' % (msg, response.status_code))
+            logger.info('%s RESPONSE %s:', msg, response.status_code)
             
         return responseBody
     return wrapper
@@ -62,7 +63,7 @@ def loggingPlugin(callback):
 class OpenclosDbSessionPlugin(object):
     name = 'OpenclosDbSessionPlugin'
 
-    def __init__(self, daoClass = Dao):
+    def __init__(self, daoClass=Dao):
         self.__dao = daoClass.getInstance()
 
     def setup(self, app):
@@ -96,9 +97,9 @@ class ResourceLink():
         return {'href': self.baseUrl + self.path}
 
 class RestServer():
-    def __init__(self, conf = {}, daoClass = Dao):
+    def __init__(self, conf={}, daoClass=Dao):
         if any(conf) == False:
-            self._openclosProperty = OpenClosProperty(appName = moduleName)
+            self._openclosProperty = OpenClosProperty(appName=moduleName)
             self._conf = self._openclosProperty.getProperties()
 
             global webServerRoot
@@ -147,7 +148,7 @@ class RestServer():
 
 
     def start(self):
-        logger.info('REST server starting at %s:%d' % (self.host, self.port))
+        logger.info('REST server starting at %s:%d', self.host, self.port)
         debugRest = False
         if logger.isEnabledFor(logging.DEBUG):
             debugRest = True
@@ -163,7 +164,7 @@ class RestServer():
     def error400(error):
         bottle.response.headers['Content-Type'] = 'application/json'
         if error.exception is not None:
-            return json.dumps({'errorCode': error.exception.code , 'errorMessage' : error.exception.message})
+            return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
         else:
             return json.dumps({'errorCode': 0, 'errorMessage' : 'A generic error occurred'})
         
@@ -172,7 +173,7 @@ class RestServer():
     def error404(error):
         bottle.response.headers['Content-Type'] = 'application/json'
         if error.exception is not None:
-            return json.dumps({'errorCode': error.exception.code , 'errorMessage' : error.exception.message})
+            return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
         else:
             return json.dumps({'errorCode': 0, 'errorMessage' : 'A generic error occurred'})
         
@@ -187,7 +188,7 @@ class RestServer():
         bottle.route('/openclos/images/<junosImageName>', 'GET', self.getJunosImage)
         bottle.route('/openclos/pods/<podId>', 'GET', self.getPod)
         bottle.route('/openclos/pods/<podId>/cabling-plan', 'GET', self.getCablingPlan)
-        bottle.route('/openclos/pods/<podId>/ztp-configuration','GET', self.getZtpConfig)
+        bottle.route('/openclos/pods/<podId>/ztp-configuration', 'GET', self.getZtpConfig)
         bottle.route('/openclos/pods/<podId>/device-configuration', 'GET', self.getDeviceConfigsInZip)
         bottle.route('/openclos/pods/<podId>/leaf-generic-configurations/<deviceModel>', 'GET', self.getLeafGenericConfiguration)
         bottle.route('/openclos/pods/<podId>/l2-report', 'GET', self.getL2Report)
@@ -237,7 +238,7 @@ class RestServer():
         listOfIpFbarics = []
         pods = self.report.getPods(dbSession)
         logger.debug("count of pods: %d", len(pods))
-        if not pods :   
+        if not pods:   
             logger.debug("There are no pods in the system ")
         
         for i in range(len(pods)):
@@ -251,17 +252,18 @@ class RestServer():
             pod['leafCount'] = pods[i]['leafCount']
             pod['devicePassword'] = pods[i]['devicePassword']
             listOfIpFbarics.append(pod)
-        podsData['pod'] =  listOfIpFbarics
+        podsData['pod'] = listOfIpFbarics
         podsData['total'] = len(listOfIpFbarics)
         podsData['uri'] = url 
-        return {'pods' : podsData}
+        return {'pods': podsData}
     
-    def getPodFieldListToCopy(self):
+    @staticmethod
+    def getPodFieldListToCopy():
         return ['id', 'name', 'description', 'spineAS', 'spineDeviceType', 'spineCount', 'leafAS', 'leafCount', 
                 'leafUplinkcountMustBeUp', 'loopbackPrefix', 'vlanPrefix', 'interConnectPrefix', 'managementPrefix', 
                 'outOfBandAddressList', 'outOfBandGateway', 'topologyType', 'spineJunosImage', 'hostOrVmCountPerLeaf']
     
-    def getPod(self, dbSession, podId, requestUrl = None):
+    def getPod(self, dbSession, podId, requestUrl=None):
         if requestUrl is None:
             requestUrl = str(bottle.request.url).translate(None, ',')
         pod = self.report.getPod(dbSession, podId)
@@ -303,24 +305,24 @@ class RestServer():
             outputDict['l2Report'] = {'uri': requestUrl + '/l2-report'}
             outputDict['l3Report'] = {'uri': requestUrl + '/l3-report'}
             
-            logger.debug('getPod: %s' % (podId))
+            logger.debug('getPod: %s', podId)
      
             return {'pod': outputDict}
 
         else:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId))
+            raise bottle.HTTPError(404, exception=PodNotFound(podId))
     
     def getCablingPlan(self, dbSession, podId):
         
-        header =  bottle.request.get_header('Accept')
-        logger.debug('Accept header before processing: %s' % (header))
+        header = bottle.request.get_header('Accept')
+        logger.debug('Accept header before processing: %s', header)
         # hack to remove comma character, must be a bug on Bottle
         header = header.translate(None, ',')
-        logger.debug('Accept header after processing: %s' % (header))
+        logger.debug('Accept header after processing: %s', header)
 
         pod = self.report.getPod(dbSession, podId)
         if pod is not None:
-            logger.debug('Pod name: %s' % (pod.name))
+            logger.debug('Pod name: %s', pod.name)
             
             if header == 'application/json':
                 cablingPlan = pod.cablingPlan
@@ -328,32 +330,32 @@ class RestServer():
                     logger.debug('CablingPlan found in DB')
                     return cablingPlan.json
                 else:
-                    raise bottle.HTTPError(404, exception = CablingPlanNotFound(pod.id))
+                    raise bottle.HTTPError(404, exception=CablingPlanNotFound(pod.id))
                     
             else:
                 podFolder = pod.id + '-' + pod.name
                 fileName = os.path.join(podFolder, 'cablingPlan.dot')
-                logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))
-                logger.debug('Cabling file name: %s' % (fileName))                
+                logger.debug('webServerRoot: %s, fileName: %s, exists: %s', webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName)))
+                logger.debug('Cabling file name: %s', fileName)                
                 cablingPlan = bottle.static_file(fileName, root=webServerRoot)
 
                 if isinstance(cablingPlan, bottle.HTTPError):
-                    raise bottle.HTTPError(404, exception = CablingPlanNotFound(podFolder))
+                    raise bottle.HTTPError(404, exception=CablingPlanNotFound(podFolder))
                 return cablingPlan
         
         else:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId))
+            raise bottle.HTTPError(404, exception=PodNotFound(podId))
 
     def getLeafGenericConfiguration(self, dbSession, podId, deviceModel):
         pod = self.report.getPod(dbSession, podId)
         if pod is None:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId))
+            raise bottle.HTTPError(404, exception=PodNotFound(podId))
         
-        logger.debug('Pod name: %s, id: %s' % (pod.name, podId))
+        logger.debug('Pod name: %s, id: %s', pod.name, podId)
         
         leafSetting = self.__dao.getLeafSetting(dbSession, podId, deviceModel)
         if leafSetting is None or leafSetting.config is None:
-            raise bottle.HTTPError(404, exception = DeviceConfigurationNotFound("Pod exists but no leaf generic config found, probably configuration \
+            raise bottle.HTTPError(404, exception=DeviceConfigurationNotFound("Pod exists but no leaf generic config found, probably configuration \
                 was not created. deviceModel: %s, pod name: '%s', id: '%s'" % (deviceModel, pod.name, podId)))
         
         bottle.response.headers['Content-Type'] = 'application/json'
@@ -362,19 +364,19 @@ class RestServer():
     def getDeviceConfigsInZip(self, dbSession, podId):
         pod = self.report.getPod(dbSession, podId)
         if pod is None:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId))
+            raise bottle.HTTPError(404, exception=PodNotFound(podId))
         
-        logger.debug('Pod name: %s' % (pod.name))
+        logger.debug('Pod name: %s', pod.name)
 
-        zippedConfigFiles = self.createZipArchive(pod)
+        zippedConfigFiles = RestServer.createZipArchive(pod)
         if zippedConfigFiles is not None:
             bottle.response.headers['Content-Type'] = 'application/zip'
             return zippedConfigFiles
         else:
-            raise bottle.HTTPError(404, exception = DeviceConfigurationNotFound("Pod exists but no configs for devices.'%s " % (pod.name)))
+            raise bottle.HTTPError(404, exception=DeviceConfigurationNotFound("Pod exists but no configs for devices.'%s " % (pod.name)))
 
-    def createZipArchive(self, pod):
-
+    @staticmethod
+    def createZipArchive(pod):
         buff = StringIO.StringIO()
         zipArchive = zipfile.ZipFile(buff, mode='w')
         for device in pod.devices:
@@ -423,11 +425,10 @@ class RestServer():
             devices['total'] = len(pod.devices)
             return {'devices' : devices}
         else:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId))
+            raise bottle.HTTPError(404, exception=PodNotFound(podId))
         
     def getDevice(self, dbSession, podId, deviceId):
-        
-        device = self.isDeviceExists(dbSession, podId, deviceId)
+        device = RestServer.isDeviceExists(dbSession, podId, deviceId)
         #podUri is constructed from url
         url = str(bottle.request.url).translate(None, ',')
         uri = url.split("/")
@@ -455,24 +456,24 @@ class RestServer():
             outputDict['serialNumber'] = device.serialNumber
             outputDict['deployStatus'] = device.deployStatus
             outputDict['uri'] = str(bottle.request.url).translate(None, ',')
-            outputDict['pod'] = {'uri': ipFbaricUri }
-            outputDict['config'] = {'uri': str(bottle.request.url).translate(None, ',') + '/config' }
+            outputDict['pod'] = {'uri': ipFbaricUri}
+            outputDict['config'] = {'uri': str(bottle.request.url).translate(None, ',') + '/config'}
             self.copyAdditionalDeviceFields(outputDict, device)
             
             return {'device': outputDict}
         else:
-            raise bottle.HTTPError(404, exception = DeviceNotFound("No device found with podId: '%s', deviceId: '%s'" % (podId, deviceId)))
+            raise bottle.HTTPError(404, exception=DeviceNotFound("No device found with podId: '%s', deviceId: '%s'" % (podId, deviceId)))
         
          
     def getDeviceConfig(self, dbSession, podId, deviceId):
         
-        device = self.isDeviceExists(dbSession, podId, deviceId)
+        device = RestServer.isDeviceExists(dbSession, podId, deviceId)
         if device is None:
-            raise bottle.HTTPError(404, exception = DeviceNotFound("No device found with podId: '%s', deviceId: '%s'" % (podId, deviceId)))
+            raise bottle.HTTPError(404, exception=DeviceNotFound("No device found with podId: '%s', deviceId: '%s'" % (podId, deviceId)))
 
         config = device.config
         if config is None:
-            raise bottle.HTTPError(404, exception = DeviceConfigurationNotFound("Device exists but no config found, probably fabric script is not ran. podId: '%s', deviceId: '%s'" % (podId, deviceId)))
+            raise bottle.HTTPError(404, exception=DeviceConfigurationNotFound("Device exists but no config found, probably fabric script is not ran. podId: '%s', deviceId: '%s'" % (podId, deviceId)))
         
         bottle.response.headers['Content-Type'] = 'application/json'
         return config.config
@@ -482,34 +483,34 @@ class RestServer():
         
         pod = self.report.getPod(dbSession, podId)
         if pod is not None:
-            logger.debug('pod name: %s' % (pod.name))
+            logger.debug('pod name: %s', pod.name)
             
             podFolder = pod.id + '-' + pod.name
             fileName = os.path.join(podFolder, "dhcpd.conf")
-            logger.debug('webServerRoot: %s, fileName: %s, exists: %s' % (webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName))))         
+            logger.debug('webServerRoot: %s, fileName: %s, exists: %s', webServerRoot, fileName, os.path.exists(os.path.join(webServerRoot, fileName)))
             ztpConf = bottle.static_file(fileName, root=webServerRoot)
             if isinstance(ztpConf, bottle.HTTPError):
-                raise bottle.HTTPError(404, exception = DeviceConfigurationNotFound("Pod exists but no ztp Config found. Pod name: '%s " % (pod.name)))
+                raise bottle.HTTPError(404, exception=DeviceConfigurationNotFound("Pod exists but no ztp Config found. Pod name: '%s " % (pod.name)))
             return ztpConf
         else:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId))
+            raise bottle.HTTPError(404, exception=PodNotFound(podId))
     
-
-    def isDeviceExists(self, dbSession, podId, deviceId):
+    @staticmethod
+    def isDeviceExists(dbSession, podId, deviceId):
         try:
             device = dbSession.query(Device).join(Pod).filter(Device.id == deviceId).filter(Pod.id == podId).one()
             return device
-        except (exc.NoResultFound):
-            raise bottle.HTTPError(404, exception = DeviceNotFound("No device found with podId: '%s', deviceId: '%s'" % (podId, deviceId)))
+        except exc.NoResultFound:
+            raise bottle.HTTPError(404, exception=DeviceNotFound("No device found with podId: '%s', deviceId: '%s'" % (podId, deviceId)))
 
     def getJunosImage(self, dbSession, junosImageName):
            
         fileName = os.path.join(junosImageRoot, junosImageName)
-        logger.debug('junosImageRoot: %s, image: %s, exists: %s' % (junosImageRoot, junosImageName, os.path.exists(fileName)))
+        logger.debug('junosImageRoot: %s, image: %s, exists: %s', junosImageRoot, junosImageName, os.path.exists(fileName))
 
         config = bottle.static_file(junosImageName, root=junosImageRoot)
         if isinstance(config, bottle.HTTPError):
-            raise bottle.HTTPError(404, exception = ImageNotFound("Junos image file not found. name: '%s'" % (junosImageName)))
+            raise bottle.HTTPError(404, exception=ImageNotFound("Junos image file not found. name: '%s'" % (junosImageName)))
         return config
     
     def getOpenClosConfigParams(self, dbSession):
@@ -525,31 +526,31 @@ class RestServer():
         confValues = {}
         confValues.update({'dbUrl': self._conf['dbUrl']})
         confValues.update({'supportedDevices' :  supportedDevices})
-        confValues.update({'dotColors': self._conf['DOT']['colors'] })
+        confValues.update({'dotColors': self._conf['DOT']['colors']})
         confValues.update({'httpServer' : self._conf['httpServer']})
         confValues.update({'snmpTrap' : self._conf['snmpTrap']})
 
-        return {'OpenClosConf' : confValues }
+        return {'OpenClosConf' : confValues}
                     
     def createPod(self, dbSession):  
         if bottle.request.json is None:
-            raise bottle.HTTPError(400, exception = InvalidRequest("No json in request object"))
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
             pod = bottle.request.json.get('pod')
             if pod is None:
-                raise bottle.HTTPError(400, exception = InvalidRequest("POST body cannot be empty"))
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
         podDevices = self.getDevDictFromDict(pod)
         pod = self.getPodFromDict(pod)
         podName = pod.pop('name')
         try:
-            createdPod =  l3ClosMediation.createPod(podName, pod, podDevices)
+            createdPod = l3ClosMediation.createPod(podName, pod, podDevices)
             url = str(bottle.request.url).translate(None, ',') + '/' + createdPod.id
             pod = self.getPod(dbSession, createdPod.id, url)
-        except Exception as e:
-            logger.debug('StackTrace: %s' % (traceback.format_exc()))
-            raise bottle.HTTPError(400, exception = e)
+        except Exception as exc:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(400, exception=exc)
         bottle.response.set_header('Location', url)
         bottle.response.status = 201
 
@@ -560,36 +561,36 @@ class RestServer():
             l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
             if l3ClosMediation.createCablingPlan(podId) is True:
                 return bottle.HTTPResponse(status=200)
-        except PodNotFound as e:
-            raise bottle.HTTPError(404, exception = e)
-        except Exception as e:
-            raise bottle.HTTPError(500, exception = e)
+        except PodNotFound as exc:
+            raise bottle.HTTPError(404, exception=exc)
+        except Exception as exc:
+            raise bottle.HTTPError(500, exception=exc)
 
     def createDeviceConfiguration(self, dbSession, podId):
         try:
             l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
             if l3ClosMediation.createDeviceConfig(podId) is True:
                 return bottle.HTTPResponse(status=200)
-        except PodNotFound as e:
-            raise bottle.HTTPError(404, exception = e)
-        except Exception as e:
-            raise bottle.HTTPError(500, exception = e)
+        except PodNotFound as exc:
+            raise bottle.HTTPError(404, exception=exc)
+        except Exception as exc:
+            raise bottle.HTTPError(500, exception=exc)
             
     def createZtpConfiguration(self, dbSession, podId):
         try:
             ZtpServer().createPodSpecificDhcpConfFile(dbSession, podId)
-        except PodNotFound as e:
-            raise bottle.HTTPError(404, exception = e)
-        except Exception as e:
-            raise bottle.HTTPError(500, exception = e)
+        except PodNotFound as exc:
+            raise bottle.HTTPError(404, exception=exc)
+        except Exception as exc:
+            raise bottle.HTTPError(500, exception=exc)
 
     def reconfigPod(self, dbSession, podId):
         if bottle.request.json is None:
-            raise bottle.HTTPError(400, exception = InvalidRequest("No json in request object"))
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
             inPod = bottle.request.json.get('pod')
             if inPod is None:
-                raise bottle.HTTPError(400, exception = InvalidRequest("POST body cannot be empty"))
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
         pod = self.getPodFromDict(inPod)
@@ -601,8 +602,8 @@ class RestServer():
             updatedPod = l3ClosMediation.updatePod(podId, pod, podDevices)
             url = str(bottle.request.url).translate(None, ',') + '/' + updatedPod.id
             return self.getPod(dbSession, podId, url)
-        except Exception as e:
-            raise bottle.HTTPError(400, exception = e)
+        except Exception as exc:
+            raise bottle.HTTPError(400, exception=exc)
     
     def setOpenClosConfigParams(self):
         return bottle.HTTPResponse(status=200)
@@ -612,9 +613,9 @@ class RestServer():
         if pod is not None:
             self.__dao.deleteObject(dbSession, pod)
             util.deleteOutFolder(self._conf, pod)
-            logger.debug("Pod with id: %s deleted" % (podId))
+            logger.debug("Pod with id: %s deleted", podId)
         else:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId))
+            raise bottle.HTTPError(404, exception=PodNotFound(podId))
         return bottle.HTTPResponse(status=204)
 
     def getPodFromDict(self, podDict):
@@ -625,7 +626,7 @@ class RestServer():
         pod = Pod(**inPod)
         '''
         if podDict is None:
-            raise bottle.HTTPError(400, exception = InvalidRequest("Invalid value in request body."))
+            raise bottle.HTTPError(400, exception=InvalidRequest("Invalid value in request body."))
         
         for field in self.getPodFieldListToCopy():
             pod[field] = podDict.get(field)
@@ -661,7 +662,7 @@ class RestServer():
         if podDict is not None:
             devices = podDict.get('devices')
         else:
-            raise bottle.HTTPError(400, exception = InvalidRequest("Invalid value in request body."))
+            raise bottle.HTTPError(400, exception=InvalidRequest("Invalid value in request body."))
 
         podDevices = {}
         spines = []
@@ -681,7 +682,7 @@ class RestServer():
             elif temp['role'] == 'leaf':
                 leaves.append(temp)
             else:
-                raise bottle.HTTPError(400, exception = InvalidRequest("Unexpected role value in device inventory list"))
+                raise bottle.HTTPError(400, exception=InvalidRequest("Unexpected role value in device inventory list"))
             podDevices['spines'] = spines
             podDevices['leafs'] = leaves
 
@@ -697,8 +698,8 @@ class RestServer():
             bottle.response.headers['Content-Type'] = 'application/json'
             return self.l2Report.generateReport(podId, cachedData)
 
-        except Exception as e:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId, e))
+        except Exception as exc:
+            raise bottle.HTTPError(404, exception=PodNotFound(podId, exc))
     
     def getL3Report(self, dbSession, podId):
         try:
@@ -710,8 +711,8 @@ class RestServer():
             bottle.response.headers['Content-Type'] = 'application/json'
             return self.l3Report.generateReport(podId, cachedData)
 
-        except Exception as e:
-            raise bottle.HTTPError(404, exception = PodNotFound(podId, e))
+        except Exception as exc:
+            raise bottle.HTTPError(404, exception=PodNotFound(podId, exc))
 
 def main():
     restServer = RestServer()
