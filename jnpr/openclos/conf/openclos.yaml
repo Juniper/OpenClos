@@ -65,7 +65,11 @@ DOT :
 # To make ZTP work the port has to be 80. IpAddr specified here
 # is used to populate dhcpd.conf fot ZTP. If no address is provided
 # REST will start at localhost
-httpServer :
+restServer :
+    version : 1
+    protocol : http
+    #username: 
+    #password:
     ipAddr : 0.0.0.0
     port : 20080
 
@@ -109,3 +113,12 @@ cli:
 # if the callback exit code is 0, 2-stage configuration for the current leaf continues, 
 # if the callback exit code is not 0, 2-stage configuration for the current leaf aborts 
 #twoStageConfigurationCallback:
+
+# generic plugin configuration
+plugin:
+    -
+        name: overlay
+        package: jnpr.openclos.overlay
+    -
+        name: vc
+        package: jnpr.openclos.vc
