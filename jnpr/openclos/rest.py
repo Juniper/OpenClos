@@ -114,6 +114,12 @@ class RestServer():
                 self.host = self._conf['restServer']['ipAddr']
             if 'port' in self._conf['restServer']:
                 self.port = self._conf['restServer']['port']
+        elif 'httpServer' in self._conf:
+            # support legacy setting
+            if 'ipAddr' in self._conf['httpServer']:
+                self.host = self._conf['httpServer']['ipAddr']
+            if 'port' in self._conf['httpServer']:
+                self.port = self._conf['httpServer']['port']
             
         # create base url
         self.baseUrl = '/openclos/v%d' % self.version
