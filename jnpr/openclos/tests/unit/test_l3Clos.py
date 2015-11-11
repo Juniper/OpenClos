@@ -240,9 +240,9 @@ class TestL3Clos(unittest.TestCase):
     def testInitWithTemplate(self):
         from jinja2 import TemplateNotFound
 
-        self.assertIsNotNone(self.l3ClosMediation._templateEnv.get_template('protocolBgp.txt'))
+        self.assertIsNotNone(self.l3ClosMediation._templateLoader.getTemplate('protocolBgp.txt'))
         with self.assertRaises(TemplateNotFound) as e:
-            self.l3ClosMediation._templateEnv.get_template('unknown-template')
+            self.l3ClosMediation._templateLoader.getTemplate('unknown-template')
         self.assertTrue('unknown-template' in e.exception.message)
 
     def createTrapGroupsInDb(self, dao):
