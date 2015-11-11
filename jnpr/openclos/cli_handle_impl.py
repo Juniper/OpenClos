@@ -72,7 +72,7 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def create_pods(self, pod_definition_file):
         ret_list = []
-        pods_yaml_file = os.path.join(propLoader.propertyFileLocation,
+        pods_yaml_file = os.path.join(propLoader.defaultPropertyLocation,
                                         pod_definition_file)
 
         try:
@@ -171,15 +171,15 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def list_all_yaml_files(self, *args):
         ret_list = []
-        for conf_file in os.listdir(propLoader.propertyFileLocation):
-            if os.path.isfile(os.path.join(propLoader.propertyFileLocation, conf_file)):
+        for conf_file in os.listdir(propLoader.defaultPropertyLocation):
+            if os.path.isfile(os.path.join(propLoader.defaultPropertyLocation, conf_file)):
                 m = re.search(".yaml", conf_file)
                 if m != None:
                     ret_list.append(conf_file)
 
         if len(ret_list) == 0:
             ret_list.insert(0, "Error:")
-            ret_list.append("No yaml files found at <[" + propLoader.propertyFileLocation + "]>")
+            ret_list.append("No yaml files found at <[" + propLoader.defaultPropertyLocation + "]>")
 
         return ret_list
 

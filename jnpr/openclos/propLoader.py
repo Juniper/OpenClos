@@ -12,43 +12,87 @@ import logging.config
 from crypt import Cryptic
 from exception import InvalidConfiguration
 
-propertyFileLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
+defaultPropertyLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 currentWorkingDir = os.getcwd()
+homeDir = os.path.expanduser('~')
 
-class PropertyLoader:
-    @staticmethod
-    def getFileNameWithPath(fileName):
-        '''
-        File location search path - 
-        1. current working directory
-        2. <openclos install dir>/jnpr/openclos/conf
-        '''
-        
-        if os.path.isfile(os.path.join(currentWorkingDir, fileName)):
-            return os.path.join(currentWorkingDir, fileName)
-        elif os.path.isfile(os.path.join(propertyFileLocation, fileName)):
-            return os.path.join(propertyFileLocation, fileName)
+class PropertyLoader(object):
+    '''
+    Loads property from DEFAULT location - <openclos install dir>/jnpr/openclos/conf 
+    
+    OVERRIDE property location search path - 
+    1. current working directory
+    2. HOME directory
+    
+    Override property file could be empty, full or partial. DEFAULT property is overridden 
+    by OVERRIDE properties.
+    '''
+
+    def getDefaultFileWithPath(self, fileName):
+        if os.path.isfile(os.path.join(defaultPropertyLocation, fileName)):
+            self._defaultPath = os.path.join(defaultPropertyLocation, fileName)
         else:
-            logger.error('file: "%s" not found at 1. %s, 2. %s', fileName, propertyFileLocation, currentWorkingDir)           
+            logger.error('DEFAULT file: "%s" not found at %s', fileName, defaultPropertyLocation)           
+            self._defaultPath = None
+        return self._defaultPath
 
-    @staticmethod
-    def loadProperty(fileName):
+    def getOverrideFileWithPath(self, fileName):
+        if os.path.isfile(os.path.join(currentWorkingDir, fileName)):
+            self._overridePath = os.path.join(currentWorkingDir, fileName)
+        elif os.path.isfile(os.path.join(homeDir, fileName)):
+            self._overridePath = os.path.join(homeDir, fileName)
+        else:
+            self._overridePath = None
+        return self._overridePath
+
+
+    def mergeDict(self, prop, override):
+        if not override:
+            return prop
+        
+        for k, v in override.iteritems():
+            if k in prop:
+                if type(v) is dict:
+                    prop[k] = self.mergeDict(prop[k], v)
+                elif type(v) is list:
+                    prop[k] = list(set(prop[k]).union(v))
+                else:
+                    prop[k] = v
+            else:
+                prop[k] = v            
+        return prop
+
+    def __init__(self, fileName, override=True):
+        self._properties = {}
         if not fileName:
             return
-
-        try:    
-            with open(fileName, 'r') as fStream:
-                return yaml.load(fStream)
+        
+        defaultPath = self.getDefaultFileWithPath(fileName)
+        try:
+            if defaultPath:
+                with open(defaultPath, 'r') as fStream:
+                    self._properties = yaml.load(fStream)
         except (OSError, IOError) as exc:
             logger.error("File error: %s", exc)
         except (yaml.scanner.ScannerError) as exc:
             logger.error("YAML error: %s", exc)
-
+        
+        if override:
+            overrideProps = None
+            overridePath = self.getOverrideFileWithPath(fileName)
+            try:
+                if overridePath:
+                    with open(overridePath, 'r') as fStream:
+                        overrideProps = yaml.load(fStream)
+            except (OSError, IOError) as exc:
+                logger.error("File error: %s", exc)
+            except (yaml.scanner.ScannerError) as exc:
+                logger.error("YAML error: %s", exc)
+            self.mergeDict(self._properties, overrideProps)
     
 class OpenClosProperty(PropertyLoader):
     def __init__(self, fileName='openclos.yaml', appName=None):
-        fileNameWithPath = os.path.join(propertyFileLocation, fileName)
-        self._properties = PropertyLoader.loadProperty(fileNameWithPath)
+        super(OpenClosProperty, self).__init__(fileName)
         
         if self._properties is not None:
             if 'dbUrl' in self._properties:
@@ -63,6 +107,8 @@ class OpenClosProperty(PropertyLoader):
                 self._properties['outputDir'] = OpenClosProperty.fixOutputDirForRelativePath(self._properties['outputDir'])
 
     def getProperties(self):
+        if not self._properties:
+            raise InvalidConfiguration('properties is empty')
         return self._properties
                     
     def getDbUrl(self):
@@ -106,8 +152,8 @@ class DeviceSku(PropertyLoader):
         self.threeStageSkuDetail = {}
         self.fiveStageSkuDetail = {}
         
-        fileNameWithPath = PropertyLoader.getFileNameWithPath(fileName)
-        skuDetail = PropertyLoader.loadProperty(fileNameWithPath)
+        super(DeviceSku, self).__init__(fileName)
+        skuDetail = self._properties
         
         if skuDetail is not None and skuDetail.get('deviceFamily') is not None:
             self.skuDetail = skuDetail.get('deviceFamily')
@@ -120,6 +166,22 @@ class DeviceSku(PropertyLoader):
         if skuDetail is not None and skuDetail.get('5Stage') is not None:
             self.fiveStageSkuDetail = skuDetail.get('5Stage')
             DeviceSku.populate5StageOverride(self.fiveStageSkuDetail)
+
+    def mergeDict(self, prop, override):
+        if not override:
+            return prop
+        
+        for k, v in override.iteritems():
+            if k in prop:
+                if type(v) is dict:
+                    prop[k] = self.mergeDict(prop[k], v)
+                elif type(v) is list:
+                    prop[k] = v # don't merge, overwrite (for port name regex)
+                else:
+                    prop[k] = v
+            else:
+                prop[k] = v            
+        return prop
 
     @staticmethod
     def populateDeviceFamily(skuDetail):
@@ -245,7 +307,7 @@ def getLoggingHandlers(logConfFile='logging.yaml', appName=''):
     Loads global configuration and creates hash 'logConf'
     '''
     try:
-        logConfStream = open(os.path.join(propertyFileLocation, logConfFile), 'r')
+        logConfStream = open(os.path.join(defaultPropertyLocation, logConfFile), 'r')
         logConf = yaml.load(logConfStream)
 
         if logConf is not None:
