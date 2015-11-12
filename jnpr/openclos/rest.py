@@ -152,11 +152,13 @@ class RestServer():
         # /openclos/v1/underlay/conf
         # /openclos/v1/overlay/fabrics
         jsonLinks = []
+        protocol = bottle.request.urlparts[0]
+        host = bottle.request.urlparts[1]
         for link in self.indexLinks:
             # include this link only if *entire* request URL is prefix of the link
             # e.g if the request URL is /openclos/v1/underlay, then overlay links won't be included
             if link.startswith(bottle.request.path):
-                jsonLinks.append({'link': {'href': link}})
+                jsonLinks.append({'link': {'href': '%s://%s%s' % (protocol, host, link)}})
 
         jsonBody = \
             {'href': str(bottle.request.url).translate(None, ','),
@@ -251,7 +253,7 @@ class RestServer():
         if error.exception is not None:
             return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
         else:
-            return json.dumps({'errorCode': 0, 'errorMessage' : 'A generic error occurred'})
+            return json.dumps({'errorCode': 0, 'errorMessage' : '400 Bad Request'})
         
     @staticmethod
     @error(404)
@@ -260,7 +262,7 @@ class RestServer():
         if error.exception is not None:
             return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
         else:
-            return json.dumps({'errorCode': 0, 'errorMessage' : 'A generic error occurred'})
+            return json.dumps({'errorCode': 0, 'errorMessage' : '404 Not Found'})
         
 def main():
     restServer = RestServer()
