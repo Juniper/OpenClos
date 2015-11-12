@@ -12,14 +12,14 @@ import datetime
 import shutil
 from netaddr import IPNetwork
 import netifaces
-from propLoader import propertyFileLocation
+from propLoader import defaultPropertyLocation
 
 TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT = 5
 TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL = 30 # in seconds
 TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY = 40 # in seconds
 
     
-def loadClosDefinition(closDefination=os.path.join(propertyFileLocation, 'closTemplate.yaml')):
+def loadClosDefinition(closDefination=os.path.join(defaultPropertyLocation, 'closTemplate.yaml')):
     '''
     Loads clos definition from yaml file
     '''

@@ -3,7 +3,7 @@
        { "name" : "clos-spine-02", "macAddress" : "10:0e:7e:af:50:c1", "deployStatus" : "deploy"}
     ],
     "leafs" : [
-       { "name" : "clos-leaf-01", "vcMemberFamily": ["qfx5100-96s-8q", "qfx5100-96s-8q"], "deployStatus" : "deploy"},
+       { "name" : "clos-leaf-01", "family": "qfx5100-96s-8q", "deployStatus" : "deploy"},
        { "name" : "clos-leaf-02", "family": "qfx5100-96s-8q", "deployStatus" : "deploy"},
        { "name" : "clos-leaf-03", "family": "qfx5100-96s-8q", "deployStatus" : "deploy"},
        { "name" : "clos-leaf-04", "family": "qfx5100-96s-8q", "deployStatus" : "deploy"}

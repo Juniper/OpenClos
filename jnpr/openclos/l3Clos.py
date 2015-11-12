@@ -17,16 +17,13 @@ from sqlalchemy.orm import exc
 
 from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup
 from dao import Dao
-from propLoader import propertyFileLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
+from propLoader import defaultPropertyLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
 import util
 
 from writer import ConfigWriter, CablingPlanWriter
-from jinja2 import Environment, PackageLoader
 import logging
 from exception import InvalidRequest, MissingMandatoryAttribute, PodNotFound, InsufficientLoopbackIp, InsufficientVlanIp, InsufficientInterconnectIp, InsufficientManagementIp, CapacityCannotChange, CapacityMismatch
-
-junosTemplatePackage = 'jnpr.openclos'
-junosTemplateLocation = os.path.join('conf', 'junosTemplates')
+from templateLoader import TemplateLoader
 
 moduleName = 'l3Clos'
 loadLoggingConfig(appName=moduleName)
@@ -41,12 +38,11 @@ class L3ClosMediation():
 
         self._dao = daoClass.getInstance()
 
-        self._templateEnv = Environment(loader=PackageLoader(junosTemplatePackage, junosTemplateLocation))
-        self._templateEnv.keep_trailing_newline = True
+        self._templateLoader = TemplateLoader()
         self.isZtpStaged = util.isZtpStaged(self._conf)
         self.deviceSku = DeviceSku()
 
-    def loadClosDefinition(self, closDefination=os.path.join(propertyFileLocation, 'closTemplate.yaml')):
+    def loadClosDefinition(self, closDefination=os.path.join(defaultPropertyLocation, 'closTemplate.yaml')):
         '''
         Loads clos definition from yaml file and creates pod object
         '''
@@ -201,7 +197,7 @@ class L3ClosMediation():
         if inventoryDict is not None:
             inventoryData = inventoryDict
         elif 'inventory' in podDict and podDict['inventory'] is not None:
-            json_inventory = open(os.path.join(propertyFileLocation, podDict['inventory']))
+            json_inventory = open(os.path.join(defaultPropertyLocation, podDict['inventory']))
             inventoryData = json.load(json_inventory)
             json_inventory.close()
 
@@ -724,13 +720,13 @@ class L3ClosMediation():
         self._dao.updateObjects(session, modifiedObjects)
 
     def _createBaseConfig(self, device):
-        baseTemplate = self._templateEnv.get_template('baseTemplate.txt')
+        baseTemplate = self._templateLoader.getTemplate('baseTemplate.txt')
         return baseTemplate.render(hostName=device.name, hashedPassword=device.getHashPassword())
 
     def _createInterfaces(self, session, device): 
-        lo0Stanza = self._templateEnv.get_template('lo0_stanza.txt')
-        mgmtStanza = self._templateEnv.get_template('mgmt_interface.txt')
-        rviStanza = self._templateEnv.get_template('rvi_stanza.txt')
+        lo0Stanza = self._templateLoader.getTemplate('lo0_stanza.txt')
+        mgmtStanza = self._templateLoader.getTemplate('mgmt_interface.txt')
+        rviStanza = self._templateLoader.getTemplate('rvi_stanza.txt')
             
         config = "interfaces {" + "\n" 
         # management interface
@@ -751,7 +747,7 @@ class L3ClosMediation():
         return config
 
     def _createInterconnectInterfaces(self, session, device): 
-        interfaceStanza = self._templateEnv.get_template('interface_stanza.txt')
+        interfaceStanza = self._templateLoader.getTemplate('interface_stanza.txt')
         config = ''
 
         deviceInterconnectIfds = self._dao.getConnectedInterconnectIFDsFilterFakeOnes(session, device)
@@ -766,7 +762,7 @@ class L3ClosMediation():
         return config
     
     def _createAccessPortInterfaces(self, session, device):
-        accessInterface = self._templateEnv.get_template('accessInterface.txt')
+        accessInterface = self._templateLoader.getTemplate('accessInterface.txt')
         
         ifdNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['downlinkPorts']
         return accessInterface.render(ifdNames=ifdNames)
@@ -812,11 +808,11 @@ class L3ClosMediation():
             return {}
     
     def _createRoutingOptionsStatic(self, session, device):
-        routingOptions = self._templateEnv.get_template('routingOptionsStatic.txt')
+        routingOptions = self._templateLoader.getTemplate('routingOptionsStatic.txt')
         return routingOptions.render(oob=self._getParamsForOutOfBandNetwork(session, device.pod))
 
     def _createRoutingOptionsBgp(self, session, device):
-        routingOptions = self._templateEnv.get_template('routingOptionsBgp.txt')
+        routingOptions = self._templateLoader.getTemplate('routingOptionsBgp.txt')
 
         loopbackIfl = session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
         loopbackIpWithNoCidr = loopbackIfl.ipaddress.split('/')[0]
@@ -824,7 +820,7 @@ class L3ClosMediation():
         return routingOptions.render(routerId=loopbackIpWithNoCidr, asn=str(device.asn))
 
     def _createProtocolBgp(self, session, device):
-        template = self._templateEnv.get_template('protocolBgp.txt')
+        template = self._templateLoader.getTemplate('protocolBgp.txt')
 
         neighborList = []
         deviceInterconnectIfds = self._dao.getConnectedInterconnectIFDsFilterFakeOnes(session, device)
@@ -838,13 +834,13 @@ class L3ClosMediation():
         return template.render(neighbors=neighborList)        
          
     def _createProtocolLldp(self, device):
-        template = self._templateEnv.get_template('protocolLldp.txt')
+        template = self._templateLoader.getTemplate('protocolLldp.txt')
         return template.render()        
 
     def _createPolicyOption(self, session, device):
         pod = device.pod
         
-        template = self._templateEnv.get_template('policyOptions.txt')
+        template = self._templateLoader.getTemplate('policyOptions.txt')
         subnetDict = {}
         subnetDict['lo0_in'] = pod.allocatedLoopbackBlock
         subnetDict['irb_in'] = pod.allocatedIrbBlock
@@ -862,7 +858,7 @@ class L3ClosMediation():
         
     def _createVlan(self, device):
         if device.role == 'leaf':
-            template = self._templateEnv.get_template('vlans.txt')
+            template = self._templateLoader.getTemplate('vlans.txt')
             return template.render()
         else:
             return ''
@@ -912,8 +908,8 @@ class L3ClosMediation():
         return []
     
     def _createSnmpTrapAndEvent(self, session, device):
-        snmpTemplate = self._templateEnv.get_template('snmpTrap.txt')
-        trapEventTemplate = self._templateEnv.get_template('eventOptionForTrap.txt')
+        snmpTemplate = self._templateLoader.getTemplate('snmpTrap.txt')
+        trapEventTemplate = self._templateLoader.getTemplate('eventOptionForTrap.txt')
         
         configlet = trapEventTemplate.render()
         
@@ -932,9 +928,9 @@ class L3ClosMediation():
         return ''
 
     def _createSnmpTrapAndEventForLeafFor2ndStage(self, session, device):
-        snmpTemplate = self._templateEnv.get_template('snmpTrap.txt')
-        trapEventTemplate = self._templateEnv.get_template('eventOptionForTrap.txt')
-        disableSnmpTemplate = self._templateEnv.get_template('snmpTrapDisable.txt')
+        snmpTemplate = self._templateLoader.getTemplate('snmpTrap.txt')
+        trapEventTemplate = self._templateLoader.getTemplate('eventOptionForTrap.txt')
+        disableSnmpTemplate = self._templateLoader.getTemplate('snmpTrapDisable.txt')
         
         configlet = trapEventTemplate.render()
         
@@ -957,7 +953,7 @@ class L3ClosMediation():
         :param Pod: pod
         :returns list: list of PodConfigs
         '''
-        leafTemplate = self._templateEnv.get_template('leafGenericTemplate.txt')
+        leafTemplate = self._templateLoader.getTemplate('leafGenericTemplate.txt')
         leafSettings = {}
         for leafSetting in pod.leafSettings:
             leafSettings[leafSetting.deviceFamily] = leafSetting

@@ -50,7 +50,7 @@ class CLICommand:
 class CLIUtil:
 
     def __init__(self):
-        commandConfFile = os.path.join(propLoader.propertyFileLocation, 
+        commandConfFile = os.path.join(propLoader.defaultPropertyLocation, 
                                          'cliCommands.yaml')
         self.yaml_file_stream = open(commandConfFile, 'r')
         raw_graph = yaml.load(self.yaml_file_stream)
@@ -253,7 +253,7 @@ class CLIUtil:
             if self.option_exists(complete_word, ret_list) == 0:
                 ret_list.append(complete_word)
 
-    return ret_list
+        return ret_list
         
 
 #------------------------------------------------------------------------------

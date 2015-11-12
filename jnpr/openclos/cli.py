@@ -462,11 +462,9 @@ if __name__ == '__main__':
     # keylogger = KeyLogging()
     # keylogger.start()
 
-    openclosConfFile = os.path.join(propLoader.propertyFileLocation, 'openclos.yaml')
-    yaml_file_stream = open(openclosConfFile, 'r')
-    cli_config = yaml.load(yaml_file_stream)
-    if cli_config.has_key("cli"):
-        cli_config = cli_config["cli"]
+    openclosConf = propLoader.OpenClosProperty().getProperties()
+    if openclosConf.has_key("cli"):
+        cli_config = openclosConf["cli"]
         cli = CLIShellWrapper(cli_config["prompt_text"],
                               cli_config["prompt_style"],
                               cli_config["header"],

@@ -12,25 +12,54 @@ from jnpr.openclos.exception import InvalidConfiguration
 class TestPropertyLoader(unittest.TestCase):
 
     def setUp(self):
-        self.propertyLoader = PropertyLoader()
-
+        self.propertyLoader = PropertyLoader(None)
     def tearDown(self):
         pass
 
-    def testGetFileNameWithPathPwd(self):
-        self.assertIsNone(self.propertyLoader.getFileNameWithPath('unknown'))
-        open('testFile', 'a')
-        self.assertEquals(os.path.join(os.getcwd(), 'testFile'), 
-                          self.propertyLoader.getFileNameWithPath('testFile'))
-        os.remove('testFile')
-        
-    def testGetFileNameWithPathConf(self):
-        from jnpr.openclos.propLoader import propertyFileLocation
-        self.assertEquals(os.path.join(propertyFileLocation, 'openclos.yaml'), 
-                          self.propertyLoader.getFileNameWithPath('openclos.yaml'))
-        self.assertEquals(os.path.join(propertyFileLocation, 'deviceFamily.yaml'), 
-                          self.propertyLoader.getFileNameWithPath('deviceFamily.yaml'))
+    def testGetOverrideFileWithPathHome(self):
+        self.assertIsNone(self.propertyLoader.getOverrideFileWithPath('homeFile'))
+        filePath = os.path.join(os.path.expanduser('~'), 'homeFile')
+        open(filePath, 'a')
+        self.assertTrue(self.propertyLoader.getOverrideFileWithPath('homeFile').endswith('/homeFile'))
+        os.remove(filePath)
 
+    def testGetOverrideFileWithPathPwd(self):
+        self.assertIsNone(self.propertyLoader.getOverrideFileWithPath('pwdFile'))
+        filePath = os.path.join(os.getcwd(), 'pwdFile')
+        open(filePath, 'a')
+        self.assertTrue(self.propertyLoader.getOverrideFileWithPath('pwdFile').startswith(os.getcwd()))
+        os.remove(filePath)
+        
+    def testMergetDictNestedList(self):
+        prop = {'DOT' : {'colors' : ['blue', 'green'], 'ranksep' : '5 equally'}}
+        override = {'DOT' : {'colors' : ['green', 'violet']}}
+        merged = {'DOT' : {'colors' : ['blue', 'green', 'violet'], 'ranksep' : '5 equally'}}
+        #print PropertyLoader.mergeDict(prop, override)
+        self.assertDictEqual(merged, self.propertyLoader.mergeDict(prop, override))
+       
+    def testMergetDictNestedDict(self):
+        prop = {'snmpTrap' : {'openclos_trap_group' : {'port' : 20162, 'target' : '0.0.0.0'}, 'threadCount' : 10}}
+        override = {'snmpTrap' : {'openclos_trap_group' : {'target' : '1.1.1.1'}}}
+        merged = {'snmpTrap' : {'openclos_trap_group' : {'port' : 20162, 'target' : '1.1.1.1'}, 'threadCount' : 10}}
+        #print PropertyLoader.mergeDict(prop, override)
+        self.assertDictEqual(merged, self.propertyLoader.mergeDict(prop, override))
+
+    def testLoadProperty(self):
+        self.propertyLoader = PropertyLoader('openclos.yaml', False)
+        self.assertIsNot({}, self.propertyLoader._properties)
+        self.assertEquals("out", self.propertyLoader._properties['outputDir'])
+        self.assertEquals(2, len(self.propertyLoader._properties['plugin']))
+
+    def testLoadPropertyOverride(self):
+        overridePath = os.path.join(os.path.expanduser('~'), 'openclos.yaml')
+        with open(overridePath, 'w') as fStream:
+            fStream.write('outputDir : /tmp')
+        self.propertyLoader = PropertyLoader('openclos.yaml')
+        self.assertIsNot({}, self.propertyLoader._properties)
+        self.assertEquals("/tmp", self.propertyLoader._properties['outputDir'])
+        self.assertEquals(2, len(self.propertyLoader._properties['plugin']))
+        os.remove(overridePath)
+        
 
 class TestOpenClosProperty(unittest.TestCase):
 
@@ -154,13 +183,14 @@ class TestDeviceSku(unittest.TestCase):
         ports = self.deviceSku.getPortNamesForDeviceFamily('qfx5100-48s-6q', 'leaf')
         self.assertEqual(6, len(ports['uplinkPorts']))
         self.assertEqual(96, len(ports['downlinkPorts']))   # 48 xe and 48 ge ports
-	ports=self.deviceSku.getPortNamesForDeviceFamily('qfx5200-32c-32q','spine')
-	self.assertEqual(0, len(ports['uplinkPorts']))
-	self.assertEqual(32, len(ports['downlinkPorts']))
 
-	ports=self.deviceSku.getPortNamesForDeviceFamily('qfx5200-32c-32q','leaf')
-	self.assertEqual(8, len(ports['uplinkPorts']))
-	self.assertEqual(28, len(ports['downlinkPorts']))
+        ports=self.deviceSku.getPortNamesForDeviceFamily('qfx5200-32c-32q','spine')
+        self.assertEqual(0, len(ports['uplinkPorts']))
+        self.assertEqual(32, len(ports['downlinkPorts']))
+        
+        ports=self.deviceSku.getPortNamesForDeviceFamily('qfx5200-32c-32q','leaf')
+        self.assertEqual(8, len(ports['uplinkPorts']))
+        self.assertEqual(28, len(ports['downlinkPorts']))
 
     def testGetSupportedDeviceFamilyBadInputFile(self):
         self.deviceSku = DeviceSku('')
@@ -171,6 +201,21 @@ class TestDeviceSku(unittest.TestCase):
         deviceFamilyList = self.deviceSku.getSupportedDeviceFamily()
         self.assertEqual(12, len(deviceFamilyList))
 
+    def testOverrideDeviceSku(self):
+        overridePath = os.path.join(os.path.expanduser('~'), 'deviceFamily.yaml')
+        with open(overridePath, 'w') as fStream:
+            override = """deviceFamily:
+                            qfx5100-48s-6q:
+                                leaf:
+                                    downlinkPorts: ['xe-0/0/[0-29]', 'ge-0/0/[0-39]']"""
+            fStream.write(override)
+        self.deviceSku = DeviceSku()
+
+        ports = self.deviceSku.getPortNamesForDeviceFamily('qfx5100-48s-6q', 'leaf')
+        self.assertEqual(6, len(ports['uplinkPorts']))
+        self.assertEqual(70, len(ports['downlinkPorts']))   # 30 xe and 40 ge ports
+
+        os.remove(overridePath)
 
 class TestMethod(unittest.TestCase):
     def testLoadLoggingConfig(self):
