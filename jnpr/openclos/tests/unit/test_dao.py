@@ -19,7 +19,7 @@ class TestAbstractDao(unittest.TestCase):
 
 class InMemoryDao(AbstractDao):
     def _getDbUrl(self):
-        jnpr.openclos.propLoader.loadLoggingConfig(appName = 'unittest')
+        jnpr.openclos.loader.loadLoggingConfig(appName = 'unittest')
         return 'sqlite:///'
 
 class TestDao(unittest.TestCase):
@@ -117,7 +117,7 @@ class TestDao(unittest.TestCase):
 
         class MySqlDao(AbstractDao):
             def _getDbUrl(self):
-                jnpr.openclos.propLoader.loadLoggingConfig(appName = 'unittest')
+                jnpr.openclos.loader.loadLoggingConfig(appName = 'unittest')
                 return 'mysql://root:<password>@localhost/openclos'
 
         dao = MySqlDao.getInstance()

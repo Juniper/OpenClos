@@ -10,10 +10,11 @@ from jinja2 import Environment, PackageLoader
 from netaddr import IPNetwork
 
 import util
+import loader
 from model import Pod
 from dao import Dao
 from writer import DhcpConfWriter
-from propLoader import OpenClosProperty, loadLoggingConfig
+from loader import OpenClosProperty, loadLoggingConfig
 
 from sqlalchemy.orm import exc
 from exception import PodNotFound
@@ -108,7 +109,7 @@ class ZtpServer():
 
     def populateDhcpGlobalSettings(self):
         ztp = {}
-        ztpGlobalSettings = util.loadClosDefinition()['ztp']
+        ztpGlobalSettings = loader.loadClosDefinition()['ztp']
         subnet = ztpGlobalSettings['dhcpSubnet']
         dhcpBlock = IPNetwork(subnet)
         ipList = list(dhcpBlock.iter_hosts())

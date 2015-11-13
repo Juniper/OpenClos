@@ -37,7 +37,7 @@ import yaml
 
 # openclos classes
 import util
-import propLoader
+import loader
 
 # CLI related classes
 from cli_parser import CLIUtil
@@ -462,7 +462,7 @@ if __name__ == '__main__':
     # keylogger = KeyLogging()
     # keylogger.start()
 
-    openclosConf = propLoader.OpenClosProperty().getProperties()
+    openclosConf = loader.OpenClosProperty().getProperties()
     if openclosConf.has_key("cli"):
         cli_config = openclosConf["cli"]
         cli = CLIShellWrapper(cli_config["prompt_text"],

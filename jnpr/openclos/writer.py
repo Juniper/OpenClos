@@ -10,7 +10,7 @@ from jinja2 import Environment, PackageLoader
 
 from model import InterfaceDefinition, AdditionalLink, BgpLink
 import util
-from propLoader import loadLoggingConfig
+from loader import loadLoggingConfig
 
 templateLocation = os.path.join('conf', 'cablingPlanTemplates')
 

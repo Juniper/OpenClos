@@ -12,30 +12,13 @@ import datetime
 import shutil
 from netaddr import IPNetwork
 import netifaces
-from propLoader import defaultPropertyLocation
+from loader import defaultPropertyLocation
 
 TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT = 5
 TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL = 30 # in seconds
 TWO_STAGE_CONFIGURATOR_DEFAULT_VCP_LLDP_DELAY = 40 # in seconds
 
     
-def loadClosDefinition(closDefination=os.path.join(defaultPropertyLocation, 'closTemplate.yaml')):
-    '''
-    Loads clos definition from yaml file
-    '''
-    try:
-        stream = open(closDefination, 'r')
-        yamlStream = yaml.load(stream)
-        
-        return yamlStream
-    except (OSError, IOError) as exc:
-        print "File error:", exc
-    except (yaml.scanner.ScannerError) as exc:
-        print "YAML error:", exc
-        stream.close()
-    finally:
-        pass
-
 def isPlatformUbuntu():
     #return 'ubuntu' in platform.platform().lower()
     result = os.popen("grep -i ubuntu /etc/*-release").read()

@@ -6,7 +6,7 @@ Created on Apr 16, 2015
 import unittest
 import os
 
-from jnpr.openclos.propLoader import PropertyLoader, OpenClosProperty, DeviceSku, loadLoggingConfig
+from jnpr.openclos.loader import *
 from jnpr.openclos.exception import InvalidConfiguration
 
 class TestPropertyLoader(unittest.TestCase):
@@ -15,20 +15,6 @@ class TestPropertyLoader(unittest.TestCase):
         self.propertyLoader = PropertyLoader(None)
     def tearDown(self):
         pass
-
-    def testGetOverrideFileWithPathHome(self):
-        self.assertIsNone(self.propertyLoader.getOverrideFileWithPath('homeFile'))
-        filePath = os.path.join(os.path.expanduser('~'), 'homeFile')
-        open(filePath, 'a')
-        self.assertTrue(self.propertyLoader.getOverrideFileWithPath('homeFile').endswith('/homeFile'))
-        os.remove(filePath)
-
-    def testGetOverrideFileWithPathPwd(self):
-        self.assertIsNone(self.propertyLoader.getOverrideFileWithPath('pwdFile'))
-        filePath = os.path.join(os.getcwd(), 'pwdFile')
-        open(filePath, 'a')
-        self.assertTrue(self.propertyLoader.getOverrideFileWithPath('pwdFile').startswith(os.getcwd()))
-        os.remove(filePath)
         
     def testMergetDictNestedList(self):
         prop = {'DOT' : {'colors' : ['blue', 'green'], 'ranksep' : '5 equally'}}
@@ -218,6 +204,28 @@ class TestDeviceSku(unittest.TestCase):
         os.remove(overridePath)
 
 class TestMethod(unittest.TestCase):
+    def testGetOverrideFileWithPathHome(self):
+        self.assertIsNone(getAlternateFileWithPath('homeFile'))
+        filePath = os.path.join(os.path.expanduser('~'), 'homeFile')
+        open(filePath, 'a')
+        self.assertTrue(getAlternateFileWithPath('homeFile').endswith('/homeFile'))
+        os.remove(filePath)
+
+    def testGetOverrideFileWithPathPwd(self):
+        self.assertIsNone(getAlternateFileWithPath('pwdFile'))
+        filePath = os.path.join(os.getcwd(), 'pwdFile')
+        open(filePath, 'a')
+        self.assertTrue(getAlternateFileWithPath('pwdFile').startswith(os.getcwd()))
+        os.remove(filePath)
+
+    def testLoadClosDefinition(self):
+        pods = loadPodsFromClosDefinition(False)
+        self.assertEqual(2, len(pods))
+
+    def testLoadNonExistingClosDefinition(self):
+        closDef = loadClosDefinition('non-existing.yaml')
+        self.assertIsNone(closDef)
+
     def testLoadLoggingConfig(self):
         loadLoggingConfig(appName = 'unittest')
         import logging

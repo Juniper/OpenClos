@@ -21,7 +21,7 @@ from dao import Dao
 from report import ResourceAllocationReport, L2Report, L3Report
 from l3Clos import L3ClosMediation
 from ztp import ZtpServer
-from propLoader import OpenClosProperty, DeviceSku, loadLoggingConfig
+from loader import OpenClosProperty, DeviceSku, loadLoggingConfig
 
 #moduleName = 'underlayRestRoutes'
 #loadLoggingConfig(appName=moduleName)

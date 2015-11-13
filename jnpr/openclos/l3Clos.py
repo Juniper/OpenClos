@@ -17,7 +17,8 @@ from sqlalchemy.orm import exc
 
 from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup
 from dao import Dao
-from propLoader import defaultPropertyLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
+from loader import defaultPropertyLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
+import loader
 import util
 
 from writer import ConfigWriter, CablingPlanWriter
@@ -41,23 +42,6 @@ class L3ClosMediation():
         self._templateLoader = TemplateLoader()
         self.isZtpStaged = util.isZtpStaged(self._conf)
         self.deviceSku = DeviceSku()
-
-    def loadClosDefinition(self, closDefination=os.path.join(defaultPropertyLocation, 'closTemplate.yaml')):
-        '''
-        Loads clos definition from yaml file and creates pod object
-        '''
-        try:
-            stream = open(closDefination, 'r')
-            yamlStream = yaml.load(stream)
-            
-            return yamlStream['pods']
-        except (OSError, IOError) as exc:
-            print "File error:", exc
-        except (yaml.scanner.ScannerError) as exc:
-            print "YAML error:", exc
-            stream.close()
-        finally:
-            pass
        
     def createPod(self, podName, podDict, inventoryDict=None):
         '''
@@ -197,9 +181,7 @@ class L3ClosMediation():
         if inventoryDict is not None:
             inventoryData = inventoryDict
         elif 'inventory' in podDict and podDict['inventory'] is not None:
-            json_inventory = open(os.path.join(defaultPropertyLocation, podDict['inventory']))
-            inventoryData = json.load(json_inventory)
-            json_inventory.close()
+            inventoryData = loader.loadClosDeviceInventory(podDict['inventory'])
 
         return inventoryData
 
@@ -799,7 +781,7 @@ class L3ClosMediation():
 
         gateway = pod.outOfBandGateway
         if gateway is None:
-            gateway = util.loadClosDefinition()['ztp'].get('dhcpOptionRoute')
+            gateway = loader.loadClosDefinition()['ztp'].get('dhcpOptionRoute')
        
         oobList = set(oobList)
         if oobList and gateway:
@@ -996,7 +978,7 @@ class L3ClosMediation():
 
 def main():        
     l3ClosMediation = L3ClosMediation()
-    pods = l3ClosMediation.loadClosDefinition()
+    pods = loader.loadPodsFromClosDefinition()
 
     pod1 = l3ClosMediation.createPod('labLeafSpine', pods['labLeafSpine'])
     l3ClosMediation.createCablingPlan(pod1.id)

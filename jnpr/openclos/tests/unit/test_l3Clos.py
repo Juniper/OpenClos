@@ -48,17 +48,6 @@ class TestL3Clos(unittest.TestCase):
         InMemoryDao._destroy()
         self.l3ClosMediation = None
 
-    def testLoadClosDefinition(self):
-        pods = self.l3ClosMediation.loadClosDefinition()
-        self.assertEqual(2, len(pods))
-
-    def testLoadNonExistingClosDefinition(self):
-        pods = self.l3ClosMediation.loadClosDefinition('non-existing.yaml')
-        self.assertIsNone(pods)
-        
-        with self._dao.getReadSession() as session:
-            self.assertEqual(0, len(self._dao.getAll(session, Pod)))
-
     def testCreatePod(self):
         podDict = getPodDict()
         self.l3ClosMediation.createPod('pod1', podDict)
