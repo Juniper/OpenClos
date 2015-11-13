@@ -14,7 +14,7 @@ Running the test:
 
 '''
 
-from jnpr.openclos.propLoader import loadLoggingConfig
+from jnpr.openclos.loader import loadLoggingConfig
 
 from locust import HttpLocust, TaskSet, task
 import json

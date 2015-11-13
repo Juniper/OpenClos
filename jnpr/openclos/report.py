@@ -11,7 +11,7 @@ from dao import Dao
 from model import Pod, Device
 from devicePlugin import L2DataCollector, L3DataCollector
 from writer import L2ReportWriter, L3ReportWriter
-from propLoader import OpenClosProperty, loadLoggingConfig
+from loader import OpenClosProperty, loadLoggingConfig
 from exception import PodNotFound
 
 moduleName = 'report'

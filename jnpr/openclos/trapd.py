@@ -16,7 +16,7 @@ import sys
 import subprocess
 import concurrent.futures
 from devicePlugin import TwoStageConfigurator 
-from propLoader import OpenClosProperty, loadLoggingConfig
+from loader import OpenClosProperty, loadLoggingConfig
 from exception import TrapDaemonError
 
 moduleName = 'trapd'

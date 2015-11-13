@@ -11,7 +11,7 @@ import contextlib
 
 from model import Base, Device, InterfaceDefinition, LeafSetting
 from common import SingletonBase
-from propLoader import loadLoggingConfig
+from loader import loadLoggingConfig
 from exception import InvalidConfiguration
 
 moduleName = 'dao'
@@ -158,7 +158,7 @@ class AbstractDao(SingletonBase):
 
 class Dao(AbstractDao):
     def _getDbUrl(self):
-        from propLoader import OpenClosProperty
+        from loader import OpenClosProperty
         return OpenClosProperty().getDbUrl()
     
     

@@ -7,6 +7,7 @@ Created on Apr 16, 2015
 import os
 import yaml
 import re
+import json
 import logging.config
 
 from crypt import Cryptic
@@ -15,6 +16,77 @@ from exception import InvalidConfiguration
 defaultPropertyLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 currentWorkingDir = os.getcwd()
 homeDir = os.path.expanduser('~')
+
+def getDefaultFileWithPath(fileName):
+    """
+    finds if a file exists under default location: <openclos install dir>/jnpr/openclos/conf
+    :param string: filename
+    :returns string: full path, if file exists
+    """
+    if os.path.isfile(os.path.join(defaultPropertyLocation, fileName)):
+        return os.path.join(defaultPropertyLocation, fileName)
+    else:
+        logger.error('DEFAULT file: "%s" not found at %s', fileName, defaultPropertyLocation)           
+
+def getAlternateFileWithPath(fileName):
+    """
+    finds if a file exists under following two locations in the specified order
+    1. current working directory
+    2. HOME directory
+    :param string: filename
+    :returns string: full path, if file exists
+    """
+    if os.path.isfile(os.path.join(currentWorkingDir, fileName)):
+        return os.path.join(currentWorkingDir, fileName)
+    elif os.path.isfile(os.path.join(homeDir, fileName)):
+        return os.path.join(homeDir, fileName)
+
+def loadClosDefinition(fileName = 'closDefinition.yaml', override=True):
+    '''
+    Loads clos definition from yaml file
+    '''
+    fileNameWithPath = None
+    if override:
+        fileNameWithPath = getAlternateFileWithPath(fileName)
+    if not fileNameWithPath:
+        fileNameWithPath = getDefaultFileWithPath(fileName)
+    
+    if fileNameWithPath:
+        try:
+            stream = open(fileNameWithPath, 'r')
+            yamlStream = yaml.load(stream)
+            
+            return yamlStream
+        except (OSError, IOError) as exc:
+            print "File error:", exc
+        except (yaml.scanner.ScannerError) as exc:
+            print "YAML error:", exc
+        finally:
+            stream.close()
+
+def loadPodsFromClosDefinition(override=True):
+    return loadClosDefinition(override=override)['pods']
+
+def loadClosDeviceInventory(fileName, override=True):
+    '''
+    Loads clos device inventory from json file
+    '''
+    fileNameWithPath = None
+    if override:
+        fileNameWithPath = getAlternateFileWithPath(fileName)
+    if not fileNameWithPath:
+        fileNameWithPath = getDefaultFileWithPath(fileName)
+    
+    if fileNameWithPath:
+        try:
+            stream = open(fileNameWithPath, 'r')
+            return json.load(stream)
+        except (OSError, IOError) as exc:
+            print "File error:", exc
+        except (yaml.scanner.ScannerError) as exc:
+            print "YAML error:", exc
+        finally:
+            stream.close()
 
 class PropertyLoader(object):
     '''
@@ -27,24 +99,6 @@ class PropertyLoader(object):
     Override property file could be empty, full or partial. DEFAULT property is overridden 
     by OVERRIDE properties.
     '''
-
-    def getDefaultFileWithPath(self, fileName):
-        if os.path.isfile(os.path.join(defaultPropertyLocation, fileName)):
-            self._defaultPath = os.path.join(defaultPropertyLocation, fileName)
-        else:
-            logger.error('DEFAULT file: "%s" not found at %s', fileName, defaultPropertyLocation)           
-            self._defaultPath = None
-        return self._defaultPath
-
-    def getOverrideFileWithPath(self, fileName):
-        if os.path.isfile(os.path.join(currentWorkingDir, fileName)):
-            self._overridePath = os.path.join(currentWorkingDir, fileName)
-        elif os.path.isfile(os.path.join(homeDir, fileName)):
-            self._overridePath = os.path.join(homeDir, fileName)
-        else:
-            self._overridePath = None
-        return self._overridePath
-
 
     def mergeDict(self, prop, override):
         if not override:
@@ -67,7 +121,7 @@ class PropertyLoader(object):
         if not fileName:
             return
         
-        defaultPath = self.getDefaultFileWithPath(fileName)
+        defaultPath = getDefaultFileWithPath(fileName)
         try:
             if defaultPath:
                 with open(defaultPath, 'r') as fStream:
@@ -79,7 +133,7 @@ class PropertyLoader(object):
         
         if override:
             overrideProps = None
-            overridePath = self.getOverrideFileWithPath(fileName)
+            overridePath = getAlternateFileWithPath(fileName)
             try:
                 if overridePath:
                     with open(overridePath, 'r') as fStream:
@@ -333,6 +387,6 @@ def getLoggingHandlers(logConfFile='logging.yaml', appName=''):
     finally:
         logConfStream.close()
     
-moduleName = 'propLoader'
+moduleName = 'loader'
 loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)

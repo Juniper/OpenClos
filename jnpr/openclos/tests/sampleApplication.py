@@ -8,6 +8,7 @@ from jnpr.openclos.ztp import ZtpServer
 from jnpr.openclos.rest import RestServer
 from jnpr.openclos.trapd import TrapReceiver
 import jnpr.openclos.util
+import jnpr.openclos.loader
 import os
 import signal
 import sys
@@ -34,7 +35,7 @@ class sampleApplication:
          Create configuration for each leaf and spine in IP Fabric
         '''
         l3ClosMediation = L3ClosMediation()
-        pods = l3ClosMediation.loadClosDefinition()
+        pods = jnpr.openclos.loader.loadPodsFromClosDefinition()
         self.pod = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
         l3ClosMediation.createCablingPlan(self.pod.id)
         l3ClosMediation.createDeviceConfig(self.pod.id)

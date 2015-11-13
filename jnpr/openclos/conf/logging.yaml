@@ -24,7 +24,7 @@ loggers:
     dao : 
         level: INFO
         handlers: [console, file] 
-    propLoader : 
+    loader : 
         level: INFO
         handlers: [console, file] 
 formatters:

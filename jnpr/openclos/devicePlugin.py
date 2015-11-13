@@ -19,7 +19,8 @@ from model import Pod, Device, InterfaceDefinition, AdditionalLink, BgpLink
 from exception import DeviceConnectFailed, DeviceRpcFailed, L2DataCollectionFailed, L3DataCollectionFailed, TwoStageConfigurationFailed
 from common import SingletonBase
 from l3Clos import L3ClosMediation
-from propLoader import OpenClosProperty, DeviceSku, loadLoggingConfig
+from loader import OpenClosProperty, DeviceSku, loadLoggingConfig
+import loader
 import util
 
 from netaddr import IPAddress, IPNetwork
@@ -947,7 +948,7 @@ if __name__ == "__main__":
     #### TEST CODE, should not be executed
     
     l3ClosMediation = L3ClosMediation()
-    pods = l3ClosMediation.loadClosDefinition()
+    pods = loader.loadPodsFromClosDefinition()
     pod = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
     raw_input("pause...")
     leaf1 = l3ClosMediation.__dao.Session.query(Device).filter(Device.name == 'clos-leaf-01').one()

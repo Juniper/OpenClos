@@ -25,7 +25,7 @@ from model import Pod
 from ztp import ZtpServer
 import dao
 import rest
-import propLoader
+import loader
 from report import ResourceAllocationReport
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def create_pods(self, pod_definition_file):
         ret_list = []
-        pods_yaml_file = os.path.join(propLoader.defaultPropertyLocation,
+        pods_yaml_file = os.path.join(loader.defaultPropertyLocation,
                                         pod_definition_file)
 
         try:
@@ -171,15 +171,15 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def list_all_yaml_files(self, *args):
         ret_list = []
-        for conf_file in os.listdir(propLoader.defaultPropertyLocation):
-            if os.path.isfile(os.path.join(propLoader.defaultPropertyLocation, conf_file)):
+        for conf_file in os.listdir(loader.defaultPropertyLocation):
+            if os.path.isfile(os.path.join(loader.defaultPropertyLocation, conf_file)):
                 m = re.search(".yaml", conf_file)
                 if m != None:
                     ret_list.append(conf_file)
 
         if len(ret_list) == 0:
             ret_list.insert(0, "Error:")
-            ret_list.append("No yaml files found at <[" + propLoader.defaultPropertyLocation + "]>")
+            ret_list.append("No yaml files found at <[" + loader.defaultPropertyLocation + "]>")
 
         return ret_list
 
@@ -260,7 +260,7 @@ class CLIImplementor:
         with report._dao.getReadSession() as session:
             pod_object = report._dao.getObjectById(session, Pod, pod_id)
             pod_name = pod_object.name
-        pods_from_conf = l3ClosMediation.loadClosDefinition()
+        pods_from_conf = loader.loadPodsFromClosDefinition()
         
         l3ClosMediation.updatePod(pod_id, pods_from_conf[pod_name])
         
