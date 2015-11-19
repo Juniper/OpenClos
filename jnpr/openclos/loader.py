@@ -11,7 +11,7 @@ import json
 import logging.config
 
 from crypt import Cryptic
-from exception import InvalidConfiguration
+from exception import InvalidConfiguration, InvalidDeviceFamily, InvalidDeviceRole
 
 defaultPropertyLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 currentWorkingDir = os.getcwd()
@@ -266,6 +266,31 @@ class DeviceSku(PropertyLoader):
     def populate5StageOverride(fiveStage):
         DeviceSku.populateDeviceFamily(fiveStage)
 
+    def validateDeviceFamilyAndRole(self, deviceFamily, role, topology='3Stage'):
+        if self.skuDetail is None:
+            raise InvalidConfiguration('deviceFamily.yaml was not loaded properly')
+        
+        if deviceFamily is None:
+            raise InvalidDeviceFamily('deviceFamily is None')
+        
+        if role is None:
+            raise InvalidDeviceRole('role is None')
+        
+        if role == 'leaf' and (deviceFamily == 'unknown' or deviceFamily is None or deviceFamily == ''):
+            return
+            
+        resultFamily = None
+        if topology == '3Stage':
+            resultFamily = self.threeStageSkuDetail.get(deviceFamily)
+        if resultFamily is None:
+            resultFamily = self.skuDetail.get(deviceFamily)
+        if resultFamily is None:
+            raise InvalidDeviceFamily(deviceFamily)
+        else:
+            resultRole = resultFamily.get(role)
+            if resultRole is None:
+                raise InvalidDeviceRole(role)
+            
     def getPortNamesForDeviceFamily(self, deviceFamily, role, topology='3Stage'):
         if self.skuDetail is None:
             logger.error('deviceFamily.yaml was not loaded properly')

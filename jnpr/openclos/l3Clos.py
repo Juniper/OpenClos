@@ -23,7 +23,7 @@ import util
 
 from writer import ConfigWriter, CablingPlanWriter
 import logging
-from exception import InvalidRequest, MissingMandatoryAttribute, PodNotFound, InsufficientLoopbackIp, InsufficientVlanIp, InsufficientInterconnectIp, InsufficientManagementIp, CapacityCannotChange, CapacityMismatch
+from exception import InvalidRequest, MissingMandatoryAttribute, PodNotFound, InsufficientLoopbackIp, InsufficientVlanIp, InsufficientInterconnectIp, InsufficientManagementIp, CapacityCannotChange, CapacityMismatch, InvalidDeviceFamily, InvalidDeviceRole
 from templateLoader import TemplateLoader
 
 moduleName = 'l3Clos'
@@ -242,6 +242,8 @@ class L3ClosMediation():
         if inventoryData is None:
             raise InvalidRequest("Pod[id='%s', name='%s']: inventory cannot be empty" % (pod.id, pod.name))
         
+        self._validateFamilyAndRole(pod, inventoryData)
+        
         # if following data changed we need to reallocate resource
         if pod.spineCount != podDict['spineCount'] or pod.leafCount != podDict['leafCount']:
             raise CapacityCannotChange("Pod[id='%s', name='%s']: capacity cannot be changed" % (pod.id, pod.name))
@@ -275,8 +277,19 @@ class L3ClosMediation():
         
         # validate managementPrefix is big enough
         self._validateManagementPrefix(pod, podDict, inventoryData)
-                
+    
+    def _validateFamilyAndRole(self, pod, inventoryData):
+        # validate pod level spine family and role
+        self.deviceSku.validateDeviceFamilyAndRole(pod.spineDeviceType, 'spine')
         
+        for spine in inventoryData['spines']:
+            if spine.get('family') is not None:
+                self.deviceSku.validateDeviceFamilyAndRole(spine['family'], 'spine')
+            
+        for leaf in inventoryData['leafs']:
+            if leaf.get('family') is not None:
+                self.deviceSku.validateDeviceFamilyAndRole(leaf['family'], 'leaf')
+    
     def _diffInventory(self, session, pod, inventoryData):
         # Compare new inventory that user provides against old inventory that we stored in the database.
         inventoryChanged = True
@@ -305,13 +318,13 @@ class L3ClosMediation():
             logger.debug("Pod[id='%s', name='%s']: inventory not changed", pod.id, pod.name)
 
     def _needToRebuild(self, pod, podDict):
-        if pod.spineDeviceType != podDict.get('spineDeviceType') or \
-           pod.spineCount != podDict.get('spineCount') or \
-           pod.leafCount != podDict.get('leafCount') or \
-           pod.interConnectPrefix != podDict.get('interConnectPrefix') or \
-           pod.vlanPrefix != podDict.get('vlanPrefix') or \
-           pod.loopbackPrefix != podDict.get('loopbackPrefix') or \
-           pod.managementPrefix != podDict.get('managementPrefix'):
+        if (pod.spineDeviceType != podDict.get('spineDeviceType') or
+            pod.spineCount != podDict.get('spineCount') or
+            pod.leafCount != podDict.get('leafCount') or
+            pod.interConnectPrefix != podDict.get('interConnectPrefix') or
+            pod.vlanPrefix != podDict.get('vlanPrefix') or
+            pod.loopbackPrefix != podDict.get('loopbackPrefix') or
+            pod.managementPrefix != podDict.get('managementPrefix')):
             return True
         else:
             return False
@@ -640,7 +653,7 @@ class L3ClosMediation():
                 subnet = interconnectSubnets.pop(0)
                 ips = list(subnet)
                 
-                spineEndIfl= InterfaceLogical(spineIfdHasPeer.name + '.0', spine, str(ips.pop(0)) + '/' + str(cidrForEachSubnet))
+                spineEndIfl = InterfaceLogical(spineIfdHasPeer.name + '.0', spine, str(ips.pop(0)) + '/' + str(cidrForEachSubnet))
                 spineIfdHasPeer.layerAboves.append(spineEndIfl)
                 interfaces.append(spineEndIfl)
                 

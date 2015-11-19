@@ -570,11 +570,3 @@ class UnderlayRestRoutes():
 
         except Exception as exc:
             raise bottle.HTTPError(404, exception=PodNotFound(podId, exc))
-
-def main():
-    restServer = RestServer()
-    restServer.initRest()
-    restServer.start()
-    
-if __name__ == '__main__':
-    main()

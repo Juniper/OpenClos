@@ -140,6 +140,24 @@ class InvalidIpFormat(BaseError):
             error.getErrorMessage(error.EC_INVALID_IP_FORMAT) % (reason), 
             cause)
             
+class InvalidDeviceFamily(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(InvalidDeviceFamily, self).__init__(error.EC_INVALID_DEVICE_FAMILY,
+            error.getErrorMessage(error.EC_INVALID_DEVICE_FAMILY) % (reason), 
+            cause)
+            
+class InvalidDeviceRole(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(InvalidDeviceRole, self).__init__(error.EC_INVALID_DEVICE_ROLE,
+            error.getErrorMessage(error.EC_INVALID_DEVICE_ROLE) % (reason), 
+            cause)
+            
 class PodNotFound(BaseError):
     '''
     Description of the error
