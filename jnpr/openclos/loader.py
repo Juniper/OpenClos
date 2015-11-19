@@ -270,15 +270,16 @@ class DeviceSku(PropertyLoader):
         if self.skuDetail is None:
             raise InvalidConfiguration('deviceFamily.yaml was not loaded properly')
         
+        # handle the plug-n-play case
+        if role == 'leaf' and (deviceFamily == 'unknown' or deviceFamily is None or deviceFamily == ''):
+            return
+            
         if deviceFamily is None:
             raise InvalidDeviceFamily('deviceFamily is None')
         
         if role is None:
             raise InvalidDeviceRole('role is None')
         
-        if role == 'leaf' and (deviceFamily == 'unknown' or deviceFamily is None or deviceFamily == ''):
-            return
-            
         resultFamily = None
         if topology == '3Stage':
             resultFamily = self.threeStageSkuDetail.get(deviceFamily)
