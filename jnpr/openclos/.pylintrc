@@ -39,7 +39,7 @@ load-plugins=
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
 #disable=
-disable=C0303,C0301,C0111,R0903,W0403,F0401,C0103,E0611,W0212
+disable=C0303,C0301,C0111,R0903,W0403,F0401,C0103,E0611,W0212,W0611,W0612,W0613,W0614
 
 [REPORTS]
 

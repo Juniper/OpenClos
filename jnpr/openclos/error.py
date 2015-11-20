@@ -27,6 +27,9 @@ EC_CAPACITY_MISMATCH                        = 1008
 EC_ENUMERATION_MISMATCH                     = 1009
 EC_INVALID_UPLINK_THRESHOLD                 = 1010
 EC_INVALID_IP_FORMAT                        = 1011
+EC_INVALID_DEVICE_FAMILY                    = 1012
+EC_INVALID_DEVICE_ROLE                      = 1013
+
 # "not found" error at 1100 level 
 EC_POD_NOT_FOUND                            = 1100
 EC_CABLING_PLAN_NOT_FOUND                   = 1101
@@ -59,6 +62,8 @@ dictErrorCode = {
     EC_ENUMERATION_MISMATCH                     :   "Invalid enumeration value: %s",
     EC_INVALID_UPLINK_THRESHOLD                 :   "Invalid uplink threshold: %s",
     EC_INVALID_IP_FORMAT                        :   "Invalid ip format: %s",
+    EC_INVALID_DEVICE_FAMILY                    :   "Invalid device family: %s",
+    EC_INVALID_DEVICE_ROLE                      :   "Invalid device role: %s",
     EC_POD_NOT_FOUND                            :   "Pod not found: %s",
     EC_CABLING_PLAN_NOT_FOUND                   :   "Cabling plan not found: %s",
     EC_DEVICE_NOT_FOUND                         :   "Device not found: %s",

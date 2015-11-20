@@ -11,17 +11,17 @@ import StringIO
 import zipfile
 import traceback
 import json
-import util
 import logging
 
 from bottle import error, request, response, PluginError, ServerAdapter
-from exception import InvalidRequest, PodNotFound, CablingPlanNotFound, DeviceConfigurationNotFound, DeviceNotFound, ImageNotFound, CreatePodFailed, UpdatePodFailed
-from model import Pod, Device
-from dao import Dao
-from report import ResourceAllocationReport, L2Report, L3Report
-from l3Clos import L3ClosMediation
-from ztp import ZtpServer
-from loader import OpenClosProperty, DeviceSku, loadLoggingConfig
+from jnpr.openclos.exception import InvalidRequest, PodNotFound, CablingPlanNotFound, DeviceConfigurationNotFound, DeviceNotFound, ImageNotFound, CreatePodFailed, UpdatePodFailed
+#from jnpr.openclos.model import Pod, Device
+from jnpr.openclos.dao import Dao
+#from jnpr.openclos.report import ResourceAllocationReport, L2Report, L3Report
+#from jnpr.openclos.l3Clos import L3ClosMediation
+#from jnpr.openclos.ztp import ZtpServer
+#from jnpr.openclos.loader import OpenClosProperty, DeviceSku, loadLoggingConfig
+#import jnpr.openclos.util
 
 #moduleName = 'overlayRestRoutes'
 #loadLoggingConfig(appName=moduleName)
