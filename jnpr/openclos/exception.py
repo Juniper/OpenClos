@@ -24,7 +24,7 @@ class BaseError(Exception):
         self.cause = cause
 
     def __repr__(self):
-        return "{0} errorCode: {1}, errorMessage: {2}, cause: {1}".format(
+        return "{0} errorCode: {1}, errorMessage: {2}, cause: {3}".format(
             self.__class__.__name__,
             self.code,
             self.message,
