@@ -4,15 +4,9 @@ Created on Oct 29, 2014
 @author: moloyc
 '''
 import os
-import traceback
 from threading import RLock, Event
 import time
 import logging
-
-from jnpr.junos import Device as DeviceConnection
-from jnpr.junos.factory import loadyaml
-from jnpr.junos.exception import ConnectError, RpcError, CommitError, LockError
-from jnpr.junos.utils.config import Config
 
 from dao import Dao
 from model import Pod, Device, InterfaceDefinition, AdditionalLink, BgpLink
@@ -22,9 +16,10 @@ from l3Clos import L3ClosMediation
 from loader import OpenClosProperty, DeviceSku, loadLoggingConfig
 import loader
 import util
+from exception import SkipCommit
+from deviceConnector import CachedConnectionFactory, NetconfConnection
 
 from netaddr import IPAddress, IPNetwork
-from jnpr.openclos.exception import SkipCommit
 
 moduleName = 'devicePlugin'
 loadLoggingConfig(appName=moduleName)
@@ -76,7 +71,6 @@ class DeviceDataCollectorNetconf(object):
         self.daoClass = daoClass
         self.pod = None
         self.deviceId = deviceId
-        self.deviceConnectionHandle = None
         self.deviceSku = DeviceSku()
 
 
@@ -89,36 +83,6 @@ class DeviceDataCollectorNetconf(object):
             self.deviceLogStr = 'device name: %s, ip: %s, id: %s' % (self.device.name, self.device.managementIp, self.device.id)
             self.pod = self.device.pod
     
-    def connectToDevice(self):
-        '''
-        :param dict deviceInfo:
-            ip: ip address of the device
-            username: device credential username
-        :returns Device: Device, handle to device connection.
-        '''
-        if self.device.managementIp == None or self.device.username == None:
-            raise DeviceConnectFailed('Device: %s, ip: %s, username: %s' % (self.device.id, self.device.managementIp, self.device.username))
-        if self.device.encryptedPassword == None:
-            raise DeviceConnectFailed('Device: %s, , ip: %s, password is None' % (self.device.id, self.device.managementIp))
-        
-        try:
-            deviceIp = self.device.managementIp.split('/')[0]
-            devicePassword = self.device.getCleartextPassword()
-            deviceConnection = DeviceConnection(host=deviceIp, user=self.device.username, password=devicePassword, port=22)
-            deviceConnection.open()
-            logger.debug('Connected to device: %s', self.device.managementIp)
-            self.deviceConnectionHandle = deviceConnection
-            return deviceConnection
-        except ConnectError as exc:
-            logger.error('Device connection failure, %s', exc)
-            self.deviceConnectionHandle = None
-            raise DeviceConnectFailed(self.device.managementIp, exc)
-        except Exception as exc:
-            logger.error('Unknown error, %s', exc)
-            logger.debug('StackTrace: %s', traceback.format_exc())
-            self.deviceConnectionHandle = None
-            raise DeviceConnectFailed(self.device.managementIp, exc)
-
 class L2DataCollector(DeviceDataCollectorNetconf):
     '''
     In most of the cases collector would execute in multi-tread env, so cannot use
@@ -144,8 +108,6 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             if self._session:
                 self._session.commit()
                 self._session.remove()
-            if self.deviceConnectionHandle:
-                self.deviceConnectionHandle.close()
     
     def startCollectAndProcessLldp(self):
         if self.collectionInProgressCache.checkAndAddDevice(self.device.id):
@@ -153,9 +115,12 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             try:
                 if self.device.managementIp is not None:
                     self.updateDeviceL2Status('processing')
-                    # use device level password for leaves that already went through staged configuration
-                    self.connectToDevice()
-                    lldpData = self.collectLldpFromDevice()
+                    with CachedConnectionFactory.getInstance().connection(NetconfConnection,
+                                                                          self.device.managementIp.split('/')[0],
+                                                                          username=self.device.username,
+                                                                          password=self.device.getCleartextPassword()) as connector:
+                        lldpData = connector.getL2Neighbors()
+                        
                     uplinkLdpData = self.filterUplinkFromLldpData(lldpData, self.device.family)
                     goodBadCount = self.processLlDpData(uplinkLdpData, self.getAllocatedConnectedUplinkIfds()) 
                     self.validateDeviceL2Status(goodBadCount)
@@ -196,28 +161,6 @@ class L2DataCollector(DeviceDataCollectorNetconf):
             self.updateDeviceL2Status('error', errorStr)
         else:
             self.updateDeviceL2Status('good')
-
-    def collectLldpFromDevice(self):
-        logger.debug('Start LLDP data collector for %s', self.deviceLogStr)
-
-        try:
-            lldpTable = loadyaml(os.path.join(junosEzTableLocation, 'lldp.yaml'))['LLDPNeighborTable'] 
-            table = lldpTable(self.deviceConnectionHandle)
-            lldpData = table.get()
-            links = {}
-            for link in lldpData:
-                logger.debug('device1: %s, port1: %s, device2: %s, port2: %s', link.device1, link.port1, link.device2, link.port2)
-                links[link.port1] = {'device1': link.device1, 'port1': link.port1, 'device2': link.device2, 'port2': link.port2}
-                
-            logger.debug('End LLDP data collector for %s', self.deviceLogStr)
-            return links
-        except RpcError as exc:
-            logger.error('LLDP data collection failure, %s', exc)
-            raise DeviceRpcFailed("device '%s': LLDPNeighborTable" % (self.deviceId), exc)
-        except Exception as exc:
-            logger.error('Unknown error, %s', exc)
-            logger.debug('StackTrace: %s', traceback.format_exc())
-            raise DeviceRpcFailed("device '%s': LLDPNeighborTable" % (self.deviceId), exc)
 
     def updateDeviceL2Status(self, status, reason=None, error=None):
         '''Possible status values are  'processing', 'good', 'error' '''
@@ -404,8 +347,6 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             if self._session:
                 self._session.commit()
                 self._session.remove()
-            if self.deviceConnectionHandle:
-                self.deviceConnectionHandle.close()
 
     def startCollectAndProcessBgp(self):
         if self.collectionInProgressCache.checkAndAddDevice(self.device.id):
@@ -413,9 +354,13 @@ class L3DataCollector(DeviceDataCollectorNetconf):
             try:
                 if self.device.managementIp is not None:
                     self.updateDeviceL3Status('processing')
-                    # use device level password for leaves that already went through staged configuration
-                    self.connectToDevice()
-                    bgpLinks = self.collectBgpFromDevice()
+
+                    with CachedConnectionFactory.getInstance().connection(NetconfConnection,
+                                                                          self.device.managementIp.split('/')[0],
+                                                                          username=self.device.username,
+                                                                          password=self.device.getCleartextPassword()) as connector:
+                        bgpLinks = connector.getL3Neighbors()
+                    #logger.debug(self.deviceAsn2NameMap)
                     self.processBgpData(bgpLinks)
                     self.updateDeviceL3Status('good')
                 else:
@@ -446,43 +391,17 @@ class L3DataCollector(DeviceDataCollectorNetconf):
         else:
             logger.debug('L3 data collection is already in progress for %s', self.deviceLogStr)
 
-    def collectBgpFromDevice(self):
-        logger.debug('Start BGP data collector for %s', self.deviceLogStr)
-
-        try:
-            bgpTable = loadyaml(os.path.join(junosEzTableLocation, 'BGP.yaml'))['BGPNeighborTable']
-            table = bgpTable(self.deviceConnectionHandle)
-            bgpData = table.get()
-            links = []
-            for link in bgpData:
-                device1Name = self.device.name
-                # strip ip
-                device1Ip = util.stripPlusSignFromIpString(link.local_add)
-                device2Ip = util.stripPlusSignFromIpString(link.peer_add)
-                # find device2's hostname by AS
-                device2Asn = int(link.peer_as)
-                device2Obj = self.deviceAsn2NameMap.get(device2Asn)
-                if device2Obj is not None:
-                    device2Name = device2Obj.name
-                else:
-                    logger.debug('Cannot find device2 by AS %d', device2Asn)
-                    device2Name = None
-                    
-                logger.debug('device1: %s, device1Ip: %s, device1as1: %s, device2: %s, device2Ip: %s, device2as: %s, inputMsgCount: %s, outputMsgCount: %s, outQueueCount: %s , linkState : %s, active/receive/acceptCount: %s/%s/%s, flapCount : %s', device1Name, device1Ip, link.local_as, device2Name, device2Ip, link.peer_as, link.in_msg, link.out_msg, link.out_queue, link.state, link.act_count, link.rx_count, link.acc_count, link.flap_count)
-                links.append({'device1': device1Name, 'device1Ip': device1Ip, 'device1as': link.local_as, 'device2': device2Name, 'device2Ip': device2Ip, 'device2as': link.peer_as, 'inputMsgCount': link.in_msg,
-                                  'outputMsgCount': link.out_msg, 'outQueueCount': link.out_queue, 'linkState': link.state, 'activeReceiveAcceptCount': (str(link.act_count) +'/' + str(link.rx_count) + '/' + str(link.acc_count)), 'flapCount': link.flap_count, 'device2Obj': device2Obj})
-                    
-            logger.debug('End BGP data collector for %s', self.deviceLogStr)
-            return links
-        except RpcError as exc:
-            logger.error('BGP data collection failure, %s', exc)
-            raise DeviceRpcFailed("device '%s': BGPNeighborTable" % (self.deviceId), exc)
-        except Exception as exc:
-            logger.error('Unknown error, %s', exc)
-            logger.debug('StackTrace: %s', traceback.format_exc())
-            raise DeviceRpcFailed("device '%s': BGPNeighborTable" % (self.deviceId), exc)
-
     def processBgpData(self, bgpLinks):
+        for link in bgpLinks:
+            link['device1'] = self.device.name
+            # find device2's name by AS
+            device2Obj = self.deviceAsn2NameMap.get(int(link['device2as']))
+            #logger.debug("device2AS: %s, device2: %s",link['device2as'], device2Obj)
+
+            if device2Obj is not None:
+                link['device2'] = device2Obj.name
+                link['device2Obj'] = device2Obj
+
         self.persistBgpLinks(bgpLinks)
         self.updateSpineStatusFromBgpData(bgpLinks)
         
@@ -587,8 +506,6 @@ class TwoStageConfigurator(L2DataCollector):
             if self._session:
                 self._session.commit()
                 self._session.remove()
-            if self.deviceConnectionHandle:
-                self.deviceConnectionHandle.close()
             
     def findPodByMgmtIp(self, deviceIp):
         logger.debug("Checking all pods for ip %s", deviceIp)
@@ -652,23 +569,30 @@ class TwoStageConfigurator(L2DataCollector):
                         
                 logger.debug('Connecting to %s: attempt %d', self.deviceIp, i)
                 try:
-                    self.connectToDevice()
+                    with CachedConnectionFactory.getInstance().connection(NetconfConnection,
+                        self.device.managementIp.split('/')[0], username=self.device.username,
+                        password=self.device.getCleartextPassword()) as connector:
+                        # not using the connection, just making sure connection succeeds
+                        # eventually it will be put in to cache for later use
+                        pass
                     logger.debug('Connected to %s', self.deviceIp)
                     break
                 except Exception as exc:
-                    pass
-
-            if self.deviceConnectionHandle is None:
-                logger.error('All %d attempts failed for %s', self.attempt, self.deviceIp)
-                self.configurationInProgressCache.doneDevice(self.deviceIp)
-                raise DeviceConnectFailed('All %d attempts failed for %s' % (self.attempt, self.deviceIp))
+                    if i == self.attempt:
+                        logger.error('All %d attempts failed for %s', self.attempt, self.deviceIp)
+                        self.configurationInProgressCache.doneDevice(self.deviceIp)
+                        raise DeviceConnectFailed('All %d attempts failed for %s' % (self.attempt, self.deviceIp))
                 
             try:
-                self.device.family = self.deviceConnectionHandle.facts['model'].lower()
-                self.device.serialNumber = self.deviceConnectionHandle.facts['serialnumber']
-                self.runPreLldpCommands()
+                with CachedConnectionFactory.getInstance().connection(NetconfConnection,
+                    self.device.managementIp.split('/')[0], username=self.device.username,
+                    password=self.device.getCleartextPassword()) as connector:
 
-                lldpData = self.collectLldpFromDevice()
+                    self.device.family = connector.getDeviceFamily()
+                    self.device.serialNumber = connector.getDeviceSerialNumber()
+                    self.runPreLldpCommands(connector)
+                    lldpData = connector.getL2Neighbors()
+
             except Exception as exc:
                 logger.error('Failed to execute deleteVcpPorts for %s, %s', self.deviceIp, exc)
                 raise DeviceRpcFailed('Failed to execute deleteVcpPorts %s' % (self.deviceIp), exc)
@@ -689,11 +613,14 @@ class TwoStageConfigurator(L2DataCollector):
             self.updateSelfDeviceContext(device)
 
             try:
-                try:
-                    self.runPostLldpCommands()
-                except SkipCommit:
-                    self.updateDeviceConfigStatus('good')
-                    return
+                with CachedConnectionFactory.getInstance().connection(NetconfConnection,
+                    self.device.managementIp.split('/')[0], username=self.device.username,
+                    password=self.device.getCleartextPassword()) as connector:
+                    try:
+                        self.runPostLldpCommands(connector)
+                    except SkipCommit:
+                        self.updateDeviceConfigStatus('good')
+                        return
                 self.updateDeviceConfigStatus('processing')
                 self.updateDeviceConfiguration()
                 self.updateDeviceConfigStatus('good')
@@ -714,22 +641,17 @@ class TwoStageConfigurator(L2DataCollector):
     def releaseConfigurationInProgressLock(self, deviceIp):
         self.configurationInProgressCache.doneDevice(deviceIp)
         
-    def runPreLldpCommands(self):
-        self.deleteVcpPortForEx(self.device.family)
-        if self.stopEvent.is_set():
-            self.configurationInProgressCache.doneDevice(self.deviceIp)
-            return
-
-    def runPostLldpCommands(self):
+    def runPreLldpCommands(self, deviceConnection):
+        self.deleteVcpPortForEx(self.device.family, deviceConnection)
+        
+    def runPostLldpCommands(self, deviceConnection):
         pass
     
-    def deleteVcpPortForEx(self, deviceFamily):
+    def deleteVcpPortForEx(self, deviceFamily, deviceConnection):
         if 'ex4300-' not in deviceFamily:
             return
-        for i in xrange(0, 4):
-            rsp = self.deviceConnectionHandle.rpc.request_virtual_chassis_vc_port_delete_pic_slot(pic_slot='1', port=str(i))
-            logger.debug('Deleted vcp slot: 1, port: %d, error: %s', i, rsp.find('.//multi-routing-engine-item/error/message'))
-        
+
+        deviceConnection.deleteVCPort([(1, 0), (1, 1), (1, 2), (1, 3)])
         # Wait for some time get lldp advertisement on et-* ports
         # default advertisement interval 30secs
         logger.debug('Wait for vcpLldpDelay: %d seconds...', self.vcpLldpDelay)
@@ -895,47 +817,13 @@ class TwoStageConfigurator(L2DataCollector):
         return config
         
     def updateDeviceConfiguration(self):
-        '''
-        Device Connection should be open by now, no need to connect again 
-        '''
         logger.debug('updateDeviceConfiguration for %s', self.deviceLogStr)
         config = self.getDeviceConfig()
-        
-        configurationUnit = Config(self.deviceConnectionHandle)
-
-        try:
-            configurationUnit.lock()
-            logger.debug('Lock config for %s', self.deviceLogStr)
-
-        except LockError as exc:
-            logger.error('updateDeviceConfiguration failed for %s, LockError: %s, %s, %s', self.deviceLogStr, exc, exc.errs, exc.rpc_error)
-            raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
-
-        try:
-            # make sure no changes are taken from CLI candidate config left over
-            configurationUnit.rollback() 
-            logger.debug('Rollback any other config for %s', self.deviceLogStr)
-            configurationUnit.load(config, format='text')
-            logger.debug('Load generated config as candidate, for %s', self.deviceLogStr)
-
-            #print configurationUnit.diff()
-            #print configurationUnit.commit_check()
-            configurationUnit.commit()
-            logger.info('Committed twoStage config for %s', self.deviceLogStr)
-        except CommitError as exc:
-            #TODO: eznc Error handling is not giving helpful error message
-            logger.error('updateDeviceConfiguration failed for %s, CommitError: %s, %s, %s', self.deviceLogStr, exc, exc.errs, exc.rpc_error)
-            configurationUnit.rollback() 
-            raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
-        except Exception as exc:
-            logger.error('updateDeviceConfiguration failed for %s, %s', self.deviceLogStr, exc)
-            logger.debug('StackTrace: %s', traceback.format_exc())
-            configurationUnit.rollback() 
-            raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self.deviceLogStr), exc)
-        finally:
-            configurationUnit.unlock()
-            logger.debug('Unlock config for %s', self.deviceLogStr)
-
+        with CachedConnectionFactory.getInstance().connection(NetconfConnection,
+                                                              self.device.managementIp.split('/')[0],
+                                                              username=self.device.username,
+                                                              password=self.device.getCleartextPassword()) as connector:
+            connector.updateConfig(config)
 
 
 if __name__ == "__main__":

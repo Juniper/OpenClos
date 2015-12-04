@@ -6,6 +6,7 @@ Created on Nov 17, 2015
 import unittest
 import time
 from flexmock import flexmock
+from lxml import etree
 
 from jnpr.openclos.deviceConnector import NetconfConnection, CachedConnectionFactory
 from jnpr.openclos.exception import DeviceConnectFailed
@@ -17,7 +18,7 @@ class TestNetconfConnector(unittest.TestCase):
     def testConnectToDevice(self):
         connector = NetconfConnection('192.168.48.216', username='root', password='Embe1mpls')
         self.assertIsNotNone(connector)
-        self.assertTrue(connector._deviceConnectionHandle.connected)
+        self.assertTrue(connector.isActive())
         
     def testGetDeviceFamily(self):
         connector = NetconfConnection('192.168.48.216', username='root', password='Embe1mpls')
@@ -52,14 +53,19 @@ class TestNetconfConnector(unittest.TestCase):
         }
         '''
         connector.updateConfig(config)
+    
+    def testCreateVCPort(self):
+        connector = NetconfConnection('192.168.48.216', username='root', password='Embe1mpls')
+        connector.deleteVCPort([(0, 22), (0, 23)])
+        
 
 class TestCachedConnectionFactory(unittest.TestCase):
     def setUp(self):
         from jnpr.junos import Device
-        self.fakeDevice = flexmock(connected=True)
-        self.fakeDevice.should_receive('open').and_return(None)
-        self.fakeDevice.should_receive('close').and_return(None)
-        flexmock(Device).new_instances(self.fakeDevice)
+        self.mockDevice = flexmock(connected=True)
+        self.mockDevice.should_receive('open').and_return(None)
+        self.mockDevice.should_receive('close').and_return(None)
+        flexmock(Device).new_instances(self.mockDevice)
         
         from jnpr.openclos import deviceConnector
         deviceConnector.connectionCleanerThreadWaitTimeSec = 4
@@ -70,20 +76,21 @@ class TestCachedConnectionFactory(unittest.TestCase):
         CachedConnectionFactory.getInstance()._stop()
         CachedConnectionFactory._destroy()
         print 'tearDown'
+        
     def testConnectionCached(self):
         conn1 = None
         conn2 = None
         conn3 = None
         print CachedConnectionFactory.getInstance()
-        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.4") as connector:
+        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.4", username="x", password="x") as connector:
             conn1 = str(connector)
             self.assertIsNotNone(connector)
             self.assertTrue(connector.isActive())
-        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.4") as connector:
+        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.4", username="x", password="x") as connector:
             conn2 = str(connector)
             self.assertIsNotNone(connector)
             self.assertTrue(connector.isActive())
-        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.5") as connector:
+        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.5", username="x", password="x") as connector:
             conn3 = str(connector)
             self.assertIsNotNone(connector)
             self.assertTrue(connector.isActive())
@@ -93,20 +100,20 @@ class TestCachedConnectionFactory(unittest.TestCase):
 
     def testBadConnectionNotCached(self):
         from jnpr.junos import Device
-        self.fakeDevice = flexmock(connected=False)
-        self.fakeDevice.should_receive('open').and_return(None)
-        self.fakeDevice.should_receive('close').and_return(None)
-        flexmock(Device).new_instances(self.fakeDevice)
+        self.mockDevice = flexmock(connected=False)
+        self.mockDevice.should_receive('open').and_return(None)
+        self.mockDevice.should_receive('close').and_return(None)
+        flexmock(Device).new_instances(self.mockDevice)
 
         conn1 = None
         conn2 = None
         print CachedConnectionFactory.getInstance()
-        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.6") as connector:
+        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.6", username="x", password="x") as connector:
             conn1 = str(connector)
             self.assertIsNotNone(connector)
             self.assertFalse(connector.isActive())
         
-        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.6") as connector:
+        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.6", username="x", password="x") as connector:
             conn2 = str(connector)
             self.assertIsNotNone(connector)
             self.assertFalse(connector.isActive())
@@ -118,14 +125,14 @@ class TestCachedConnectionFactory(unittest.TestCase):
         conn2 = None
         print CachedConnectionFactory.getInstance()
         # waiting for conn1 to get closed, so closed will be called once.
-        self.fakeDevice.should_receive('close').times(1) 
-        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.7") as connector:
+        self.mockDevice.should_receive('close').times(1) 
+        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.7", username="x", password="x") as connector:
             conn1 = str(connector)
             self.assertIsNotNone(connector)
             self.assertTrue(connector.isActive())
         time.sleep(6)
         
-        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.7") as connector:
+        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.7", username="x", password="x") as connector:
             conn2 = str(connector)
             self.assertIsNotNone(connector)
             self.assertTrue(connector.isActive())

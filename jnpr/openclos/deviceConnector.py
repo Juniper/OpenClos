@@ -73,7 +73,7 @@ class CachedConnectionFactory(SingletonBase):
         once user is done using connection, it goes back to cache.
         Example how to use -
         
-        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.4") as conn:
+        with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.4", ..) as conn:
             print conn
 
         :param ip: device ip
@@ -94,6 +94,8 @@ class CachedConnectionFactory(SingletonBase):
         finally:
             if connection.isActive():
                 with self.__cacheLock:
+                    if not self.__cache.has_key(ip):
+                        self.__cache[ip] = []
                     self.__cache[ip].append((connection, time.time()))
         
     def closeOldConnections(self):
@@ -111,27 +113,45 @@ class CachedConnectionFactory(SingletonBase):
                             self.__cache[ip] = liveConnections
                         else:
                             del self.__cache[ip]
+            except Exception as exc:
+                logger.debug('closeOldConnections failed, %s', exc)
             finally:
-                logger.debug(self.__cache)
+                pass
 
     def _stop(self):
         self.__event.set()
+        try:
+            with self.__cacheLock:
+                for ip, connections in self.__cache.items():
+                    for connection in connections:
+                        connection[0].close()
+                self.__cache = {}
+        except Exception:
+            pass
 
     def __del__(self):
-        self.__event.set()
+        self._stop()
         
 class NetconfConnection(AbstractConnection):
     def __init__(self, ip, *args, **kwargs):
-        self._username = kwargs.pop("username", "")
-        self._password = kwargs.pop("password", "")
-        self._collectedFacts = False
+        
         super(NetconfConnection, self).__init__(ip)
+        self._username = kwargs.pop("username", None)
+        self._password = kwargs.pop("password", None)
+        
+        if not self._username :
+            raise DeviceConnectFailed('%s username is None' % (self._debugContext))
+        if not self._password:
+            raise DeviceConnectFailed('%s, password is None' % (self._debugContext))        
+        
+        self._collectedFacts = False
+        self._deviceConnection = None
         
         try:
             deviceConnection = DeviceConnection(host=self._ip, user=self._username, password=self._password, port=22, gather_facts=False)
             deviceConnection.open()
             logger.info('%s connected', self._debugContext)
-            self._deviceConnectionHandle = deviceConnection
+            self._deviceConnection = deviceConnection
         except ConnectError as exc:
             logger.error('%s connection failure, %s', self._debugContext, exc)
             raise DeviceConnectFailed(self._ip, exc)
@@ -141,31 +161,31 @@ class NetconfConnection(AbstractConnection):
             raise DeviceConnectFailed(self._ip, exc)
     
     def isActive(self):
-        if self._deviceConnectionHandle:
-            return self._deviceConnectionHandle.connected
+        if self._deviceConnection:
+            return self._deviceConnection.connected
         return False
 
     def close(self):
-        if self._deviceConnectionHandle:
-            self._deviceConnectionHandle.close()
-            self._deviceConnectionHandle = None
+        if self._deviceConnection:
+            self._deviceConnection.close()
+            self._deviceConnection = None
             logger.info('%s connection closed', self._debugContext)
                         
     def getDeviceFamily(self):
         if self._collectedFacts:
-            return self._deviceConnectionHandle.facts['model'].lower()
+            return self._deviceConnection.facts['model'].lower()
         else:
-            self._deviceConnectionHandle.facts_refresh()
+            self._deviceConnection.facts_refresh()
             self._collectedFacts = True
-            return self._deviceConnectionHandle.facts['model'].lower()
+            return self._deviceConnection.facts['model'].lower()
 
     def getDeviceSerialNumber(self):
         if self._collectedFacts:
-            return self._deviceConnectionHandle.facts['serialnumber']
+            return self._deviceConnection.facts['serialnumber']
         else:
-            self._deviceConnectionHandle.facts_refresh()
+            self._deviceConnection.facts_refresh()
             self._collectedFacts = True
-            return self._deviceConnectionHandle.facts['serialnumber']
+            return self._deviceConnection.facts['serialnumber']
     
     def getL2Neighbors(self, brief=True):
         logger.debug('%s getL2Neighbors started', self._debugContext)
@@ -173,7 +193,7 @@ class NetconfConnection(AbstractConnection):
 
         try:
             lldpTable = loadyaml(os.path.join(junosEzTableLocation, 'lldp.yaml'))['LLDPNeighborTable'] 
-            table = lldpTable(self._deviceConnectionHandle)
+            table = lldpTable(self._deviceConnection)
             lldpData = table.get()
             links = {}
             for link in lldpData:
@@ -198,7 +218,7 @@ class NetconfConnection(AbstractConnection):
 
         try:
             bgpTable = loadyaml(os.path.join(junosEzTableLocation, 'BGP.yaml'))['BGPNeighborTable']
-            table = bgpTable(self._deviceConnectionHandle)
+            table = bgpTable(self._deviceConnection)
             bgpData = table.get()
             links = []
             for link in bgpData:
@@ -208,7 +228,7 @@ class NetconfConnection(AbstractConnection):
                 
                 # TODO: replace device1/device2 with device name 
                 if brief:
-                    links.append({'device1': None, 'device1Ip': device1Ip, 'device1as': link.local_as, 'device2': None, 'device2Ip': device2Ip, 'device2as': link.peer_as})
+                    links.append({'device1': None, 'device1Ip': device1Ip, 'device1as': link.local_as, 'device2': None, 'device2Ip': device2Ip, 'device2as': link.peer_as, 'linkState': link.state})
                 else:
                     links.append({'device1': None, 'device1Ip': device1Ip, 'device1as': link.local_as, 'device2': None, 'device2Ip': device2Ip, 'device2as': link.peer_as, 'inputMsgCount': link.in_msg,
                                   'outputMsgCount': link.out_msg, 'outQueueCount': link.out_queue, 'linkState': link.state, 'activeReceiveAcceptCount': (str(link.act_count) +'/' + str(link.rx_count) + '/' + str(link.acc_count)), 'flapCount': link.flap_count})
@@ -228,7 +248,7 @@ class NetconfConnection(AbstractConnection):
     def updateConfig(self, config):
         logger.debug('%s updateConfig started', self._debugContext)
 
-        configurationUnit = Config(self._deviceConnectionHandle)
+        configurationUnit = Config(self._deviceConnection)
 
         try:
             configurationUnit.lock()
@@ -262,9 +282,12 @@ class NetconfConnection(AbstractConnection):
             configurationUnit.unlock()
             logger.debug('%s updateConfig ended', self._debugContext)
 
-    def createVCPort(self, slotPort):
-        for slot, port in slotPort.iteritems():
-            rsp = self._deviceConnectionHandle.rpc.request_virtual_chassis_vc_port_set_pic_slot(pic_slot=slot, port=port)            
+    def createVCPort(self, slotPorts):
+        '''
+        :param slotPorts: list of touple, each containing slot and port
+        '''
+        for slot, port in slotPorts:
+            rsp = self._deviceConnection.rpc.request_virtual_chassis_vc_port_set_pic_slot(pic_slot=str(slot), port=str(port))            
             error = rsp.find('../error/message')
 
             if error is not None:
@@ -272,9 +295,12 @@ class NetconfConnection(AbstractConnection):
             else:
                 logger.debug('%s created vcp slot: %s, port: %d', self._debugContext,slot, port)
 
-    def deleteVCPort(self, slotPort):
-        for slot, port in slotPort.iteritems():
-            rsp = self._deviceConnectionHandle.rpc.request_virtual_chassis_vc_port_delete_pic_slot(pic_slot=slot, port=port)            
+    def deleteVCPort(self, slotPorts):
+        '''
+        :param slotPorts: list of touple, each containing slot and port
+        '''
+        for slot, port in slotPorts:
+            rsp = self._deviceConnection.rpc.request_virtual_chassis_vc_port_delete_pic_slot(pic_slot=str(slot), port=str(port))            
             error = rsp.find('../error/message')
 
             if error is not None:

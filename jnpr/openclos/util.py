@@ -237,10 +237,3 @@ def stripNetmaskFromIpString(ipString):
         return ipString[:pos]
     else:
         return ipString
-
-def stripPlusSignFromIpString(ipString):
-    pos = ipString.find('+')
-    if pos != -1:
-        return ipString[:pos]
-    else:
-        return ipString
