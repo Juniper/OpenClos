@@ -129,7 +129,7 @@ class ZtpServer():
             ztp['rangeEnd'] = str(ipList[-1])
 
         ztp['broadcast'] = str(dhcpBlock.broadcast)
-        ztp['httpServerIp'] = self.__conf['httpServer']['ipAddr']
+        ztp['httpServerIp'] = self.__conf['restServer']['ipAddr']
         if ztpGlobalSettings.get('junosImage') is not None:
             # don't start url as /openclos/... first / causes ZTP problem
             ztp['imageUrl'] = 'openclos/images/' + ztpGlobalSettings.get('junosImage')
