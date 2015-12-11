@@ -14,7 +14,7 @@ class TestZtp(unittest.TestCase):
 
     def setUp(self):
         self.__conf = {}
-        self.__conf['httpServer'] = {'ipAddr': '127.0.0.1'}
+        self.__conf['restServer'] = {'ipAddr': '127.0.0.1', 'version': 1}
 
         self.ztpServer = ZtpServer(self.__conf, daoClass = InMemoryDao)
         self._dao = InMemoryDao.getInstance()

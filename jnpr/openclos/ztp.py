@@ -40,6 +40,9 @@ class ZtpServer():
             self.templateEnv.lstrip_blocks = True
             self.templateEnv.trim_blocks = True
 
+        # don't start url as /openclos/... first / causes ZTP problem
+        self.urlContext = 'openclos/v%d/underlay/' % self.__conf['restServer']['version']
+
     
     def dcpServerReloadConfig(self):
         #TODO: sudo service isc-dhcp-server force-reload
@@ -129,10 +132,9 @@ class ZtpServer():
             ztp['rangeEnd'] = str(ipList[-1])
 
         ztp['broadcast'] = str(dhcpBlock.broadcast)
-        ztp['httpServerIp'] = self.__conf['httpServer']['ipAddr']
+        ztp['httpServerIp'] = self.__conf['restServer']['ipAddr']
         if ztpGlobalSettings.get('junosImage') is not None:
-            # don't start url as /openclos/... first / causes ZTP problem
-            ztp['imageUrl'] = 'openclos/images/' + ztpGlobalSettings.get('junosImage')
+            ztp['imageUrl'] = self.urlContext + 'images/' + ztpGlobalSettings.get('junosImage')
 
         return ztp
     
@@ -143,10 +145,7 @@ class ZtpServer():
         return ztp
 
     def populateDhcpDeviceSpecificSetting(self, session, podId, ztp={}):
-        '''
-        don't start any url as /openclos/... first / causes ZTP problem
-        '''
-        imageUrlPrefix = 'openclos/images/'       
+        imageUrlPrefix = self.urlContext + 'images/'       
         
         if ztp.get('devices') is None:
             ztp['devices'] = []
@@ -177,14 +176,12 @@ class ZtpServer():
             deviceMgmtIp = str(IPNetwork(device.managementIp).ip)
             if device.macAddress:
                 ztp['devices'].append({'name': device.name, 'mac': device.macAddress,
-                # don't start url as /openclos/pods, first / causes ZTP problem
-                'configUrl': 'openclos/pods/' + pod.id + '/devices/' + device.id + '/config',
+                'configUrl': self.urlContext + 'pods/' + pod.id + '/devices/' + device.id + '/config',
                 'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
                 logger.info('Device: %s, %s used MAC to map in dhcpd.conf', device.name, deviceMgmtIp)
             elif device.serialNumber:
                 ztp['devices'].append({'name': device.name, 'serial': device.serialNumber,
-                # don't start url as /openclos/pods, first / causes ZTP problem
-                'configUrl': 'openclos/pods/' + pod.id + '/devices/' + device.id + '/config',
+                'configUrl': self.urlContext + 'pods/' + pod.id + '/devices/' + device.id + '/config',
                 'imageUrl': imageUrl, 'mgmtIp': deviceMgmtIp})
                 logger.info('Device: %s, %s used Serial to map in dhcpd.conf', device.name, deviceMgmtIp)
             else:
@@ -199,8 +196,7 @@ class ZtpServer():
                     setting['leafImageUrl'] = imageUrlPrefix + leafSetting.junosImage
                 else:
                     setting['leafImageUrl'] = None
-                # don't start url as /openclos/pods/..., first / causes ZTP problem
-                setting['leafGenericConfigUrl'] = 'openclos/pods/' + pod.id + '/leaf-generic-configurations/' + leafSetting.deviceFamily
+                setting['leafGenericConfigUrl'] = self.urlContext + 'pods/' + pod.id + '/leaf-generic-configurations/' + leafSetting.deviceFamily
                 '''
                 setting['substringLength'] is the last argument of substring on dhcpd.conf, 
                 should not be hardcoded, as it would change based on device family

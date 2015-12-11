@@ -15,41 +15,6 @@ from jnpr.junos.exception import ConnectError
 
 from flexmock import flexmock
 
-class TestDeviceDataCollectorNetconf(unittest.TestCase):
-    def setUp(self):
-        self._dao = InMemoryDao.getInstance()
-        self.dataCollector = DeviceDataCollectorNetconf('1234', {}, InMemoryDao)
-
-    def tearDown(self):
-        InMemoryDao._destroy()
-    
-    @unittest.skip("need physical device to test")
-    def testConnectToDevice(self):
-        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", "root", "Embe1mpls", "leaf", "", "192.168.48.182", None))
-
-        dataCollector = DeviceDataCollectorNetconf('1234', {}, InMemoryDao)
-        dataCollector._dao = self._dao
-        dataCollector.manualInit()
-        
-        dataCollector.connectToDevice()
-        
-    def testConnectToDeviceValueError(self):
-        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", None, "Embe1mpls", "leaf", "", "0.0.0.0", None))
-        self.dataCollector.manualInit()
-        
-        with self.assertRaises(DeviceConnectFailed) as ve:
-            self.dataCollector.connectToDevice()
-
-    def testConnectToDeviceConnectError(self):
-        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", "root", "Embe1mpls", "leaf", "", "0.0.0.0", None))
-        self.dataCollector.manualInit()
-
-        with self.assertRaises(DeviceConnectFailed) as de:
-            self.dataCollector.connectToDevice()
-        
-        self.assertIsNotNone(de.exception.cause)
-        self.assertTrue(issubclass(type(de.exception.cause), ConnectError))
-
 class TestL2DataCollector(unittest.TestCase):
 
     def setUp(self):
@@ -59,17 +24,6 @@ class TestL2DataCollector(unittest.TestCase):
     def tearDown(self):
         self._dao = None
         InMemoryDao._destroy()
-
-    @unittest.skip("need physical device to test")
-    def testCollectLldpFromDevice(self):
-        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-96s-8q", "root", "Embe1mpls", "leaf", "", "192.168.48.219", None))
-
-        dataCollector = L2DataCollector('1234', self.__conf, InMemoryDao)
-        dataCollector._dao = self._dao
-        dataCollector.manualInit()
-
-        dataCollector.connectToDevice()
-        dataCollector.collectLldpFromDevice()
 
     def testUpdateDeviceL2StatusProcessing(self):
         from test_model import createDevice
@@ -695,17 +649,6 @@ class TestL3DataCollector(unittest.TestCase):
     def tearDown(self):
         self._dao = None
         InMemoryDao._destroy()
-
-    @unittest.skip("need physical device to test")
-    def testCollectBgpFromDevice(self):
-        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-96s-8q", "root", "Embe1mpls", "leaf", "", "192.168.48.219", None))
-
-        dataCollector = L3DataCollector('1234', self.__conf, InMemoryDao)
-        dataCollector._dao = self._dao
-        dataCollector.manualInit()
-
-        dataCollector.connectToDevice()
-        dataCollector.collectBgpFromDevice()
 
     def testUpdateDeviceL3StatusProcessing(self):
         from test_model import createDevice
