@@ -1,7 +1,7 @@
 '''
-Created on Sep 2, 2014
+Created on Nov 23, 2015
 
-@author: moloyc
+@author: yunli
 '''
 
 import os
@@ -14,9 +14,10 @@ import json
 import logging
 
 from bottle import error, request, response, PluginError, ServerAdapter
-from jnpr.openclos.exception import InvalidRequest, PodNotFound, CablingPlanNotFound, DeviceConfigurationNotFound, DeviceNotFound, ImageNotFound, CreatePodFailed, UpdatePodFailed
-#from jnpr.openclos.model import Pod, Device
+from jnpr.openclos.exception import InvalidRequest, OverlayFabricNotFound, OverlayTenantNotFound, OverlayVrfNotFound, OverlayDeviceNotFound, OverlayNetworkNotFound, OverlaySubnetNotFound, OverlayL3portNotFound, OverlayL2portNotFound, OverlayAeNotFound, CreateOverlayFabricFailed, CreateOverlayTenantFailed, CreateOverlayVrfFailed, CreateOverlayDeviceFailed, CreateOverlayNetworkFailed, CreateOverlaySubnetFailed, CreateOverlayL3portFailed, CreateOverlayL2portFailed, CreateOverlayAeFailed, PlatformError
 from jnpr.openclos.dao import Dao
+from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayDevice, OverlayNetwork, OverlaySubnet, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
+#from jnpr.openclos.overlay.overlay import Overlay
 #from jnpr.openclos.report import ResourceAllocationReport, L2Report, L3Report
 #from jnpr.openclos.l3Clos import L3ClosMediation
 #from jnpr.openclos.ztp import ZtpServer
@@ -38,10 +39,11 @@ class OverlayRestRoutes():
         self.baseUrl = context['baseUrl'] + '/overlay'
         self._conf = context['conf']
         self.__dao = context['dao']
-        self.__daoClass = context['daoClass']
         self.app = context['app']
-        
+        self.uriPrefix = None
+
         # install index links
+        context['restServer'].addIndexLink(self.baseUrl + '/devices')
         context['restServer'].addIndexLink(self.baseUrl + '/fabrics')
         context['restServer'].addIndexLink(self.baseUrl + '/tenants')
         context['restServer'].addIndexLink(self.baseUrl + '/vrfs')
@@ -50,15 +52,17 @@ class OverlayRestRoutes():
         context['restServer'].addIndexLink(self.baseUrl + '/l3ports')
         context['restServer'].addIndexLink(self.baseUrl + '/l2ports')
         context['restServer'].addIndexLink(self.baseUrl + '/aes')
-        context['restServer'].addIndexLink(self.baseUrl + '/status')
         
         # GET APIs
+        self.app.route(self.baseUrl + '/devices', 'GET', self.getDevices)
+        self.app.route(self.baseUrl + '/devices/<deviceId>', 'GET', self.getDevice)
         self.app.route(self.baseUrl + '/fabrics', 'GET', self.getFabrics)
         self.app.route(self.baseUrl + '/fabrics/<fabricId>', 'GET', self.getFabric)
         self.app.route(self.baseUrl + '/tenants', 'GET', self.getTenants)
         self.app.route(self.baseUrl + '/tenants/<tenantId>', 'GET', self.getTenant)
         self.app.route(self.baseUrl + '/vrfs', 'GET', self.getVrfs)
         self.app.route(self.baseUrl + '/vrfs/<vrfId>', 'GET', self.getVrf)
+        self.app.route(self.baseUrl + '/vrfs/<vrfId>/status', 'GET', self.getVrfStatus)
         self.app.route(self.baseUrl + '/networks', 'GET', self.getNetworks)
         self.app.route(self.baseUrl + '/networks/<networkId>', 'GET', self.getNetwork)
         self.app.route(self.baseUrl + '/subnets', 'GET', self.getSubnets)
@@ -69,9 +73,10 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/l2ports/<l2portId>', 'GET', self.getL2port)
         self.app.route(self.baseUrl + '/aes', 'GET', self.getAes)
         self.app.route(self.baseUrl + '/aes/<aeId>', 'GET', self.getAe)
-        self.app.route(self.baseUrl + '/status', 'GET', self.getStatus)
 
         # POST/PUT APIs
+        self.app.route(self.baseUrl + '/devices', 'POST', self.createDevice)
+        self.app.route(self.baseUrl + '/devices/<deviceId>', 'PUT', self.modifyDevice)
         self.app.route(self.baseUrl + '/fabrics', 'POST', self.createFabric)
         self.app.route(self.baseUrl + '/fabrics/<fabricId>', 'PUT', self.modifyFabric)
         self.app.route(self.baseUrl + '/tenants', 'POST', self.createTenant)
@@ -90,6 +95,7 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/aes/<aeId>', 'PUT', self.modifyAe)
 
         # DELETE APIs
+        self.app.route(self.baseUrl + '/devices/<deviceId>', 'DELETE', self.deleteDevice)
         self.app.route(self.baseUrl + '/fabrics/<fabricId>', 'DELETE', self.deleteFabric)
         self.app.route(self.baseUrl + '/tenants/<tenantId>', 'DELETE', self.deleteTenant)
         self.app.route(self.baseUrl + '/vrfs/<vrfId>', 'DELETE', self.deleteVrf)
@@ -99,175 +105,1210 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/l2ports/<l2portId>', 'DELETE', self.deleteL2port)
         self.app.route(self.baseUrl + '/aes/<aeId>', 'DELETE', self.deleteAe)
 
-    def getFabrics(self, dbSession):
-        logger.info('getFabrics')
-        return {'fabrics': {'fabric': [], 'total': 0, 'url': ''}}
+    def _getUriPrefix(self):
+        if self.uriPrefix is None:
+            self.uriPrefix = '%s://%s%s' % (bottle.request.urlparts[0], bottle.request.urlparts[1], self.baseUrl)
+        return self.uriPrefix
 
-    def getFabric(self, dbSession, fabricId, requestUrl=None):
-        logger.info('getFabric %s', fabricId)
-        return {'fabric': {}}
+    def _populateDevice(self, deviceObject):
+        device = {}      
+        device['id'] = deviceObject.id
+        device['name'] = deviceObject.name
+        device['description'] = deviceObject.description
+        device['role'] = deviceObject.role
+        device['address'] = deviceObject.address
+        device['uri'] = '%s/devices/%s' % (self._getUriPrefix(), deviceObject.id)
+        fabrics = []
+        for fabric in deviceObject.overlay_fabrics:
+            fabrics.append({'uri': '%s/fabrics/%s' % (self._getUriPrefix(), fabric.id)})
+        device['fabrics'] = {'fabric': fabrics, 'total': len(deviceObject.overlay_fabrics)}
+        return device
+    
+    def getDevices(self, dbSession):
+        deviceObjects = self.__dao.getAll(dbSession, OverlayDevice)
+        devices = []
+        for deviceObject in deviceObjects:
+            devices.append(self._populateDevice(deviceObject))
+        
+        logger.debug("getDevices: count %d", len(devices))
+        
+        outputDict = {}
+        outputDict['device'] = devices
+        outputDict['total'] = len(devices)
+        outputDict['uri'] = '%s/devices' % (self._getUriPrefix())
+        return {'devices': outputDict}
+
+    def getDevice(self, dbSession, deviceId):
+        try:
+            deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
+            logger.debug('getDevice: %s', deviceId)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        
+        return {'device': self._populateDevice(deviceObject)}
+        
+    def createDevice(self, dbSession):  
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            deviceDict = bottle.request.json.get('device')
+            if deviceDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = deviceDict['name']
+            description = deviceDict.get('description')
+            role = deviceDict['role']
+            address = deviceDict['address']
+            
+            deviceObject = OverlayDevice(name, description, role, address)
+            self.__dao.createObjects(dbSession, [deviceObject])
+            logger.info("OverlayDevice[id='%s', name='%s']: created", deviceObject.id, deviceObject.name)
+
+            device = {'device': self._populateDevice(deviceObject)}
+            
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        bottle.response.set_header('Location', self.baseUrl + '/devices/' + deviceObject.id)
+        bottle.response.status = 201
+
+        return device
+        
+    def modifyDevice(self, dbSession, deviceId):
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            deviceDict = bottle.request.json.get('device')
+            if deviceDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = deviceDict['name']
+            description = deviceDict.get('description')
+            role = deviceDict['role']
+            address = deviceDict['address']
+            
+            deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
+            deviceObject.update(name, description, role, address)
+            logger.info("OverlayDevice[id='%s', name='%s']: modified", deviceObject.id, deviceObject.name)
+            
+            device = {'device': self._populateDevice(deviceObject)}
+            
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
+        return device
+
+    def deleteDevice(self, dbSession, deviceId):
+        try:
+            deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
+            self.__dao.deleteObject(dbSession, deviceObject)
+            logger.info("OverlayDevice[id='%s', name='%s']: deleted", deviceObject.id, deviceObject.name)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
+        return bottle.HTTPResponse(status=204)
+        
+    def _populateFabric(self, fabricObject):
+        fabric = {}
+        fabric['id'] = fabricObject.id
+        fabric['name'] = fabricObject.name
+        fabric['description'] = fabricObject.description
+        fabric['overlayAsn'] = fabricObject.overlayAS
+        fabric['uri'] = '%s/fabrics/%s' % (self._getUriPrefix(), fabricObject.id)
+        devices = []
+        for device in fabricObject.overlay_devices:
+            devices.append({'uri': '%s/devices/%s' % (self._getUriPrefix(), device.id)})
+        fabric['devices'] = {'device': devices, 'total': len(fabricObject.overlay_devices)}
+        tenants = []
+        for tenant in fabricObject.overlay_tenants:
+            tenants.append({'uri': '%s/tenants/%s' % (self._getUriPrefix(), tenant.id)})
+        fabric['tenants'] = {'tenant': tenants, 'total': len(fabricObject.overlay_tenants)}
+        return fabric
+    
+    def getFabrics(self, dbSession):
+        fabricObjects = self.__dao.getAll(dbSession, OverlayFabric)
+        fabrics = []
+        for fabricObject in fabricObjects:
+            fabrics.append(self._populateFabric(fabricObject))
+        
+        logger.debug("getFabrics: count %d", len(fabrics))
+        
+        outputDict = {}
+        outputDict['fabric'] = fabrics
+        outputDict['total'] = len(fabrics)
+        outputDict['uri'] = '%s/fabrics' % (self._getUriPrefix())
+        return {'fabrics': outputDict}
+
+    def getFabric(self, dbSession, fabricId):
+        try:
+            fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
+            logger.debug('getFabric: %s', fabricId)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            
+        return {'fabric': self._populateFabric(fabricObject)}
         
     def createFabric(self, dbSession):  
-        logger.info('createFabric')
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            fabricDict = bottle.request.json.get('fabric')
+            if fabricDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = fabricDict['name']
+            description = fabricDict.get('description')
+            overlayAsn = fabricDict['overlayAsn']
+            devices = fabricDict['devices']
+            deviceObjects = []
+            for device in devices:
+                try:
+                    deviceId = device.split('/')[-1]
+                    deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
+                    logger.debug("Overlay Device '%s' found", deviceId)
+                    deviceObjects.append(deviceObject)
+                except (exc.NoResultFound) as ex:
+                    logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+                    raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
+
+            fabricObject = OverlayFabric(name, description, overlayAsn, deviceObjects)
+            self.__dao.createObjects(dbSession, [fabricObject])
+            logger.info("OverlayFabric[id='%s', name='%s']: created", fabricObject.id, fabricObject.name)
+
+            fabric = {'fabric': self._populateFabric(fabricObject)}
+            
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        bottle.response.set_header('Location', self.baseUrl + '/fabrics/' + fabricObject.id)
         bottle.response.status = 201
-        return {'fabric': {}}
+
+        return fabric
         
     def modifyFabric(self, dbSession, fabricId):
-        logger.info('modifyFabric %s', fabricId)
-        return {'fabric': {}}
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            fabricDict = bottle.request.json.get('fabric')
+            if fabricDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
+        try:
+            name = fabricDict['name']
+            description = fabricDict.get('description')
+            overlayAsn = fabricDict['overlayAsn']
+            devices = fabricDict['devices']
+            deviceObjects = []
+            for device in devices:
+                try:
+                    deviceId = device.split('/')[-1]
+                    deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
+                    logger.debug("Overlay Device '%s' found", deviceId)
+                    deviceObjects.append(deviceObject)
+                except (exc.NoResultFound) as ex:
+                    logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+                    raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
+
+            fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
+            fabricObject.clearDevices()
+            self.__dao.updateObjects(dbSession, [fabricObject])
+            fabricObject.update(name, description, overlayAsn, deviceObjects)
+            logger.info("OverlayFabric[id='%s', name='%s']: modified", fabricObject.id, fabricObject.name)
+
+            fabric = {'fabric': self._populateFabric(fabricObject)}
+
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            
+        return fabric
+        
     def deleteFabric(self, dbSession, fabricId):
-        logger.info('deleteFabric %s', fabricId)
+        try:
+            fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
+            self.__dao.deleteObject(dbSession, fabricObject)
+            logger.info("OverlayFabric[id='%s', name='%s']: deleted", fabricObject.id, fabricObject.name)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
         return bottle.HTTPResponse(status=204)
 
+    def _populateTenant(self, tenantObject):
+        tenant = {}      
+        tenant['id'] = tenantObject.id
+        tenant['name'] = tenantObject.name
+        tenant['description'] = tenantObject.description
+        tenant['uri'] = '%s/tenants/%s' % (self._getUriPrefix(), tenantObject.id)
+        tenant['fabric'] = '%s/fabrics/%s' % (self._getUriPrefix(), tenantObject.overlay_fabric.id)
+        vrfs = []
+        for vrf in tenantObject.overlay_vrfs:
+            vrfs.append({'uri': '%s/vrfs/%s' % (self._getUriPrefix(), vrf.id)})
+        tenant['vrfs'] = {'vrf': vrfs, 'total': len(tenantObject.overlay_vrfs)}
+        return tenant
+    
     def getTenants(self, dbSession):
-        logger.info('getTenants')
-        return {'tenants': {'tenant': [], 'total': 0, 'url': ''}}
+        tenantObjects = self.__dao.getAll(dbSession, OverlayTenant)
+        tenants = []
+        for tenantObject in tenantObjects:
+            tenants.append(self._populateTenant(tenantObject))
+        
+        logger.debug("getTenants: count %d", len(tenants))
+        
+        outputDict = {}
+        outputDict['tenant'] = tenants
+        outputDict['total'] = len(tenants)
+        outputDict['uri'] = '%s/tenants' % (self._getUriPrefix())
+        return {'tenants': outputDict}
 
-    def getTenant(self, dbSession, tenantId, requestUrl=None):
-        logger.info('getTenant %s', tenantId)
-        return {'tenant': {}}
+    def getTenant(self, dbSession, tenantId):
+        try:
+            tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
+            logger.debug('getTenant: %s', tenantId)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        
+        return {'tenant': self._populateTenant(tenantObject)}
         
     def createTenant(self, dbSession):  
-        logger.info('createTenant')
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            tenantDict = bottle.request.json.get('tenant')
+            if tenantDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = tenantDict['name']
+            description = tenantDict.get('description')
+            fabricId = tenantDict['fabric'].split('/')[-1]
+            try:
+                fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
+                logger.debug("Overlay Fabric '%s' found", fabricId)
+            except (exc.NoResultFound) as ex:
+                logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
+                raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
+                
+            tenantObject = OverlayTenant(name, description, fabricObject)
+            self.__dao.createObjects(dbSession, [tenantObject])
+            logger.info("OverlayTenant[id='%s', name='%s']: created", tenantObject.id, tenantObject.name)
+
+            tenant = {'tenant': self._populateTenant(tenantObject)}
+            
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        bottle.response.set_header('Location', self.baseUrl + '/tenants/' + tenantObject.id)
         bottle.response.status = 201
-        return {'tenant': {}}
+
+        return tenant
         
     def modifyTenant(self, dbSession, tenantId):
-        logger.info('modifyTenant %s', tenantId)
-        return {'tenant': {}}
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            tenantDict = bottle.request.json.get('tenant')
+            if tenantDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
+        try:
+            name = tenantDict['name']
+            description = tenantDict.get('description')
+            
+            tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
+            tenantObject.update(name, description)
+            logger.info("OverlayTenant[id='%s', name='%s']: modified", tenantObject.id, tenantObject.name)
+
+            tenant = {'tenant': self._populateTenant(tenantObject)}
+            
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
+        return tenant
+        
     def deleteTenant(self, dbSession, tenantId):
-        logger.info('deleteTenant %s', tenantId)
+        try:
+            tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
+            self.__dao.deleteObject(dbSession, tenantObject)
+            logger.info("OverlayTenant[id='%s', name='%s']: deleted", tenantObject.id, tenantObject.name)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
         return bottle.HTTPResponse(status=204)
 
+    def _populateVrf(self, vrfObject):
+        vrf = {}      
+        vrf['id'] = vrfObject.id
+        vrf['name'] = vrfObject.name
+        vrf['description'] = vrfObject.description
+        vrf['routedVnid'] = vrfObject.routedVnid
+        vrf['uri'] = '%s/vrfs/%s' % (self._getUriPrefix(), vrfObject.id)
+        vrf['tenant'] = '%s/tenants/%s' % (self._getUriPrefix(), vrfObject.overlay_tenant.id)
+        networks = []
+        for network in vrfObject.overlay_networks:
+            networks.append({'uri': '%s/networks/%s' % (self._getUriPrefix(), network.id)})
+        vrf['networks'] = {'network': networks, 'total': len(vrfObject.overlay_networks)}
+        vrf['status'] = {}
+        vrf['status']['brief'] = '%s/vrfs/%s/status?mode=brief' % (self._getUriPrefix(), vrfObject.id)
+        vrf['status']['detail'] = '%s/vrfs/%s/status?mode=detail' % (self._getUriPrefix(), vrfObject.id)
+        return vrf
+    
     def getVrfs(self, dbSession):
-        logger.info('getVrfs')
-        return {'vrfs': {'vrf': [], 'total': 0, 'url': ''}}
-
-    def getVrf(self, dbSession, vrfId, requestUrl=None):
-        logger.info('getVrf %s', vrfId)
-        return {'vrf': {}}
+        vrfObjects = self.__dao.getAll(dbSession, OverlayVrf)
+        vrfs = []
+        for vrfObject in vrfObjects:
+            vrfs.append(self._populateVrf(vrfObject))
         
+        logger.debug("getVrfs: count %d", len(vrfs))
+        
+        outputDict = {}
+        outputDict['vrf'] = vrfs
+        outputDict['total'] = len(vrfs)
+        outputDict['uri'] = '%s/vrfs' % (self._getUriPrefix())
+        return {'vrfs': outputDict}
+
+    def getVrf(self, dbSession, vrfId):
+        try:
+            vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
+            logger.debug('getVrf: %s', vrfId)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        
+        return {'vrf': self._populateVrf(vrfObject)}
+        
+    def _getVrfStatusBrief(self, dbSession, vrfId):
+        try:
+            # get all object status under this VRF
+            # XXX when inserting into OverlayDeployStatus table, make sure to insert a row for OverlayFabric too
+            # so the same OverlayFabric configlet would be inserted NxM times if we have <N> devices and <M> VRFs under
+            # this OverlayFabric
+            # a little trade-off between normalization and simple schema for OverlayDeployStatus table
+            statusAll = dbSession.query(OverlayDeployStatus).filter(OverlayDeployStatus.overlay_vrf_id == vrfId).all()
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        
+        logger.debug("getVrfStatusBrief: count %d", len(statusAll))
+        
+        aggregatedStatus = 'success'
+        for status in statusAll:
+            if status.status == 'failure':
+                # we got a failure. no need to continue
+                aggregatedStatus = 'failure'
+                break
+            elif status.status == 'progress':
+                # keep going. we might still have a failure 
+                aggregatedStatus = 'progress'
+        
+        outputDict = {}
+        outputDict['status'] = aggregatedStatus
+        outputDict['uri'] = '%s/vrfs/%s/status?mode=brief' % (self._getUriPrefix(), vrfId)
+        return {'statusBrief': outputDict}
+        
+    def _getVrfStatusDetail(self, dbSession, vrfId):
+        try:
+            # get all object status under this VRF
+            # XXX when inserting into OverlayDeployStatus table, make sure to insert a row for OverlayFabric too
+            # so the same OverlayFabric configlet would be inserted NxM times if we have <N> devices and <M> VRFs under
+            # this OverlayFabric
+            # a little trade-off between normalization and simple schema for OverlayDeployStatus table
+            statusAll = dbSession.query(OverlayDeployStatus).filter(OverlayDeployStatus.overlay_vrf_id == vrfId).all()
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        
+        logger.debug("getVrfStatusDetail: count %d", len(statusAll))
+        
+        failureObjects = []
+        progressObjects = []
+        for status in statusAll:
+            if status.status == 'failure':
+                failureObjects.append({'uri': status.object_url, 'device': status.overlay_device.name, 'configlet': status.configlet, 'reason': status.statusReason})
+            elif status.status == 'progress':
+                progressObjects.append({'uri': status.object_url, 'device': status.overlay_device.name, 'configlet': status.configlet, 'reason': status.statusReason})
+        
+        # aggregated status will be progress only if there is no failure
+        if len(failureObjects) > 0:
+            aggregatedStatus = 'failure'
+        elif len(progressObjects) > 0:
+            aggregatedStatus = 'progress'
+        else:
+            aggregatedStatus = 'success'
+        
+        outputDict = {}
+        outputDict['status'] = aggregatedStatus
+        outputDict['uri'] = '%s/vrfs/%s/status?mode=detail' % (self._getUriPrefix(), vrfId)
+        outputDict['failure'] = {'objects': failureObjects, 'total': len(failureObjects)}
+        outputDict['progress'] = {'objects': progressObjects, 'total': len(progressObjects)}
+        return {'statusDetail': outputDict}
+        
+    def getVrfStatus(self, dbSession, vrfId):
+        if bottle.request.query.mode == 'brief':
+            return self._getVrfStatusBrief(dbSession, vrfId)
+        elif bottle.request.query.mode == 'detail':
+            return self._getVrfStatusDetail(dbSession, vrfId)
+        else:
+            raise bottle.HTTPError(400, exception=InvalidRequest("Invalid mode '%s'" % bottle.request.query.mode))
+    
     def createVrf(self, dbSession):  
-        logger.info('createVrf')
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            vrfDict = bottle.request.json.get('vrf')
+            if vrfDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = vrfDict['name']
+            description = vrfDict.get('description')
+            routedVnid = vrfDict.get('routedVnid')
+            tenantId = vrfDict['tenant'].split('/')[-1]
+            try:
+                tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
+            except (exc.NoResultFound) as ex:
+                logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
+                raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
+                
+            vrfObject = OverlayVrf(name, description, routedVnid, tenantObject)
+            self.__dao.createObjects(dbSession, [vrfObject])
+            logger.info("OverlayVrf[id='%s', name='%s']: created", vrfObject.id, vrfObject.name)
+
+            vrf = {'vrf': self._populateVrf(vrfObject)}
+            
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        bottle.response.set_header('Location', self.baseUrl + '/vrfs/' + vrfObject.id)
         bottle.response.status = 201
-        return {'vrf': {}}
+
+        return vrf
         
     def modifyVrf(self, dbSession, vrfId):
-        logger.info('modifyVrf %s', vrfId)
-        return {'vrf': {}}
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            vrfDict = bottle.request.json.get('vrf')
+            if vrfDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = vrfDict['name']
+            description = vrfDict.get('description')
+            routedVnid = vrfDict['routedVnid']
+            
+            vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
+            vrfObject.update(name, description, routedVnid)
+            logger.info("OverlayVrf[id='%s', name='%s']: modified", vrfObject.id, vrfObject.name)
+            
+            vrf = {'vrf': self._populateVrf(vrfObject)}
+            
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
+        return vrf
 
     def deleteVrf(self, dbSession, vrfId):
-        logger.info('deleteVrf %s', vrfId)
+        try:
+            vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
+            self.__dao.deleteObject(dbSession, vrfObject)
+            logger.info("OverlayVrf[id='%s', name='%s']: deleted", vrfObject.id, vrfObject.name)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
         return bottle.HTTPResponse(status=204)
+        
+    def _populateNetwork(self, networkObject):
+        network = {}      
+        network['id'] = networkObject.id
+        network['name'] = networkObject.name
+        network['description'] = networkObject.description
+        network['vlanid'] = networkObject.vlanid
+        network['vnid'] = networkObject.vnid
+        network['pureL3Int'] = networkObject.pureL3Int
+        network['uri'] = '%s/networks/%s' % (self._getUriPrefix(), networkObject.id)
+        network['vrf'] = '%s/vrfs/%s' % (self._getUriPrefix(), networkObject.overlay_vrf.id)
+        subnets = []
+        for subnet in networkObject.overlay_subnets:
+            subnets.append({'uri': '%s/subnets/%s' % (self._getUriPrefix(), subnet.id)})
+        network['subnets'] = {'subnet': subnets, 'total': len(networkObject.overlay_subnets)}
+        l2ports = []
+        for l2port in networkObject.overlay_l2ports:
+            l2ports.append({'uri': '%s/l2ports/%s' % (self._getUriPrefix(), l2port.id)})
+        network['l2ports'] = {'l2port': l2ports, 'total': len(networkObject.overlay_l2ports)}
+        return network
         
     def getNetworks(self, dbSession):
-        logger.info('getNetworks')
-        return {'networks': {'network': [], 'total': 0, 'url': ''}}
+        networkObjects = self.__dao.getAll(dbSession, OverlayNetwork)
+        networks = []
+        for networkObject in networkObjects:
+            networks.append(self._populateNetwork(networkObject))
+        
+        logger.debug("getNetworks: count %d", len(networks))
+        
+        outputDict = {}
+        outputDict['network'] = networks
+        outputDict['total'] = len(networks)
+        outputDict['uri'] = '%s/networks' % (self._getUriPrefix())
+        return {'networks': outputDict}
 
-    def getNetwork(self, dbSession, networkId, requestUrl=None):
-        logger.info('getNetwork %s', networkId)
-        return {'network': {}}
+    def getNetwork(self, dbSession, networkId):
+        try:
+            networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
+            logger.debug('getNetwork: %s', networkId)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        
+        return {'network': self._populateNetwork(networkObject)}
         
     def createNetwork(self, dbSession):  
-        logger.info('createNetwork')
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            networkDict = bottle.request.json.get('network')
+            if networkDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = networkDict['name']
+            description = networkDict.get('description')
+            vlanid = networkDict.get('vlanid')
+            vnid = networkDict.get('vnid')
+            pureL3Int = networkDict.get('pureL3Int', False)
+            vrfId = networkDict['vrf'].split('/')[-1]
+            try:
+                vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
+            except (exc.NoResultFound) as ex:
+                logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
+                raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
+                
+            networkObject = OverlayNetwork(name, description, vrfObject, vlanid, vnid, pureL3Int)
+            self.__dao.createObjects(dbSession, [networkObject])
+            logger.info("OverlayNetwork[id='%s', name='%s']: created", networkObject.id, networkObject.name)
+
+            network = {'network': self._populateNetwork(networkObject)}
+            
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        bottle.response.set_header('Location', self.baseUrl + '/networks/' + networkObject.id)
         bottle.response.status = 201
-        return {'network': {}}
+
+        return network
         
     def modifyNetwork(self, dbSession, networkId):
-        logger.info('modifyNetwork %s', networkId)
-        return {'network': {}}
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            networkDict = bottle.request.json.get('network')
+            if networkDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = networkDict['name']
+            description = networkDict.get('description')
+            vlanid = networkDict.get('vlanid')
+            vnid = networkDict.get('vnid')
+            pureL3Int = networkDict.get('pureL3Int', False)
+            
+            networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
+            networkObject.update(name, description, vlanid, vnid, pureL3Int)
+            logger.info("OverlayNetwork[id='%s', name='%s']: modified", networkObject.id, networkObject.name)
+            
+            network = {'network': self._populateNetwork(networkObject)}
+            
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
+        return network
 
     def deleteNetwork(self, dbSession, networkId):
-        logger.info('deleteNetwork %s', networkId)
+        try:
+            networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
+            self.__dao.deleteObject(dbSession, networkObject)
+            logger.info("OverlayNetwork[id='%s', name='%s']: deleted", networkObject.id, networkObject.name)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
         return bottle.HTTPResponse(status=204)
 
+    def _populateSubnet(self, subnetObject):
+        subnet = {}      
+        subnet['id'] = subnetObject.id
+        subnet['name'] = subnetObject.name
+        subnet['description'] = subnetObject.description
+        subnet['cidr'] = subnetObject.cidr
+        subnet['uri'] = '%s/subnets/%s' % (self._getUriPrefix(), subnetObject.id)
+        subnet['network'] = '%s/networks/%s' % (self._getUriPrefix(), subnetObject.overlay_network.id)
+        l3ports = []
+        for l3port in subnetObject.overlay_l3ports:
+            l3ports.append({'uri': '%s/l3ports/%s' % (self._getUriPrefix(), l3port.id)})
+        subnet['l3ports'] = {'l3port': l3ports, 'total': len(subnetObject.overlay_l3ports)}
+        return subnet
+        
     def getSubnets(self, dbSession):
-        logger.info('getSubnets')
-        return {'subnets': {'subnet': [], 'total': 0, 'url': ''}}
+        subnetObjects = self.__dao.getAll(dbSession, OverlaySubnet)
+        subnets = []
+        for subnetObject in subnetObjects:
+            subnets.append(self._populateSubnet(subnetObject))
+        
+        logger.debug("getSubnets: count %d", len(subnets))
+        
+        outputDict = {}
+        outputDict['subnet'] = subnets
+        outputDict['total'] = len(subnets)
+        outputDict['uri'] = '%s/subnets' % (self._getUriPrefix())
+        return {'subnets': outputDict}
 
-    def getSubnet(self, dbSession, subnetId, requestUrl=None):
-        logger.info('getSubnet %s', subnetId)
-        return {'subnet': {}}
+    def getSubnet(self, dbSession, subnetId):
+        try:
+            subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
+            logger.debug('getSubnet: %s', subnetId)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        
+        return {'subnet': self._populateSubnet(subnetObject)}
         
     def createSubnet(self, dbSession):  
-        logger.info('createSubnet')
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            subnetDict = bottle.request.json.get('subnet')
+            if subnetDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = subnetDict['name']
+            description = subnetDict.get('description')
+            cidr = subnetDict['cidr']
+            networkId = subnetDict['network'].split('/')[-1]
+            try:
+                networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
+            except (exc.NoResultFound) as ex:
+                logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
+                raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
+                
+            subnetObject = OverlaySubnet(name, description, networkObject, cidr)
+            self.__dao.createObjects(dbSession, [subnetObject])
+            logger.info("OverlaySubnet[id='%s', name='%s']: created", subnetObject.id, subnetObject.name)
+
+            subnet = {'subnet': self._populateSubnet(subnetObject)}
+            
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        bottle.response.set_header('Location', self.baseUrl + '/subnets/' + subnetObject.id)
         bottle.response.status = 201
-        return {'subnet': {}}
+
+        return subnet
         
     def modifySubnet(self, dbSession, subnetId):
-        logger.info('modifySubnet %s', subnetId)
-        return {'subnet': {}}
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            subnetDict = bottle.request.json.get('subnet')
+            if subnetDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = subnetDict['name']
+            description = subnetDict.get('description')
+            cidr = subnetDict['cidr']
+            
+            subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
+            subnetObject.update(name, description, cidr)
+            logger.info("OverlaySubnet[id='%s', name='%s']: modified", subnetObject.id, subnetObject.name)
+            
+            subnet = {'subnet': self._populateSubnet(subnetObject)}
+            
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
+        return subnet
 
     def deleteSubnet(self, dbSession, subnetId):
-        logger.info('deleteSubnet %s', subnetId)
+        try:
+            subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
+            self.__dao.deleteObject(dbSession, subnetObject)
+            logger.info("OverlaySubnet[id='%s', name='%s']: deleted", subnetObject.id, subnetObject.name)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
         return bottle.HTTPResponse(status=204)
 
+    def _populateL3port(self, l3portObject):
+        l3port = {}      
+        l3port['id'] = l3portObject.id
+        l3port['name'] = l3portObject.name
+        l3port['description'] = l3portObject.description
+        l3port['uri'] = '%s/l3ports/%s' % (self._getUriPrefix(), l3portObject.id)
+        l3port['subnet'] = '%s/subnets/%s' % (self._getUriPrefix(), l3portObject.overlay_subnet.id)
+        return l3port
+        
     def getL3ports(self, dbSession):
-        logger.info('getL3ports')
-        return {'l3ports': {'l3port': [], 'total': 0, 'url': ''}}
+        l3portObjects = self.__dao.getAll(dbSession, OverlayL3port)
+        l3ports = []
+        for l3portObject in l3portObjects:
+            l3ports.append(self._populateL3port(l3portObject))
+        
+        logger.debug("getL3ports: count %d", len(l3ports))
+        
+        outputDict = {}
+        outputDict['l3port'] = l3ports
+        outputDict['total'] = len(l3ports)
+        outputDict['uri'] = '%s/l3ports' % (self._getUriPrefix())
+        return {'l3ports': outputDict}
 
-    def getL3port(self, dbSession, l3portId, requestUrl=None):
-        logger.info('getL3port %s', l3portId)
-        return {'l3port': {}}
+    def getL3port(self, dbSession, l3portId):
+        try:
+            l3portObject = self.__dao.getObjectById(dbSession, OverlayL3port, l3portId)
+            logger.debug('getL3port: %s', l3portId)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayL3portNotFound(l3portId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        
+        return {'l3port': self._populateL3port(l3portObject)}
         
     def createL3port(self, dbSession):  
-        logger.info('createL3port')
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            l3portDict = bottle.request.json.get('l3port')
+            if l3portDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = l3portDict['name']
+            description = l3portDict.get('description')
+            subnetId = l3portDict['subnet'].split('/')[-1]
+            try:
+                subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
+            except (exc.NoResultFound) as ex:
+                logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
+                raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
+                
+            l3portObject = OverlayL3port(name, description, subnetObject)
+            self.__dao.createObjects(dbSession, [l3portObject])
+            logger.info("OverlayL3port[id='%s', name='%s']: created", l3portObject.id, l3portObject.name)
+
+            l3port = {'l3port': self._populateL3port(l3portObject)}
+            
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        bottle.response.set_header('Location', self.baseUrl + '/l3ports/' + l3portObject.id)
         bottle.response.status = 201
-        return {'l3port': {}}
+
+        return l3port
         
     def modifyL3port(self, dbSession, l3portId):
-        logger.info('modifyL3port %s', l3portId)
-        return {'l3port': {}}
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            l3portDict = bottle.request.json.get('l3port')
+            if l3portDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = l3portDict['name']
+            description = l3portDict.get('description')
+            
+            l3portObject = self.__dao.getObjectById(dbSession, OverlayL3port, l3portId)
+            l3portObject.update(name, description)
+            logger.info("OverlayL3port[id='%s', name='%s']: modified", l3portObject.id, l3portObject.name)
+            
+            l3port = {'l3port': self._populateL3port(l3portObject)}
+            
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayL3portNotFound(l3portId))
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
+        return l3port
 
     def deleteL3port(self, dbSession, l3portId):
-        logger.info('deleteL3port %s', l3portId)
+        try:
+            l3portObject = self.__dao.getObjectById(dbSession, OverlayL3port, l3portId)
+            self.__dao.deleteObject(dbSession, l3portObject)
+            logger.info("OverlayL3port[id='%s', name='%s']: deleted", l3portObject.id, l3portObject.name)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayL3portNotFound(l3portId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
         return bottle.HTTPResponse(status=204)
 
+    def _populateL2port(self, l2portObject):
+        l2port = {}      
+        l2port['id'] = l2portObject.id
+        l2port['name'] = l2portObject.name
+        l2port['description'] = l2portObject.description
+        l2port['interface'] = l2portObject.interface
+        l2port['uri'] = '%s/l2ports/%s' % (self._getUriPrefix(), l2portObject.id)
+        l2port['ae'] = '%s/aes/%s' % (self._getUriPrefix(), l2portObject.overlay_ae.id)
+        l2port['network'] = '%s/networks/%s' % (self._getUriPrefix(), l2portObject.overlay_network.id)
+        l2port['device'] = '%s/devices/%s' % (self._getUriPrefix(), l2portObject.overlay_device.id)
+        return l2port
+        
     def getL2ports(self, dbSession):
-        logger.info('getL2ports')
-        return {'l2ports': {'l2port': [], 'total': 0, 'url': ''}}
+        l2portObjects = self.__dao.getAll(dbSession, OverlayL2port)
+        l2ports = []
+        for l2portObject in l2portObjects:
+            l2ports.append(self._populateL2port(l2portObject))
+        
+        logger.debug("getL2ports: count %d", len(l2ports))
+        
+        outputDict = {}
+        outputDict['l2port'] = l2ports
+        outputDict['total'] = len(l2ports)
+        outputDict['uri'] = '%s/l2ports' % (self._getUriPrefix())
+        return {'l2ports': outputDict}
 
-    def getL2port(self, dbSession, l2portId, requestUrl=None):
-        logger.info('getL2port %s', l2portId)
-        return {'l2port': {}}
+    def getL2port(self, dbSession, l2portId):
+        try:
+            l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
+            logger.debug('getL2port: %s', l2portId)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayL2portNotFound(l2portId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        
+        return {'l2port': self._populateL2port(l2portObject)}
         
     def createL2port(self, dbSession):  
-        logger.info('createL2port')
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            l2portDict = bottle.request.json.get('l2port')
+            if l2portDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = l2portDict['name']
+            description = l2portDict.get('description')
+            interface = l2portDict['interface']
+            aeUri = l2portDict.get('ae')
+            if aeUri is not None:
+                aeId = l2portDict['ae'].split('/')[-1]
+                try:
+                    aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
+                except (exc.NoResultFound) as ex:
+                    logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
+                    raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
+                
+            networkId = l2portDict['network'].split('/')[-1]
+            try:
+                networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
+            except (exc.NoResultFound) as ex:
+                logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
+                raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
+                
+            deviceId = l2portDict['device'].split('/')[-1]
+            try:
+                deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
+            except (exc.NoResultFound) as ex:
+                logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+                raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
+                
+            l2portObject = OverlayL2port(name, description, interface, aeObject, networkObject, deviceObject)
+            self.__dao.createObjects(dbSession, [l2portObject])
+            logger.info("OverlayL2port[id='%s', name='%s']: created", l2portObject.id, l2portObject.name)
+
+            l2port = {'l2port': self._populateL2port(l2portObject)}
+            
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        bottle.response.set_header('Location', self.baseUrl + '/l2ports/' + l2portObject.id)
         bottle.response.status = 201
-        return {'l2port': {}}
+
+        return l2port
         
     def modifyL2port(self, dbSession, l2portId):
-        logger.info('modifyL2port %s', l2portId)
-        return {'l2port': {}}
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            l2portDict = bottle.request.json.get('l2port')
+            if l2portDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = l2portDict['name']
+            description = l2portDict.get('description')
+            interface = l2portDict['interface']
+            
+            l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
+            l2portObject.update(name, description, interface)
+            logger.info("OverlayL2port[id='%s', name='%s']: modified", l2portObject.id, l2portObject.name)
+
+            l2port = {'l2port': self._populateL2port(l2portObject)}
+            
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayL2portNotFound(l2portId))
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
+        return l2port
 
     def deleteL2port(self, dbSession, l2portId):
-        logger.info('deleteL2port %s', l2portId)
+        try:
+            l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
+            self.__dao.deleteObject(dbSession, l2portObject)
+            logger.info("OverlayL2port[id='%s', name='%s']: deleted", l2portObject.id, l2portObject.name)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayL2portNotFound(l2portId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
         return bottle.HTTPResponse(status=204)
+        
+    def _populateAe(self, aeObject):
+        ae = {}      
+        ae['id'] = aeObject.id
+        ae['name'] = aeObject.name
+        ae['description'] = aeObject.description
+        ae['esi'] = aeObject.esi
+        ae['lacp'] = aeObject.lacp
+        ae['uri'] = '%s/aes/%s' % (self._getUriPrefix(), aeObject.id)
+        members = []
+        for member in aeObject.overlay_members:
+            members.append({'uri': '%s/l2ports/%s' % (self._getUriPrefix(), member.id)})
+        ae['members'] = {'member': members, 'total': len(aeObject.overlay_members)}
+        return ae
         
     def getAes(self, dbSession):
-        logger.info('getAes')
-        return {'aes': {'ae': [], 'total': 0, 'url': ''}}
+        aeObjects = self.__dao.getAll(dbSession, OverlayAe)
+        aes = []
+        for aeObject in aeObjects:
+            aes.append(self._populateAe(aeObject))
+        
+        logger.debug("getAes: count %d", len(aes))
+        
+        outputDict = {}
+        outputDict['ae'] = aes
+        outputDict['total'] = len(aes)
+        outputDict['uri'] = '%s/aes' % (self._getUriPrefix())
+        return {'aes': outputDict}
 
-    def getAe(self, dbSession, aeId, requestUrl=None):
-        logger.info('getAe %s', aeId)
-        return {'ae': {}}
+    def getAe(self, dbSession, aeId):
+        try:
+            aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
+            logger.debug('getAe: %s', aeId)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        
+        return {'ae': self._populateAe(aeObject)}
         
     def createAe(self, dbSession):  
-        logger.info('createAe')
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            aeDict = bottle.request.json.get('ae')
+            if aeDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
+
+        try:
+            name = aeDict['name']
+            description = aeDict.get('description')
+            esi = aeDict.get('esi')
+            lacp = aeDict.get('lacp')
+            
+            aeObject = OverlayAe(name, description, esi, lacp)
+            self.__dao.createObjects(dbSession, [aeObject])
+            logger.info("OverlayAe[id='%s', name='%s']: created", aeObject.id, aeObject.name)
+
+            ae = {'ae': self._populateAe(aeObject)}
+            
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+        bottle.response.set_header('Location', self.baseUrl + '/aes/' + aeObject.id)
         bottle.response.status = 201
-        return {'ae': {}}
+
+        return ae
         
     def modifyAe(self, dbSession, aeId):
-        logger.info('modifyAe %s', aeId)
-        return {'ae': {}}
+        if bottle.request.json is None:
+            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
+        else:
+            aeDict = bottle.request.json.get('ae')
+            if aeDict is None:
+                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
-    def deleteAe(self, dbSession, aeId):
-        logger.info('deleteAe %s', aeId)
-        return bottle.HTTPResponse(status=204)
+        try:
+            name = aeDict['name']
+            description = aeDict.get('description')
+            esi = aeDict.get('esi')
+            lacp = aeDict.get('lacp')
+            
+            aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
+            aeObject.update(name, description, esi, lacp)
+            logger.info("OverlayAe[id='%s', name='%s']: modified", aeObject.id, aeObject.name)
+            
+            ae = {'ae': self._populateAe(aeObject)}
+            
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
+        except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
 
-    def getStatus(self, dbSession, requestUrl=None):
-        logger.info('getStatus %s', bottle.request.query.fabricId)
-        return {'statusAll': {'statusDevice': [], 'total': 0, 'url': ''}}
+        return ae
         
+    def deleteAe(self, dbSession, aeId):
+        try:
+            aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
+            self.__dao.deleteObject(dbSession, aeObject)
+            logger.info("OverlayAe[id='%s', name='%s']: deleted", aeObject.id, aeObject.name)
+        except (exc.NoResultFound) as ex:
+            logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+
+        return bottle.HTTPResponse(status=204)

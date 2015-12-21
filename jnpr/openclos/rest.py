@@ -7,6 +7,7 @@ Created on Sep 2, 2014
 import os
 import bottle
 from sqlalchemy.orm import exc
+import sqlalchemy
 import StringIO
 import zipfile
 import traceback
@@ -16,13 +17,10 @@ import logging
 import importlib
 
 from bottle import error, request, response, PluginError, ServerAdapter
-from exception import InvalidRequest, PodNotFound, CablingPlanNotFound, DeviceConfigurationNotFound, DeviceNotFound, ImageNotFound, CreatePodFailed, UpdatePodFailed
-from model import Pod, Device
+from error import EC_PLATFORM_ERROR
+from exception import BaseError, isOpenClosException
 from dao import Dao
-from report import ResourceAllocationReport, L2Report, L3Report
-from l3Clos import L3ClosMediation
-from ztp import ZtpServer
-from loader import OpenClosProperty, DeviceSku, loadLoggingConfig
+from loader import OpenClosProperty, loadLoggingConfig
 import underlayRestRoutes
 
 moduleName = 'rest'
@@ -210,14 +208,15 @@ class RestServer():
         if 'plugin' in self._conf:
             plugins = self._conf['plugin']
             for plugin in plugins:
-                logger.info("plugin: name='%s' package='%s'", plugin['name'], plugin['package']) 
+                moduleName = plugin['package'] + '.' + plugin['name'] + 'RestRoutes'
+                logger.info("loading plugin REST module '%s'", moduleName) 
                 try:
-                    pluginModule = importlib.import_module(plugin['package'] + '.' + plugin['name'] + 'RestRoutes')
+                    pluginModule = importlib.import_module(moduleName)
                     pluginInstall = getattr(pluginModule, 'install')
                     if pluginInstall is not None:
                         pluginInstall(context)
                 except (AttributeError, ImportError) as err:
-                    logger.error("Failed to load plugin '%s'. Error: %s", plugin['name'], err) 
+                    logger.error("Failed to load plugin REST module '%s'. Error: %s", moduleName, err) 
                 # XXX should we continue?
         
         # install index routes
@@ -245,24 +244,47 @@ class RestServer():
         else:
             bottle.run(self.app, host=self.host, port=self.port, debug=debugRest, server='paste')
 
-
     @staticmethod
     @error(400)
     def error400(error):
         bottle.response.headers['Content-Type'] = 'application/json'
         if error.exception is not None:
-            return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
+            if isOpenClosException(error.exception):
+                return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
+            elif issubclass(error.exception.__class__, sqlalchemy.exc.SQLAlchemyError):
+                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception.message)})
+            else:
+                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception)})
         else:
-            return json.dumps({'errorCode': 0, 'errorMessage' : '400 Bad Request'})
+            return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error)})
         
     @staticmethod
     @error(404)
     def error404(error):
         bottle.response.headers['Content-Type'] = 'application/json'
         if error.exception is not None:
-            return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
+            if isOpenClosException(error.exception):
+                return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
+            elif issubclass(error.exception.__class__, sqlalchemy.exc.SQLAlchemyError):
+                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception.message)})
+            else:
+                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception)})
         else:
-            return json.dumps({'errorCode': 0, 'errorMessage' : '404 Not Found'})
+            return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error)})
+        
+    @staticmethod
+    @error(500)
+    def error500(error):
+        bottle.response.headers['Content-Type'] = 'application/json'
+        if error.exception is not None:
+            if isOpenClosException(error.exception):
+                return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
+            elif issubclass(error.exception.__class__, sqlalchemy.exc.SQLAlchemyError):
+                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception.message)})
+            else:
+                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception)})
+        else:
+            return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error)})
         
 def main():
     restServer = RestServer()
