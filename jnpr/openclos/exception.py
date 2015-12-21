@@ -22,6 +22,7 @@ class BaseError(Exception):
         self.code = errorCode
         self.message = errorMessage
         self.cause = cause
+        self.openClosException = True
 
     def __repr__(self):
         return "{0} errorCode: {1}, errorMessage: {2}, cause: {3}".format(
@@ -31,6 +32,12 @@ class BaseError(Exception):
             self.cause)
 
     __str__ = __repr__
+
+def isOpenClosException(ex):
+    try:
+        return ex.openClosException
+    except AttributeError as e:
+        return False    
 
 class InvalidConfiguration(BaseError):
     '''
@@ -203,6 +210,87 @@ class ImageNotFound(BaseError):
             error.getErrorMessage(error.EC_IMAGE_NOT_FOUND) % (reason), 
             cause)
 
+class OverlayFabricNotFound(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(OverlayFabricNotFound, self).__init__(error.EC_OVERLAY_FABRIC_NOT_FOUND,
+            error.getErrorMessage(error.EC_OVERLAY_FABRIC_NOT_FOUND) % (reason), 
+            cause)
+
+class OverlayTenantNotFound(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(OverlayTenantNotFound, self).__init__(error.EC_OVERLAY_TENANT_NOT_FOUND,
+            error.getErrorMessage(error.EC_OVERLAY_TENANT_NOT_FOUND) % (reason), 
+            cause)
+
+class OverlayVrfNotFound(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(OverlayVrfNotFound, self).__init__(error.EC_OVERLAY_VRF_NOT_FOUND,
+            error.getErrorMessage(error.EC_OVERLAY_VRF_NOT_FOUND) % (reason), 
+            cause)
+
+class OverlayDeviceNotFound(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(OverlayDeviceNotFound, self).__init__(error.EC_OVERLAY_DEVICE_NOT_FOUND,
+            error.getErrorMessage(error.EC_OVERLAY_DEVICE_NOT_FOUND) % (reason), 
+            cause)
+
+class OverlayNetworkNotFound(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(OverlayNetworkNotFound, self).__init__(error.EC_OVERLAY_NETWORK_NOT_FOUND,
+            error.getErrorMessage(error.EC_OVERLAY_NETWORK_NOT_FOUND) % (reason), 
+            cause)
+
+class OverlaySubnetNotFound(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(OverlaySubnetNotFound, self).__init__(error.EC_OVERLAY_SUBNET_NOT_FOUND,
+            error.getErrorMessage(error.EC_OVERLAY_SUBNET_NOT_FOUND) % (reason), 
+            cause)
+
+class OverlayL3portNotFound(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(OverlayL3portNotFound, self).__init__(error.EC_OVERLAY_L3PORT_NOT_FOUND,
+            error.getErrorMessage(error.EC_OVERLAY_L3PORT_NOT_FOUND) % (reason), 
+            cause)
+
+class OverlayL2portNotFound(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(OverlayL2portNotFound, self).__init__(error.EC_OVERLAY_L2PORT_NOT_FOUND,
+            error.getErrorMessage(error.EC_OVERLAY_L2PORT_NOT_FOUND) % (reason), 
+            cause)
+
+class OverlayAeNotFound(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(OverlayAeNotFound, self).__init__(error.EC_OVERLAY_AE_NOT_FOUND,
+            error.getErrorMessage(error.EC_OVERLAY_AE_NOT_FOUND) % (reason), 
+            cause)
+
 class CreatePodFailed(BaseError):
     '''
     Description of the error
@@ -281,5 +369,94 @@ class SkipCommit(BaseError):
     '''
     def __init__(self, reason=None, cause=None):
         super(SkipCommit, self).__init__(error.EC_OK, reason, cause)
-    
-    
+        
+class CreateOverlayFabricFailed(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(CreateOverlayFabricFailed, self).__init__(error.EC_CREATE_OVERLAY_FABRIC_FAILED,
+            error.getErrorMessage(error.EC_CREATE_OVERLAY_FABRIC_FAILED) % (reason), 
+            cause)
+
+class CreateOverlayTenantFailed(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(CreateOverlayTenantFailed, self).__init__(error.EC_CREATE_OVERLAY_TENANT_FAILED,
+            error.getErrorMessage(error.EC_CREATE_OVERLAY_TENANT_FAILED) % (reason), 
+            cause)
+
+class CreateOverlayVrfFailed(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(CreateOverlayVrfFailed, self).__init__(error.EC_CREATE_OVERLAY_VRF_FAILED,
+            error.getErrorMessage(error.EC_CREATE_OVERLAY_VRF_FAILED) % (reason), 
+            cause)
+
+class CreateOverlayDeviceFailed(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(CreateOverlayDeviceFailed, self).__init__(error.EC_CREATE_OVERLAY_DEVICE_FAILED,
+            error.getErrorMessage(error.EC_CREATE_OVERLAY_DEVICE_FAILED) % (reason), 
+            cause)
+
+class CreateOverlayNetworkFailed(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(CreateOverlayNetworkFailed, self).__init__(error.EC_CREATE_OVERLAY_NETWORK_FAILED,
+            error.getErrorMessage(error.EC_CREATE_OVERLAY_NETWORK_FAILED) % (reason), 
+            cause)
+
+class CreateOverlaySubnetFailed(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(CreateOverlaySubnetFailed, self).__init__(error.EC_CREATE_OVERLAY_SUBNET_FAILED,
+            error.getErrorMessage(error.EC_CREATE_OVERLAY_SUBNET_FAILED) % (reason), 
+            cause)
+
+class CreateOverlayL3portFailed(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(CreateOverlayL3portFailed, self).__init__(error.EC_CREATE_OVERLAY_L3PORT_FAILED,
+            error.getErrorMessage(error.EC_CREATE_OVERLAY_L3PORT_FAILED) % (reason), 
+            cause)
+
+class CreateOverlayL2portFailed(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(CreateOverlayL2portFailed, self).__init__(error.EC_CREATE_OVERLAY_L2PORT_FAILED,
+            error.getErrorMessage(error.EC_CREATE_OVERLAY_L2PORT_FAILED) % (reason), 
+            cause)
+
+class CreateOverlayAeFailed(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(CreateOverlayAeFailed, self).__init__(error.EC_CREATE_OVERLAY_AE_FAILED,
+            error.getErrorMessage(error.EC_CREATE_OVERLAY_AE_FAILED) % (reason), 
+            cause)
+            
+class PlatformError(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(PlatformError, self).__init__(error.EC_PLATFORM_ERROR,
+            error.getErrorMessage(error.EC_PLATFORM_ERROR) % (reason), 
+            cause)
+
