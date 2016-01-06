@@ -173,11 +173,11 @@ class Overlay():
             ae = self._dao.getObjectById(session, OverlayAe, aeId)
         return ae
 
-    def createDeployStatus(self, configlet, object_url, overlay_device, overlay_vrf, status, statusReason):
+    def createDeployStatus(self, configlet, object_url, overlay_device, overlay_vrf, status, statusReason, source):
         '''
         Create a new deploy status
         '''
-        status = OverlayDeployStatus(configlet, object_url, overlay_device, overlay_vrf, status, statusReason)
+        status = OverlayDeployStatus(configlet, object_url, overlay_device, overlay_vrf, status, statusReason, source)
 
         with self._dao.getReadWriteSession() as session:
             self._dao.createObjects(session, [status])
@@ -228,26 +228,26 @@ class Overlay():
     # l2port2_id = l2port2.id
     
     # object_url = '/openclos/v1/overlay/fabrics/' + f1_id
-    # overlay.createDeployStatus('f1config', object_url, d1, v1, 'success', 'f1config on d1')
-    # overlay.createDeployStatus('f1config', object_url, d2, v1, 'success', 'f1config on d2')
+    # overlay.createDeployStatus('f1config', object_url, d1, v1, 'success', 'f1config on d1', 'POST')
+    # overlay.createDeployStatus('f1config', object_url, d2, v1, 'success', 'f1config on d2', 'POST')
     # object_url = '/openclos/v1/overlay/vrfs/' + v1_id
-    # overlay.createDeployStatus('v1config', object_url, d1, v1, 'success', 'v1config on d1')
-    # overlay.createDeployStatus('v1config', object_url, d2, v1, 'success', 'v1config on d2')
+    # overlay.createDeployStatus('v1config', object_url, d1, v1, 'success', 'v1config on d1', 'POST')
+    # overlay.createDeployStatus('v1config', object_url, d2, v1, 'success', 'v1config on d2', 'POST')
     # object_url = '/openclos/v1/overlay/networks/' + n1_id
-    # overlay.createDeployStatus('n1config', object_url, d1, v1, 'success', 'n1config on d1')
-    # overlay.createDeployStatus('n1config', object_url, d2, v1, 'success', 'n1config on d2')
+    # overlay.createDeployStatus('n1config', object_url, d1, v1, 'success', 'n1config on d1', 'POST')
+    # overlay.createDeployStatus('n1config', object_url, d2, v1, 'success', 'n1config on d2', 'POST')
     # object_url = '/openclos/v1/overlay/aes/' + ae1_id
-    # overlay.createDeployStatus('ae1config', object_url, d1, v1, 'success', 'ae1config on d1')
-    # overlay.createDeployStatus('ae1config', object_url, d2, v1, 'success', 'ae1config on d2')
+    # overlay.createDeployStatus('ae1config', object_url, d1, v1, 'success', 'ae1config on d1', 'POST')
+    # overlay.createDeployStatus('ae1config', object_url, d2, v1, 'success', 'ae1config on d2', 'POST')
     # object_url = '/openclos/v1/overlay/l2ports/' + l2port1_id
-    # overlay.createDeployStatus('l2port1config', object_url, d1, v1, 'success', 'l2port1config on d1')
-    # overlay.createDeployStatus('l2port1config', object_url, d2, v1, 'success', 'l2port1config on d2')
+    # overlay.createDeployStatus('l2port1config', object_url, d1, v1, 'success', 'l2port1config on d1', 'POST')
+    # overlay.createDeployStatus('l2port1config', object_url, d2, v1, 'success', 'l2port1config on d2', 'POST')
     # object_url = '/openclos/v1/overlay/l2ports/' + l2port2_id
-    # overlay.createDeployStatus('l2port2config', object_url, d1, v1, 'success', 'l2port2config on d1')
-    # overlay.createDeployStatus('l2port2config', object_url, d2, v1, 'success', 'l2port2config on d2')
+    # overlay.createDeployStatus('l2port2config', object_url, d1, v1, 'success', 'l2port2config on d1', 'POST')
+    # overlay.createDeployStatus('l2port2config', object_url, d2, v1, 'success', 'l2port2config on d2', 'POST')
     # # object_url = '/openclos/v1/overlay/vrfs/' + v2_id
-    # # overlay.createDeployStatus('v2config', object_url, d1, v2, 'success', 'v2config on d1')
-    # # overlay.createDeployStatus('v2config', object_url, d2, v2, 'success', 'v2config on d2')
+    # # overlay.createDeployStatus('v2config', object_url, d1, v2, 'success', 'v2config on d1', 'POST')
+    # # overlay.createDeployStatus('v2config', object_url, d2, v2, 'success', 'v2config on d2', 'POST')
     
     # with dao.getReadSession() as session:
         # v1 = dao.getObjectById(session, OverlayVrf, v1_id)
@@ -262,18 +262,18 @@ class Overlay():
     # with dao.getReadWriteSession() as session:
         # # status_db = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.overlay_device_id == d1_id).all()
         # # for s in status_db:
-            # # s.update('progress', 'd1 in progress')
+            # # s.update('progress', 'd1 in progress', 'POST')
         # # status_db = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.overlay_device_id == d2_id).all()
         # # for s in status_db:
-            # # s.update('failure', 'd2 failed')
+            # # s.update('failure', 'd2 failed', 'POST')
         # object_url = '/openclos/v1/overlay/l2ports/' + l2port2_id
         # status_db = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == object_url).all()
         # for s in status_db:
-            # s.update('failure', 'l2port2 failed')
+            # s.update('failure', 'l2port2 failed', 'POST')
         # object_url = '/openclos/v1/overlay/networks/' + n1_id
         # status_db = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == object_url).all()
         # for s in status_db:
-            # s.update('progress', 'n1 progress')
+            # s.update('progress', 'n1 progress', 'POST')
     # raw_input("2 Press Enter to continue...")
     # # with dao.getReadWriteSession() as session:
         # # dao.deleteObject(session, d1)

@@ -132,13 +132,15 @@ class TestOverlayHelper:
             "configlet": "v1_config",
             "object_url": "http://host:port/openclos/v1/overlay/vrfs/%s" % (vrfObject.id),
             "status": "failure",
-            "statusReason": "conflict"
+            "statusReason": "conflict",
+            "source": "POST"
         }
         configlet = deployStatusDict['configlet']
         object_url = deployStatusDict['object_url']
         status = deployStatusDict['status']
         statusReason = deployStatusDict.get('statusReason')
-        return self.overlay.createDeployStatus(configlet, object_url, deviceObject, vrfObject, status, statusReason)
+        source = deployStatusDict.get('source')
+        return self.overlay.createDeployStatus(configlet, object_url, deviceObject, vrfObject, status, statusReason, source)
         
     
 class TestOverlay(unittest.TestCase):
@@ -411,7 +413,7 @@ class TestOverlay(unittest.TestCase):
         tenantObject = self.helper._createTenant(fabricObject)
         vrfObject = self.helper._createVrf(tenantObject)
         deployStatusObject = self.helper._createDeployStatus(deviceObject, vrfObject)
-        deployStatusObject.update('progress', 'in progress')
+        deployStatusObject.update('progress', 'in progress', 'PUT')
         
         with self._dao.getReadWriteSession() as session:        
             self._dao.updateObjects(session, [deployStatusObject])
@@ -421,6 +423,7 @@ class TestOverlay(unittest.TestCase):
             deployStatusObjectFromDb = session.query(OverlayDeployStatus).one()
             self.assertEqual('progress', deployStatusObjectFromDb.status)
             self.assertEqual('in progress', deployStatusObjectFromDb.statusReason)
+            self.assertEqual('PUT', deployStatusObjectFromDb.source)
            
 if __name__ == '__main__':
     unittest.main()

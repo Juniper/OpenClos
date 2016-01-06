@@ -320,11 +320,12 @@ class OverlayDeployStatus(ManagedElement, Base):
     overlay_vrf = relationship("OverlayVrf", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
     status = Column(Enum('unknown', 'progress', 'success', 'failure'))
     statusReason = Column(String(1024))
+    source = Column(String(60))
     __table_args__ = (
         Index('object_url_overlay_device_id_uindex', 'object_url', 'overlay_device_id', unique=True),
     )
     
-    def __init__(self, configlet, object_url, overlay_device, overlay_vrf, status, statusReason):
+    def __init__(self, configlet, object_url, overlay_device, overlay_vrf, status, statusReason, source):
         '''
         Creates status object.
         '''
@@ -335,11 +336,13 @@ class OverlayDeployStatus(ManagedElement, Base):
         self.overlay_vrf = overlay_vrf
         self.status = status
         self.statusReason = statusReason
+        self.source = source
         
-    def update(self, status, statusReason):
+    def update(self, status, statusReason, source):
         '''
         Update status object.
         '''
         self.status = status
         self.statusReason = statusReason
+        self.source = source
         
