@@ -205,6 +205,7 @@ class DeviceSku(PropertyLoader):
         self.skuDetail = {}
         self.threeStageSkuDetail = {}
         self.fiveStageSkuDetail = {}
+        self.lineCardSkuDetail = {}
         
         super(DeviceSku, self).__init__(fileName)
         skuDetail = self._properties
@@ -220,6 +221,10 @@ class DeviceSku(PropertyLoader):
         if skuDetail is not None and skuDetail.get('5Stage') is not None:
             self.fiveStageSkuDetail = skuDetail.get('5Stage')
             DeviceSku.populate5StageOverride(self.fiveStageSkuDetail)
+
+        if skuDetail is not None and skuDetail.get('lineCard') is not None:
+            self.lineCardSkuDetail = skuDetail.get('lineCard')
+            DeviceSku.populateLineCard(self.lineCardSkuDetail)
 
     def mergeDict(self, prop, override):
         if not override:
@@ -242,21 +247,33 @@ class DeviceSku(PropertyLoader):
         for deviceFamily, value in skuDetail.iteritems():
             logger.debug(deviceFamily)
             for role, ports in value.iteritems():
-                uplink = ports.get('uplinkPorts')
-                if isinstance(uplink, list):
-                    ports['uplinkPorts'] = DeviceSku.portRegexListToList(uplink)
+                uplinkRegex = ports.get('uplinkPorts')
+                if isinstance(uplinkRegex, list):
+                    ports['uplinkPortRegex'] = uplinkRegex
+                    ports['uplinkPorts'] = DeviceSku.portRegexListToList(uplinkRegex)
+                elif uplinkRegex:
+                    ports['uplinkPortRegex'] = [uplinkRegex]
+                    ports['uplinkPorts'] = DeviceSku.portRegexToList(uplinkRegex)
                 else:
-                    ports['uplinkPorts'] = DeviceSku.portRegexToList(uplink)
+                    ports['uplinkPortRegex'] = []
+                    ports['uplinkPorts'] = []
+                    
 
-                downlink = ports.get('downlinkPorts')
-                if isinstance(downlink, list):
-                    ports['downlinkPorts'] = DeviceSku.portRegexListToList(downlink)
+                downlinkRegex = ports.get('downlinkPorts')
+                if isinstance(downlinkRegex, list):
+                    ports['downlinkPortRegex'] = downlinkRegex                    
+                    ports['downlinkPorts'] = DeviceSku.portRegexListToList(downlinkRegex)
+                elif downlinkRegex:
+                    ports['downlinkPortRegex'] = [downlinkRegex]                    
+                    ports['downlinkPorts'] = DeviceSku.portRegexToList(downlinkRegex)
                 else:
-                    ports['downlinkPorts'] = DeviceSku.portRegexToList(downlink)
+                    ports['downlinkPortRegex'] = []                    
+                    ports['downlinkPorts'] = []
 
                 #logger.debug("\t%s" % (role))
                 #logger.debug("\t\t%s" % (ports.get('uplinkPorts')))
                 #logger.debug("\t\t%s" % (ports.get('downlinkPorts')))
+                #logger.debug("\t\t%s" % (ports.get('downlinkPortRegex')))
         
     @staticmethod
     def populate3StageOverride(threeStage):
@@ -265,6 +282,18 @@ class DeviceSku(PropertyLoader):
     @staticmethod
     def populate5StageOverride(fiveStage):
         DeviceSku.populateDeviceFamily(fiveStage)
+
+    @staticmethod
+    def populateLineCard(lineCards):
+        for cardFamily, ports in lineCards.iteritems():
+            uplinkRegex = ports.get('uplinkPorts')
+            ports['uplinkPortRegex'] = uplinkRegex
+            ports['uplinkPorts'] = DeviceSku.portRegexToList(uplinkRegex)
+            
+            downlinkRegex = ports.get('downlinkPorts')
+            ports['downlinkPortRegex'] = downlinkRegex                   
+            ports['downlinkPorts'] = DeviceSku.portRegexToList(downlinkRegex)
+
 
     def validateDeviceFamilyAndRole(self, deviceFamily, role, topology='3Stage'):
         if self.skuDetail is None:
@@ -358,6 +387,9 @@ class DeviceSku(PropertyLoader):
 
         Currently it does not expands regex for fpc/pic, only port is expanded
         '''
+
+        if not portRegexList:
+            return []
 
         portNames = []
         for portRegex in portRegexList:
