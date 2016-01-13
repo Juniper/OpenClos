@@ -167,12 +167,12 @@ class Cryptic:
 #------------------------------------------------------------------------------
 if __name__ == "__main__":
     cryptic = Cryptic ()
-    print cryptic.decrypt ( cryptic.encrypt ( 'Embe1mpls' ) )
+    print cryptic.decrypt ( cryptic.encrypt ( 'abcd1234' ) )
     print cryptic.decrypt ( cryptic.encrypt ( 'no' ) )
     print cryptic.decrypt ( cryptic.encrypt ( 'Ramesh' ) )
-    hash_text = cryptic.hashify ( "Embe1mpls" )
-    print cryptic.authenticate_hash ( "Embe1mpls", hash_text )
+    hash_text = cryptic.hashify ( "abcd1234" )
+    print cryptic.authenticate_hash ( "abcd1234", hash_text )
     hash_text = cryptic.hashify ( "Juniper123" )
     print cryptic.authenticate_hash ( "Juniper123", hash_text )
-    hash_text = cryptic.hashify ( "Embe1mpls" )
+    hash_text = cryptic.hashify ( "abcd1234" )
     print cryptic.authenticate_hash ( "Juniper123", hash_text )
