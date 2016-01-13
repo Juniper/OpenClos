@@ -71,7 +71,7 @@ pods:
         # outOfBandGateway : 1.2.3.254
         
         # device default root password
-        devicePassword: Embe1mpls
+        devicePassword: abcd1234
     anotherPod:
         spineCount : 2
         # possible options for leafDeviceType are qfx5100-24q-2p
@@ -127,5 +127,5 @@ pods:
         outOfBandGateway : 192.168.48.254
         
         # device default root password
-        devicePassword: Embe1mpls
+        devicePassword: abcd1234
         vcCreateLag: true

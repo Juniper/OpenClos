@@ -16,7 +16,7 @@ from test_dao import InMemoryDao
 from jnpr.openclos.exception import PodNotFound
 
 def getPodDict():
-    return {"devicePassword": "Embe1mpls", "leafCount": 3, "leafSettings": [{"deviceType":"qfx5100-48s-6q"}], 
+    return {"devicePassword": "abcd1234", "leafCount": 3, "leafSettings": [{"deviceType":"qfx5100-48s-6q"}], 
                "spineAS": 100, "spineCount": 2, "spineDeviceType": "qfx5100-24q-2p", "interConnectPrefix": "192.168.0.0/24", 
                "vlanPrefix": "172.16.0.0/22", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0/24", "leafAS": 200, 
                "managementPrefix": "192.168.48.216/24", "hostOrVmCountPerLeaf": 254, "inventory" : "inventoryUnitTest.json"}

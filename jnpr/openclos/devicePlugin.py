@@ -3,7 +3,6 @@ Created on Oct 29, 2014
 
 @author: moloyc
 '''
-import os
 from threading import RLock, Event
 import time
 import logging
@@ -24,8 +23,6 @@ from netaddr import IPAddress, IPNetwork
 moduleName = 'devicePlugin'
 loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
-
-junosEzTableLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf', 'junosEznc')
 
 class DeviceOperationInProgressCache(SingletonBase):
     def __init__(self):

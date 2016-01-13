@@ -376,7 +376,9 @@ class UnderlayRestRoutes():
             for role, ports in value.iteritems():
                 uplinks = ports.get('uplinkPorts')
                 downlinks = ports.get('downlinkPorts')
-                deviceDetail = {'family': deviceFamily, 'role': role, 'uplinkPorts': uplinks, 'downlinkPorts': downlinks}                
+                deviceDetail = {'family': deviceFamily, 'role': role, 
+                                'uplinkPorts': ports.get('uplinkPortRegex'), 'uplinkPortCount': len(uplinks),
+                                'downlinkPorts': ports.get('downlinkPortRegex'), 'downlinkPortCount': len(downlinks)}                
                 supportedDevices.append(deviceDetail)
             
         confValues = {}

@@ -167,7 +167,11 @@ class NetconfConnection(AbstractConnection):
 
     def close(self):
         if self._deviceConnection:
-            self._deviceConnection.close()
+            try:
+                self._deviceConnection.close()
+            except Exception as ex:
+                logger.debug('%s close connection error, %s', self._debugContext, ex)
+                
             self._deviceConnection = None
             logger.info('%s connection closed', self._debugContext)
                         

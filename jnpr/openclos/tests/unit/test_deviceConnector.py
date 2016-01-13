@@ -16,35 +16,35 @@ from jnpr.junos.exception import ConnectError
 class TestNetconfConnector(unittest.TestCase):
     
     def testConnectToDevice(self):
-        connector = NetconfConnection('192.168.48.216', username='root', password='Embe1mpls')
+        connector = NetconfConnection('192.168.48.216', username='root', password='abcd1234')
         self.assertIsNotNone(connector)
         self.assertTrue(connector.isActive())
         
     def testGetDeviceFamily(self):
-        connector = NetconfConnection('192.168.48.216', username='root', password='Embe1mpls')
+        connector = NetconfConnection('192.168.48.216', username='root', password='abcd1234')
         self.assertEquals('qfx5100-24q-2p', connector.getDeviceFamily())
 
     def testGetDeviceSerialNumber(self):
-        connector = NetconfConnection('192.168.48.216', username='root', password='Embe1mpls')
+        connector = NetconfConnection('192.168.48.216', username='root', password='abcd1234')
         self.assertEquals('VG3714070310', connector.getDeviceSerialNumber())
 
     def testConnectToDeviceConnectError(self):
         with self.assertRaises(DeviceConnectFailed) as de:
-            NetconfConnection('192.168.48.217', username='root', password='Embe1mpls')
+            NetconfConnection('192.168.48.217', username='root', password='abcd1234')
         
         self.assertIsNotNone(de.exception.cause)
         self.assertTrue(issubclass(type(de.exception.cause), ConnectError))
 
     def testGetL2Neighbors(self):
-        connector = NetconfConnection('192.168.48.216', username='root', password='Embe1mpls')
+        connector = NetconfConnection('192.168.48.216', username='root', password='abcd1234')
         connector.getL2Neighbors()
 
     def testGetL3Neighbors(self):
-        connector = NetconfConnection('192.168.48.216', username='root', password='Embe1mpls')
+        connector = NetconfConnection('192.168.48.216', username='root', password='abcd1234')
         connector.getL3Neighbors(brief=False)
 
     def testUpdateConfig(self):
-        connector = NetconfConnection('192.168.48.216', username='root', password='Embe1mpls')
+        connector = NetconfConnection('192.168.48.216', username='root', password='abcd1234')
         config = '''
         routing-options {
             static {
@@ -55,7 +55,7 @@ class TestNetconfConnector(unittest.TestCase):
         connector.updateConfig(config)
     
     def testCreateVCPort(self):
-        connector = NetconfConnection('192.168.48.216', username='root', password='Embe1mpls')
+        connector = NetconfConnection('192.168.48.216', username='root', password='abcd1234')
         connector.deleteVCPort([(0, 22), (0, 23)])
         
 
