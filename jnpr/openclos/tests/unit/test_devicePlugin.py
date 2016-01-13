@@ -25,7 +25,7 @@ class TestDeviceDataCollectorNetconf(unittest.TestCase):
     
     @unittest.skip("need physical device to test")
     def testConnectToDevice(self):
-        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", "root", "Embe1mpls", "leaf", "", "192.168.48.182", None))
+        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", "root", "abcd1234", "leaf", "", "192.168.48.182", None))
 
         dataCollector = DeviceDataCollectorNetconf('1234', {}, InMemoryDao)
         dataCollector._dao = self._dao
@@ -34,14 +34,14 @@ class TestDeviceDataCollectorNetconf(unittest.TestCase):
         dataCollector.connectToDevice()
         
     def testConnectToDeviceValueError(self):
-        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", None, "Embe1mpls", "leaf", "", "0.0.0.0", None))
+        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", None, "abcd1234", "leaf", "", "0.0.0.0", None))
         self.dataCollector.manualInit()
         
         with self.assertRaises(DeviceConnectFailed) as ve:
             self.dataCollector.connectToDevice()
 
     def testConnectToDeviceConnectError(self):
-        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", "root", "Embe1mpls", "leaf", "", "0.0.0.0", None))
+        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-48s-6q", "root", "abcd1234", "leaf", "", "0.0.0.0", None))
         self.dataCollector.manualInit()
 
         with self.assertRaises(DeviceConnectFailed) as de:
@@ -62,7 +62,7 @@ class TestL2DataCollector(unittest.TestCase):
 
     @unittest.skip("need physical device to test")
     def testCollectLldpFromDevice(self):
-        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-96s-8q", "root", "Embe1mpls", "leaf", "", "192.168.48.219", None))
+        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-96s-8q", "root", "abcd1234", "leaf", "", "192.168.48.219", None))
 
         dataCollector = L2DataCollector('1234', self.__conf, InMemoryDao)
         dataCollector._dao = self._dao
@@ -698,7 +698,7 @@ class TestL3DataCollector(unittest.TestCase):
 
     @unittest.skip("need physical device to test")
     def testCollectBgpFromDevice(self):
-        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-96s-8q", "root", "Embe1mpls", "leaf", "", "192.168.48.219", None))
+        flexmock(self._dao).should_receive('getObjectById').and_return(Device("test", "qfx5100-96s-8q", "root", "abcd1234", "leaf", "", "192.168.48.219", None))
 
         dataCollector = L3DataCollector('1234', self.__conf, InMemoryDao)
         dataCollector._dao = self._dao
