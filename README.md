@@ -173,6 +173,10 @@ All generated configurations (device and ZTP configurations) are stored in the /
 * Centos standard install - "/usr/lib/python2.6/site-packages/jnpr/openclos/out/PODID-PODNAME"
 
 
+Rest Server Configuration
+-------------------------
+OpenClos uses
+
 License
 -------
 
