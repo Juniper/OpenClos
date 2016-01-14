@@ -40,6 +40,7 @@ class OverlayRestRoutes():
         self._conf = context['conf']
         self.__dao = context['dao']
         self.app = context['app']
+        self.restServer = context['restServer']
         self.uriPrefix = None
 
         # install index links
@@ -125,6 +126,9 @@ class OverlayRestRoutes():
         return device
     
     def getDevices(self, dbSession):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         deviceObjects = self.__dao.getAll(dbSession, OverlayDevice)
         devices = []
         for deviceObject in deviceObjects:
@@ -139,6 +143,9 @@ class OverlayRestRoutes():
         return {'devices': outputDict}
 
     def getDevice(self, dbSession, deviceId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             logger.debug('getDevice: %s', deviceId)
@@ -152,6 +159,9 @@ class OverlayRestRoutes():
         return {'device': self._populateDevice(deviceObject)}
         
     def createDevice(self, dbSession):  
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -183,6 +193,9 @@ class OverlayRestRoutes():
         return device
         
     def modifyDevice(self, dbSession, deviceId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -215,6 +228,9 @@ class OverlayRestRoutes():
         return device
 
     def deleteDevice(self, dbSession, deviceId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             self.__dao.deleteObject(dbSession, deviceObject)
@@ -246,6 +262,9 @@ class OverlayRestRoutes():
         return fabric
     
     def getFabrics(self, dbSession):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         fabricObjects = self.__dao.getAll(dbSession, OverlayFabric)
         fabrics = []
         for fabricObject in fabricObjects:
@@ -260,6 +279,9 @@ class OverlayRestRoutes():
         return {'fabrics': outputDict}
 
     def getFabric(self, dbSession, fabricId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
             logger.debug('getFabric: %s', fabricId)
@@ -273,6 +295,9 @@ class OverlayRestRoutes():
         return {'fabric': self._populateFabric(fabricObject)}
         
     def createFabric(self, dbSession):  
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -314,6 +339,9 @@ class OverlayRestRoutes():
         return fabric
         
     def modifyFabric(self, dbSession, fabricId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -358,6 +386,9 @@ class OverlayRestRoutes():
         return fabric
         
     def deleteFabric(self, dbSession, fabricId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
             self.__dao.deleteObject(dbSession, fabricObject)
@@ -385,6 +416,9 @@ class OverlayRestRoutes():
         return tenant
     
     def getTenants(self, dbSession):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         tenantObjects = self.__dao.getAll(dbSession, OverlayTenant)
         tenants = []
         for tenantObject in tenantObjects:
@@ -399,6 +433,9 @@ class OverlayRestRoutes():
         return {'tenants': outputDict}
 
     def getTenant(self, dbSession, tenantId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
             logger.debug('getTenant: %s', tenantId)
@@ -412,6 +449,9 @@ class OverlayRestRoutes():
         return {'tenant': self._populateTenant(tenantObject)}
         
     def createTenant(self, dbSession):  
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -448,6 +488,9 @@ class OverlayRestRoutes():
         return tenant
         
     def modifyTenant(self, dbSession, tenantId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -478,6 +521,9 @@ class OverlayRestRoutes():
         return tenant
         
     def deleteTenant(self, dbSession, tenantId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
             self.__dao.deleteObject(dbSession, tenantObject)
@@ -509,6 +555,9 @@ class OverlayRestRoutes():
         return vrf
     
     def getVrfs(self, dbSession):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         vrfObjects = self.__dao.getAll(dbSession, OverlayVrf)
         vrfs = []
         for vrfObject in vrfObjects:
@@ -523,6 +572,9 @@ class OverlayRestRoutes():
         return {'vrfs': outputDict}
 
     def getVrf(self, dbSession, vrfId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
             logger.debug('getVrf: %s', vrfId)
@@ -602,6 +654,9 @@ class OverlayRestRoutes():
         return {'statusDetail': outputDict}
         
     def getVrfStatus(self, dbSession, vrfId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.query.mode == 'brief':
             return self._getVrfStatusBrief(dbSession, vrfId)
         elif bottle.request.query.mode == 'detail':
@@ -610,6 +665,9 @@ class OverlayRestRoutes():
             raise bottle.HTTPError(400, exception=InvalidRequest("Invalid mode '%s'" % bottle.request.query.mode))
     
     def createVrf(self, dbSession):  
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -646,6 +704,9 @@ class OverlayRestRoutes():
         return vrf
         
     def modifyVrf(self, dbSession, vrfId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -677,6 +738,9 @@ class OverlayRestRoutes():
         return vrf
 
     def deleteVrf(self, dbSession, vrfId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
             self.__dao.deleteObject(dbSession, vrfObject)
@@ -711,6 +775,9 @@ class OverlayRestRoutes():
         return network
         
     def getNetworks(self, dbSession):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         networkObjects = self.__dao.getAll(dbSession, OverlayNetwork)
         networks = []
         for networkObject in networkObjects:
@@ -725,6 +792,9 @@ class OverlayRestRoutes():
         return {'networks': outputDict}
 
     def getNetwork(self, dbSession, networkId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
             logger.debug('getNetwork: %s', networkId)
@@ -738,6 +808,9 @@ class OverlayRestRoutes():
         return {'network': self._populateNetwork(networkObject)}
         
     def createNetwork(self, dbSession):  
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -776,6 +849,9 @@ class OverlayRestRoutes():
         return network
         
     def modifyNetwork(self, dbSession, networkId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -809,6 +885,9 @@ class OverlayRestRoutes():
         return network
 
     def deleteNetwork(self, dbSession, networkId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
             self.__dao.deleteObject(dbSession, networkObject)
@@ -837,6 +916,9 @@ class OverlayRestRoutes():
         return subnet
         
     def getSubnets(self, dbSession):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         subnetObjects = self.__dao.getAll(dbSession, OverlaySubnet)
         subnets = []
         for subnetObject in subnetObjects:
@@ -851,6 +933,9 @@ class OverlayRestRoutes():
         return {'subnets': outputDict}
 
     def getSubnet(self, dbSession, subnetId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
             logger.debug('getSubnet: %s', subnetId)
@@ -864,6 +949,9 @@ class OverlayRestRoutes():
         return {'subnet': self._populateSubnet(subnetObject)}
         
     def createSubnet(self, dbSession):  
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -900,6 +988,9 @@ class OverlayRestRoutes():
         return subnet
         
     def modifySubnet(self, dbSession, subnetId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -931,6 +1022,9 @@ class OverlayRestRoutes():
         return subnet
 
     def deleteSubnet(self, dbSession, subnetId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
             self.__dao.deleteObject(dbSession, subnetObject)
@@ -954,6 +1048,9 @@ class OverlayRestRoutes():
         return l3port
         
     def getL3ports(self, dbSession):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         l3portObjects = self.__dao.getAll(dbSession, OverlayL3port)
         l3ports = []
         for l3portObject in l3portObjects:
@@ -968,6 +1065,9 @@ class OverlayRestRoutes():
         return {'l3ports': outputDict}
 
     def getL3port(self, dbSession, l3portId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             l3portObject = self.__dao.getObjectById(dbSession, OverlayL3port, l3portId)
             logger.debug('getL3port: %s', l3portId)
@@ -981,6 +1081,9 @@ class OverlayRestRoutes():
         return {'l3port': self._populateL3port(l3portObject)}
         
     def createL3port(self, dbSession):  
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -1016,6 +1119,9 @@ class OverlayRestRoutes():
         return l3port
         
     def modifyL3port(self, dbSession, l3portId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -1046,6 +1152,9 @@ class OverlayRestRoutes():
         return l3port
 
     def deleteL3port(self, dbSession, l3portId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             l3portObject = self.__dao.getObjectById(dbSession, OverlayL3port, l3portId)
             self.__dao.deleteObject(dbSession, l3portObject)
@@ -1072,6 +1181,9 @@ class OverlayRestRoutes():
         return l2port
         
     def getL2ports(self, dbSession):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         l2portObjects = self.__dao.getAll(dbSession, OverlayL2port)
         l2ports = []
         for l2portObject in l2portObjects:
@@ -1086,6 +1198,9 @@ class OverlayRestRoutes():
         return {'l2ports': outputDict}
 
     def getL2port(self, dbSession, l2portId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
             logger.debug('getL2port: %s', l2portId)
@@ -1099,6 +1214,9 @@ class OverlayRestRoutes():
         return {'l2port': self._populateL2port(l2portObject)}
         
     def createL2port(self, dbSession):  
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -1151,6 +1269,9 @@ class OverlayRestRoutes():
         return l2port
         
     def modifyL2port(self, dbSession, l2portId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -1182,6 +1303,9 @@ class OverlayRestRoutes():
         return l2port
 
     def deleteL2port(self, dbSession, l2portId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
             self.__dao.deleteObject(dbSession, l2portObject)
@@ -1210,6 +1334,9 @@ class OverlayRestRoutes():
         return ae
         
     def getAes(self, dbSession):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         aeObjects = self.__dao.getAll(dbSession, OverlayAe)
         aes = []
         for aeObject in aeObjects:
@@ -1224,6 +1351,9 @@ class OverlayRestRoutes():
         return {'aes': outputDict}
 
     def getAe(self, dbSession, aeId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
             logger.debug('getAe: %s', aeId)
@@ -1237,6 +1367,9 @@ class OverlayRestRoutes():
         return {'ae': self._populateAe(aeObject)}
         
     def createAe(self, dbSession):  
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -1268,6 +1401,9 @@ class OverlayRestRoutes():
         return ae
         
     def modifyAe(self, dbSession, aeId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
@@ -1300,6 +1436,9 @@ class OverlayRestRoutes():
         return ae
         
     def deleteAe(self, dbSession, aeId):
+        if not self.restServer.checkPass():
+            raise bottle.HTTPError(401)
+            
         try:
             aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
             self.__dao.deleteObject(dbSession, aeObject)

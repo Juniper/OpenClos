@@ -166,13 +166,9 @@ class Cryptic:
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 if __name__ == "__main__":
-    cryptic = Cryptic()
-    print cryptic.decrypt(cryptic.encrypt('abcd1234'))
-    print cryptic.decrypt(cryptic.encrypt('no'))
-    print cryptic.decrypt(cryptic.encrypt('Ramesh'))
-    hash_text = cryptic.hashify("abcd1234")
-    print cryptic.authenticate_hash("abcd1234", hash_text)
-    hash_text = cryptic.hashify("Juniper123")
-    print cryptic.authenticate_hash("Juniper123", hash_text)
-    hash_text = cryptic.hashify("abcd1234")
-    print cryptic.authenticate_hash("Juniper123", hash_text)
+    import sys
+    if len(sys.argv) != 2:
+        print "To generate 2-way encrypted password for basic authentication, run crypt.py"
+        print "Usage: python crypt.py <cleartext_password>"
+    else:
+        print Cryptic().encrypt(sys.argv[1])

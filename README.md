@@ -173,6 +173,68 @@ All generated configurations (device and ZTP configurations) are stored in the /
 * Centos standard install - "/usr/lib/python2.6/site-packages/jnpr/openclos/out/PODID-PODNAME"
 
 
+REST Server Configuration
+-------------------------
+In addition to calling OpenClos python module directly, client may interact with OpenClos via REST. 
+OpenClos REST server supports both HTTP and HTTPS.
+
+**HTTP**:
+
+Configure HTTP with following in openclos.yaml,
+
+    restServer :
+        version : 1
+        protocol : http
+        ipAddr : <REST server ip>
+        port : <REST server port>
+        
+Use HTTP when your client is located in the same machine as the OpenClos REST server. In this case, no authentication is
+performed. The only configruations required in this case are 'ipAddr' and 'port'. 
+
+
+**HTTPS**:
+
+Configure HTTPS with following in openclos.yaml,
+
+    restServer :
+        version : 1
+        protocol : https
+        ipAddr : <REST server ip>
+        port : <REST server port>
+        username : <username>
+        password : <2-way encrypted password>
+        certificate : <full path of the server certificate>
+        
+Use HTTPS when your client is accessing OpenClos REST server remotely. In this case, Basic Authentication is done over HTTPS. 
+
+***Default username/password/server certificate***:
+
+OpenClos comes with a built-in username/password 'juniper/juniper' in openclos.yaml. OpenClos automatically generates 
+a default server certificate whose CN subject is set to 'ipAddr' value in openclos.yaml when you start the REST server for the 
+first time. The default server certificate is stored in ~/openclos.pem. The default username/password/server certificate 
+enables user to use OpenClos HTTPS REST server out of box. The only configruations required in this case are 'ipAddr' and 'port'. 
+
+***Non default username/password/server certificate***:
+
+If user decides to use non default username/password/server certificate, follow below instructions:
+* Change 'username' to the new username
+* Use "python crypt.py <cleartext_password>" to generate a 2-way encrypted password:
+
+        root@sw-ubuntu25:.../jnpr/openclos# python crypt.py foobar
+        $9$lusvWxZGi5QnVwYoZG.m
+    
+Then copy-paste the output to 'password' in openclos.yaml
+* Change 'certificate' to the full path of your certificate. Make sure your cerfiicate's CN subject is set to 'ipAddr' value 
+in openclos.yaml
+* Note the 'username', 'password' and 'cerficate' are required in HTTPS mode. OpenClos REST server won't start without them.
+* Note the 'ipAddr' value needs to be set properly. OpenClos REST server won't start if 'ipAddr' value is 0.0.0.0
+* Note Openclos also generates a public key file ~/openclos.pem.cer for the default certificate. User might want to import 
+this file to their client if their client does not automatically accept the server cert.
+
+REST API reference
+------------------
+
+ 
 License
 -------
 

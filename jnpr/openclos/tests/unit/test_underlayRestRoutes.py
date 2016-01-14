@@ -277,6 +277,9 @@ class TestUnderlayRestRoutes(unittest.TestCase):
     def testgetOpenClosConfigParams(self):
         self.tearDown()
         restServer = RestServer({}, InMemoryDao)
+        restServer.protocol = 'http'
+        restServer.username = None
+        restServer.password = None
         restServer.initRest()
         restServer.installRoutes()
         self.restServerTestApp = TestApp(restServer.app)
