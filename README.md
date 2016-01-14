@@ -208,24 +208,26 @@ Configure HTTPS with following in openclos.yaml,
 Use HTTPS when your client is accessing OpenClos REST server remotely. In this case, Basic Authentication is done over HTTPS. 
 
 Default username/password/server certificate:
+
 OpenClos comes with a built-in username/password 'juniper/juniper' in openclos.yaml. OpenClos automatically generates 
 a default server certificate whose CN subject is set to 'ipAddr' value in openclos.yaml when you start the REST server for the 
 first time. The default server certificate is stored in ~/openclos.pem. The default username/password/server certificate 
 enables user to use OpenClos HTTPS REST server out of box. The only configruations required in this case are 'ipAddr' and 'port'. 
 
 Non default username/password/server certificate:
+
 If user decides to use non default username/password/server certificate, follow below instructions:
-1. Change 'username' to the new username
-2. Use "python crypt.py <cleartext_password>" to generate a 2-way encrypted password:
+* Change 'username' to the new username
+* Use "python crypt.py <cleartext_password>" to generate a 2-way encrypted password:
 
     root@sw-ubuntu25:/usr/local/lib/python2.7/dist-packages/OpenClos-3.0.dev1-py2.7.egg/jnpr/openclos# python crypt.py foobar
     $9$lusvWxZGi5QnVwYoZG.m
     
 Then copy-paste the output to 'password' in openclos.yaml
-3. Change 'certificate' to the full path of your certificate. Make sure your cerfiicate's CN subject is set to 'ipAddr' value 
+* Change 'certificate' to the full path of your certificate. Make sure your cerfiicate's CN subject is set to 'ipAddr' value 
 in openclos.yaml
-Note the 'username', 'password' and 'cerficate' are required in HTTP mode. OpenClos REST server won't start without them.
-Note the 'ipAddr' value needs to be set properly. OpenClos REST server won't start if 'ipAddr' value is 0.0.0.0
+* Note the 'username', 'password' and 'cerficate' are required in HTTP mode. OpenClos REST server won't start without them.
+* Note the 'ipAddr' value needs to be set properly. OpenClos REST server won't start if 'ipAddr' value is 0.0.0.0
 
 
 REST API reference
