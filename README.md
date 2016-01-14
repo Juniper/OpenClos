@@ -207,14 +207,14 @@ Configure HTTPS with following in openclos.yaml,
         
 Use HTTPS when your client is accessing OpenClos REST server remotely. In this case, Basic Authentication is done over HTTPS. 
 
--- Default username/password/server certificate:
+***Default username/password/server certificate**:
 
 OpenClos comes with a built-in username/password 'juniper/juniper' in openclos.yaml. OpenClos automatically generates 
 a default server certificate whose CN subject is set to 'ipAddr' value in openclos.yaml when you start the REST server for the 
 first time. The default server certificate is stored in ~/openclos.pem. The default username/password/server certificate 
 enables user to use OpenClos HTTPS REST server out of box. The only configruations required in this case are 'ipAddr' and 'port'. 
 
--- Non default username/password/server certificate:
+***Non default username/password/server certificate***:
 
 If user decides to use non default username/password/server certificate, follow below instructions:
 * Change 'username' to the new username
@@ -226,7 +226,7 @@ If user decides to use non default username/password/server certificate, follow 
 Then copy-paste the output to 'password' in openclos.yaml
 * Change 'certificate' to the full path of your certificate. Make sure your cerfiicate's CN subject is set to 'ipAddr' value 
 in openclos.yaml
-* Note the 'username', 'password' and 'cerficate' are required in HTTP mode. OpenClos REST server won't start without them.
+* Note the 'username', 'password' and 'cerficate' are required in HTTPS mode. OpenClos REST server won't start without them.
 * Note the 'ipAddr' value needs to be set properly. OpenClos REST server won't start if 'ipAddr' value is 0.0.0.0
 
 
