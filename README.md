@@ -207,7 +207,7 @@ Configure HTTPS with following in openclos.yaml,
         
 Use HTTPS when your client is accessing OpenClos REST server remotely. In this case, Basic Authentication is done over HTTPS. 
 
-***Default username/password/server certificate**:
+***Default username/password/server certificate***:
 
 OpenClos comes with a built-in username/password 'juniper/juniper' in openclos.yaml. OpenClos automatically generates 
 a default server certificate whose CN subject is set to 'ipAddr' value in openclos.yaml when you start the REST server for the 
@@ -220,8 +220,8 @@ If user decides to use non default username/password/server certificate, follow 
 * Change 'username' to the new username
 * Use "python crypt.py <cleartext_password>" to generate a 2-way encrypted password:
 
-    root@sw-ubuntu25:/usr/local/lib/python2.7/dist-packages/OpenClos-3.0.dev1-py2.7.egg/jnpr/openclos# python crypt.py foobar
-    $9$lusvWxZGi5QnVwYoZG.m
+        root@sw-ubuntu25:.../jnpr/openclos# python crypt.py foobar
+        $9$lusvWxZGi5QnVwYoZG.m
     
 Then copy-paste the output to 'password' in openclos.yaml
 * Change 'certificate' to the full path of your certificate. Make sure your cerfiicate's CN subject is set to 'ipAddr' value 
