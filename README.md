@@ -228,7 +228,8 @@ Then copy-paste the output to 'password' in openclos.yaml
 in openclos.yaml
 * Note the 'username', 'password' and 'cerficate' are required in HTTPS mode. OpenClos REST server won't start without them.
 * Note the 'ipAddr' value needs to be set properly. OpenClos REST server won't start if 'ipAddr' value is 0.0.0.0
-
+* Note Openclos also generates a public key file ~/openclos.pem.cer for the default certificate. User might want to import 
+this file to their client if their client does not automatically accept the server cert.
 
 REST API reference
 ------------------
