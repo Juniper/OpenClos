@@ -21,12 +21,13 @@ pods:
     # pod name or pod identifier
     labLeafSpine:
         spineCount : 4
-        # possible options for leafDeviceType are qfx5100-24q-2p
-        spineDeviceType : qfx5100-24q-2p
+        # possible options for spine deviceType are qfx5100-24q-2p, qfx10002-***, qfx10008-***
         # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
         # if not placed under this dir, the file would not be accessible from http server
         # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
-        #spineJunosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+        spineSettings :
+            - deviceType : qfx5100-24q-2p
+              #junosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
 
         leafCount : 6
         # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
@@ -74,12 +75,13 @@ pods:
         devicePassword: abcd1234
     anotherPod:
         spineCount : 2
-        # possible options for leafDeviceType are qfx5100-24q-2p
-        spineDeviceType : qfx5100-24q-2p
+        # possible options for spine deviceType are qfx5100-24q-2p, qfx10002-***, qfx10008-***
         # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
         # if not placed under this dir, the file would not be accessible from http server
         # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
-        #spineJunosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+        spineSettings :
+            - deviceType : qfx5100-24q-2p
+              #junosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
 
         leafCount : 4
         # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
@@ -129,3 +131,60 @@ pods:
         # device default root password
         devicePassword: abcd1234
         vcCreateLag: true
+    customizedSku:
+        spineCount : 2
+        # possible options for spine deviceType are qfx5100-24q-2p, qfx10002-***, qfx10008-***
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+        # if not placed under this dir, the file would not be accessible from http server
+        # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
+        spineSettings :
+            - deviceType : qfx5100-24q-2p
+              #junosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+
+        leafCount : 4
+        # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
+        # but we can use qfx5100-24q-2p with customized SKU 
+        # following example assumes device has no expansion module, so there
+        # are 24 ports. First 16 ports are used as access port and 
+        # remaining 8 ports are used as uplink ports
+        leafSettings :
+            - deviceType : qfx5100-24q-2p
+              uplinkPorts : ['et-0/0/[16-23]']
+              downlinkPorts : ['et-0/0/[0-15]']
+        # Number of uplink from leaf must be properly connected and up to indicate
+        # the leaf device as "good". If the leaf device is not in "good" state
+        # it would not go through 2-stage ZTP/configuration process.
+        # Possible value is in between 2 and spineCount, inclusive both end.
+        # This field is optional, default value is max(2, math.celi(spineCount/2))
+        leafUplinkcountMustBeUp : 2 
+        
+        hostOrVmCountPerLeaf : 16
+        interConnectPrefix : 192.170.0.0/24
+        vlanPrefix : 172.18.0.0/24
+        loopbackPrefix : 10.12.0.0/24
+        # either managementPrefix or (managementStartingIP, managementMask) is mandatory. Here is how it works:
+        # case 1: managementPrefix : 1.2.3.7/24
+        #         from cidr notation of managementPrefix we know available block is [1.2.3.0 - 1.2.3.255]
+        #         from ip portion of managementPrefix we know starting ip is 1.2.3.7
+        #         so the effective range is [1.2.3.7 - 1.2.3.7+spineCount+leafCount]
+        # case 2: managementStartingIP : 1.2.3.7
+        #         managementMask : 24
+        #         from cidr notation of 'managementStartingIP/managementMask' we know available block is [1.2.3.0 - 1.2.3.255]
+        #         from managementStartingIP we know starting ip is 1.2.3.7
+        #         so the effective range is [1.2.3.7 - 1.2.3.7+spineCount+leafCount]
+        managementPrefix : 172.32.30.101/24
+        spineAS : 500
+        leafAS : 600
+        # possible options for topologyType are threeStage, fiveStageRealEstate, fiveStagePerformance
+        topologyType : threeStage
+        inventory : inventoryCustomizedSku.json
+        # List of out of band networks, example - devices in management network
+        # outOfBandAddressList : 
+        #     - 1.2.3.4/32
+        #     - 1.2.3.9/32
+        # Management network gateway address
+        # It overrides ztp:dhcpOptionRoute setting
+        # outOfBandGateway : 1.2.3.254
+        
+        # device default root password
+        devicePassword: abcd1234

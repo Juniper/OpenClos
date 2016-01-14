@@ -50,6 +50,8 @@ class Pod(ManagedElement, Base):
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
     spineJunosImage = Column(String(126))
+    spineUplinkRegex = Column(String(126))
+    spineDownlinkRegex = Column(String(126))
     leafCount = Column(Integer)
     leafUplinkcountMustBeUp = Column(Integer)
     leafSettings = relationship("LeafSetting", order_by='LeafSetting.deviceFamily', cascade='all, delete, delete-orphan')
@@ -106,14 +108,29 @@ class Pod(ManagedElement, Base):
         
         self.description = podDict.get('description')
         self.spineCount = podDict.get('spineCount')
-        self.spineDeviceType = podDict.get('spineDeviceType')
+        spineSettings = podDict.get('spineSettings')
+        if spineSettings:
+            self.spineDeviceType = spineSettings[0].get('deviceType')
+            self.spineJunosImage = spineSettings[0].get('junosImage')
+            self.spineUplinkRegex = spineSettings[0].get('uplinkPorts')
+            if self.spineUplinkRegex:
+                self.spineUplinkRegex = ''.join(self.spineUplinkRegex)
+            self.spineDownlinkRegex = spineSettings[0].get('downlinkPorts')
+            if self.spineDownlinkRegex:
+                self.spineDownlinkRegex = ''.join(self.spineDownlinkRegex)
         self.leafCount = podDict.get('leafCount')
         leafSettings = podDict.get('leafSettings')
         if leafSettings is not None:
             self.leafSettings = []
             for leafSetting in leafSettings:
-                junosImage = leafSetting.get('junosImage')
-                self.leafSettings.append(LeafSetting(leafSetting['deviceType'], self.id, junosImage=junosImage))
+                uplinkRegex = leafSetting.get('uplinkPorts')
+                if uplinkRegex:
+                    uplinkRegex = ''.join(uplinkRegex)
+                downlinkRegex = leafSetting.get('downlinkPorts')
+                if downlinkRegex:
+                    downlinkRegex = ''.join(downlinkRegex)
+                self.leafSettings.append(LeafSetting(leafSetting['deviceType'], self.id, 
+                    uplinkRegex=uplinkRegex, downlinkRegex=downlinkRegex, junosImage=leafSetting.get('junosImage')))
         
         self.leafUplinkcountMustBeUp = podDict.get('leafUplinkcountMustBeUp')
         if self.leafUplinkcountMustBeUp is None:
@@ -142,7 +159,6 @@ class Pod(ManagedElement, Base):
                 addressList.append(outOfBandAddressList)
             self.outOfBandAddressList = ','.join(addressList)
         self.outOfBandGateway = podDict.get('outOfBandGateway')
-        self.spineJunosImage = podDict.get('spineJunosImage')
             
         devicePassword = podDict.get('devicePassword')
         if devicePassword is not None and len(devicePassword) > 0:
@@ -259,12 +275,16 @@ class LeafSetting(ManagedElement, Base):
     __tablename__ = 'leafSetting'
     deviceFamily = Column(String(100), primary_key=True)
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable=False, primary_key=True)
+    uplinkRegex = Column(String(126))
+    downlinkRegex = Column(String(126))
     junosImage = Column(String(126))
     config = Column(BLOB)
 
-    def __init__(self, deviceFamily, podId, junosImage=None, config=None):
+    def __init__(self, deviceFamily, podId, uplinkRegex=None, downlinkRegex=None, junosImage=None, config=None):
         self.deviceFamily = deviceFamily
         self.pod_id = podId
+        self.uplinkRegex = uplinkRegex
+        self.downlinkRegex = downlinkRegex
         self.junosImage = junosImage
         self.config = config
     

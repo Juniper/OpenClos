@@ -118,9 +118,10 @@ class UnderlayRestRoutes():
     
     @staticmethod
     def getPodFieldListToCopy():
-        return ['id', 'name', 'description', 'spineAS', 'spineDeviceType', 'spineCount', 'leafAS', 'leafCount', 
-                'leafUplinkcountMustBeUp', 'loopbackPrefix', 'vlanPrefix', 'interConnectPrefix', 'managementPrefix', 
-                'outOfBandAddressList', 'outOfBandGateway', 'topologyType', 'spineJunosImage', 'hostOrVmCountPerLeaf']
+        return ['id', 'name', 'description', 'spineSettings', 'spineCount', 'spineAS', 
+                'leafSettings', 'leafCount', 'leafAS', 'devicePassword', 'leafUplinkcountMustBeUp',
+                'loopbackPrefix', 'vlanPrefix', 'interConnectPrefix', 'managementPrefix', 
+                'outOfBandAddressList', 'outOfBandGateway', 'topologyType', 'hostOrVmCountPerLeaf']
     
     def getPod(self, dbSession, podId, requestUrl=None):
         if not self.restServer.checkPass():
@@ -135,28 +136,16 @@ class UnderlayRestRoutes():
             for field in self.getPodFieldListToCopy():
                 outputDict[field] = pod.__dict__.get(field)
             
-            '''
-            outputDict['id'] = pod.id
-            outputDict['name'] = pod.name
-            outputDict['description'] = pod.description 
-            outputDict['spineAS'] = pod.spineAS
-            outputDict['spineDeviceType'] = pod.spineDeviceType
-            outputDict['spineCount'] = pod.spineCount
-            outputDict['leafAS'] = pod.leafAS
-            outputDict['leafCount'] = pod.leafCount
-            outputDict['loopbackPrefix'] = pod.loopbackPrefix 
-            outputDict['vlanPrefix'] = pod.vlanPrefix
-            outputDict['interConnectPrefix'] = pod.interConnectPrefix 
-            outputDict['managementPrefix'] = pod.managementPrefix
-            outputDict['outOfBandAddressList'] = pod.outOfBandAddressList
-            outputDict['outOfBandGateway'] = pod.outOfBandGateway 
-            outputDict['topologyType'] = pod.topologyType
-            outputDict['spineJunosImage'] = pod.spineJunosImage
-            outputDict['hostOrVmCountPerLeaf'] = pod.hostOrVmCountPerLeaf
-            '''
+            outputDict['spineSettings'] = []
+            outputDict['spineSettings'].append({'deviceType': pod.spineDeviceType, 
+                    'uplinkPorts': pod.spineUplinkRegex, 'downlinkPorts': pod.spineDownlinkRegex, 
+                    'junosImage': pod.spineJunosImage})
+
             outputDict['leafSettings'] = []
             for leafSetting in pod.leafSettings:
-                outputDict['leafSettings'].append({'deviceType': leafSetting.deviceFamily, 'junosImage': leafSetting.junosImage})
+                outputDict['leafSettings'].append({'deviceType': leafSetting.deviceFamily, 
+                    'uplinkPorts': leafSetting.uplinkRegex, 'downlinkPorts': leafSetting.downlinkRegex, 
+                    'junosImage': leafSetting.junosImage})
 
             outputDict['devicePassword'] = pod.getCleartextPassword()
             outputDict['uri'] = requestUrl
@@ -538,30 +527,6 @@ class UnderlayRestRoutes():
         
         for field in self.getPodFieldListToCopy():
             pod[field] = podDict.get(field)
-        
-        '''
-        pod['name'] = podDict.get('name')
-        pod['description'] = podDict.get('description')
-        pod['spineAS'] = podDict.get('spineAS')
-        pod['spineDeviceType'] = podDict.get('spineDeviceType')
-        pod['spineCount'] = podDict.get('spineCount')
-        pod['leafAS'] = podDict.get('leafAS')
-        pod['leafCount'] = podDict.get('leafCount')
-        pod['leafUplinkcountMustBeUp'] = podDict.get('leafUplinkcountMustBeUp')
-        pod['loopbackPrefix'] = podDict.get('loopbackPrefix')
-        pod['vlanPrefix'] = podDict.get('vlanPrefix')
-        pod['interConnectPrefix'] = podDict.get('interConnectPrefix')
-        pod['managementPrefix'] = podDict.get('managementPrefix')
-        pod['outOfBandAddressList'] = podDict.get('outOfBandAddressList')
-        pod['outOfBandGateway'] = podDict.get('outOfBandGateway')
-        pod['topologyType'] = podDict.get('topologyType')
-        pod['topologyType'] = podDict.get('topologyType')
-        pod['spineJunosImage'] = podDict.get('spineJunosImage')
-        pod['hostOrVmCountPerLeaf'] = podDict.get('hostOrVmCountPerLeaf')
-        '''
-
-        pod['leafSettings'] = podDict.get('leafSettings')
-        pod['devicePassword'] = podDict.get('devicePassword')
 
         return pod
 

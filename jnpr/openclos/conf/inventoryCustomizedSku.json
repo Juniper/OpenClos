@@ -1,0 +1,11 @@
+{   "spines" : [
+       { "name" : "spine-01", "macAddress" : "aa:bb:cc:dd:ee:f1", "serialNumber" : "VG1234567890", "deployStatus" : "deploy"},
+       { "name" : "spine-02", "serialNumber" : "VG1234567891", "deployStatus" : "deploy"}
+    ],
+    "leafs" : [
+       { "name" : "leaf-01", "family" : "qfx5100-24q-2p", "macAddress" : "aa:bb:cc:dd:ee:e1"},
+       { "name" : "leaf-02", "family" : "qfx5100-24q-2p", "serialNumber" : "VG1234567893", "deployStatus" : "deploy"},
+       { "name" : "leaf-03", "family" : "qfx5100-24q-2p", "macAddress" : "aa:bb:cc:dd:ee:e3", "deployStatus" : "deploy"},
+       { "name" : "leaf-04"}
+    ]
+}

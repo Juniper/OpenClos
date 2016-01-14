@@ -316,10 +316,10 @@ class DeviceSku(PropertyLoader):
             resultFamily = self.skuDetail.get(deviceFamily)
         if resultFamily is None:
             raise InvalidDeviceFamily(deviceFamily)
-        else:
+        '''else:
             resultRole = resultFamily.get(role)
             if resultRole is None:
-                raise InvalidDeviceRole(role)
+                raise InvalidDeviceRole(role)'''
             
     def getPortNamesForDeviceFamily(self, deviceFamily, role, topology='3Stage'):
         if self.skuDetail is None:
@@ -397,6 +397,24 @@ class DeviceSku(PropertyLoader):
             
         return portNames
 
+    @staticmethod
+    def portRegexCsvListToList(portRegexCsvList):
+        '''    
+        Expands csv list of port regular expression to a list of port names
+        :param string: 'xe-0/0/[0-10], et-0/0/[0-3]'
+        :returns list: [xe-0/0/0, xe-0/0/1 ... xe-0/0/10, et-0/0/0, et-0/0/1, et-0/0/2, et-0/0/3]
+
+        Currently it does not expands regex for fpc/pic, only port is expanded
+        '''
+
+        if not portRegexCsvList:
+            return []
+
+        portNames = []
+        for portRegex in portRegexCsvList.split(','):
+            portNames += DeviceSku.portRegexToList(portRegex)
+            
+        return portNames
 
 '''
 If you run OpenClos as integrated with ND, prior to calling loadLoggingConfig, you will call setFileHandlerFullPath 
