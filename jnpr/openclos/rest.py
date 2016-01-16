@@ -88,6 +88,52 @@ class OpenclosDbSessionPlugin(object):
         # Replace the route callback with the wrapped one.
         return wrapper
 
+class BasicAuthPlugin(object):
+    name = 'BasicAuthPlugin'
+
+    def __init__(self, username, cleartextPassword):
+        self.username = username
+        self.cleartextPassword = cleartextPassword
+
+    def setup(self, app):
+        ''' Make sure that other installed plugins don't affect the same keyword argument.'''
+        for plugin in app.plugins:
+            if not isinstance(plugin, BasicAuthPlugin): 
+                continue
+            else:
+                raise PluginError("Found another BasicAuthPlugin already installed")
+
+    def checkPass(self):
+        if self.username is not None:
+            auth = request.headers.get('Authorization')
+            if auth:
+                (user, passwd) = parse_auth(auth)
+                if user != self.username:
+                    logger.error("Basic Auth: user '%s' not found", user)
+                    return False
+                if passwd != self.cleartextPassword:
+                    logger.error("Basic Auth: password mismatch for user '%s'", user)
+                    return False
+                logger.debug("Basic Auth: user '%s' authenticated", user)
+                return True
+            else:
+                logger.error("Basic Auth: Authorization header not found")
+                return False
+        else:
+            # user doesn't configure username/password in http mode so let it pass
+            return True
+            
+    def apply(self, callback, context):
+        def wrapper(*args, **kwargs):
+            if not self.checkPass():
+                raise bottle.HTTPError(401)
+
+            responseBody = callback(*args, **kwargs)
+            return responseBody
+
+        # Replace the route callback with the wrapped one.
+        return wrapper
+
 class SSLServer(ServerAdapter):
     def __init__(self, host, port, certificate, **options):
         # https server won't start unless we have a real IP so we can bind the IP to the server cert
@@ -237,25 +283,8 @@ class RestServer():
         self.baseUrl = '/openclos/v%d' % self.version
         self.indexLinks = []
         
-    def checkPass(self):
-        if self.username is not None:
-            auth = request.headers.get('Authorization')
-            if auth:
-                (user, passwd) = parse_auth(auth)
-                if user != self.username:
-                    logger.error("Basic Auth: user '%s' not found", user)
-                    return False
-                if passwd != self.cleartextPassword:
-                    logger.error("Basic Auth: password mismatch for user '%s'", user)
-                    return False
-                logger.debug("Basic Auth: user '%s' authenticated", user)
-                return True
-            else:
-                logger.error("Basic Auth: Authorization header not found")
-                return False
-        else:
-            # user doesn't configure username/password so let it pass
-            return True
+        # basic authentication plugin
+        self.basicAuthPlugin = BasicAuthPlugin(self.username, self.cleartextPassword)
     
     def addIndexLink(self, indexLink):
         # index page should show all top level URLs
@@ -274,9 +303,6 @@ class RestServer():
         return context
 
     def getIndex(self, dbSession=None):
-        if not self.checkPass():
-            raise bottle.HTTPError(401)
-            
         if 'openclos' not in bottle.request.url:
             bottle.redirect(str(bottle.request.url).translate(None, ',') + 'openclos')
             
@@ -332,6 +358,7 @@ class RestServer():
     def initRest(self):
         self.app = bottle.app()
         self.app.install(loggingPlugin)
+        self.app.install(self.basicAuthPlugin)
         self.app.install(self.openclosDbSessionPlugin)
         logger.info('RestServer initRest() done')
 
@@ -367,6 +394,7 @@ class RestServer():
         Used for Test only
         """
         self.app.uninstall(loggingPlugin)
+        self.app.uninstall(BasicAuthPlugin)
         self.app.uninstall(OpenclosDbSessionPlugin)
 
 

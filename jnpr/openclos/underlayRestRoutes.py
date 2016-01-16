@@ -43,7 +43,6 @@ class UnderlayRestRoutes():
         self.__dao = context['dao']
         self.__daoClass = context['daoClass']
         self.app = context['app']
-        self.restServer = context['restServer']
 
         if 'outputDir' in self._conf:
             global webServerRoot
@@ -89,8 +88,6 @@ class UnderlayRestRoutes():
         self.app.route(self.baseUrl + '/pods/<podId>', 'DELETE', self.deletePod)
 
     def getPods(self, dbSession):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         url = str(bottle.request.url).translate(None, ',')
         podsData = {}
@@ -123,8 +120,6 @@ class UnderlayRestRoutes():
                 'outOfBandAddressList', 'outOfBandGateway', 'topologyType', 'spineJunosImage', 'hostOrVmCountPerLeaf']
     
     def getPod(self, dbSession, podId, requestUrl=None):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         if requestUrl is None:
             requestUrl = str(bottle.request.url).translate(None, ',')
@@ -175,8 +170,6 @@ class UnderlayRestRoutes():
             raise bottle.HTTPError(404, exception=PodNotFound(podId))
     
     def getCablingPlan(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         header = bottle.request.get_header('Accept')
         logger.debug('Accept header before processing: %s', header)
@@ -211,8 +204,6 @@ class UnderlayRestRoutes():
             raise bottle.HTTPError(404, exception=PodNotFound(podId))
 
     def getLeafGenericConfiguration(self, dbSession, podId, deviceModel):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         pod = self.report.getPod(dbSession, podId)
         if pod is None:
@@ -229,8 +220,6 @@ class UnderlayRestRoutes():
         return leafSetting.config
 
     def getDeviceConfigsInZip(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         pod = self.report.getPod(dbSession, podId)
         if pod is None:
@@ -268,8 +257,6 @@ class UnderlayRestRoutes():
         Hook to enhance Device object
         '''
     def getDevices(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         devices = {}
         listOfDevices = []
@@ -300,8 +287,6 @@ class UnderlayRestRoutes():
             raise bottle.HTTPError(404, exception=PodNotFound(podId))
         
     def getDevice(self, dbSession, podId, deviceId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         device = UnderlayRestRoutes.isDeviceExists(dbSession, podId, deviceId)
         #podUri is constructed from url
@@ -341,8 +326,6 @@ class UnderlayRestRoutes():
         
          
     def getDeviceConfig(self, dbSession, podId, deviceId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         device = UnderlayRestRoutes.isDeviceExists(dbSession, podId, deviceId)
         if device is None:
@@ -357,8 +340,6 @@ class UnderlayRestRoutes():
 
     
     def getZtpConfig(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         pod = self.report.getPod(dbSession, podId)
         if pod is not None:
@@ -383,8 +364,6 @@ class UnderlayRestRoutes():
             raise bottle.HTTPError(404, exception=DeviceNotFound("No device found with podId: '%s', deviceId: '%s'" % (podId, deviceId)))
 
     def getJunosImage(self, dbSession, junosImageName):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         fileName = os.path.join(junosImageRoot, junosImageName)
         logger.debug('junosImageRoot: %s, image: %s, exists: %s', junosImageRoot, junosImageName, os.path.exists(fileName))
@@ -395,8 +374,6 @@ class UnderlayRestRoutes():
         return config
     
     def getOpenClosConfigParams(self, dbSession):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         supportedDevices = []
         
@@ -420,8 +397,6 @@ class UnderlayRestRoutes():
         return {'OpenClosConf' : confValues}
                     
     def createPod(self, dbSession):  
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
@@ -447,8 +422,6 @@ class UnderlayRestRoutes():
         return pod
         
     def createCablingPlan(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         try:
             l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
@@ -460,8 +433,6 @@ class UnderlayRestRoutes():
             raise bottle.HTTPError(500, exception=exc)
 
     def createDeviceConfiguration(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         try:
             l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
@@ -473,8 +444,6 @@ class UnderlayRestRoutes():
             raise bottle.HTTPError(500, exception=exc)
             
     def createZtpConfiguration(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         try:
             ZtpServer().createPodSpecificDhcpConfFile(dbSession, podId)
@@ -484,8 +453,6 @@ class UnderlayRestRoutes():
             raise bottle.HTTPError(500, exception=exc)
 
     def reconfigPod(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
@@ -508,14 +475,10 @@ class UnderlayRestRoutes():
             raise bottle.HTTPError(400, exception=exc)
     
     def setOpenClosConfigParams(self):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         return bottle.HTTPResponse(status=200)
     
     def deletePod(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         pod = self.report.getPod(dbSession, podId)
         if pod is not None:
@@ -597,8 +560,6 @@ class UnderlayRestRoutes():
         return podDevices
 
     def getL2Report(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         try:
             cached = bottle.request.query.get('cached', '1')
@@ -613,8 +574,6 @@ class UnderlayRestRoutes():
             raise bottle.HTTPError(404, exception=PodNotFound(podId, exc))
     
     def getL3Report(self, dbSession, podId):
-        if not self.restServer.checkPass():
-            raise bottle.HTTPError(401)
             
         try:
             cached = bottle.request.query.get('cached', '1')
