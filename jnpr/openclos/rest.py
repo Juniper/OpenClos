@@ -88,13 +88,59 @@ class OpenclosDbSessionPlugin(object):
         # Replace the route callback with the wrapped one.
         return wrapper
 
-class SSLWSGIRefServer(ServerAdapter):
+class BasicAuthPlugin(object):
+    name = 'BasicAuthPlugin'
+
+    def __init__(self, username, cleartextPassword):
+        self.username = username
+        self.cleartextPassword = cleartextPassword
+
+    def setup(self, app):
+        ''' Make sure that other installed plugins don't affect the same keyword argument.'''
+        for plugin in app.plugins:
+            if not isinstance(plugin, BasicAuthPlugin): 
+                continue
+            else:
+                raise PluginError("Found another BasicAuthPlugin already installed")
+
+    def checkPass(self):
+        if self.username is not None:
+            auth = request.headers.get('Authorization')
+            if auth:
+                (user, passwd) = parse_auth(auth)
+                if user != self.username:
+                    logger.error("Basic Auth: user '%s' not found", user)
+                    return False
+                if passwd != self.cleartextPassword:
+                    logger.error("Basic Auth: password mismatch for user '%s'", user)
+                    return False
+                logger.debug("Basic Auth: user '%s' authenticated", user)
+                return True
+            else:
+                logger.error("Basic Auth: Authorization header not found")
+                return False
+        else:
+            # user doesn't configure username/password in http mode so let it pass
+            return True
+            
+    def apply(self, callback, context):
+        def wrapper(*args, **kwargs):
+            if not self.checkPass():
+                raise bottle.HTTPError(401)
+
+            responseBody = callback(*args, **kwargs)
+            return responseBody
+
+        # Replace the route callback with the wrapped one.
+        return wrapper
+
+class SSLServer(ServerAdapter):
     def __init__(self, host, port, certificate, **options):
         # https server won't start unless we have a real IP so we can bind the IP to the server cert
         if host == '0.0.0.0':
             raise InvalidConfiguration("Server cert cannot bind to 0.0.0.0. Please change ipAddr in openclos.yaml to real IP address")
             
-        super(SSLWSGIRefServer, self).__init__(host, port, **options)
+        super(SSLServer, self).__init__(host, port, **options)
         self.certificate = certificate
 
     def createServerCert(self):
@@ -102,32 +148,56 @@ class SSLWSGIRefServer(ServerAdapter):
         cmd = "openssl req -new -x509 -subj '/C=US/ST=California/L=Sunnyvale/O=Juniper Networks/OU=Network Mgmt Switching/CN=" + self.host + "/emailAddress=openclos@juniper.net' -keyout " + self.certificate + " -out " + self.certificate + " -days 365 -nodes"
         try:
             logger.debug("Running command [" + cmd + "]:")
-            output = subprocess.check_output(cmd, shell=True)
-            logger.debug(output.strip())
+            output = subprocess.check_output(cmd, shell=True).strip()
+            if output:
+                logger.debug(output)
             logger.info("Server cert %s created successfully", self.certificate)
         except subprocess.CalledProcessError as exc:
             logger.error("Command [" + cmd + "] returned error code " + str(exc.returncode) + " and output " + exc.output)
             raise PlatformError(exc.output)
     
+    def changeServerCertPermission(self):
+        # change permission to 400
+        cmd = "chmod 400 " + self.certificate
+        try:
+            logger.debug("Running command [" + cmd + "]:")
+            output = subprocess.check_output(cmd, shell=True).strip()
+            if output:
+                logger.debug(output)
+            logger.info("Server cert %s chmod successfully", self.certificate)
+        except subprocess.CalledProcessError as exc:
+            logger.error("Command [" + cmd + "] returned error code " + str(exc.returncode) + " and output " + exc.output)
+            raise PlatformError(exc.output)
+            
     def createServerCertImport(self):
         # create server cert with default value populated
         cmd = "openssl x509 -inform PEM -in " + self.certificate + " -outform DER -out " + self.certificate + ".cer"
         try:
             logger.debug("Running command [" + cmd + "]:")
-            output = subprocess.check_output(cmd, shell=True)
-            logger.debug(output.strip())
+            output = subprocess.check_output(cmd, shell=True).strip()
+            if output:
+                logger.debug(output)
             logger.info("Server cert import %s created successfully. Please import this file into your HTTPS client", self.certificate + ".cer")
         except subprocess.CalledProcessError as exc:
             logger.error("Command [" + cmd + "] returned error code " + str(exc.returncode) + " and output " + exc.output)
             raise PlatformError(exc.output)
             
-    def run(self, handler):
+    def checkServerCert(self):
         if not os.path.exists(self.certificate):
             logger.info("Server cert %s not found", self.certificate)
             self.createServerCert()
+            self.changeServerCertPermission()
             self.createServerCertImport()
         else:
             logger.info("Server cert %s found", self.certificate)
+    
+            
+class SSLWSGIRefServer(SSLServer):
+    def __init__(self, host, port, certificate, **options):
+        super(SSLWSGIRefServer, self).__init__(host, port, certificate, **options)
+        
+    def run(self, handler):
+        self.checkServerCert()
         
         from wsgiref.simple_server import make_server, WSGIRequestHandler
         import ssl
@@ -141,6 +211,20 @@ class SSLWSGIRefServer(ServerAdapter):
                                      server_side=True)
         srv.serve_forever()
        
+class SSLPasteServer(SSLServer):
+    def __init__(self, host, port, certificate, **options):
+        super(SSLPasteServer, self).__init__(host, port, certificate, **options)
+        
+    def run(self, handler): # pragma: no cover
+        self.checkServerCert()
+        
+        from paste import httpserver
+        from paste.translogger import TransLogger
+        handler = TransLogger(handler, setup_console_handler=(not self.quiet))
+        self.options["ssl_pem"] = self.certificate  # path to certificate
+        httpserver.serve(handler, host=self.host, port=str(self.port),
+                         **self.options)
+                         
 class RestServer():
     def __init__(self, conf={}, daoClass=Dao):
         if any(conf) == False:
@@ -199,25 +283,8 @@ class RestServer():
         self.baseUrl = '/openclos/v%d' % self.version
         self.indexLinks = []
         
-    def checkPass(self):
-        if self.username is not None:
-            auth = request.headers.get('Authorization')
-            if auth:
-                (user, passwd) = parse_auth(auth)
-                if user != self.username:
-                    logger.error("Basic Auth: user '%s' not found", user)
-                    return False
-                if passwd != self.cleartextPassword:
-                    logger.error("Basic Auth: password mismatch for user '%s'", user)
-                    return False
-                logger.debug("Basic Auth: user '%s' authenticated", user)
-                return True
-            else:
-                logger.error("Basic Auth: Authorization header not found")
-                return False
-        else:
-            # user doesn't configure username/password so let it pass
-            return True
+        # basic authentication plugin
+        self.basicAuthPlugin = BasicAuthPlugin(self.username, self.cleartextPassword)
     
     def addIndexLink(self, indexLink):
         # index page should show all top level URLs
@@ -236,9 +303,6 @@ class RestServer():
         return context
 
     def getIndex(self, dbSession=None):
-        if not self.checkPass():
-            raise bottle.HTTPError(401)
-            
         if 'openclos' not in bottle.request.url:
             bottle.redirect(str(bottle.request.url).translate(None, ',') + 'openclos')
             
@@ -294,6 +358,7 @@ class RestServer():
     def initRest(self):
         self.app = bottle.app()
         self.app.install(loggingPlugin)
+        self.app.install(self.basicAuthPlugin)
         self.app.install(self.openclosDbSessionPlugin)
         logger.info('RestServer initRest() done')
 
@@ -329,6 +394,7 @@ class RestServer():
         Used for Test only
         """
         self.app.uninstall(loggingPlugin)
+        self.app.uninstall(BasicAuthPlugin)
         self.app.uninstall(OpenclosDbSessionPlugin)
 
 
@@ -348,8 +414,10 @@ class RestServer():
                 srv = SSLWSGIRefServer(host=self.host, port=self.port, certificate=self.certificate)
                 bottle.run(self.app, debug=debugRest, server=srv)
             else:
-                bottle.run(self.app, host=self.host, port=self.port, debug=debugRest, server='paste')
-        
+                srv = SSLPasteServer(host=self.host, port=self.port, certificate=self.certificate)
+                bottle.run(self.app, debug=debugRest, server=srv)
+        else:
+            logger.error('REST server aborted: unknown protocol %s', self.protocol)
 
     @staticmethod
     @error(400)
