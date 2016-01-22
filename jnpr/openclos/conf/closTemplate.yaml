@@ -2,64 +2,129 @@ ztp:
     # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
     # if not placed under this dir, the file would not be accessible from http server
     # and ZTP process will be broken, can be overridden at each pod for Spine/Leaf
-    junosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
+    # this field is optional
+    junosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+    
     dhcpSubnet : 10.0.2.0/24
-    # This is the Gateway address for any out-of-band network including 
-    # management network, this will get configured using static route
-    dhcpOptionRoute : 10.0.2.254
-    dhcpOptionRangeStart :
-    dhcpOptionRangeEnd :
+    # dhcpOptionRoute is the Gateway address for any out-of-band network including 
+    # management network, this will get configured using static route.
+    # by default openclos would run on same subnet as devices.
+    # dhcpOptionRoute : 10.0.2.254
+    
+    # Following two fields are optional, if not provided start and end
+    # includes complete dhcp subnet, example for 10.0.2.0/24
+    # dhcpOptionRangeStart: 10.0.2.1, dhcpOptionRangeEnd: 10.0.2.255
+    dhcpOptionRangeStart : 10.0.2.10
+    dhcpOptionRangeEnd : 10.0.2.20
     
 pods:
     # pod name or pod identifier
     labLeafSpine:
         spineCount : 4
-        # possible options for leafDeviceType are QFX5100-24Q
-        spineDeviceType : QFX5100-24Q
+        # possible options for leafDeviceType are qfx5100-24q-2p
+        spineDeviceType : qfx5100-24q-2p
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+        # if not placed under this dir, the file would not be accessible from http server
+        # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
+        spineJunosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+
         leafCount : 6
-        # possible options for leafDeviceType are QFX5100-96S, QFX5100-48S
-        leafDeviceType : QFX5100-48S
+        # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
+        # for complete list refer to openclos.yaml
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+        leafSettings :
+            - deviceType : qfx5100-48s-6q
+              junosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+        # Number of uplink from leaf must be properly connected and up to indicate
+        # the leaf device as "good". If the leaf device is not in "good" state
+        # it would not go through 2-stage ZTP/configuration process.
+        # Possible value is in between 2 and spineCount, inclusive both end.
+        # This field is optional, default value is max(2, math.celi(spineCount/2))
+        leafUplinkcountMustBeUp : 3 
+        
         hostOrVmCountPerLeaf : 254
-        interConnectPrefix : 192.168.0.0
-        vlanPrefix : 172.16.0.0
-        loopbackPrefix : 10.10.0.0
+        interConnectPrefix : 192.168.0.0/24
+        vlanPrefix : 172.16.0.0/21
+        loopbackPrefix : 10.10.0.0/24
+        # either managementPrefix or (managementStartingIP, managementMask) is mandatory. Here is how it works:
+        # case 1: managementPrefix : 1.2.3.7/24
+        #         from cidr notation of managementPrefix we know available block is [1.2.3.0 - 1.2.3.255]
+        #         from ip portion of managementPrefix we know starting ip is 1.2.3.7
+        #         so the effective range is [1.2.3.7 - 1.2.3.7+spineCount+leafCount]
+        # case 2: managementStartingIP : 1.2.3.7
+        #         managementMask : 24
+        #         from cidr notation of 'managementStartingIP/managementMask' we know available block is [1.2.3.0 - 1.2.3.255]
+        #         from managementStartingIP we know starting ip is 1.2.3.7
+        #         so the effective range is [1.2.3.7 - 1.2.3.7+spineCount+leafCount]
+        managementPrefix : 172.32.30.101/24
         spineAS : 100
         leafAS : 200
         # possible options for topologyType are threeStage, fiveStageRealEstate, fiveStagePerformance
         topologyType : threeStage
         inventory : inventoryLabLeafSpine.json
-        # List of out of band networks, example - management network
-        # outOfBandAddressList: 
+        # List of out of band networks, example - devices in management network
+        # outOfBandAddressList : 
         #     - 1.2.3.4/32
         #     - 1.2.3.9/32
+        # Management network gateway address
+        # It overrides ztp:dhcpOptionRoute setting
+        # outOfBandGateway : 1.2.3.254
         
+        # device default root password
+        devicePassword: abcd1234
+    anotherPod:
+        spineCount : 2
+        # possible options for leafDeviceType are qfx5100-24q-2p
+        spineDeviceType : qfx5100-24q-2p
         # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
         # if not placed under this dir, the file would not be accessible from http server
         # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
-        spineJunosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
-        leafJunosImage : jinstall-qfx-5-flex-13.2X51-D21.2-domestic-signed.tgz
-    anotherPod:
-        spineCount : 2
-        # possible options for leafDeviceType are QFX5100-24Q
-        spineDeviceType : QFX5100-24Q
+        spineJunosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+
         leafCount : 4
-        # possible options for leafDeviceType are QFX5100-96S, QFX5100-48S
-        leafDeviceType : QFX5100-48S
+        # possible options for leafDeviceType are qfx5100-96S, qfx5100-48s-6q
+        # for complete list refer to openclos.yaml
+        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
+        leafSettings :
+            - deviceType : qfx5100-96s-8q
+              junosImage : jinstall-qfx-5-14.1X53-D10.4-domestic-signed.tgz
+            - deviceType : ex4300-48p
+              junosImage : jinstall-ex-4300-14.1X53-D10.4-domestic-signed.tgz
+        # Number of uplink from leaf must be properly connected to indicate
+        # the leaf device as "good". If the leaf device is not in "good" state
+        # it would not go through 2-stage ZTP/configuration process.
+        # Possible value is in between 2 and spineCount, inclusive both end.
+        # This field is optional, default value is max(2, math.celi(spineCount/2))
+        # leafUplinkcountMustBeUp : 2 
+
         hostOrVmCountPerLeaf : 254
-        interConnectPrefix : 192.169.0.0
-        vlanPrefix : 172.17.0.0
-        loopbackPrefix : 10.11.0.0
+        interConnectPrefix : 192.169.0.0/24
+        vlanPrefix : 172.17.0.0/22
+        loopbackPrefix : 10.11.0.0/24
+        # either managementPrefix or (managementStartingIP, managementMask) is mandatory. Here is how it works:
+        # case 1: managementPrefix : 1.2.3.7/24
+        #         from cidr notation of managementPrefix we know available block is [1.2.3.0 - 1.2.3.255]
+        #         from ip portion of managementPrefix we know starting ip is 1.2.3.7
+        #         so the effective range is [1.2.3.7 - 1.2.3.7+spineCount+leafCount]
+        # case 2: managementStartingIP : 1.2.3.7
+        #         managementMask : 24
+        #         from cidr notation of 'managementStartingIP/managementMask' we know available block is [1.2.3.0 - 1.2.3.255]
+        #         from managementStartingIP we know starting ip is 1.2.3.7
+        #         so the effective range is [1.2.3.7 - 1.2.3.7+spineCount+leafCount]
+        managementPrefix : 192.168.48.216/24
         spineAS : 300
         leafAS : 400
         # possible options for topologyType are threeStage, fiveStageRealEstate, fiveStagePerformance
         topologyType : threeStage
         inventory : inventoryAnotherPod.json
-        # List of out of band networks, example - management network
-        outOfBandAddressList: 
+        # List of out of band networks, example - devices in management network
+        outOfBandAddressList : 
             - 10.94.185.18/32
             - 10.94.185.19/32
-        # the image file should be placed under <install dir>/jnpr/openclos/conf/ztp
-        # if not placed under this dir, the file would not be accessible from http server
-        # and ZTP process will be broken, these are optional, overrides global setting ztp.junosImage
-        spineJunosImage : jinstall-qfx-5-flex-13.2X51-D20.2-domestic-signed.tgz
-        leafJunosImage : jinstall-qfx-5-flex-13.2X51-D21.2-domestic-signed.tgz
+            - 172.16.0.0/12
+        # Management network gateway address
+        # It overrides ztp:dhcpOptionRoute setting
+        outOfBandGateway : 192.168.48.254
+        
+        # device default root password
+        devicePassword: abcd1234

@@ -1,6 +1,5 @@
-    replace:
-    interface-range ALL-SERVER {
-        member xe-0/0/*;
+{% for ifdName in ifdNames %}    replace:
+    {{ifdName}} {
         unit 0 {
             family ethernet-switching {
                 interface-mode access;
@@ -10,3 +9,5 @@
             }
         }
     }
+{% endfor %}        
+    

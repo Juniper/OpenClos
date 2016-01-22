@@ -1,0 +1,6 @@
+protocols {
+    replace:
+    lldp {
+        interface all;
+    }
+}

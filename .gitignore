@@ -2,6 +2,8 @@
 *.py[cod]
 *.bak
 *.orig
+*.log
+*.csv
 
 # Packages
 *.egg

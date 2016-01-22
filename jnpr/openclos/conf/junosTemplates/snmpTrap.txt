@@ -1,0 +1,18 @@
+snmp {
+    community public {
+        authorization read-write;
+    }
+{% for trapGroup in trapGroups %}    trap-group {{trapGroup['name']}} {
+        version v2;
+        destination-port {{trapGroup['port']}};
+        {% if trapGroup['name'] != "space" %}categories {
+            link;
+            services;
+            authentication;
+        }
+        {% endif %}targets {
+{% for target in trapGroup['targetIp'] %}            {{target}};
+{% endfor %}        }
+    } 
+{% endfor %}
+}

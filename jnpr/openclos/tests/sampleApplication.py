@@ -6,16 +6,22 @@ Created on Oct 2, 2014
 from jnpr.openclos.l3Clos import L3ClosMediation
 from jnpr.openclos.ztp import ZtpServer
 from jnpr.openclos.rest import RestServer
+from jnpr.openclos.trapd import TrapReceiver
 import jnpr.openclos.util
 import os
+import signal
+import sys
+
+trapReceiver = None
+restServer = None
 
 installedDhcpConf = "/etc/dhcp/dhcpd.conf"
 
 # OpenClos generated dhcpd.conf file path. It is usually located at
-# <OpenClos install dir>/jnpr/openclos/out/<pod name>/dhcpd.conf
-# example for ubuntu - /usr/local/lib/python2.7/dist-packages/jnpr/openclos/out/<pod name>/dhcpd.conf
-# example for centos - /usr/lib/python2.6/site-packages/jnpr/openclos/out/<pod name>/dhcpd.conf
-generatedDhcpConf= "/home/regress/OpenClos-R1.0.dev1/jnpr/openclos/out/anotherPod/dhcpd.conf"
+# <OpenClos install dir>/jnpr/openclos/out/<pod id>-<pod name>/dhcpd.conf
+generatedDhcpConf = os.path.join(os.path.dirname(os.path.abspath(jnpr.openclos.l3Clos.__file__)), 
+                                 'out', '<pod id>-<pod name>', 'dhcpd.conf')
+
 
 class sampleApplication:
     '''
@@ -29,7 +35,12 @@ class sampleApplication:
         '''
         l3ClosMediation = L3ClosMediation()
         pods = l3ClosMediation.loadClosDefinition()
-        l3ClosMediation.processFabric('anotherPod', pods['anotherPod'], reCreateFabric = True)
+        self.pod = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
+        l3ClosMediation.createCablingPlan(self.pod.id)
+        l3ClosMediation.createDeviceConfig(self.pod.id)
+        global generatedDhcpConf
+        generatedDhcpConf = generatedDhcpConf.replace('<pod id>', self.pod.id)
+        generatedDhcpConf = generatedDhcpConf.replace('<pod name>', self.pod.name)
 
     def setupZTP(self):
         '''
@@ -38,12 +49,14 @@ class sampleApplication:
         Install and restart DHCP server with new dhcp configuration
         '''
         ztpServer = ZtpServer()
-        ztpServer.createPodSpecificDhcpConfFile('anotherPod')
+        with ztpServer._dao.getReadSession() as session:
+            ztpServer.createPodSpecificDhcpConfFile(session, self.pod.id)
+            print generatedDhcpConf
 
         if jnpr.openclos.util.isPlatformUbuntu():
             os.system('sudo apt-get -y install isc-dhcp-server')
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
-            os.system("/etc/init.d/isc-dhcp-server restart")
+            os.system('sudo /usr/sbin/service isc-dhcp-server restart')
 
         elif jnpr.openclos.util.isPlatformCentos():
             os.system('yum -y install dhcp')
@@ -57,9 +70,41 @@ class sampleApplication:
         restServer = RestServer()
         restServer.initRest()
         restServer.start()
+        return restServer
 
+    def startTrapReceiver(self):
+        '''
+        start trap receiver to listen on traps from devices
+        '''
+        global trapReceiver
+        trapReceiver = TrapReceiver()
+        trapReceiver.start()
+        return trapReceiver
+
+def signal_handler(signal, frame):
+    print("received signal %d" % signal)
+    trapReceiver.stop()
+    # TODO find how to cleanly stop rest server
+    #restServer.stop()
+    sys.exit(0)
+        
 if __name__ == '__main__':
     app = sampleApplication()
-    app.createConfigFilesForDevices()
-    app.setupZTP()
-    app.startHTTPserverForZTPFileTransferProtocol()
+
+    newpid = os.fork()
+    if newpid == 0: # child
+        app.createConfigFilesForDevices()
+        app.setupZTP()
+        restServer = app.startHTTPserverForZTPFileTransferProtocol()
+    
+    else: # parent
+
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        app.startTrapReceiver()
+
+        # Note we have to do this in order for signal to be properly caught by main thread
+        # We need to do the similar thing when we integrate this into sampleApplication.py
+        while True:
+            signal.pause()
