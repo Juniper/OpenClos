@@ -24,12 +24,13 @@ class OverlayDevice(ManagedElement, Base):
     description = Column(String(256))
     role = Column(Enum('spine', 'leaf'))
     address = Column(String(60))
+    routerId = Column(String(60))
     overlay_fabrics = relationship(
         'OverlayFabric',
         secondary='overlayFabricOverlayDeviceLink'
     )
 
-    def __init__(self, name, description, role, address):
+    def __init__(self, name, description, role, address, routerId):
         '''
         Creates device object.
         '''
@@ -38,8 +39,9 @@ class OverlayDevice(ManagedElement, Base):
         self.description = description
         self.role = role
         self.address = address
+        self.routerId = routerId
         
-    def update(self, name, description, role, address):
+    def update(self, name, description, role, address, routerId):
         '''
         Updates device object.
         '''
@@ -47,6 +49,7 @@ class OverlayDevice(ManagedElement, Base):
         self.description = description
         self.role = role
         self.address = address
+        self.routerId = routerId
     
 class OverlayFabric(ManagedElement, Base):
     __tablename__ = 'overlayFabric'
@@ -54,12 +57,14 @@ class OverlayFabric(ManagedElement, Base):
     name = Column(String(255), index=True, nullable=False)
     description = Column(String(256))
     overlayAS = Column(BigInteger)
+    routeReflectorAddress = Column(String(60))
+
     overlay_devices = relationship(
         'OverlayDevice',
         secondary='overlayFabricOverlayDeviceLink'
     )
     
-    def __init__(self, name, description, overlayAS, devices):
+    def __init__(self, name, description, overlayAS, routeReflectorAddress, devices):
         '''
         Creates Fabric object.
         '''
@@ -67,16 +72,18 @@ class OverlayFabric(ManagedElement, Base):
         self.name = name
         self.description = description
         self.overlayAS = overlayAS
+        self.routeReflectorAddress = routeReflectorAddress
         for device in devices:
             self.overlay_devices.append(device)
         
-    def update(self, name, description, overlayAS, devices):
+    def update(self, name, description, overlayAS, routeReflectorAddress, devices):
         '''
         Updates Fabric object.
         '''
         self.name = name
         self.description = description
         self.overlayAS = overlayAS
+        self.routeReflectorAddress = routeReflectorAddress
         for device in devices:
             self.overlay_devices.append(device)
     
@@ -98,9 +105,9 @@ class OverlayTenant(ManagedElement, Base):
     description = Column(String(256))
     overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'), nullable=False)
     overlay_fabric = relationship("OverlayFabric", backref=backref('overlay_tenants', order_by=name, cascade='all, delete, delete-orphan'))
-    #__table_args__ = (
-    #    Index('fabric_id_name_uindex', 'fabric_id', 'name', unique=True),
-    #)
+    __table_args__ = (
+        Index('overlay_fabric_id_overlay_tenant_name_uindex', 'overlay_fabric_id', 'name', unique=True),
+    )
 
     def __init__(self, name, description, overlay_fabric):
         '''
@@ -126,9 +133,9 @@ class OverlayVrf(ManagedElement, Base):
     routedVnid = Column(Integer)
     overlay_tenant_id = Column(String(60), ForeignKey('overlayTenant.id'), nullable=False)
     overlay_tenant = relationship("OverlayTenant", backref=backref('overlay_vrfs', order_by=name, cascade='all, delete, delete-orphan'))
-    #__table_args__ = (
-    #    Index('tenant_id_name_uindex', 'tenant_id', 'name', unique=True),
-    #)
+    __table_args__ = (
+        Index('overlay_tenant_id_overlay_vrf_name_uindex', 'overlay_tenant_id', 'name', unique=True),
+    )
 
     def __init__(self, name, description, routedVnid, overlay_tenant):
         '''
@@ -158,9 +165,9 @@ class OverlayNetwork(ManagedElement, Base):
     pureL3Int = Column(Boolean)
     overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'), nullable=False)
     overlay_vrf = relationship("OverlayVrf", backref=backref('overlay_networks', order_by=name, cascade='all, delete, delete-orphan'))
-    #__table_args__ = (
-    #    Index('vrf_id_name_uindex', 'vrf_id', 'name', unique=True),
-    #)
+    __table_args__ = (
+        Index('overlay_vrf_id_overlay_network_name_uindex', 'overlay_vrf_id', 'name', unique=True),
+    )
 
     def __init__(self, name, description, overlay_vrf, vlanid, vnid, pureL3Int):
         '''
@@ -192,9 +199,9 @@ class OverlaySubnet(ManagedElement, Base):
     cidr = Column(String(60))
     overlay_network_id = Column(String(60), ForeignKey('overlayNetwork.id'), nullable=False)
     overlay_network = relationship("OverlayNetwork", backref=backref('overlay_subnets', order_by=name, cascade='all, delete, delete-orphan'))
-    #__table_args__ = (
-    #    Index('network_id_name_uindex', 'network_id', 'name', unique=True),
-    #)
+    __table_args__ = (
+        Index('overlay_network_id_overlay_subnet_name_uindex', 'overlay_network_id', 'name', unique=True),
+    )
 
     def __init__(self, name, description, overlay_network, cidr):
         '''
@@ -221,9 +228,9 @@ class OverlayL3port(ManagedElement, Base):
     description = Column(String(256))
     overlay_subnet_id = Column(String(60), ForeignKey('overlaySubnet.id'), nullable=False)
     overlay_subnet = relationship("OverlaySubnet", backref=backref('overlay_l3ports', order_by=name, cascade='all, delete, delete-orphan'))
-    #__table_args__ = (
-    #    Index('subnet_id_name_uindex', 'subnet_id', 'name', unique=True),
-    #)
+    __table_args__ = (
+        Index('overlay_subnet_id_overlay_l3port_name_uindex', 'overlay_subnet_id', 'name', unique=True),
+    )
 
     def __init__(self, name, description, overlay_subnet):
         '''
@@ -253,11 +260,11 @@ class OverlayL2port(ManagedElement, Base):
     overlay_network = relationship("OverlayNetwork", backref=backref('overlay_l2ports', order_by=name, cascade='all, delete, delete-orphan'))
     overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
     overlay_device = relationship("OverlayDevice", backref=backref('overlay_l2ports', order_by=name, cascade='all, delete, delete-orphan'))
-    #__table_args__ = (
-    #    Index('ae_id_name_uindex', 'ae_id', 'name', unique=True),
-    #    Index('network_id_name_uindex', 'network_id', 'name', unique=True),
-    #    Index('device_id_name_uindex', 'device_id', 'name', unique=True),
-    #)
+    __table_args__ = (
+        #Index('overlay_ae_id_overlay_l2port_name_uindex', 'overlay_ae_id', 'name', unique=True),
+        Index('overlay_network_id_overlay_l2port_name_uindex', 'overlay_network_id', 'name', unique=True),
+        Index('overlay_device_id_overlay_l2port_name_uindex', 'overlay_device_id', 'name', unique=True),
+    )
 
     def __init__(self, name, description, interface, overlay_ae, overlay_network, overlay_device):
         '''
@@ -286,9 +293,6 @@ class OverlayAe(ManagedElement, Base):
     description = Column(String(256))
     esi = Column(String(60), nullable=False)
     lacp = Column(String(60), nullable=False)
-    #__table_args__ = (
-    #    Index('network_id_name_uindex', 'network_id', 'name', unique=True),
-    #)
 
     def __init__(self, name, description, esi, lacp):
         '''

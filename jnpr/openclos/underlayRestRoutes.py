@@ -16,7 +16,7 @@ import logging
 
 from bottle import error, request, response, PluginError, ServerAdapter
 from exception import InvalidRequest, PodNotFound, CablingPlanNotFound, DeviceConfigurationNotFound, DeviceNotFound, ImageNotFound, CreatePodFailed, UpdatePodFailed
-from model import Pod, Device
+from model import Pod, Device, InterfaceLogical
 from dao import Dao
 from report import ResourceAllocationReport, L2Report, L3Report
 from l3Clos import L3ClosMediation
@@ -241,6 +241,15 @@ class UnderlayRestRoutes():
         logger.debug('zip file content:\n' + str(zipArchive.namelist()))
         return buff.getvalue()
 
+    @staticmethod
+    def getDeviceLoopbackIp(dbSession, deviceId):
+        try:
+            loopbackIfl = dbSession.query(InterfaceLogical).join(Device).filter(Device.id == deviceId).filter(InterfaceLogical.name == 'lo0.0').one()
+        except exc.NoResultFound:
+            logger.debug("Loopback interface not found for deviceId: '%s'", deviceId)
+            return None
+        return util.stripNetmaskFromIpString(loopbackIfl.ipaddress)
+            
     def copyAdditionalDeviceFields(self, dict, device):
         '''
         Hook to enhance Device object
@@ -265,6 +274,7 @@ class UnderlayRestRoutes():
                 outputDict['l2Status'] = device.l2Status
                 outputDict['l3Status'] = device.l3Status
                 outputDict['uri'] = str(bottle.request.url).translate(None, ',') + '/' +device.id
+                outputDict['loopbackIp'] = UnderlayRestRoutes.getDeviceLoopbackIp(dbSession, device.id)
                 self.copyAdditionalDeviceFields(outputDict, device)
 
                 listOfDevices.append(outputDict)
@@ -307,6 +317,7 @@ class UnderlayRestRoutes():
             outputDict['uri'] = str(bottle.request.url).translate(None, ',')
             outputDict['pod'] = {'uri': ipFbaricUri}
             outputDict['config'] = {'uri': str(bottle.request.url).translate(None, ',') + '/config'}
+            outputDict['loopbackIp'] = UnderlayRestRoutes.getDeviceLoopbackIp(dbSession, device.id)
             self.copyAdditionalDeviceFields(outputDict, device)
             
             return {'device': outputDict}

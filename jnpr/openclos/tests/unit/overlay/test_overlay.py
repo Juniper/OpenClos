@@ -29,24 +29,28 @@ class TestOverlayHelper:
             "name": "d1",
             "description": "description for d1",
             "role": "spine",
-            "address": "1.2.3.4"
+            "address": "1.2.3.4",
+            "routerId": "1.1.1.1"
         }
         name = deviceDict['name']
         description = deviceDict.get('description')
         role = deviceDict['role']
         address = deviceDict['address']
-        return self.overlay.createDevice(name, description, role, address)
+        routerId = deviceDict['routerId']
+        return self.overlay.createDevice(name, description, role, address, routerId)
         
     def _createFabric(self, deviceObjects):
         fabricDict = {
             "name": "f1",
             "description": "description for f1",
-            "overlayAsn": 65001
+            "overlayAsn": 65001,
+            "routeReflectorAddress": "2.2.2.2"
         }
         name = fabricDict['name']
         description = fabricDict.get('description')
         overlayAsn = fabricDict['overlayAsn']
-        return self.overlay.createFabric(name, description, overlayAsn, deviceObjects)
+        routeReflectorAddress = fabricDict['routeReflectorAddress']
+        return self.overlay.createFabric(name, description, overlayAsn, routeReflectorAddress, deviceObjects)
     
     def _createTenant(self, fabricObject):
         tenantDict = {
@@ -165,7 +169,7 @@ class TestOverlay(unittest.TestCase):
             
     def testUpdateDevice(self):
         deviceObject = self.helper._createDevice()
-        deviceObject.update('d2', 'description for d2', 'leaf', '1.2.3.5')
+        deviceObject.update('d2', 'description for d2', 'leaf', '1.2.3.5', '1.1.1.2')
         
         with self._dao.getReadWriteSession() as session:        
             self._dao.updateObjects(session, [deviceObject])
@@ -177,6 +181,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('description for d2', deviceObjectFromDb.description)
             self.assertEqual('leaf', deviceObjectFromDb.role)
             self.assertEqual('1.2.3.5', deviceObjectFromDb.address)
+            self.assertEqual('1.1.1.2', deviceObjectFromDb.routerId)
             
     def testCreateFabric(self):
         deviceObject = self.helper._createDevice()
@@ -192,7 +197,7 @@ class TestOverlay(unittest.TestCase):
             fabricObjectFromDb = session.query(OverlayFabric).one()
             fabricObjectFromDb.clearDevices()
             self._dao.updateObjects(session, [fabricObjectFromDb])
-            fabricObjectFromDb.update('f2', 'description for f2', 65002, [deviceObject])
+            fabricObjectFromDb.update('f2', 'description for f2', 65002, '3.3.3.3', [deviceObject])
             self._dao.updateObjects(session, [fabricObjectFromDb])
             
         with self._dao.getReadSession() as session:
@@ -201,6 +206,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('f2', fabricObjectFromDb.name)
             self.assertEqual('description for f2', fabricObjectFromDb.description)
             self.assertEqual(65002, fabricObjectFromDb.overlayAS)
+            self.assertEqual('3.3.3.3', fabricObjectFromDb.routeReflectorAddress)
     
     def testCreateTenant(self):
         deviceObject = self.helper._createDevice()
