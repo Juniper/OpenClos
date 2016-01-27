@@ -689,8 +689,10 @@ class TwoStageConfigurator(L2DataCollector):
             return
 
         updateList = []
-        uplinkNamesBasedOnDeviceFamily = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['uplinkPorts']
-        # hack :( needed to keep the sequence proper in case2, if device changed from ex to qfx
+        uplinkNamesBasedOnDeviceFamily = self._dao.getPortNamesForCustomizedDeviceSku(self._session, device)['uplinkPorts']
+        if not uplinkNamesBasedOnDeviceFamily:
+            uplinkNamesBasedOnDeviceFamily = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['uplinkPorts']
+                # hack :( needed to keep the sequence proper in case2, if device changed from ex to qfx
         self.markAllUplinkIfdsToUplink(device)
         
         # case1: fix IFDs based on lldp data

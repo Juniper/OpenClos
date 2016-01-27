@@ -2,12 +2,12 @@ protocols {
     replace:
     bgp {
         log-updown;
-        import bgp-clos-in;
-        export bgp-clos-out;
         graceful-restart;
         group CLOS {
             type external;
             mtu-discovery;
+            import bgp-clos-in;
+            export bgp-clos-out;
             bfd-liveness-detection {
                 minimum-interval 350;
                 multiplier 3;

@@ -15,7 +15,7 @@ import itertools
 from netaddr import IPNetwork
 from sqlalchemy.orm import exc
 
-from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup
+from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup, LeafSetting
 from dao import Dao
 from loader import defaultPropertyLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
 import loader
@@ -80,9 +80,12 @@ class L3ClosMediation():
             serialNumber = spine.get('serialNumber')
             device = Device(spine['name'], pod.spineDeviceType, username, password, 'spine', macAddress, None, pod, deployStatus, serialNumber)
             devices.append(device)
+
+            downlinkPortNames = self._dao.getPortNamesForCustomizedDeviceSku(session, device)['downlinkPorts']
+            if not downlinkPortNames:
+                downlinkPortNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'spine')['downlinkPorts']
             
-            portNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'spine')
-            for name in portNames['downlinkPorts']:     # spine does not have any uplink/downlink marked, it is just ports
+            for name in downlinkPortNames:     # spine does not have any uplink/downlink marked, it is just ports
                 ifd = InterfaceDefinition(name, device, 'downlink')
                 interfaces.append(ifd)
         self._dao.createObjects(session, devices)
@@ -113,9 +116,12 @@ class L3ClosMediation():
                 interfaces.append(InterfaceDefinition('uplink-' + str(i), device, 'uplink'))
 
         else:
-            portNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')
+            uplinkPortNames = self._dao.getPortNamesForCustomizedDeviceSku(session, device)['uplinkPorts']
+            if not uplinkPortNames:
+                uplinkPortNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['uplinkPorts']
+
             interfaceCount = 0
-            for name in portNames['uplinkPorts']:   # all uplink IFDs towards spine
+            for name in uplinkPortNames:   # all uplink IFDs towards spine
                 interfaces.append(InterfaceDefinition(name, device, 'uplink'))
                 interfaceCount += 1
             
@@ -364,7 +370,9 @@ class L3ClosMediation():
             filter(InterfaceDefinition.role == 'uplink').order_by(InterfaceDefinition.sequenceNum).all()
             
         # list 2
-        uplinkNamesBasedOnDeviceFamily = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['uplinkPorts']
+        uplinkNamesBasedOnDeviceFamily = self._dao.getPortNamesForCustomizedDeviceSku(session, device)['uplinkPorts']
+        if not uplinkNamesBasedOnDeviceFamily:
+            uplinkNamesBasedOnDeviceFamily = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['uplinkPorts']
         
         updateList = []
         # fake uplink port starts from 0
@@ -759,7 +767,9 @@ class L3ClosMediation():
     def _createAccessPortInterfaces(self, session, device):
         accessInterface = self._templateLoader.getTemplate('accessInterface.txt')
         
-        ifdNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['downlinkPorts']
+        ifdNames = self._dao.getPortNamesForCustomizedDeviceSku(session, device)['downlinkPorts']
+        if not ifdNames:
+            ifdNames = self.deviceSku.getPortNamesForDeviceFamily(device.family, 'leaf')['downlinkPorts']
         return accessInterface.render(ifdNames=ifdNames)
 
     def _getOpenclosTrapTargetIpFromConf(self):
@@ -958,12 +968,14 @@ class L3ClosMediation():
         outOfBandNetworkParams = self._getParamsForOutOfBandNetwork(session, pod)
         
         for deviceFamily in leafSettings.keys():
-            if deviceFamily == 'qfx5100-24q-2p':
-                continue
+            #if deviceFamily == 'qfx5100-24q-2p':
+            #    continue
             
-            ifdNames = []
-            for ifdName in self.deviceSku.getPortNamesForDeviceFamily(deviceFamily, 'leaf')['downlinkPorts']:
-                ifdNames.append(ifdName)
+            leafSetting = leafSettings[deviceFamily]
+            if leafSetting.uplinkRegex and leafSetting.downlinkRegex:
+                ifdNames = DeviceSku.portRegexCsvListToList(leafSetting.downlinkRegex)
+            else:
+                ifdNames = self.deviceSku.getPortNamesForDeviceFamily(deviceFamily, 'leaf')['downlinkPorts']
 
             leafSettings[deviceFamily].config = leafTemplate.render(deviceFamily=deviceFamily, oob=outOfBandNetworkParams, 
                 trapGroups=trapGroups, hashedPassword=pod.getHashPassword(), ifdNames=ifdNames)
@@ -1000,6 +1012,10 @@ def main():
     pod2 = l3ClosMediation.createPod('anotherPod', pods['anotherPod'])
     l3ClosMediation.createCablingPlan(pod2.id)
     l3ClosMediation.createDeviceConfig(pod2.id)
+    
+    pod3 = l3ClosMediation.createPod('customizedSku', pods['customizedSku'])
+    l3ClosMediation.createCablingPlan(pod3.id)
+    l3ClosMediation.createDeviceConfig(pod3.id)
 
 if __name__ == '__main__':
     main()

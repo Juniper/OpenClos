@@ -220,7 +220,7 @@ class TestMethod(unittest.TestCase):
 
     def testLoadClosDefinition(self):
         pods = loadPodsFromClosDefinition(False)
-        self.assertEqual(2, len(pods))
+        self.assertEqual(3, len(pods))
 
     def testLoadNonExistingClosDefinition(self):
         closDef = loadClosDefinition('non-existing.yaml')

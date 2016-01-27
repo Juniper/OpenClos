@@ -202,12 +202,16 @@ class TestUnderlayRestRoutes(unittest.TestCase):
             pod1Id = self.pod1.id
             pod1Name = self.pod1.name
             pod1SpineDeviceType = self.pod1.spineDeviceType
+            pod1SpineUplinkPorts = self.pod1.spineUplinkRegex
+            pod1LeafUplinkPorts = self.pod1.leafSettings[0].uplinkRegex
 
         response = self.restServerTestApp.get('/openclos/v1/underlay/pods/' + pod1Id)
         self.assertEqual(200, response.status_int)
         self.assertEqual(pod1Id, response.json['pod']['id'])
         self.assertEqual(pod1Name, response.json['pod']['name'])
-        self.assertEqual(pod1SpineDeviceType, response.json['pod']['spineDeviceType'])
+        self.assertEqual(pod1SpineDeviceType, response.json['pod']['spineSettings'][0]['deviceType'])
+        self.assertEqual(pod1SpineUplinkPorts, response.json['pod']['spineSettings'][0]['uplinkPorts'])
+        self.assertEqual(pod1LeafUplinkPorts, response.json['pod']['leafSettings'][0]['uplinkPorts'])
         self.assertTrue('/openclos/v1/underlay/pods/' + pod1Id + '/cabling-plan' in response.json['pod']['cablingPlan']['uri'])
         self.assertTrue('/openclos/v1/underlay/pods/' + pod1Id + '/devices' in response.json['pod']['devices']['uri'])
 
@@ -334,7 +338,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
         pod = {
             "pod": {
                 "name": "test12321",
-                "spineDeviceType": "qfx5100-24q-2p",
+                "spineSettings": [{"deviceType": "qfx5100-24q-2p"}],
                 "spineCount": 2,
                 "spineAS": 5,
                 "leafSettings": [{"deviceType": "ex4300-24p"},{"deviceType": "qfx5100-48s-6q"}],
@@ -348,7 +352,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
                 "managementPrefix": "192.168.2.1/24",
                 "description": "test12321",
                 "hostOrVmCountPerLeaf": 254,
-                "devicePassword": "viren123",
+                "devicePassword": "test123",
                 "outOfBandGateway": "192.168.2.1",
                 "devices": [
                   {"role": "spine", "family": "qfx5100-24q-2p", "name": "test12321-spine-0", "username": "root", "password": "viren123", "serialNumber":"1234567", "deployStatus": "deploy"},

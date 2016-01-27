@@ -18,9 +18,9 @@ from jnpr.openclos.exception import InvalidUplinkThreshold
 def createPodObj(name):  
     pod = {}
     pod['spineCount'] = '2'
-    pod['spineDeviceType'] = 'qfx-5100-24q-2p'
     pod['leafCount'] = '2'
-    pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
+    pod['spineSettings'] = [{'deviceType':'qfx-5100-24q-2p', 'uplinkPorts':['et-0/0/[16-23]'], 'downlinkPorts': ['et-0/0/[0-15]']}]
+    pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q', 'uplinkPorts':['et-0/0/[48-53]'], 'downlinkPorts': ['xe-0/0/[0-47]']}]
     pod['interConnectPrefix'] = '1.2.0.0'
     pod['vlanPrefix'] = '1.3.0.0'
     pod['hostOrVmCountPerLeaf'] = 100
@@ -88,7 +88,7 @@ class TestPod(TestOrm):
     def testPodValidateSuccess(self):
         pod = {}
         pod['spineCount'] = '2'
-        pod['spineDeviceType'] = 'qfx-5100-24q-2p'
+        pod['spineSettings'] = [{'deviceType':'qfx-5100-24q-2p'}]
         pod['leafCount'] = '2'
         pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
         pod['hostOrVmCountPerLeaf'] = 100
@@ -105,36 +105,6 @@ class TestPod(TestOrm):
         
         pod.validate()
   
-    #def testPodValidateMisingAllRequiredFields(self):
-    #    pod = {}
-    #    with self.assertRaises(ValueError) as ve:
-    #        pod = Pod('testPod', pod)
-    #        pod.validateRequiredFields()
-    #    error = ve.exception.message
-    #    self.assertEqual(11, error.count(','))
-
-    #def testPodValidateMisingFewRequiredFields(self):
-    #    pod = {}
-    #    pod['interConnectPrefix'] = '1.2.0.0'
-    #    pod['leafAS'] = '100'
-    #    with self.assertRaises(ValueError) as ve:
-    #        pod = Pod('testPod', pod)
-    #        pod.validateRequiredFields()
-    #    error = ve.exception.message
-    #    self.assertEqual(9, error.count(','), 'Number of missing field is not correct')
-
-    #def testPodValidateMisingBadIpAddress(self):
-    #    pod = {}
-    #    pod['interConnectPrefix'] = '1.2.0.0.0'
-    #    pod['vlanPrefix'] = '1.2.0.257'
-    #    pod['managementPrefix'] = '172.32.30.101/24'
-    #    pod['loopbackPrefix'] = None
-    #    with self.assertRaises(ValueError) as ve:
-    #        pod = Pod('testPod', pod)
-    #        pod.validateIPaddr()
-    #    error = ve.exception.message
-    #    self.assertEqual(2, error.count(','), 'Number of bad Ip address format field is not correct')
-
     def testPodVaidateLeafUplinkcountMustBeUp(self):
         pod = createPodObj('name')
         with self.assertRaises(InvalidUplinkThreshold) as ve:
@@ -149,7 +119,7 @@ class TestPod(TestOrm):
     def testConstructorPass(self):
         pod = {}
         pod['spineCount'] = '2'
-        pod['spineDeviceType'] = 'qfx-5100-24q-2p'
+        pod['spineSettings'] = [{'deviceType':'qfx-5100-24q-2p'}]
         pod['leafCount'] = '2'
         pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
         pod['interConnectPrefix'] = '1.2.0.0'
@@ -174,9 +144,9 @@ class TestPod(TestOrm):
     def testOrm(self):
         pod = {}
         pod['spineCount'] = '2'
-        pod['spineDeviceType'] = 'qfx-5100-24q-2p'
+        pod['spineSettings'] = [{'deviceType':'qfx-5100-24q-2p', 'uplinkPorts':['et-0/0/[16-23]'], 'downlinkPorts': ['et-0/0/[0-15]']}]
         pod['leafCount'] = '2'
-        pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q'}]
+        pod['leafSettings'] = [{'deviceType':'qfx-5100-48s-6q', 'uplinkPorts':['et-0/0/[48-53]'], 'downlinkPorts': ['xe-0/0/[0-47]']}]
         pod['interConnectPrefix'] = '1.2.0.0'
         pod['vlanPrefix'] = '1.3.0.0'
         pod['loopbackPrefix'] = '1.4.0.0'
@@ -205,16 +175,16 @@ class TestLeafSetting(TestOrm):
 
     def testOrm(self):
         podOne = createPod('testpod', self.session)
-        leafSetting = LeafSetting('qfx5100-48s-6q', podOne.id)
-        podOne.leafSettings = [leafSetting]
-        self.session.merge(podOne)
-        self.session.commit()
-        
-        fetched = self.session.query(LeafSetting).one()
-        self.assertEqual(leafSetting, fetched)
-        
+
         fetched = self.session.query(Pod).one()
         self.assertEqual(1, len(fetched.leafSettings))
+
+        fetched = self.session.query(LeafSetting).one()
+        self.assertEqual(podOne.id, fetched.pod_id)
+        self.assertEqual('qfx-5100-48s-6q', fetched.deviceFamily)
+        self.assertEqual('et-0/0/[48-53]', fetched.uplinkRegex)
+        self.assertEqual('xe-0/0/[0-47]', fetched.downlinkRegex)
+
 
         #delete object
         self.session.delete(podOne)

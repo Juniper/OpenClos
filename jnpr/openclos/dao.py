@@ -10,7 +10,8 @@ import logging
 import contextlib
 import importlib
 
-from jnpr.openclos.model import Base, Device, InterfaceDefinition, LeafSetting
+from model import Base, Device, InterfaceDefinition, LeafSetting
+from loader import DeviceSku
 from common import SingletonBase
 from loader import loadLoggingConfig
 from exception import InvalidConfiguration
@@ -162,6 +163,20 @@ class AbstractDao(SingletonBase):
                 continue
             ports.append(port)
         return ports
+
+    def getPortNamesForCustomizedDeviceSku(self, session, device):
+        if device.role == 'spine' and device.pod.spineDownlinkRegex:
+            return {'uplinkPorts': DeviceSku.portRegexCsvListToList(device.pod.spineUplinkRegex), 
+                    'downlinkPorts': DeviceSku.portRegexCsvListToList(device.pod.spineDownlinkRegex)}            
+
+        if device.role == 'leaf':
+            leafSetting = self.getLeafSetting(session, device.pod.id, device.family)
+            if leafSetting and leafSetting.uplinkRegex and leafSetting.downlinkRegex:
+                return {'uplinkPorts': DeviceSku.portRegexCsvListToList(leafSetting.uplinkRegex), 
+                        'downlinkPorts': DeviceSku.portRegexCsvListToList(leafSetting.downlinkRegex)}
+
+        return {'uplinkPorts': [], 'downlinkPorts': []}
+
 
 class Dao(AbstractDao):
     def _getDbUrl(self):
