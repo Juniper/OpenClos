@@ -117,6 +117,7 @@ class OverlayRestRoutes():
         device['description'] = deviceObject.description
         device['role'] = deviceObject.role
         device['address'] = deviceObject.address
+        device['routerId'] = deviceObject.routerId
         device['uri'] = '%s/devices/%s' % (self._getUriPrefix(), deviceObject.id)
         fabrics = []
         for fabric in deviceObject.overlay_fabrics:
@@ -167,8 +168,9 @@ class OverlayRestRoutes():
             description = deviceDict.get('description')
             role = deviceDict['role']
             address = deviceDict['address']
+            routerId = deviceDict['routerId']
             
-            deviceObject = OverlayDevice(name, description, role, address)
+            deviceObject = OverlayDevice(name, description, role, address, routerId)
             self.__dao.createObjects(dbSession, [deviceObject])
             logger.info("OverlayDevice[id='%s', name='%s']: created", deviceObject.id, deviceObject.name)
 
@@ -199,9 +201,10 @@ class OverlayRestRoutes():
             description = deviceDict.get('description')
             role = deviceDict['role']
             address = deviceDict['address']
+            routerId = deviceDict['routerId']
             
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
-            deviceObject.update(name, description, role, address)
+            deviceObject.update(name, description, role, address, routerId)
             logger.info("OverlayDevice[id='%s', name='%s']: modified", deviceObject.id, deviceObject.name)
             
             device = {'device': self._populateDevice(deviceObject)}
@@ -239,6 +242,7 @@ class OverlayRestRoutes():
         fabric['name'] = fabricObject.name
         fabric['description'] = fabricObject.description
         fabric['overlayAsn'] = fabricObject.overlayAS
+        fabric['routeReflectorAddress'] = fabricObject.routeReflectorAddress
         fabric['uri'] = '%s/fabrics/%s' % (self._getUriPrefix(), fabricObject.id)
         devices = []
         for device in fabricObject.overlay_devices:
@@ -292,6 +296,7 @@ class OverlayRestRoutes():
             name = fabricDict['name']
             description = fabricDict.get('description')
             overlayAsn = fabricDict['overlayAsn']
+            routeReflectorAddress = fabricDict['routeReflectorAddress']
             devices = fabricDict['devices']
             deviceObjects = []
             for device in devices:
@@ -304,7 +309,7 @@ class OverlayRestRoutes():
                     logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
                     raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
 
-            fabricObject = OverlayFabric(name, description, overlayAsn, deviceObjects)
+            fabricObject = OverlayFabric(name, description, overlayAsn, routeReflectorAddress, deviceObjects)
             self.__dao.createObjects(dbSession, [fabricObject])
             logger.info("OverlayFabric[id='%s', name='%s']: created", fabricObject.id, fabricObject.name)
 
@@ -334,6 +339,7 @@ class OverlayRestRoutes():
             name = fabricDict['name']
             description = fabricDict.get('description')
             overlayAsn = fabricDict['overlayAsn']
+            routeReflectorAddress = fabricDict['routeReflectorAddress']
             devices = fabricDict['devices']
             deviceObjects = []
             for device in devices:
@@ -349,7 +355,7 @@ class OverlayRestRoutes():
             fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
             fabricObject.clearDevices()
             self.__dao.updateObjects(dbSession, [fabricObject])
-            fabricObject.update(name, description, overlayAsn, deviceObjects)
+            fabricObject.update(name, description, overlayAsn, routeReflectorAddress, deviceObjects)
             logger.info("OverlayFabric[id='%s', name='%s']: modified", fabricObject.id, fabricObject.name)
 
             fabric = {'fabric': self._populateFabric(fabricObject)}

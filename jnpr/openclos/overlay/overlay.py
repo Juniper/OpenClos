@@ -29,11 +29,11 @@ class Overlay():
         self._conf = conf
         self._dao = dao
 
-    def createDevice(self, name, description, role, address):
+    def createDevice(self, name, description, role, address, routerId):
         '''
         Create a new Device
         '''
-        device = OverlayDevice(name, description, role, address)
+        device = OverlayDevice(name, description, role, address, routerId)
 
         with self._dao.getReadWriteSession() as session:
             self._dao.createObjects(session, [device])
@@ -45,11 +45,11 @@ class Overlay():
             device = self._dao.getObjectById(session, OverlayDevice, deviceId)
         return device
 
-    def createFabric(self, name, description, overlayAsn, devices):
+    def createFabric(self, name, description, overlayAsn, routeReflectorAddress, devices):
         '''
         Create a new Fabric
         '''
-        fabric = OverlayFabric(name, description, overlayAsn, devices)
+        fabric = OverlayFabric(name, description, overlayAsn, routeReflectorAddress, devices)
 
         with self._dao.getReadWriteSession() as session:
             self._dao.createObjects(session, [fabric])
@@ -196,13 +196,13 @@ class Overlay():
     # dao = Dao.getInstance()
     # overlay = Overlay(conf, dao)
 
-    # d1 = overlay.createDevice('d1', 'description for d1', 'spine', '1.2.3.4')
-    # d2 = overlay.createDevice('d2', 'description for d2', 'spine', '1.2.3.5')
+    # d1 = overlay.createDevice('d1', 'description for d1', 'spine', '1.2.3.4', '1.1.1.1')
+    # d2 = overlay.createDevice('d2', 'description for d2', 'spine', '1.2.3.5', '1.1.1.2')
     # d1_id = d1.id
     # d2_id = d2.id
-    # f1 = overlay.createFabric('f1', '', 65001, [d1, d2])
+    # f1 = overlay.createFabric('f1', '', 65001, '2.2.2.2', [d1, d2])
     # f1_id = f1.id
-    # f2 = overlay.createFabric('f2', '', 65002, [d1, d2])
+    # f2 = overlay.createFabric('f2', '', 65002, '3.3.3.3', [d1, d2])
     # f2_id = f2.id
     # t1 = overlay.createTenant('t1', '', f1)
     # t1_id = t1.id

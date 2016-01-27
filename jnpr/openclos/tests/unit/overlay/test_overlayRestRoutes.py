@@ -131,7 +131,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "name": "d1",
                 "description": "description for d1",
                 "role": "spine",
-                "address": "1.2.3.4"
+                "address": "1.2.3.4",
+                "routerId": "1.1.1.1"
             }
         }
         response = self.restServerTestApp.post('/openclos/v1/overlay/devices', 
@@ -148,7 +149,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "name": "d1",
                 "description": "changed",
                 "role": "spine",
-                "address": "1.2.3.5"
+                "address": "1.2.3.5",
+                "routerId": "1.1.1.2"
             }
         }
         response = self.restServerTestApp.put('/openclos/v1/overlay/devices/' + deviceObject.id, 
@@ -157,6 +159,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int)
         self.assertEqual('changed', response.json['device']['description'])
         self.assertEqual('1.2.3.5', response.json['device']['address'])
+        self.assertEqual('1.1.1.2', response.json['device']['routerId'])
         
     def testModifyDeviceNotFound(self):
         deviceDict = {
@@ -165,7 +168,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "name": "d1",
                 "description": "changed",
                 "role": "spine",
-                "address": "1.2.3.5"
+                "address": "1.2.3.5",
+                "routerId": "1.1.1.2"
             }
         }
         with self.assertRaises(AppError) as e:
@@ -219,7 +223,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             "fabric": {
                 "name": "f1",
                 "description": "description for f1",
-                "overlayAsn": 65001
+                "overlayAsn": 65001,
+                "routeReflectorAddress": "2.2.2.2"
             }
         }
         fabricDict['fabric']['devices'] = [deviceId]
@@ -239,7 +244,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             "fabric": {
                 "name": "f1",
                 "description": "description for f1",
-                "overlayAsn": 65002
+                "overlayAsn": 65002,
+                "routeReflectorAddress": "3.3.3.3"
             }
         }
         fabricDict['fabric']['devices'] = [deviceId]
@@ -249,6 +255,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
                                                params=json.dumps(fabricDict))
         self.assertEqual(200, response.status_int)
         self.assertEqual(65002, response.json['fabric']['overlayAsn'])
+        self.assertEqual('3.3.3.3', response.json['fabric']['routeReflectorAddress'])
         
     def testModifyFabricNotFound(self):
         deviceObject = self.helper._createDevice()
@@ -258,7 +265,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "id": '12345',
                 "name": "f1",
                 "description": "description for f1",
-                "overlayAsn": 65001
+                "overlayAsn": 65001,
+                "routeReflectorAddress": "3.3.3.3"
             }
         }
         fabricDict['fabric']['devices'] = [deviceId]
