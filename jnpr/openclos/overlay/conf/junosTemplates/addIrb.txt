@@ -1,0 +1,12 @@
+interfaces {
+    irb {
+		replace:
+        unit {{vlanId}} {
+            family inet {
+                address {{secondOrThirdIpFromSubnet}} {
+                    virtual-gateway-address {{firstIpFromSubnet}};
+                }
+            }
+        }
+    }
+}

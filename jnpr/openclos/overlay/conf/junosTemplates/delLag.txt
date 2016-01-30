@@ -1,0 +1,6 @@
+interfaces {
+    delete:
+    {{interfaceName}};
+    delete:
+    {{lagName}};
+}

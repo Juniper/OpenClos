@@ -1,0 +1,29 @@
+interfaces {
+    replace:
+    {{interfaceName}} {
+        ether-options {
+            802.3ad {{lagName}};
+        }
+    }
+    {{lagName}} {
+        esi {
+            {{ethernetSegmentId}};
+            all-active;
+        }
+        unit 0 {
+            family ethernet-switching {
+                interface-mode trunk;
+                vlan {
+                    replace:
+                    members [ {% for vlan in vlans %}{{vlan}} {% endfor %} ];
+                }
+            }
+        }
+        aggregated-ether-options {
+            lacp {
+                active;
+                system-id {{systemId}};
+            }
+        }
+    }
+}

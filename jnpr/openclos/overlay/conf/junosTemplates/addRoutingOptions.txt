@@ -1,0 +1,8 @@
+routing-options {
+    replace:
+    router-id {{routerId}};
+    replace:
+    forwarding-table {
+        ecmp-fast-reroute;
+    }
+}

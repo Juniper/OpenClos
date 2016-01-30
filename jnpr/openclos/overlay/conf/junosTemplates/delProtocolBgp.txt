@@ -1,0 +1,6 @@
+protocols {
+    bgp {
+        delete:
+        group overlay;
+    }
+}
