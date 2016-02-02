@@ -1,4 +1,4 @@
 routing-instances {
-	delete:
+    delete:
     {{vrfName}};
 }

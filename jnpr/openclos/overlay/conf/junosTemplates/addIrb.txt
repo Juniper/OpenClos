@@ -1,6 +1,6 @@
 interfaces {
     irb {
-		replace:
+        replace:
         unit {{vlanId}} {
             family inet {
                 address {{secondOrThirdIpFromSubnet}} {

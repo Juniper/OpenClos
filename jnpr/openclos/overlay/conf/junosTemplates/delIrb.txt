@@ -1,6 +1,6 @@
 interfaces {
     irb {
-		delete:
+        delete:
         unit {{vlanId}};
     }
 }

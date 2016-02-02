@@ -7,8 +7,8 @@ protocols {
         replace:
         multicast-mode ingress-replication;
         vni-options {
-        	delete:
-        	vni {{vni}};
+            delete:
+            vni {{vni}};
         }
     }
 }

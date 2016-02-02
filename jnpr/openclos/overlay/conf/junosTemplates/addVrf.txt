@@ -1,8 +1,8 @@
 routing-instances {
-	replace:
+    replace:
     {{vrfName}} {
         instance-type vrf;
-        interface {{vrfLoopbackName}};
+        {% if vrfLoopbackName %}interface {{vrfLoopbackName}};{% endif %}
         {% for irbName in irbs %}interface {{irbName}};
         {% endfor %}        
         {% if vnis | length > 0 %}route-distinguisher {{routerId}}:{{vnis[0]}};
