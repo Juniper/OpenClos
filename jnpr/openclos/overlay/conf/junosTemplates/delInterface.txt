@@ -1,0 +1,14 @@
+interfaces {
+    merge:
+    {{name}} {
+        unit 0 {
+            family ethernet-switching {
+                interface-mode trunk;
+                vlan {
+                    replace:
+                    members [ {% for vlan in vlans %}{{vlan}} {% endfor %} ];
+                }
+            }
+        }
+    }
+}

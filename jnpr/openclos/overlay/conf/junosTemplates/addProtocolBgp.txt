@@ -1,0 +1,19 @@
+protocols {
+    bgp {
+        log-updown;
+        graceful-restart;
+        replace:
+        group overlay {
+            type internal;
+            {% if isSpine %}cluster {{routeReflector}}{% endif %}              
+            family evpn {
+                signaling;
+            }
+            local-address {{routerId}};
+            local-as {{asn}};
+            multipath;
+            {% for neighborIp in neighbors %}neighbor {{neighborIp}};
+            {% endfor %}        
+        }
+    }
+}
