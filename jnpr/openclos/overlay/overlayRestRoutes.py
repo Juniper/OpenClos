@@ -518,6 +518,7 @@ class OverlayRestRoutes():
         vrf['name'] = vrfObject.name
         vrf['description'] = vrfObject.description
         vrf['routedVnid'] = vrfObject.routedVnid
+        vrf['loopbackAddress'] = vrfObject.loopbackAddress
         vrf['uri'] = '%s/vrfs/%s' % (self._getUriPrefix(), vrfObject.id)
         vrf['tenant'] = '%s/tenants/%s' % (self._getUriPrefix(), vrfObject.overlay_tenant.id)
         networks = []
@@ -572,54 +573,123 @@ class OverlayRestRoutes():
         
         logger.debug("getVrfStatusBrief: count %d", len(statusAll))
         
-        aggregatedStatus = 'success'
+        unknownObjects = 0
+        successObjects = 0
+        failureObjects = 0
+        progressObjects = 0
         for status in statusAll:
-            if status.status == 'failure':
-                # we got a failure. no need to continue
-                aggregatedStatus = 'failure'
-                break
+            if status.status == 'unknown':
+                unknownObjects += 1
+            elif status.status == 'success':
+                successObjects += 1
+            elif status.status == 'failure':
+                failureObjects += 1
             elif status.status == 'progress':
-                # keep going. we might still have a failure 
-                aggregatedStatus = 'progress'
+                progressObjects += 1
+                
+        # aggregated status will be progress only if there is no failure
+        if failureObjects > 0:
+            aggregatedStatus = 'failure'
+        elif progressObjects > 0:
+            aggregatedStatus = 'progress'
+        elif unknownObjects > 0:
+            aggregatedStatus = 'unknown'
+        else:
+            aggregatedStatus = 'success'
         
         outputDict = {}
         outputDict['status'] = aggregatedStatus
         outputDict['uri'] = '%s/vrfs/%s/status?mode=brief' % (self._getUriPrefix(), vrfId)
         return {'statusBrief': outputDict}
         
+    def _populateObjectDetail(self, objectUrl, objectDevices):
+        objectDetail = {}
+        configletOnDevice = []
+        
+        for status in objectDevices:
+            configletOnDevice.append({'device': status.overlay_device.name, 'configlet': status.configlet, 'reason': status.statusReason})
+        
+        objectDetail['uri'] = objectUrl
+        objectDetail['configs'] = configletOnDevice
+        objectDetail['total'] = len(configletOnDevice)
+        
+        return objectDetail
+        
     def _getVrfStatusDetail(self, dbSession, vrfId):
         try:
             # get all object status under this VRF
-            # XXX when inserting into OverlayDeployStatus table, make sure to insert a row for OverlayFabric too
+            # XXX when caller wants to insert an object into OverlayDeployStatus table, caller should also manually 
+            # insert a row to represent the owner OverlayFabric object as well.
             # so the same OverlayFabric configlet would be inserted NxM times if we have <N> devices and <M> VRFs under
-            # this OverlayFabric
-            # a little trade-off between normalization and simple schema for OverlayDeployStatus table
-            statusAll = dbSession.query(OverlayDeployStatus).filter(OverlayDeployStatus.overlay_vrf_id == vrfId).all()
+            # this OverlayFabric.
+            # This is where we trade-off normalization for simple schema for OverlayDeployStatus table
+            statusAll = dbSession.query(OverlayDeployStatus, OverlayDevice).\
+                filter(OverlayDeployStatus.overlay_device_id == OverlayDevice.id).\
+                filter(OverlayDeployStatus.overlay_vrf_id == vrfId).\
+                order_by(OverlayDeployStatus.status, OverlayDeployStatus.object_url, OverlayDevice.name).all()
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(500, exception=PlatformError(ex.message))
         
         logger.debug("getVrfStatusDetail: count %d", len(statusAll))
         
+        unknownObjects = []
+        unknownObjectDict = {}
+        successObjects = []
+        successObjectDict = {}
         failureObjects = []
+        failureObjectDict = {}
         progressObjects = []
-        for status in statusAll:
-            if status.status == 'failure':
-                failureObjects.append({'uri': status.object_url, 'device': status.overlay_device.name, 'configlet': status.configlet, 'reason': status.statusReason})
-            elif status.status == 'progress':
-                progressObjects.append({'uri': status.object_url, 'device': status.overlay_device.name, 'configlet': status.configlet, 'reason': status.statusReason})
+        progressObjectDict = {}
         
+        # Note following code relies on the fact that the query result is ordered by status first, then by object_url, 
+        # lastly by device name.
+        for status, device in statusAll:
+            if status.status == 'unknown':
+                if status.object_url not in unknownObjectDict:
+                    unknownObjectDict[status.object_url] = []
+                unknownObjectDevices = unknownObjectDict[status.object_url]
+                unknownObjectDevices.append(status)
+            elif status.status == 'success':
+                if status.object_url not in successObjectDict:
+                    successObjectDict[status.object_url] = []
+                successObjectDevices = successObjectDict[status.object_url]
+                successObjectDevices.append(status)
+            elif status.status == 'failure':
+                if status.object_url not in failureObjectDict:
+                    failureObjectDict[status.object_url] = []
+                failureObjectDevices = failureObjectDict[status.object_url]
+                failureObjectDevices.append(status)
+            elif status.status == 'progress':
+                if status.object_url not in progressObjectDict:
+                    progressObjectDict[status.object_url] = []
+                progressObjectDevices = progressObjectDict[status.object_url]
+                progressObjectDevices.append(status)
+                
+        for unknownObjectUrl, unknownObjectDevices in unknownObjectDict.iteritems():
+            unknownObjects.append(self._populateObjectDetail(unknownObjectUrl, unknownObjectDevices))
+        for successObjectUrl, successObjectDevices in successObjectDict.iteritems():
+            successObjects.append(self._populateObjectDetail(successObjectUrl, successObjectDevices))
+        for failureObjectUrl, failureObjectDevices in failureObjectDict.iteritems():
+            failureObjects.append(self._populateObjectDetail(failureObjectUrl, failureObjectDevices))
+        for progressObjectUrl, progressObjectDevices in progressObjectDict.iteritems():
+            progressObjects.append(self._populateObjectDetail(progressObjectUrl, progressObjectDevices))
+                
         # aggregated status will be progress only if there is no failure
         if len(failureObjects) > 0:
             aggregatedStatus = 'failure'
         elif len(progressObjects) > 0:
             aggregatedStatus = 'progress'
+        elif len(unknownObjects) > 0:
+            aggregatedStatus = 'unknown'
         else:
             aggregatedStatus = 'success'
         
         outputDict = {}
         outputDict['status'] = aggregatedStatus
         outputDict['uri'] = '%s/vrfs/%s/status?mode=detail' % (self._getUriPrefix(), vrfId)
+        outputDict['unknown'] = {'objects': unknownObjects, 'total': len(unknownObjects)}
+        outputDict['success'] = {'objects': successObjects, 'total': len(successObjects)}
         outputDict['failure'] = {'objects': failureObjects, 'total': len(failureObjects)}
         outputDict['progress'] = {'objects': progressObjects, 'total': len(progressObjects)}
         return {'statusDetail': outputDict}
@@ -646,6 +716,7 @@ class OverlayRestRoutes():
             name = vrfDict['name']
             description = vrfDict.get('description')
             routedVnid = vrfDict.get('routedVnid')
+            loopbackAddress = vrfDict.get('loopbackAddress')
             tenantId = vrfDict['tenant'].split('/')[-1]
             try:
                 tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
@@ -653,7 +724,7 @@ class OverlayRestRoutes():
                 logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
                 raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
                 
-            vrfObject = OverlayVrf(name, description, routedVnid, tenantObject)
+            vrfObject = OverlayVrf(name, description, routedVnid, loopbackAddress, tenantObject)
             self.__dao.createObjects(dbSession, [vrfObject])
             logger.info("OverlayVrf[id='%s', name='%s']: created", vrfObject.id, vrfObject.name)
 
@@ -683,9 +754,10 @@ class OverlayRestRoutes():
             name = vrfDict['name']
             description = vrfDict.get('description')
             routedVnid = vrfDict['routedVnid']
+            loopbackAddress = vrfDict.get('loopbackAddress')
             
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
-            vrfObject.update(name, description, routedVnid)
+            vrfObject.update(name, description, routedVnid, loopbackAddress)
             logger.info("OverlayVrf[id='%s', name='%s']: modified", vrfObject.id, vrfObject.name)
             
             vrf = {'vrf': self._populateVrf(vrfObject)}

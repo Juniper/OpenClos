@@ -131,13 +131,14 @@ class OverlayVrf(ManagedElement, Base):
     name = Column(String(255), nullable=False)
     description = Column(String(256))
     routedVnid = Column(Integer)
+    loopbackAddress = Column(String(60))
     overlay_tenant_id = Column(String(60), ForeignKey('overlayTenant.id'), nullable=False)
     overlay_tenant = relationship("OverlayTenant", backref=backref('overlay_vrfs', order_by=name, cascade='all, delete, delete-orphan'))
     __table_args__ = (
         Index('overlay_tenant_id_overlay_vrf_name_uindex', 'overlay_tenant_id', 'name', unique=True),
     )
 
-    def __init__(self, name, description, routedVnid, overlay_tenant):
+    def __init__(self, name, description, routedVnid, loopbackAddress, overlay_tenant):
         '''
         Creates VRF object.
         '''
@@ -145,15 +146,17 @@ class OverlayVrf(ManagedElement, Base):
         self.name = name
         self.description = description
         self.routedVnid = routedVnid
+        self.loopbackAddress = loopbackAddress
         self.overlay_tenant = overlay_tenant
         
-    def update(self, name, description, routedVnid):
+    def update(self, name, description, routedVnid, loopbackAddress):
         '''
         Updates VRF object.
         '''
         self.name = name
         self.description = description
         self.routedVnid = routedVnid
+        self.loopbackAddress = loopbackAddress
     
 class OverlayNetwork(ManagedElement, Base):
     __tablename__ = 'overlayNetwork'
