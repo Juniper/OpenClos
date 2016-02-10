@@ -1,0 +1,16 @@
+protocols {
+    evpn {
+        replace:
+        encapsulation vxlan;
+        merge:
+        extended-vni-list [ {{vni}} ];
+        replace:
+        multicast-mode ingress-replication;
+        vni-options {
+            replace:
+            vni {{vni}} {
+                vrf-target export target:{{vniRTarget}};
+            }
+        }
+    }
+}

@@ -1,0 +1,11 @@
+vlans {
+    replace:
+    {{bdName}} {
+        vlan-id {{vlanId}};
+        l3-interface irb.{{vlanId}};
+        vxlan {
+            vni {{vxlanId}};
+            ingress-node-replication;
+        }
+    }
+}

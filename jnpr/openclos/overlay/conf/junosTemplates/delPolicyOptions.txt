@@ -1,0 +1,19 @@
+policy-options {
+    policy-statement LEAF-IN {
+        delete:
+        term a{{vni}};
+        replace:
+        term switch_options {
+            from community switch_options_comm;
+            then accept;
+        }
+        replace:
+        term reject {
+            then reject;
+        }
+    }
+    delete:
+    community com{{vni}};
+    replace:
+    community switch_options_comm members target:{{esiRTarget}};
+}    

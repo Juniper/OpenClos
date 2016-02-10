@@ -1,8 +1,8 @@
 protocols {
-    replace:
     bgp {
         log-updown;
         graceful-restart;
+        replace:
         group CLOS {
             type external;
             mtu-discovery;
