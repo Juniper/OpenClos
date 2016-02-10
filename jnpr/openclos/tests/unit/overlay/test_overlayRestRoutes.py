@@ -420,7 +420,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             "vrf": {
                 "name": "v1",
                 "description": "description for v1",
-                "routedVnid": 100
+                "routedVnid": 100,
+                "loopbackAddress": "1.1.1.1"
             }
         }
         vrfDict['vrf']['tenant'] = tenantId
@@ -441,7 +442,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             "vrf": {
                 "name": "v1",
                 "description": "changed",
-                "routedVnid": 101
+                "routedVnid": 101,
+                "loopbackAddress": "1.1.1.2"
             }
         }
         vrfDict['vrf']['tenant'] = tenantId
@@ -452,6 +454,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int)
         self.assertEqual('changed', response.json['vrf']['description'])
         self.assertEqual(101, response.json['vrf']['routedVnid'])
+        self.assertEqual('1.1.1.2', response.json['vrf']['loopbackAddress'])
         
     def testModifyVrfNotFound(self):
         vrfDict = {
@@ -460,6 +463,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "name": "v1",
                 "description": "description for v1",
                 "routedVnid": 101,
+                "loopbackAddress": "1.1.1.2",
                 "tenant": '12345'
             }
         }
@@ -1058,9 +1062,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual('failure', response.json['statusDetail']['status'])
         self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId + '/status?mode=detail' in response.json['statusDetail']['uri'])
         self.assertEqual(1, response.json['statusDetail']['failure']['total'])
-        self.assertEqual('conflict', response.json['statusDetail']['failure']['objects'][0]['reason'])
-        self.assertEqual(d_name, response.json['statusDetail']['failure']['objects'][0]['device'])
         self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId in response.json['statusDetail']['failure']['objects'][0]['uri'])
+        self.assertEqual(1, response.json['statusDetail']['failure']['objects'][0]['total'])
+        self.assertEqual('v1_config', response.json['statusDetail']['failure']['objects'][0]['configs'][0]['configlet'])
+        self.assertEqual('conflict', response.json['statusDetail']['failure']['objects'][0]['configs'][0]['reason'])
+        self.assertEqual(d_name, response.json['statusDetail']['failure']['objects'][0]['configs'][0]['device'])
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
