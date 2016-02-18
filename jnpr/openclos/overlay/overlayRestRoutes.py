@@ -4,29 +4,14 @@ Created on Nov 23, 2015
 @author: yunli
 '''
 
-import os
 import bottle
 from sqlalchemy.orm import exc
-import StringIO
-import zipfile
 import traceback
-import json
-import logging
 
-from bottle import error, request, response, PluginError, ServerAdapter
-from jnpr.openclos.exception import InvalidRequest, OverlayFabricNotFound, OverlayTenantNotFound, OverlayVrfNotFound, OverlayDeviceNotFound, OverlayNetworkNotFound, OverlaySubnetNotFound, OverlayL3portNotFound, OverlayL2portNotFound, OverlayAeNotFound, CreateOverlayFabricFailed, CreateOverlayTenantFailed, CreateOverlayVrfFailed, CreateOverlayDeviceFailed, CreateOverlayNetworkFailed, CreateOverlaySubnetFailed, CreateOverlayL3portFailed, CreateOverlayL2portFailed, CreateOverlayAeFailed, PlatformError
-from jnpr.openclos.dao import Dao
-from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayDevice, OverlayNetwork, OverlaySubnet, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
-#from jnpr.openclos.overlay.overlay import Overlay
-#from jnpr.openclos.report import ResourceAllocationReport, L2Report, L3Report
-#from jnpr.openclos.l3Clos import L3ClosMediation
-#from jnpr.openclos.ztp import ZtpServer
-#from jnpr.openclos.loader import OpenClosProperty, DeviceSku, loadLoggingConfig
-#import jnpr.openclos.util
+from jnpr.openclos.exception import InvalidRequest, OverlayFabricNotFound, OverlayTenantNotFound, OverlayVrfNotFound, OverlayDeviceNotFound, OverlayNetworkNotFound, OverlaySubnetNotFound, OverlayL3portNotFound, OverlayL2portNotFound, OverlayAeNotFound, PlatformError
+from overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayDevice, OverlayNetwork, OverlaySubnet, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
+from overlay import Overlay
 
-#moduleName = 'overlayRestRoutes'
-#loadLoggingConfig(appName=moduleName)
-#logger = logging.getLogger(moduleName)
 logger = None
 
 def install(context):
@@ -41,6 +26,7 @@ class OverlayRestRoutes():
         self.__dao = context['dao']
         self.app = context['app']
         self.uriPrefix = None
+        self._overlay = Overlay(self._conf, self.__dao)
 
         # install index links
         context['restServer'].addIndexLink(self.baseUrl + '/devices')
@@ -170,10 +156,7 @@ class OverlayRestRoutes():
             address = deviceDict['address']
             routerId = deviceDict['routerId']
             
-            deviceObject = OverlayDevice(name, description, role, address, routerId)
-            self.__dao.createObjects(dbSession, [deviceObject])
-            logger.info("OverlayDevice[id='%s', name='%s']: created", deviceObject.id, deviceObject.name)
-
+            deviceObject = self._overlay.createDevice(dbSession, name, description, role, address, routerId)
             device = {'device': self._populateDevice(deviceObject)}
             
         except KeyError as ex:
@@ -309,8 +292,7 @@ class OverlayRestRoutes():
                     logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
                     raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
 
-            fabricObject = OverlayFabric(name, description, overlayAsn, routeReflectorAddress, deviceObjects)
-            self.__dao.createObjects(dbSession, [fabricObject])
+            fabricObject = self._overlay.createFabric(dbSession, name, description, overlayAsn, routeReflectorAddress, deviceObjects)
             logger.info("OverlayFabric[id='%s', name='%s']: created", fabricObject.id, fabricObject.name)
 
             fabric = {'fabric': self._populateFabric(fabricObject)}
@@ -449,8 +431,7 @@ class OverlayRestRoutes():
                 logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
                 raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
                 
-            tenantObject = OverlayTenant(name, description, fabricObject)
-            self.__dao.createObjects(dbSession, [tenantObject])
+            tenantObject = self._overlay.createTenant(dbSession, name, description, fabricObject)
             logger.info("OverlayTenant[id='%s', name='%s']: created", tenantObject.id, tenantObject.name)
 
             tenant = {'tenant': self._populateTenant(tenantObject)}
@@ -724,10 +705,8 @@ class OverlayRestRoutes():
                 logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
                 raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
                 
-            vrfObject = OverlayVrf(name, description, routedVnid, loopbackAddress, tenantObject)
-            self.__dao.createObjects(dbSession, [vrfObject])
+            vrfObject = self._overlay.createVrf(dbSession, name, description, routedVnid, loopbackAddress, tenantObject)
             logger.info("OverlayVrf[id='%s', name='%s']: created", vrfObject.id, vrfObject.name)
-
             vrf = {'vrf': self._populateVrf(vrfObject)}
             
         except KeyError as ex:
@@ -860,8 +839,7 @@ class OverlayRestRoutes():
                 logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
                 raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
                 
-            networkObject = OverlayNetwork(name, description, vrfObject, vlanid, vnid, pureL3Int)
-            self.__dao.createObjects(dbSession, [networkObject])
+            networkObject = self._overlay.createNetwork(dbSession, name, description, vrfObject, vlanid, vnid, pureL3Int)
             logger.info("OverlayNetwork[id='%s', name='%s']: created", networkObject.id, networkObject.name)
 
             network = {'network': self._populateNetwork(networkObject)}
@@ -989,8 +967,7 @@ class OverlayRestRoutes():
                 logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
                 raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
                 
-            subnetObject = OverlaySubnet(name, description, networkObject, cidr)
-            self.__dao.createObjects(dbSession, [subnetObject])
+            subnetObject = self._overlay.createSubnet(dbSession, name, description, networkObject, cidr)
             logger.info("OverlaySubnet[id='%s', name='%s']: created", subnetObject.id, subnetObject.name)
 
             subnet = {'subnet': self._populateSubnet(subnetObject)}
@@ -1110,8 +1087,7 @@ class OverlayRestRoutes():
                 logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
                 raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
                 
-            l3portObject = OverlayL3port(name, description, subnetObject)
-            self.__dao.createObjects(dbSession, [l3portObject])
+            l3portObject = self._overlay.createL3port(dbSession, name, description, subnetObject)
             logger.info("OverlayL3port[id='%s', name='%s']: created", l3portObject.id, l3portObject.name)
 
             l3port = {'l3port': self._populateL3port(l3portObject)}
@@ -1180,7 +1156,8 @@ class OverlayRestRoutes():
         l2port['description'] = l2portObject.description
         l2port['interface'] = l2portObject.interface
         l2port['uri'] = '%s/l2ports/%s' % (self._getUriPrefix(), l2portObject.id)
-        l2port['ae'] = '%s/aes/%s' % (self._getUriPrefix(), l2portObject.overlay_ae.id)
+        if l2portObject.overlay_ae:
+            l2port['ae'] = '%s/aes/%s' % (self._getUriPrefix(), l2portObject.overlay_ae.id)
         l2port['network'] = '%s/networks/%s' % (self._getUriPrefix(), l2portObject.overlay_network.id)
         l2port['device'] = '%s/devices/%s' % (self._getUriPrefix(), l2portObject.overlay_device.id)
         return l2port
@@ -1228,6 +1205,7 @@ class OverlayRestRoutes():
             description = l2portDict.get('description')
             interface = l2portDict['interface']
             aeUri = l2portDict.get('ae')
+            aeObject = None
             if aeUri is not None:
                 aeId = l2portDict['ae'].split('/')[-1]
                 try:
@@ -1250,8 +1228,7 @@ class OverlayRestRoutes():
                 logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
                 raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
                 
-            l2portObject = OverlayL2port(name, description, interface, aeObject, networkObject, deviceObject)
-            self.__dao.createObjects(dbSession, [l2portObject])
+            l2portObject = self._overlay.createL2port(dbSession, name, description, interface, networkObject, deviceObject, aeObject)
             logger.info("OverlayL2port[id='%s', name='%s']: created", l2portObject.id, l2portObject.name)
 
             l2port = {'l2port': self._populateL2port(l2portObject)}
@@ -1372,8 +1349,7 @@ class OverlayRestRoutes():
             esi = aeDict.get('esi')
             lacp = aeDict.get('lacp')
             
-            aeObject = OverlayAe(name, description, esi, lacp)
-            self.__dao.createObjects(dbSession, [aeObject])
+            aeObject = self._overlay.createAe(dbSession, name, description, esi, lacp)
             logger.info("OverlayAe[id='%s', name='%s']: created", aeObject.id, aeObject.name)
 
             ae = {'ae': self._populateAe(aeObject)}

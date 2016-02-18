@@ -4,21 +4,11 @@ Created on Nov 23, 2015
 @author: yunli
 '''
 
-import yaml
-import os
-import json
-import math
-import zlib
-import base64
-import itertools
 import logging
 
-from netaddr import IPNetwork
-from sqlalchemy.orm import exc
 
-from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
-from jnpr.openclos.dao import Dao
-from jnpr.openclos.loader import defaultPropertyLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
+from overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
+from jnpr.openclos.loader import loadLoggingConfig
 
 moduleName = 'overlay'
 loadLoggingConfig(appName=moduleName)
@@ -29,164 +19,104 @@ class Overlay():
         self._conf = conf
         self._dao = dao
 
-    def createDevice(self, name, description, role, address, routerId):
+    def createDevice(self, dbSession, name, description, role, address, routerId):
         '''
         Create a new Device
         '''
         device = OverlayDevice(name, description, role, address, routerId)
 
-        with self._dao.getReadWriteSession() as session:
-            self._dao.createObjects(session, [device])
-            logger.info("OverlayDevice[id='%s', name='%s']: created", device.id, device.name)
-            deviceId = device.id
-        
-        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
-        with self._dao.getReadSession() as session:
-            device = self._dao.getObjectById(session, OverlayDevice, deviceId)
+        self._dao.createObjects(dbSession, [device])
+        logger.info("OverlayDevice[id='%s', name='%s']: created", device.id, device.name)
         return device
 
-    def createFabric(self, name, description, overlayAsn, routeReflectorAddress, devices):
+    def createFabric(self, dbSession, name, description, overlayAsn, routeReflectorAddress, devices):
         '''
         Create a new Fabric
         '''
         fabric = OverlayFabric(name, description, overlayAsn, routeReflectorAddress, devices)
 
-        with self._dao.getReadWriteSession() as session:
-            self._dao.createObjects(session, [fabric])
-            logger.info("OverlayFabric[id='%s', name='%s']: created", fabric.id, fabric.name)
-            fabricId = fabric.id
-        
-        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
-        with self._dao.getReadSession() as session:
-            fabric = self._dao.getObjectById(session, OverlayFabric, fabricId)
+        self._dao.createObjects(dbSession, [fabric])
+        logger.info("OverlayFabric[id='%s', name='%s']: created", fabric.id, fabric.name)
         return fabric
 
-    def createTenant(self, name, description, overlay_fabric):
+    def createTenant(self, dbSession, name, description, overlay_fabric):
         '''
         Create a new Tenant
         '''
         tenant = OverlayTenant(name, description, overlay_fabric)
 
-        with self._dao.getReadWriteSession() as session:
-            self._dao.createObjects(session, [tenant])
-            logger.info("OverlayTenant[id='%s', name='%s']: created", tenant.id, tenant.name)
-            tenantId = tenant.id
-        
-        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
-        with self._dao.getReadSession() as session:
-            tenant = self._dao.getObjectById(session, OverlayTenant, tenantId)
+        self._dao.createObjects(dbSession, [tenant])
+        logger.info("OverlayTenant[id='%s', name='%s']: created", tenant.id, tenant.name)
         return tenant
 
-    def createVrf(self, name, description, routedVnid, loopbackAddress, overlay_tenant):
+    def createVrf(self, dbSession, name, description, routedVnid, loopbackAddress, overlayTenant):
         '''
         Create a new Vrf
         '''
-        vrf = OverlayVrf(name, description, routedVnid, loopbackAddress, overlay_tenant)
+        vrf = OverlayVrf(name, description, routedVnid, loopbackAddress, overlayTenant)
 
-        with self._dao.getReadWriteSession() as session:
-            self._dao.createObjects(session, [vrf])
-            logger.info("OverlayVrf[id='%s', name='%s']: created", vrf.id, vrf.name)
-            vrfId = vrf.id
-        
-        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
-        with self._dao.getReadSession() as session:
-            vrf = self._dao.getObjectById(session, OverlayVrf, vrfId)
+        self._dao.createObjects(dbSession, [vrf])
+        logger.info("OverlayVrf[id='%s', name='%s']: created", vrf.id, vrf.name)
         return vrf
 
-    def createNetwork(self, name, description, overlay_vrf, vlanid, vnid, pureL3Int):
+    def createNetwork(self, dbSession, name, description, overlay_vrf, vlanid, vnid, pureL3Int):
         '''
         Create a new Network
         '''
         network = OverlayNetwork(name, description, overlay_vrf, vlanid, vnid, pureL3Int)
 
-        with self._dao.getReadWriteSession() as session:
-            self._dao.createObjects(session, [network])
-            logger.info("OverlayNetwork[id='%s', name='%s']: created", network.id, network.name)
-            networkId = network.id
-        
-        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
-        with self._dao.getReadSession() as session:
-            network = self._dao.getObjectById(session, OverlayNetwork, networkId)
+        self._dao.createObjects(dbSession, [network])
+        logger.info("OverlayNetwork[id='%s', name='%s']: created", network.id, network.name)
         return network
 
-    def createSubnet(self, name, description, overlay_network, cidr):
+    def createSubnet(self, dbSession, name, description, overlay_network, cidr):
         '''
         Create a new Subnet
         '''
         subnet = OverlaySubnet(name, description, overlay_network, cidr)
 
-        with self._dao.getReadWriteSession() as session:
-            self._dao.createObjects(session, [subnet])
-            logger.info("OverlaySubnet[id='%s', name='%s']: created", subnet.id, subnet.name)
-            subnetId = subnet.id
-        
-        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
-        with self._dao.getReadSession() as session:
-            subnet = self._dao.getObjectById(session, OverlaySubnet, subnetId)
+        self._dao.createObjects(dbSession, [subnet])
+        logger.info("OverlaySubnet[id='%s', name='%s']: created", subnet.id, subnet.name)
         return subnet
 
-    def createL3port(self, name, description, overlay_subnet):
+    def createL3port(self, dbSession, name, description, overlay_subnet):
         '''
         Create a new L3port
         '''
         l3port = OverlayL3port(name, description, overlay_subnet)
 
-        with self._dao.getReadWriteSession() as session:
-            self._dao.createObjects(session, [l3port])
-            logger.info("OverlayL3port[id='%s', name='%s']: created", l3port.id, l3port.name)
-            l3portId = l3port.id
-        
-        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
-        with self._dao.getReadSession() as session:
-            l3port = self._dao.getObjectById(session, OverlayL3port, l3portId)
+        self._dao.createObjects(dbSession, [l3port])
+        logger.info("OverlayL3port[id='%s', name='%s']: created", l3port.id, l3port.name)
         return l3port
 
-    def createL2port(self, name, description, interface, overlay_ae, overlay_network, overlay_device):
+    def createL2port(self, dbSession, name, description, interface, overlay_network, overlay_device, overlay_ae=None):
         '''
         Create a new L2port
         '''
-        l2port = OverlayL2port(name, description, interface, overlay_ae, overlay_network, overlay_device)
+        l2port = OverlayL2port(name, description, interface, overlay_network, overlay_device, overlay_ae)
 
-        with self._dao.getReadWriteSession() as session:
-            self._dao.createObjects(session, [l2port])
-            logger.info("OverlayL2port[id='%s', name='%s']: created", l2port.id, l2port.name)
-            l2portId = l2port.id
-        
-        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
-        with self._dao.getReadSession() as session:
-            l2port = self._dao.getObjectById(session, OverlayL2port, l2portId)
+        self._dao.createObjects(dbSession, [l2port])
+        logger.info("OverlayL2port[id='%s', name='%s']: created", l2port.id, l2port.name)
         return l2port
 
-    def createAe(self, name, description, esi, lacp):
+    def createAe(self, dbSession, name, description, esi, lacp):
         '''
         Create a new Ae
         '''
         ae = OverlayAe(name, description, esi, lacp)
 
-        with self._dao.getReadWriteSession() as session:
-            self._dao.createObjects(session, [ae])
-            logger.info("OverlayAe[id='%s', name='%s']: created", ae.id, ae.name)
-            aeId = ae.id
-        
-        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
-        with self._dao.getReadSession() as session:
-            ae = self._dao.getObjectById(session, OverlayAe, aeId)
+        self._dao.createObjects(dbSession, [ae])
+        logger.info("OverlayAe[id='%s', name='%s']: created", ae.id, ae.name)
         return ae
 
-    def createDeployStatus(self, configlet, object_url, overlay_device, overlay_vrf, status, statusReason, source):
+    def createDeployStatus(self, dbSession, configlet, object_url, overlay_device, overlay_vrf, status, statusReason, source):
         '''
         Create a new deploy status
         '''
         status = OverlayDeployStatus(configlet, object_url, overlay_device, overlay_vrf, status, statusReason, source)
 
-        with self._dao.getReadWriteSession() as session:
-            self._dao.createObjects(session, [status])
-            logger.info("OverlayDeployStatus[id='%s', object_url='%s', device='%s, vrf='%s', status='%s', statusReason='%s']: created", status.id, status.object_url, status.overlay_device.name, status.overlay_vrf.name, status.status, status.statusReason)
-            statusId = status.id
-        
-        #Hack sqlalchemy: access object is REQUIRED after commit as session has expire_on_commit=True.
-        with self._dao.getReadSession() as session:
-            status = self._dao.getObjectById(session, OverlayDeployStatus, statusId)
+        self._dao.createObjects(dbSession, [status])
+        logger.info("OverlayDeployStatus[id='%s', object_url='%s', device='%s, vrf='%s', status='%s', statusReason='%s']: created", status.id, status.object_url, status.overlay_device.name, status.overlay_vrf.name, status.status, status.statusReason)
         return status
         
 def main():        

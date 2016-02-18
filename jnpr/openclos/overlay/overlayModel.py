@@ -257,7 +257,7 @@ class OverlayL2port(ManagedElement, Base):
     name = Column(String(255), nullable=False)
     description = Column(String(256))
     interface = Column(String(100), nullable=False)
-    overlay_ae_id = Column(String(60), ForeignKey('overlayAe.id'), nullable=False)
+    overlay_ae_id = Column(String(60), ForeignKey('overlayAe.id'))
     overlay_ae = relationship("OverlayAe", backref=backref('overlay_members', order_by=name, cascade='all, delete, delete-orphan'))
     overlay_network_id = Column(String(60), ForeignKey('overlayNetwork.id'), nullable=False)
     overlay_network = relationship("OverlayNetwork", backref=backref('overlay_l2ports', order_by=name, cascade='all, delete, delete-orphan'))
@@ -269,7 +269,7 @@ class OverlayL2port(ManagedElement, Base):
         Index('overlay_device_id_overlay_l2port_name_uindex', 'overlay_device_id', 'name', unique=True),
     )
 
-    def __init__(self, name, description, interface, overlay_ae, overlay_network, overlay_device):
+    def __init__(self, name, description, interface, overlay_network, overlay_device, overlay_ae=None):
         '''
         Creates L2 port object.
         '''
@@ -277,9 +277,9 @@ class OverlayL2port(ManagedElement, Base):
         self.name = name
         self.description = description
         self.interface = interface
-        self.overlay_ae = overlay_ae
         self.overlay_network = overlay_network
         self.overlay_device = overlay_device
+        self.overlay_ae = overlay_ae
         
     def update(self, name, description, interface):
         '''
