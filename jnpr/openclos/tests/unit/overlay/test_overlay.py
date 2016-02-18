@@ -57,10 +57,11 @@ class TestOverlayHelper:
         vrfDict = {
             "name": "v1",
             "description": "description for v1",
-            "routedVnid": 100
+            "routedVnid": 100,
+            "loopbackAddress": "1.1.1.1"
         }
         tenantObject = self._createTenant(dbSession)
-        return self.overlay.createVrf(dbSession, vrfDict['name'], vrfDict.get('description'), vrfDict.get('routedVnid'), tenantObject)
+        return self.overlay.createVrf(dbSession, vrfDict['name'], vrfDict.get('description'), vrfDict.get('routedVnid'), vrfDict.get('loopbackAddress'), tenantObject)
         
     def _createNetwork(self, dbSession):
         networkDict = {
@@ -207,7 +208,7 @@ class TestOverlay(unittest.TestCase):
     def testUpdateVrf(self):
         with self._dao.getReadWriteSession() as session:        
             vrfObject = self.helper._createVrf(session)
-            vrfObject.update('v2', 'description for v2', 101)
+            vrfObject.update('v2', 'description for v2', 101, '1.1.1.2')
             self._dao.updateObjects(session, [vrfObject])
             
         with self._dao.getReadSession() as session:
@@ -216,6 +217,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('v2', vrfObjectFromDb.name)
             self.assertEqual('description for v2', vrfObjectFromDb.description)
             self.assertEqual(101, vrfObjectFromDb.routedVnid)
+            self.assertEqual('1.1.1.2', vrfObjectFromDb.loopbackAddress)
             
     def testCreateNetwork(self):        
         with self._dao.getReadSession() as session:
