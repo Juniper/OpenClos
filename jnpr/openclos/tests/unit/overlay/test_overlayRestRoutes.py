@@ -8,14 +8,13 @@ import sys
 sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../../..')) #trick to make it run from CLI
 
 import unittest
-import os
 import shutil
 import json
 from webtest import TestApp, AppError
 
 from jnpr.openclos.rest import RestServer
 from jnpr.openclos.dao import Dao
-from jnpr.openclos.loader import defaultPropertyLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
+from jnpr.openclos.loader import loadLoggingConfig
 from jnpr.openclos.tests.unit.overlay.test_overlay import TestOverlayHelper
 
 webServerRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
@@ -104,20 +103,25 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(routes, registry)
 
     def testGetDevices(self):
-        deviceObject = self.helper._createDevice()
+        with self._dao.getReadWriteSession() as session:
+            deviceObject = self.helper._createDevice(session)
+            deviceId = deviceObject.id
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/devices')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['devices']['device']))
-        self.assertTrue("/openclos/v1/overlay/devices/" + deviceObject.id in response.json['devices']['device'][0]['uri'])
+        self.assertTrue("/openclos/v1/overlay/devices/" + deviceId in response.json['devices']['device'][0]['uri'])
         
     def testGetDevice(self):
-        deviceObject = self.helper._createDevice()
+        with self._dao.getReadWriteSession() as session:
+            deviceObject = self.helper._createDevice(session)
+            deviceId = deviceObject.id
+            deviceName = deviceObject.name
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/devices/' + deviceObject.id)
+        response = self.restServerTestApp.get('/openclos/v1/overlay/devices/' + deviceId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(deviceObject.name, response.json['device']['name'])
-        self.assertTrue("/openclos/v1/overlay/devices/" + deviceObject.id in response.json['device']['uri'])
+        self.assertEqual(deviceName, response.json['device']['name'])
+        self.assertTrue("/openclos/v1/overlay/devices/" + deviceId in response.json['device']['uri'])
         
     def testGetDeviceNotFound(self):
         with self.assertRaises(AppError) as e:
@@ -143,7 +147,9 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int) 
 
     def testModifyDevice(self):
-        deviceObject = self.helper._createDevice()
+        with self._dao.getReadWriteSession() as session:
+            deviceObject = self.helper._createDevice(session)
+            deviceId = deviceObject.id
         deviceDict = {
             "device": {
                 "name": "d1",
@@ -153,7 +159,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "routerId": "1.1.1.2"
             }
         }
-        response = self.restServerTestApp.put('/openclos/v1/overlay/devices/' + deviceObject.id, 
+        response = self.restServerTestApp.put('/openclos/v1/overlay/devices/' + deviceId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(deviceDict))
         self.assertEqual(200, response.status_int)
@@ -180,9 +186,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1108' in e.exception.message)
         
     def testDeleteDevice(self):
-        deviceObject = self.helper._createDevice()
-                    
-        response = self.restServerTestApp.delete('/openclos/v1/overlay/devices/' + deviceObject.id)
+        with self._dao.getReadWriteSession() as session:
+            deviceObject = self.helper._createDevice(session)
+            deviceId = deviceObject.id
+
+        response = self.restServerTestApp.delete('/openclos/v1/overlay/devices/' + deviceId)
         self.assertEqual(204, response.status_int) 
         
     def testDeleteDeviceNotFound(self):
@@ -192,23 +200,27 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1108' in e.exception.message)
         
     def testGetFabrics(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
+        with self._dao.getReadWriteSession() as session:   
+            fabricObject = self.helper._createFabric(session)
+            fabricId = fabricObject.id
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/fabrics')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['fabrics']['fabric']))
-        self.assertTrue("/openclos/v1/overlay/fabrics/" + fabricObject.id in response.json['fabrics']['fabric'][0]['uri'])
+        self.assertTrue("/openclos/v1/overlay/fabrics/" + fabricId in response.json['fabrics']['fabric'][0]['uri'])
         
     def testGetFabric(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
+        with self._dao.getReadWriteSession() as session:   
+            fabricObject = self.helper._createFabric(session)
+            fabricId = fabricObject.id
+            fabricName = fabricObject.name
+            fabricAS = fabricObject.overlayAS
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/fabrics/' + fabricObject.id)
+        response = self.restServerTestApp.get('/openclos/v1/overlay/fabrics/' + fabricId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(fabricObject.name, response.json['fabric']['name'])
-        self.assertEqual(fabricObject.overlayAS, response.json['fabric']['overlayAsn'])
-        self.assertTrue("/openclos/v1/overlay/fabrics/" + fabricObject.id in response.json['fabric']['uri'])
+        self.assertEqual(fabricName, response.json['fabric']['name'])
+        self.assertEqual(fabricAS, response.json['fabric']['overlayAsn'])
+        self.assertTrue("/openclos/v1/overlay/fabrics/" + fabricId in response.json['fabric']['uri'])
         
     def testGetFabricNotFound(self):
         with self.assertRaises(AppError) as e:
@@ -217,8 +229,9 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1105' in e.exception.message)
         
     def testCreateFabric(self):
-        deviceObject = self.helper._createDevice()
-        deviceId = deviceObject.id
+        with self._dao.getReadWriteSession() as session:
+            deviceObject = self.helper._createDevice(session)
+            deviceId = deviceObject.id
         fabricDict = {
             "fabric": {
                 "name": "f1",
@@ -236,10 +249,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int) 
 
     def testModifyFabric(self):
-        deviceObject = self.helper._createDevice()
-        deviceId = deviceObject.id
-        fabricObject = self.helper._createFabric([deviceObject])
-        
+        with self._dao.getReadWriteSession() as session:   
+            fabricObject = self.helper._createFabric(session)
+            fabricId = fabricObject.id
+            deviceId = fabricObject.overlay_devices[0].id
+
         fabricDict = {
             "fabric": {
                 "name": "f1",
@@ -249,8 +263,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             }
         }
         fabricDict['fabric']['devices'] = [deviceId]
-        fabricDict['fabric']['id'] = fabricObject.id
-        response = self.restServerTestApp.put('/openclos/v1/overlay/fabrics/' + fabricObject.id, 
+        fabricDict['fabric']['id'] = fabricId
+        response = self.restServerTestApp.put('/openclos/v1/overlay/fabrics/' + fabricId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(fabricDict))
         self.assertEqual(200, response.status_int)
@@ -258,8 +272,9 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual('3.3.3.3', response.json['fabric']['routeReflectorAddress'])
         
     def testModifyFabricNotFound(self):
-        deviceObject = self.helper._createDevice()
-        deviceId = deviceObject.id
+        with self._dao.getReadWriteSession() as session:
+            deviceObject = self.helper._createDevice(session)
+            deviceId = deviceObject.id
         fabricDict = {
             "fabric": {
                 "id": '12345',
@@ -278,10 +293,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1105' in e.exception.message)
         
     def testDeleteFabric(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-                    
-        response = self.restServerTestApp.delete('/openclos/v1/overlay/fabrics/' + fabricObject.id)
+        with self._dao.getReadWriteSession() as session:   
+            fabricObject = self.helper._createFabric(session)
+            fabricId = fabricObject.id
+
+        response = self.restServerTestApp.delete('/openclos/v1/overlay/fabrics/' + fabricId)
         self.assertEqual(204, response.status_int) 
         
     def testDeleteFabricNotFound(self):
@@ -291,24 +307,25 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1105' in e.exception.message)
         
     def testGetTenants(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
+        with self._dao.getReadWriteSession() as session:   
+            tenantObject = self.helper._createTenant(session)
+            tenantId = tenantObject.id
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/tenants')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['tenants']['tenant']))
-        self.assertTrue("/openclos/v1/overlay/tenants/" + tenantObject.id in response.json['tenants']['tenant'][0]['uri'])
+        self.assertTrue("/openclos/v1/overlay/tenants/" + tenantId in response.json['tenants']['tenant'][0]['uri'])
         
     def testGetTenant(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
+        with self._dao.getReadWriteSession() as session:   
+            tenantObject = self.helper._createTenant(session)
+            tenantId = tenantObject.id
+            tenantName = tenantObject.name
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/tenants/' + tenantObject.id)
+        response = self.restServerTestApp.get('/openclos/v1/overlay/tenants/' + tenantId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(tenantObject.name, response.json['tenant']['name'])
-        self.assertTrue("/openclos/v1/overlay/tenants/" + tenantObject.id in response.json['tenant']['uri'])
+        self.assertEqual(tenantName, response.json['tenant']['name'])
+        self.assertTrue("/openclos/v1/overlay/tenants/" + tenantId in response.json['tenant']['uri'])
         
     def testGetTenantNotFound(self):
         with self.assertRaises(AppError) as e:
@@ -317,9 +334,9 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1106' in e.exception.message)
         
     def testCreateTenant(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        fabricId = fabricObject.id
+        with self._dao.getReadWriteSession() as session:   
+            fabricObject = self.helper._createFabric(session)
+            fabricId = fabricObject.id
         tenantDict = {
             "tenant": {
                 "name": "t1",
@@ -335,19 +352,19 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int) 
 
     def testModifyTenant(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        fabricId = fabricObject.id
-        tenantObject = self.helper._createTenant(fabricObject)
+        with self._dao.getReadWriteSession() as session:   
+            tenantObject = self.helper._createTenant(session)
+            tenantId = tenantObject.id
+            fabricId = tenantObject.overlay_fabric_id
         tenantDict = {
             "tenant": {
                 "name": "t1",
                 "description": "changed",
             }
         }
-        tenantDict['tenant']['id'] = tenantObject.id
+        tenantDict['tenant']['id'] = tenantId
         tenantDict['tenant']['fabric'] = fabricId
-        response = self.restServerTestApp.put('/openclos/v1/overlay/tenants/' + tenantObject.id, 
+        response = self.restServerTestApp.put('/openclos/v1/overlay/tenants/' + tenantId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(tenantDict))
         self.assertEqual(200, response.status_int)
@@ -370,11 +387,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1106' in e.exception.message)
         
     def testDeleteTenant(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
+        with self._dao.getReadWriteSession() as session:   
+            tenantObject = self.helper._createTenant(session)
+            tenantId = tenantObject.id
                     
-        response = self.restServerTestApp.delete('/openclos/v1/overlay/tenants/' + tenantObject.id)
+        response = self.restServerTestApp.delete('/openclos/v1/overlay/tenants/' + tenantId)
         self.assertEqual(204, response.status_int) 
         
     def testDeleteTenantNotFound(self):
@@ -384,26 +401,25 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1106' in e.exception.message)
         
     def testGetVrfs(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
+        with self._dao.getReadWriteSession() as session:        
+            vrfObject = self.helper._createVrf(session)
+            vrfId = vrfObject.id
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/vrfs')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['vrfs']['vrf']))
-        self.assertTrue("/openclos/v1/overlay/vrfs/" + vrfObject.id in response.json['vrfs']['vrf'][0]['uri'])
+        self.assertTrue("/openclos/v1/overlay/vrfs/" + vrfId in response.json['vrfs']['vrf'][0]['uri'])
         
     def testGetVrf(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
+        with self._dao.getReadWriteSession() as session:        
+            vrfObject = self.helper._createVrf(session)
+            vrfId = vrfObject.id
+            vrfName = vrfObject.name
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/vrfs/' + vrfObject.id)
+        response = self.restServerTestApp.get('/openclos/v1/overlay/vrfs/' + vrfId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(vrfObject.name, response.json['vrf']['name'])
-        self.assertTrue("/openclos/v1/overlay/vrfs/" + vrfObject.id in response.json['vrf']['uri'])
+        self.assertEqual(vrfName, response.json['vrf']['name'])
+        self.assertTrue("/openclos/v1/overlay/vrfs/" + vrfId in response.json['vrf']['uri'])
         
     def testGetVrfNotFound(self):
         with self.assertRaises(AppError) as e:
@@ -412,10 +428,10 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1107' in e.exception.message)
         
     def testCreateVrf(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        tenantId = tenantObject.id
+        with self._dao.getReadWriteSession() as session:        
+            tenantObject = self.helper._createTenant(session)
+            tenantId = tenantObject.id
+
         vrfDict = {
             "vrf": {
                 "name": "v1",
@@ -424,6 +440,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
             }
         }
         vrfDict['vrf']['tenant'] = tenantId
+        print vrfDict['vrf']['tenant']
         response = self.restServerTestApp.post('/openclos/v1/overlay/vrfs', 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(vrfDict))
@@ -432,11 +449,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int) 
 
     def testModifyVrf(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        tenantId = tenantObject.id
-        vrfObject = self.helper._createVrf(tenantObject)
+        with self._dao.getReadWriteSession() as session:        
+            vrfObject = self.helper._createVrf(session)
+            vrfId = vrfObject.id
+            tenantId = vrfObject.overlay_tenant.id
+
         vrfDict = {
             "vrf": {
                 "name": "v1",
@@ -445,8 +462,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             }
         }
         vrfDict['vrf']['tenant'] = tenantId
-        vrfDict['vrf']['id'] = vrfObject.id
-        response = self.restServerTestApp.put('/openclos/v1/overlay/vrfs/' + vrfObject.id, 
+        vrfDict['vrf']['id'] = vrfId
+        response = self.restServerTestApp.put('/openclos/v1/overlay/vrfs/' + vrfId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(vrfDict))
         self.assertEqual(200, response.status_int)
@@ -471,12 +488,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1107' in e.exception.message)
         
     def testDeleteVrf(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
+        with self._dao.getReadWriteSession() as session:        
+            vrfObject = self.helper._createVrf(session)
+            vrfId = vrfObject.id
                     
-        response = self.restServerTestApp.delete('/openclos/v1/overlay/vrfs/' + vrfObject.id)
+        response = self.restServerTestApp.delete('/openclos/v1/overlay/vrfs/' + vrfId)
         self.assertEqual(204, response.status_int) 
         
     def testDeleteVrfNotFound(self):
@@ -486,28 +502,25 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1107' in e.exception.message)
         
     def testGetNetworks(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
+        with self._dao.getReadWriteSession() as session:        
+            networkObject = self.helper._createNetwork(session)
+            networkId = networkObject.id
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/networks')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['networks']['network']))
-        self.assertTrue("/openclos/v1/overlay/networks/" + networkObject.id in response.json['networks']['network'][0]['uri'])
+        self.assertTrue("/openclos/v1/overlay/networks/" + networkId in response.json['networks']['network'][0]['uri'])
         
     def testGetNetwork(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
+        with self._dao.getReadWriteSession() as session:        
+            networkObject = self.helper._createNetwork(session)
+            networkId = networkObject.id
+            networkName = networkObject.name
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/networks/' + networkObject.id)
+        response = self.restServerTestApp.get('/openclos/v1/overlay/networks/' + networkId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(networkObject.name, response.json['network']['name'])
-        self.assertTrue("/openclos/v1/overlay/networks/" + networkObject.id in response.json['network']['uri'])
+        self.assertEqual(networkName, response.json['network']['name'])
+        self.assertTrue("/openclos/v1/overlay/networks/" + networkId in response.json['network']['uri'])
         
     def testGetNetworkNotFound(self):
         with self.assertRaises(AppError) as e:
@@ -516,11 +529,10 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1109' in e.exception.message)
         
     def testCreateNetwork(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        vrfId = vrfObject.id
+        with self._dao.getReadWriteSession() as session:        
+            vrfObject = self.helper._createVrf(session)
+            vrfId = vrfObject.id
+        
         networkDict = {
             "network": {
                 "name": "n1",
@@ -539,12 +551,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int) 
 
     def testModifyNetwork(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        vrfId = vrfObject.id
-        networkObject = self.helper._createNetwork(vrfObject)
+        with self._dao.getReadWriteSession() as session:        
+            networkObject = self.helper._createNetwork(session)
+            networkId = networkObject.id
+            vrfId = networkObject.overlay_vrf.id
+
         networkDict = {
             "network": {
                 "name": "n1",
@@ -555,8 +566,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             }
         }
         networkDict['network']['vrf'] = vrfId
-        networkDict['network']['id'] = networkObject.id
-        response = self.restServerTestApp.put('/openclos/v1/overlay/networks/' + networkObject.id, 
+        networkDict['network']['id'] = networkId
+        response = self.restServerTestApp.put('/openclos/v1/overlay/networks/' + networkId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(networkDict))
         self.assertEqual(200, response.status_int)
@@ -584,13 +595,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1109' in e.exception.message)
         
     def testDeleteNetwork(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
+        with self._dao.getReadWriteSession() as session:        
+            networkObject = self.helper._createNetwork(session)
+            networkId = networkObject.id
                     
-        response = self.restServerTestApp.delete('/openclos/v1/overlay/networks/' + networkObject.id)
+        response = self.restServerTestApp.delete('/openclos/v1/overlay/networks/' + networkId)
         self.assertEqual(204, response.status_int) 
         
     def testDeleteNetworkNotFound(self):
@@ -600,30 +609,25 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1109' in e.exception.message)
         
     def testGetSubnets(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        subnetObject = self.helper._createSubnet(networkObject)
+        with self._dao.getReadWriteSession() as session:        
+            subnetObject = self.helper._createSubnet(session)
+            subnetId = subnetObject.id
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/subnets')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['subnets']['subnet']))
-        self.assertTrue("/openclos/v1/overlay/subnets/" + subnetObject.id in response.json['subnets']['subnet'][0]['uri'])
+        self.assertTrue("/openclos/v1/overlay/subnets/" + subnetId in response.json['subnets']['subnet'][0]['uri'])
         
     def testGetSubnet(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        subnetObject = self.helper._createSubnet(networkObject)
-                    
-        response = self.restServerTestApp.get('/openclos/v1/overlay/subnets/' + subnetObject.id)
+        with self._dao.getReadWriteSession() as session:        
+            subnetObject = self.helper._createSubnet(session)
+            subnetId = subnetObject.id
+            subnetName = subnetObject.name
+            
+        response = self.restServerTestApp.get('/openclos/v1/overlay/subnets/' + subnetId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(subnetObject.name, response.json['subnet']['name'])
-        self.assertTrue("/openclos/v1/overlay/subnets/" + subnetObject.id in response.json['subnet']['uri'])
+        self.assertEqual(subnetName, response.json['subnet']['name'])
+        self.assertTrue("/openclos/v1/overlay/subnets/" + subnetId in response.json['subnet']['uri'])
         
     def testGetSubnetNotFound(self):
         with self.assertRaises(AppError) as e:
@@ -632,12 +636,10 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1110' in e.exception.message)
         
     def testCreateSubnet(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        networkId = networkObject.id
+        with self._dao.getReadWriteSession() as session:        
+            networkObject = self.helper._createNetwork(session)
+            networkId = networkObject.id
+
         subnetDict = {
             "subnet": {
                 "name": "s1",
@@ -654,13 +656,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int) 
 
     def testModifySubnet(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        networkId = networkObject.id
-        subnetObject = self.helper._createSubnet(networkObject)
+        with self._dao.getReadWriteSession() as session:        
+            subnetObject = self.helper._createSubnet(session)
+            subnetId = subnetObject.id
+            networkId = subnetObject.overlay_network.id
+
         subnetDict = {
             "subnet": {
                 "name": "s1",
@@ -669,8 +669,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             }
         }
         subnetDict['subnet']['network'] = networkId
-        subnetDict['subnet']['id'] = subnetObject.id
-        response = self.restServerTestApp.put('/openclos/v1/overlay/subnets/' + subnetObject.id, 
+        subnetDict['subnet']['id'] = subnetId
+        response = self.restServerTestApp.put('/openclos/v1/overlay/subnets/' + subnetId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(subnetDict))
         self.assertEqual(200, response.status_int)
@@ -694,14 +694,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1110' in e.exception.message)
         
     def testDeleteSubnet(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        subnetObject = self.helper._createSubnet(networkObject)
+        with self._dao.getReadWriteSession() as session:        
+            subnetObject = self.helper._createSubnet(session)
+            subnetId = subnetObject.id
                     
-        response = self.restServerTestApp.delete('/openclos/v1/overlay/subnets/' + subnetObject.id)
+        response = self.restServerTestApp.delete('/openclos/v1/overlay/subnets/' + subnetId)
         self.assertEqual(204, response.status_int) 
         
     def testDeleteSubnetNotFound(self):
@@ -711,32 +708,25 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1110' in e.exception.message)
         
     def testGetL3ports(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        subnetObject = self.helper._createSubnet(networkObject)
-        l3portObject = self.helper._createL3port(subnetObject)
+        with self._dao.getReadWriteSession() as session:        
+            l3portObject = self.helper._createL3port(session)
+            l3portId = l3portObject.id
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/l3ports')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['l3ports']['l3port']))
-        self.assertTrue("/openclos/v1/overlay/l3ports/" + l3portObject.id in response.json['l3ports']['l3port'][0]['uri'])
+        self.assertTrue("/openclos/v1/overlay/l3ports/" + l3portId in response.json['l3ports']['l3port'][0]['uri'])
         
     def testGetL3port(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        subnetObject = self.helper._createSubnet(networkObject)
-        l3portObject = self.helper._createL3port(subnetObject)
+        with self._dao.getReadWriteSession() as session:        
+            l3portObject = self.helper._createL3port(session)
+            l3portId = l3portObject.id
+            l3portName = l3portObject.name
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/l3ports/' + l3portObject.id)
+        response = self.restServerTestApp.get('/openclos/v1/overlay/l3ports/' + l3portId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(l3portObject.name, response.json['l3port']['name'])
-        self.assertTrue("/openclos/v1/overlay/l3ports/" + l3portObject.id in response.json['l3port']['uri'])
+        self.assertEqual(l3portName, response.json['l3port']['name'])
+        self.assertTrue("/openclos/v1/overlay/l3ports/" + l3portId in response.json['l3port']['uri'])
         
     def testGetL3portNotFound(self):
         with self.assertRaises(AppError) as e:
@@ -745,13 +735,10 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1111' in e.exception.message)
         
     def testCreateL3port(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        subnetObject = self.helper._createSubnet(networkObject)
-        subnetId = subnetObject.id
+        with self._dao.getReadWriteSession() as session:        
+            subnetObject = self.helper._createSubnet(session)
+            subnetId = subnetObject.id
+
         l3portDict = {
             "l3port": {
                 "name": "l3port1",
@@ -767,14 +754,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int) 
 
     def testModifyL3port(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        subnetObject = self.helper._createSubnet(networkObject)
-        subnetId = subnetObject.id
-        l3portObject = self.helper._createL3port(subnetObject)
+        with self._dao.getReadWriteSession() as session:        
+            l3portObject = self.helper._createL3port(session)
+            l3portId = l3portObject.id
+            subnetId = l3portObject.overlay_subnet.id
+
         l3portDict = {
             "l3port": {
                 "name": "l3port1",
@@ -782,8 +766,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             }
         }
         l3portDict['l3port']['subnet'] = subnetId
-        l3portDict['l3port']['id'] = l3portObject.id
-        response = self.restServerTestApp.put('/openclos/v1/overlay/l3ports/' + l3portObject.id, 
+        l3portDict['l3port']['id'] = l3portId
+        response = self.restServerTestApp.put('/openclos/v1/overlay/l3ports/' + l3portId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(l3portDict))
         self.assertEqual(200, response.status_int)
@@ -805,15 +789,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1111' in e.exception.message)
         
     def testDeleteL3port(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        subnetObject = self.helper._createSubnet(networkObject)
-        l3portObject = self.helper._createL3port(subnetObject)
+        with self._dao.getReadWriteSession() as session:        
+            l3portObject = self.helper._createL3port(session)
+            l3portId = l3portObject.id
                     
-        response = self.restServerTestApp.delete('/openclos/v1/overlay/l3ports/' + l3portObject.id)
+        response = self.restServerTestApp.delete('/openclos/v1/overlay/l3ports/' + l3portId)
         self.assertEqual(204, response.status_int) 
         
     def testDeleteL3portNotFound(self):
@@ -823,32 +803,25 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1111' in e.exception.message)
         
     def testGetL2ports(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        aeObject = self.helper._createAe()
-        l2portObject = self.helper._createL2port(aeObject, networkObject, deviceObject)
+        with self._dao.getReadWriteSession() as session:        
+            l2portObject = self.helper._createL2port(session)
+            l2portId = l2portObject.id
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/l2ports')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['l2ports']['l2port']))
-        self.assertTrue("/openclos/v1/overlay/l2ports/" + l2portObject.id in response.json['l2ports']['l2port'][0]['uri'])
+        self.assertTrue("/openclos/v1/overlay/l2ports/" + l2portId in response.json['l2ports']['l2port'][0]['uri'])
         
     def testGetL2port(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        aeObject = self.helper._createAe()
-        l2portObject = self.helper._createL2port(aeObject, networkObject, deviceObject)
+        with self._dao.getReadWriteSession() as session:        
+            l2portObject = self.helper._createL2port(session)
+            l2portId = l2portObject.id
+            l2portName = l2portObject.name
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/l2ports/' + l2portObject.id)
+        response = self.restServerTestApp.get('/openclos/v1/overlay/l2ports/' + l2portId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(l2portObject.name, response.json['l2port']['name'])
-        self.assertTrue("/openclos/v1/overlay/l2ports/" + l2portObject.id in response.json['l2port']['uri'])
+        self.assertEqual(l2portName, response.json['l2port']['name'])
+        self.assertTrue("/openclos/v1/overlay/l2ports/" + l2portId in response.json['l2port']['uri'])
         
     def testGetL2portNotFound(self):
         with self.assertRaises(AppError) as e:
@@ -857,15 +830,10 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1112' in e.exception.message)
         
     def testCreateL2port(self):
-        deviceObject = self.helper._createDevice()
-        deviceId = deviceObject.id
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        networkId = networkObject.id
-        aeObject = self.helper._createAe()
-        aeId = aeObject.id
+        with self._dao.getReadWriteSession() as session:        
+            networkObject = self.helper._createNetwork(session)
+            networkId = networkObject.id
+            deviceId = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0].id
         l2portDict = {
             "l2port": {
                 "name": "l2port1",
@@ -873,7 +841,6 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "interface": "xe-0/0/0"
             }
         }
-        l2portDict['l2port']['ae'] = aeId
         l2portDict['l2port']['network'] = networkId
         l2portDict['l2port']['device'] = deviceId
         response = self.restServerTestApp.post('/openclos/v1/overlay/l2ports', 
@@ -884,16 +851,12 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int) 
 
     def testModifyL2port(self):
-        deviceObject = self.helper._createDevice()
-        deviceId = deviceObject.id
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        networkId = networkObject.id
-        aeObject = self.helper._createAe()
-        aeId = aeObject.id
-        l2portObject = self.helper._createL2port(aeObject, networkObject, deviceObject)
+        with self._dao.getReadWriteSession() as session:        
+            l2portObject = self.helper._createL2port(session)
+            l2portId = l2portObject.id
+            networkId = l2portObject.overlay_network.id
+            deviceId = l2portObject.overlay_device.id
+
         l2portDict = {
             "l2port": {
                 "name": "l2port1",
@@ -901,11 +864,10 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "interface": "xe-0/0/0"
             }
         }
-        l2portDict['l2port']['ae'] = aeId
         l2portDict['l2port']['network'] = networkId
         l2portDict['l2port']['device'] = deviceId
-        l2portDict['l2port']['id'] = l2portObject.id
-        response = self.restServerTestApp.put('/openclos/v1/overlay/l2ports/' + l2portObject.id, 
+        l2portDict['l2port']['id'] = l2portId
+        response = self.restServerTestApp.put('/openclos/v1/overlay/l2ports/' + l2portId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(l2portDict))
         self.assertEqual(200, response.status_int)
@@ -928,15 +890,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1112' in e.exception.message)
         
     def testDeleteL2port(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        networkObject = self.helper._createNetwork(vrfObject)
-        aeObject = self.helper._createAe()
-        l2portObject = self.helper._createL2port(aeObject, networkObject, deviceObject)
+        with self._dao.getReadWriteSession() as session:        
+            l2portObject = self.helper._createL2port(session)
+            l2portId = l2portObject.id
                     
-        response = self.restServerTestApp.delete('/openclos/v1/overlay/l2ports/' + l2portObject.id)
+        response = self.restServerTestApp.delete('/openclos/v1/overlay/l2ports/' + l2portId)
         self.assertEqual(204, response.status_int) 
         
     def testDeleteL2portNotFound(self):
@@ -946,20 +904,25 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1112' in e.exception.message)
         
     def testGetAes(self):
-        aeObject = self.helper._createAe()
+        with self._dao.getReadWriteSession() as session:        
+            aeObject = self.helper._createAe(session)
+            aeId = aeObject.id
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/aes')
         self.assertEqual(200, response.status_int) 
         self.assertEqual(1, len(response.json['aes']['ae']))
-        self.assertTrue("/openclos/v1/overlay/aes/" + aeObject.id in response.json['aes']['ae'][0]['uri'])
+        self.assertTrue("/openclos/v1/overlay/aes/" + aeId in response.json['aes']['ae'][0]['uri'])
         
     def testGetAe(self):
-        aeObject = self.helper._createAe()
+        with self._dao.getReadWriteSession() as session:        
+            aeObject = self.helper._createAe(session)
+            aeId = aeObject.id
+            aeName = aeObject.name
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/aes/' + aeObject.id)
+        response = self.restServerTestApp.get('/openclos/v1/overlay/aes/' + aeId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(aeObject.name, response.json['ae']['name'])
-        self.assertTrue("/openclos/v1/overlay/aes/" + aeObject.id in response.json['ae']['uri'])
+        self.assertEqual(aeName, response.json['ae']['name'])
+        self.assertTrue("/openclos/v1/overlay/aes/" + aeId in response.json['ae']['uri'])
         
     def testGetAeNotFound(self):
         with self.assertRaises(AppError) as e:
@@ -984,7 +947,9 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int) 
 
     def testModifyAe(self):
-        aeObject = self.helper._createAe()
+        with self._dao.getReadWriteSession() as session:        
+            aeObject = self.helper._createAe(session)
+            aeId = aeObject.id
         aeDict = {
             "ae": {
                 "name": "ae1",
@@ -993,8 +958,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "lacp": "11:00:00:01:01:01"
             }
         }
-        aeDict['ae']['id'] = aeObject.id
-        response = self.restServerTestApp.put('/openclos/v1/overlay/aes/' + aeObject.id, 
+        aeDict['ae']['id'] = aeId
+        response = self.restServerTestApp.put('/openclos/v1/overlay/aes/' + aeId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(aeDict))
         self.assertEqual(200, response.status_int)
@@ -1020,9 +985,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1113' in e.exception.message)
         
     def testDeleteAe(self):
-        aeObject = self.helper._createAe()
+        with self._dao.getReadWriteSession() as session:        
+            aeObject = self.helper._createAe(session)
+            aeId = aeObject.id
                     
-        response = self.restServerTestApp.delete('/openclos/v1/overlay/aes/' + aeObject.id)
+        response = self.restServerTestApp.delete('/openclos/v1/overlay/aes/' + aeId)
         self.assertEqual(204, response.status_int) 
         
     def testDeleteAeNotFound(self):
@@ -1032,12 +999,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('1113' in e.exception.message)
         
     def testGetDeployStatusBrief(self):
-        deviceObject = self.helper._createDevice()
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        vrfId = vrfObject.id
-        deployStatusObject = self.helper._createDeployStatus(deviceObject, vrfObject)
+        with self._dao.getReadWriteSession() as session:        
+            vrfObject = self.helper._createVrf(session)
+            vrfId = vrfObject.id
+            deviceObject = vrfObject.overlay_tenant.overlay_fabric.overlay_devices[0]
+            deployStatusObject = self.helper._createDeployStatus(session, deviceObject, vrfObject)
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/vrfs/' + vrfId + '/status?mode=brief')
         self.assertEqual(200, response.status_int) 
@@ -1045,13 +1011,12 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId + '/status?mode=brief' in response.json['statusBrief']['uri'])
         
     def testGetDeployStatusDetail(self):
-        deviceObject = self.helper._createDevice()
-        d_name = deviceObject.name
-        fabricObject = self.helper._createFabric([deviceObject])
-        tenantObject = self.helper._createTenant(fabricObject)
-        vrfObject = self.helper._createVrf(tenantObject)
-        vrfId = vrfObject.id
-        deployStatusObject = self.helper._createDeployStatus(deviceObject, vrfObject)
+        with self._dao.getReadWriteSession() as session:        
+            vrfObject = self.helper._createVrf(session)
+            vrfId = vrfObject.id
+            deviceObject = vrfObject.overlay_tenant.overlay_fabric.overlay_devices[0]
+            deviceName = deviceObject.name
+            deployStatusObject = self.helper._createDeployStatus(session, deviceObject, vrfObject)
                     
         response = self.restServerTestApp.get('/openclos/v1/overlay/vrfs/' + vrfId + '/status?mode=detail')
         self.assertEqual(200, response.status_int) 
@@ -1059,7 +1024,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId + '/status?mode=detail' in response.json['statusDetail']['uri'])
         self.assertEqual(1, response.json['statusDetail']['failure']['total'])
         self.assertEqual('conflict', response.json['statusDetail']['failure']['objects'][0]['reason'])
-        self.assertEqual(d_name, response.json['statusDetail']['failure']['objects'][0]['device'])
+        self.assertEqual(deviceName, response.json['statusDetail']['failure']['objects'][0]['device'])
         self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId in response.json['statusDetail']['failure']['objects'][0]['uri'])
         
 if __name__ == "__main__":
