@@ -5,7 +5,7 @@ protocols {
         replace:
         group overlay {
             type internal;
-            {% if isSpine %}cluster {{routeReflector}}{% endif %}              
+            {% if routeReflector %}cluster {{routeReflector}};{% endif %}              
             family evpn {
                 signaling;
             }

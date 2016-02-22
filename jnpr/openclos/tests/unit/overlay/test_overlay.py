@@ -9,7 +9,7 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../../..'))
 
 import unittest
 import shutil
-from jnpr.openclos.overlay.overlay import Overlay
+from jnpr.openclos.overlay.overlay import Overlay, ConfigEngine
 from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
 from jnpr.openclos.loader import loadLoggingConfig
 from jnpr.openclos.dao import Dao
@@ -23,13 +23,13 @@ class TestOverlayHelper:
     def __init__(self, conf, dao):
         self.overlay = Overlay(conf, dao)
     
-    def _createDevice(self, dbSession):
+    def _createDevice(self, dbSession, offset="1", role="spine"):
         deviceDict = {
-            "name": "d1",
-            "description": "description for d1",
-            "role": "spine",
-            "address": "1.2.3.4",
-            "routerId": "1.1.1.1"
+            "name": "d" + offset,
+            "description": "description for d" + offset,
+            "role": role,
+            "address": "1.2.3." + offset,
+            "routerId": "1.1.1." + offset
         }
         return self.overlay.createDevice(dbSession, deviceDict['name'], deviceDict.get('description'), 
                                          deviceDict['role'], deviceDict['address'], deviceDict['routerId'])
@@ -45,6 +45,22 @@ class TestOverlayHelper:
         return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
                     fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], [deviceObject])
     
+    def _createFabric2Spine3Leaf(self, dbSession):
+        devices = []
+        devices.append(self._createDevice(dbSession, "1", "spine"))
+        devices.append(self._createDevice(dbSession, "2", "spine"))
+        devices.append(self._createDevice(dbSession, "3", "leaf"))
+        devices.append(self._createDevice(dbSession, "4", "leaf"))
+        devices.append(self._createDevice(dbSession, "5", "leaf"))
+        fabricDict = {
+            "name": "f1",
+            "description": "description for f1",
+            "overlayAsn": 65001,
+            "routeReflectorAddress": "2.2.2.2"
+        }
+        return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
+                    fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], devices)
+
     def _createTenant(self, dbSession):
         tenantDict = {
             "name": "t1",
@@ -117,15 +133,13 @@ class TestOverlayHelper:
             "object_url": "http://host:port/openclos/v1/overlay/vrfs/%s" % (vrfObject.id),
             "status": "failure",
             "statusReason": "conflict",
-            "source": "POST"
+            "operation": "POST"
         }
-        configlet = deployStatusDict['configlet']
-        object_url = deployStatusDict['object_url']
-        status = deployStatusDict['status']
-        statusReason = deployStatusDict.get('statusReason')
-        source = deployStatusDict.get('source')
-        return self.overlay.createDeployStatus(dbSession, configlet, object_url, deviceObject, vrfObject, status, statusReason, source)
-        
+        status = OverlayDeployStatus(deployStatusDict['configlet'], deployStatusDict['object_url'], 
+            deployStatusDict['operation'], deviceObject, vrfObject, deployStatusDict['status'], deployStatusDict['statusReason'])
+        dbSession.add_all([status])
+        dbSession.commit()
+        return status
     
 class TestOverlay(unittest.TestCase):
     def setUp(self):
@@ -310,7 +324,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('description for ae2', aeObjectFromDb.description)
             self.assertEqual('11:01:01:01:01:01:01:01:01:01', aeObjectFromDb.esi)
             self.assertEqual('11:00:00:01:01:01', aeObjectFromDb.lacp)
-            
+       
     def testCreateDeployStatus(self):
         with self._dao.getReadSession() as session:
             vrfObject = self.helper._createVrf(session)
@@ -331,7 +345,66 @@ class TestOverlay(unittest.TestCase):
             deployStatusObjectFromDb = session.query(OverlayDeployStatus).one()
             self.assertEqual('progress', deployStatusObjectFromDb.status)
             self.assertEqual('in progress', deployStatusObjectFromDb.statusReason)
-            self.assertEqual('PUT', deployStatusObjectFromDb.source)
-           
+            self.assertEqual('PUT', deployStatusObjectFromDb.operation)
+
+class TestConfigEngine(unittest.TestCase):
+    def setUp(self):
+        self._conf = {}
+        #self._conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
+        self._conf['plugin'] = [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]
+        self._dao = InMemoryDao.getInstance()
+        self.helper = TestOverlayHelper(self._conf, self._dao)
+        self.configEngine = ConfigEngine(self._conf, self._dao)
+    
+    def tearDown(self):
+        ''' Deletes 'out' folder under test dir'''
+        #shutil.rmtree(self._conf['outputDir'], ignore_errors=True)
+        InMemoryDao._destroy()
+        self.helper = None
+
+    def testConfigureFabric(self):
+        with self._dao.getReadWriteSession() as session:
+            fabric= self.helper._createFabric(session)
+            self.configEngine.configureFabric(session, fabric)
+            
+            self.assertEqual(1, session.query(OverlayDeployStatus).count())
+            config = session.query(OverlayDeployStatus).one().configlet
+            self.assertIn("bgp", config)
+            self.assertIn("group overlay", config)
+            self.assertIn("cluster", config)
+            print config
+
+    def testConfigureFabric2Spine3Leaf(self):
+        with self._dao.getReadWriteSession() as session:
+            fabric= self.helper._createFabric2Spine3Leaf(session)
+            self.configEngine.configureFabric(session, fabric)
+            
+            self.assertEqual(5, session.query(OverlayDeployStatus).count())
+            deployments = session.query(OverlayDeployStatus).all()
+            spine1Config = deployments[0].configlet
+            self.assertIn("bgp", spine1Config)
+            self.assertIn("group overlay", spine1Config)
+            self.assertIn("cluster", spine1Config)
+            self.assertEquals(4, spine1Config.count("neighbor"))
+            print spine1Config
+            leaf1Config = deployments[2].configlet
+            self.assertIn("bgp", leaf1Config)
+            self.assertIn("group overlay", leaf1Config)
+            self.assertNotIn("cluster", leaf1Config)
+            self.assertEquals(2, leaf1Config.count("neighbor"))            
+            print leaf1Config
+        
+    def testGetNeighborList(self):
+        self.assertEquals([], self.configEngine.getNeighborList("1.2.3.4", "spine", [], []))
+        
+        neighbors = self.configEngine.getNeighborList("1.2.3.4", "spine", ["1.2.3.4", "1.2.3.5", "1.2.3.6"], ["1.2.3.10", "1.2.3.11"])
+        self.assertEquals(4, len(neighbors))
+        self.assertNotIn("1.2.3.4", neighbors)
+
+        neighbors = self.configEngine.getNeighborList("1.2.3.4", "leaf", ["1.2.3.4", "1.2.3.5", "1.2.3.6"], ["1.2.3.10", "1.2.3.11"])
+        self.assertEquals(3, len(neighbors))
+        self.assertIn("1.2.3.4", neighbors)
+        self.assertNotIn("1.2.3.10", neighbors)
+        
 if __name__ == '__main__':
     unittest.main()

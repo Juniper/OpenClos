@@ -5,10 +5,12 @@ Created on Nov 23, 2015
 '''
 
 import logging
-
+import os
 
 from overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
 from jnpr.openclos.loader import loadLoggingConfig
+from jnpr.openclos.dao import Dao
+from jnpr.openclos.templateLoader import TemplateLoader
 
 moduleName = 'overlay'
 loadLoggingConfig(appName=moduleName)
@@ -109,16 +111,53 @@ class Overlay():
         logger.info("OverlayAe[id='%s', name='%s']: created", ae.id, ae.name)
         return ae
 
-    def createDeployStatus(self, dbSession, configlet, object_url, overlay_device, overlay_vrf, status, statusReason, source):
-        '''
-        Create a new deploy status
-        '''
-        status = OverlayDeployStatus(configlet, object_url, overlay_device, overlay_vrf, status, statusReason, source)
-
-        self._dao.createObjects(dbSession, [status])
-        logger.info("OverlayDeployStatus[id='%s', object_url='%s', device='%s, vrf='%s', status='%s', statusReason='%s']: created", status.id, status.object_url, status.overlay_device.name, status.overlay_vrf.name, status.status, status.statusReason)
-        return status
+class ConfigEngine():
+    def __init__(self, conf, dao):
+        self._conf = conf
+        self._dao = dao
+        self._templateLoader = TemplateLoader(junosTemplatePackage="jnpr.openclos.overlay")
         
+
+    def configureFabric(self, dbSession, fabric):
+        '''
+        Generate iBGP config
+        '''
+
+        spineIps = []
+        leafIps = []
+        for device in fabric.overlay_devices:
+            if device.role == 'spine':
+                spineIps.append(device.address)
+            elif device.role == 'leaf':
+                leafIps.append(device.address)
+            else:
+                logger.error("configureFabric: unknown device role, name: %s, ip: %s, role: %s", 
+                             device.name, device.address, device.role)
+        
+        template = self._templateLoader.getTemplate('olAddProtocolBgp.txt')
+        deployments = []
+        for device in fabric.overlay_devices:
+            if device.role == 'spine':
+                routeReflector = fabric.routeReflectorAddress
+            elif device.role == 'leaf':
+                routeReflector = None
+                
+            config = template.render(routeReflector=routeReflector, routerId=device.routerId, asn=fabric.overlayAS, 
+                            neighbors=self.getNeighborList(device.address, device.role, spineIps, leafIps))
+            deployments.append(OverlayDeployStatus(config, fabric.getUrl(), "create", device))    
+            # TODO: add to job queue
+        self._dao.createObjects(dbSession, deployments)
+        logger.info("configureFabric [id='%s', name='%s']: configured", fabric.id, fabric.name)
+        
+    def getNeighborList(self, ip, role, spines, leaves):
+        neighbors = []
+        if role == 'spine':
+            neighbors = [s for s in spines if s != ip]
+            neighbors += leaves
+        elif role == 'leaf':
+            neighbors += spines
+        return neighbors
+    
 def main():        
     conf = {}
     conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')

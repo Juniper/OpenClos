@@ -6,7 +6,6 @@ Created on Nov 10, 2015
 import os
 from jinja2 import Environment, PackageLoader, FileSystemLoader, exceptions
 
-junosTemplatePackage = 'jnpr.openclos'
 junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 
 currentWorkingDir = os.getcwd()
@@ -23,7 +22,7 @@ class TemplateLoader(object):
     
     '''
 
-    def __init__(self, override=True):
+    def __init__(self, junosTemplatePackage="jnpr.openclos", override=True):
         
         self._defaultTemplateEnv = Environment(loader=PackageLoader(junosTemplatePackage, junosTemplateLocation))
         self._defaultTemplateEnv.keep_trailing_newline = True
