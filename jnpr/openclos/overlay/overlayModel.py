@@ -5,10 +5,8 @@ Created on Nov 23, 2015
 
 '''
 import uuid
-import math
 from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Enum, UniqueConstraint, Index, Boolean
 from sqlalchemy.orm import relationship, backref
-from netaddr import IPAddress, IPNetwork, AddrFormatError
 
 from jnpr.openclos.loader import OpenClosProperty
 if OpenClosProperty().isSqliteUsed():
@@ -75,7 +73,10 @@ class OverlayFabric(ManagedElement, Base):
         self.routeReflectorAddress = routeReflectorAddress
         for device in devices:
             self.overlay_devices.append(device)
-        
+
+    def getUrl(self):
+        return "/fabrics/" + self.id
+    
     def update(self, name, description, overlayAS, routeReflectorAddress, devices):
         '''
         Updates Fabric object.
@@ -321,35 +322,35 @@ class OverlayDeployStatus(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     configlet = Column(BLOB)
     object_url = Column(String(1024), nullable=False)
+    operation = Column(String(60))
     overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
     overlay_device = relationship("OverlayDevice", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
-    overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'), nullable=False)
+    overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'))
     overlay_vrf = relationship("OverlayVrf", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
-    status = Column(Enum('unknown', 'progress', 'success', 'failure'))
+    status = Column(Enum('unknown', 'progress', 'success', 'failure'), default='unknown')
     statusReason = Column(String(1024))
-    source = Column(String(60))
     __table_args__ = (
         Index('object_url_overlay_device_id_uindex', 'object_url', 'overlay_device_id', unique=True),
     )
     
-    def __init__(self, configlet, object_url, overlay_device, overlay_vrf, status, statusReason, source):
+    def __init__(self, configlet, object_url, operation, overlay_device, overlay_vrf=None, status=None, statusReason=None):
         '''
         Creates status object.
         '''
         self.id = str(uuid.uuid4())
         self.configlet = configlet
         self.object_url = object_url
+        self.operation = operation
         self.overlay_device = overlay_device
         self.overlay_vrf = overlay_vrf
         self.status = status
         self.statusReason = statusReason
-        self.source = source
         
-    def update(self, status, statusReason, source):
+    def update(self, status, statusReason, operation):
         '''
         Update status object.
         '''
         self.status = status
         self.statusReason = statusReason
-        self.source = source
+        self.operation = operation
         
