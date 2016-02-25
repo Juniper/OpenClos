@@ -6,6 +6,8 @@ Created on Nov 23, 2015
 
 import logging
 import os
+import itertools
+from netaddr import IPNetwork
 
 from overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
 from jnpr.openclos.loader import loadLoggingConfig
@@ -56,9 +58,10 @@ class Overlay():
         Create a new Vrf
         '''
         vrf = OverlayVrf(name, description, routedVnid, loopbackAddress, overlayTenant)
-
+        vrf.loopbackCounter = self._dao.incrementAndGetCounter("OverlayVrf.loopbackCounter")
         self._dao.createObjects(dbSession, [vrf])
         logger.info("OverlayVrf[id='%s', name='%s']: created", vrf.id, vrf.name)
+        #TODO: call ConfigEngine
         return vrf
 
     def createNetwork(self, dbSession, name, description, overlay_vrf, vlanid, vnid, pureL3Int):
@@ -158,6 +161,36 @@ class ConfigEngine():
             neighbors += spines
         return neighbors
     
+    def configureVrf(self, dbSession, vrf):
+        deployments = []
+        loopbackIps = self.getLoopbackIps(vrf.loopbackAddress)
+        for spine, loopback in itertools.izip(vrf.getSpines(), loopbackIps):
+            config = self.configureLoopback(loopback, vrf.loopbackCounter)
+            
+            template = self._templateLoader.getTemplate('olAddVrf.txt')
+            config += template.render(vrfName="VRF_" + vrf.overlay_tenant.name, vrfLoopbackName="lo0." + str(vrf.loopbackCounter), 
+                routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS)
+            deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "create", spine))    
+            # TODO: add to job queue
+        self._dao.createObjects(dbSession, deployments)
+
+    def getLoopbackIps(self, loopbackBlock):
+        '''
+        returns all IPs from the CIRD including network and broadcast
+        '''
+        loopback = IPNetwork(loopbackBlock)
+        first = str(loopback.network) + "/32"
+        last = str(loopback.broadcast) + "/32"
+        hosts = [str(ip) + "/32" for ip in loopback.iter_hosts()]
+        if loopback.size > 2:
+            return [first] + hosts + [last]
+        else:
+            return hosts
+        
+    def configureLoopback(self, loopbackIp, loopbackUnit):
+        template = self._templateLoader.getTemplate('olAddLoopback.txt')
+        return template.render(loopbackUnit=loopbackUnit, loopbackAddress=loopbackIp)
+
 def main():        
     conf = {}
     conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')

@@ -1,11 +1,10 @@
 routing-instances {
-    replace:
+    merge:
     {{vrfName}} {
         instance-type vrf;
         {% if vrfLoopbackName %}interface {{vrfLoopbackName}};{% endif %}
-        {% for irbName in irbs %}interface {{irbName}};
-        {% endfor %}        
+        {% if irbName %}interface {{irbName}};{% endif %}        
         {% if vnis | length > 0 %}route-distinguisher {{routerId}}:{{vnis[0]}};
-        vrf-target target:{{asn}}:{{vnis[0]}};
-        {% endif %}}
+        vrf-target target:{{asn}}:{{vnis[0]}};{% endif %}
+    }
 }
