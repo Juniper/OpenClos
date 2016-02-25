@@ -133,6 +133,7 @@ class OverlayVrf(ManagedElement, Base):
     description = Column(String(256))
     routedVnid = Column(Integer)
     loopbackAddress = Column(String(60))
+    loopbackCounter = Column(Integer)
     overlay_tenant_id = Column(String(60), ForeignKey('overlayTenant.id'), nullable=False)
     overlay_tenant = relationship("OverlayTenant", backref=backref('overlay_vrfs', order_by=name, cascade='all, delete, delete-orphan'))
     __table_args__ = (
@@ -150,6 +151,9 @@ class OverlayVrf(ManagedElement, Base):
         self.loopbackAddress = loopbackAddress
         self.overlay_tenant = overlay_tenant
         
+    def getUrl(self):
+        return "/vrfs/" + self.id
+    
     def update(self, name, description, routedVnid, loopbackAddress):
         '''
         Updates VRF object.
@@ -158,6 +162,19 @@ class OverlayVrf(ManagedElement, Base):
         self.description = description
         self.routedVnid = routedVnid
         self.loopbackAddress = loopbackAddress
+        
+    def getDevices(self, role=None):
+        if self.overlay_tenant and self.overlay_tenant.overlay_fabric:
+            if not role:
+                return self.overlay_tenant.overlay_fabric.overlay_devices
+            else:
+                return [dev for dev in self.overlay_tenant.overlay_fabric.overlay_devices if dev.role == role]
+        
+        return []
+    def getSpines(self):
+        return self.getDevices("spine")
+    def getLeafs(self):
+        return self.getDevices("leaf")
     
 class OverlayNetwork(ManagedElement, Base):
     __tablename__ = 'overlayNetwork'

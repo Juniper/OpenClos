@@ -528,3 +528,13 @@ class BgpLink(ManagedElement, Base):
         self.flap_count = linkDict.get('flapCount')
         self.link_state = linkDict.get('linkState')
         self.act_rx_acc_route_count = linkDict.get('activeReceiveAcceptCount')
+
+
+class Counter(Base):
+    __tablename__ = 'counter'
+    name = Column(String(60), primary_key=True)
+    count = Column(Integer)
+
+    def __init__(self, name, count):
+        self.name = name
+        self.count = count

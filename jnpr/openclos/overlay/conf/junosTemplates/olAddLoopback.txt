@@ -1,0 +1,9 @@
+interfaces {
+    lo0 {
+        unit {{loopbackUnit}} {
+            family inet {
+                address {{loopbackAddress}};
+            }
+        }
+    }
+}

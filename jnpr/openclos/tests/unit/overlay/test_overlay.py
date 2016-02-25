@@ -5,6 +5,7 @@ Created on Nov 23, 2015
 '''
 import os
 import sys
+from netaddr.ip.sets import IPSet
 sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../../..')) #trick to make it run from CLI
 
 import unittest
@@ -34,14 +35,14 @@ class TestOverlayHelper:
         return self.overlay.createDevice(dbSession, deviceDict['name'], deviceDict.get('description'), 
                                          deviceDict['role'], deviceDict['address'], deviceDict['routerId'])
         
-    def _createFabric(self, dbSession):
+    def _createFabric(self, dbSession, offset="1"):
         fabricDict = {
-            "name": "f1",
-            "description": "description for f1",
+            "name": "f" + offset,
+            "description": "description for f" + offset,
             "overlayAsn": 65001,
-            "routeReflectorAddress": "2.2.2.2"
+            "routeReflectorAddress": "2.2.2." + offset
         }
-        deviceObject = self._createDevice(dbSession)
+        deviceObject = self._createDevice(dbSession, offset)
         return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
                     fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], [deviceObject])
     
@@ -61,22 +62,22 @@ class TestOverlayHelper:
         return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
                     fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], devices)
 
-    def _createTenant(self, dbSession):
+    def _createTenant(self, dbSession, offset="1"):
         tenantDict = {
-            "name": "t1",
-            "description": "description for t1"
+            "name": "t" + offset,
+            "description": "description for t" + offset
         }
-        fabricObject = self._createFabric(dbSession)
+        fabricObject = self._createFabric(dbSession, offset)
         return self.overlay.createTenant(dbSession, tenantDict['name'], tenantDict.get('description'), fabricObject)
         
-    def _createVrf(self, dbSession):
+    def _createVrf(self, dbSession, offset="1"):
         vrfDict = {
-            "name": "v1",
-            "description": "description for v1",
+            "name": "v" + offset,
+            "description": "description for v" + offset,
             "routedVnid": 100,
-            "loopbackAddress": "1.1.1.1"
+            "loopbackAddress": "1.1.1." +offset
         }
-        tenantObject = self._createTenant(dbSession)
+        tenantObject = self._createTenant(dbSession, offset)
         return self.overlay.createVrf(dbSession, vrfDict['name'], vrfDict.get('description'), vrfDict.get('routedVnid'), vrfDict.get('loopbackAddress'), tenantObject)
         
     def _createNetwork(self, dbSession):
@@ -218,6 +219,20 @@ class TestOverlay(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             self.helper._createVrf(session)
             self.assertEqual(1, session.query(OverlayVrf).count())
+
+    def testCreateVrfLoopbackCounter(self):
+        with self._dao.getReadWriteSession() as session:
+            self.helper._createVrf(session, "1")
+            self.helper._createVrf(session, "2")
+            self.helper._createVrf(session, "3")
+            self.helper._createVrf(session, "4")
+            self.helper._createVrf(session, "5")
+            vrfs = session.query(OverlayVrf).all()
+            self.assertEquals(5, len(vrfs))
+            self.assertEquals(1, vrfs[0].loopbackCounter)
+            self.assertEquals(2, vrfs[1].loopbackCounter)
+            self.assertEquals(3, vrfs[2].loopbackCounter)
+            self.assertEquals(5, vrfs[4].loopbackCounter)
 
     def testUpdateVrf(self):
         with self._dao.getReadWriteSession() as session:        
@@ -372,7 +387,6 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("bgp", config)
             self.assertIn("group overlay", config)
             self.assertIn("cluster", config)
-            print config
 
     def testConfigureFabric2Spine3Leaf(self):
         with self._dao.getReadWriteSession() as session:
@@ -386,13 +400,12 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("group overlay", spine1Config)
             self.assertIn("cluster", spine1Config)
             self.assertEquals(4, spine1Config.count("neighbor"))
-            print spine1Config
+
             leaf1Config = deployments[2].configlet
             self.assertIn("bgp", leaf1Config)
             self.assertIn("group overlay", leaf1Config)
             self.assertNotIn("cluster", leaf1Config)
             self.assertEquals(2, leaf1Config.count("neighbor"))            
-            print leaf1Config
         
     def testGetNeighborList(self):
         self.assertEquals([], self.configEngine.getNeighborList("1.2.3.4", "spine", [], []))
@@ -405,6 +418,25 @@ class TestConfigEngine(unittest.TestCase):
         self.assertEquals(3, len(neighbors))
         self.assertIn("1.2.3.4", neighbors)
         self.assertNotIn("1.2.3.10", neighbors)
-        
+
+    def testGetLoopbackIps(self):
+        ips = self.configEngine.getLoopbackIps("192.168.48.0/30")
+        self.assertEquals(['192.168.48.0/32', '192.168.48.1/32', '192.168.48.2/32', '192.168.48.3/32'], ips)
+        ips = self.configEngine.getLoopbackIps("192.168.48.0/31")
+        self.assertEquals(['192.168.48.0/32', '192.168.48.1/32'], ips)
+        ips = self.configEngine.getLoopbackIps("192.168.48.0/32")
+        self.assertEquals(['192.168.48.0/32'], ips)
+
+    def testConfigureVrf(self):
+        with self._dao.getReadWriteSession() as session:
+            vrf = self.helper._createVrf(session)
+            self.configEngine.configureVrf(session, vrf)
+            
+            self.assertEqual(1, session.query(OverlayDeployStatus).count())
+            config = session.query(OverlayDeployStatus).one().configlet
+            self.assertIn("lo0 {", config)
+            self.assertIn("routing-instances {", config)
+            self.assertIn("instance-type vrf;", config)
+                
 if __name__ == '__main__':
     unittest.main()
