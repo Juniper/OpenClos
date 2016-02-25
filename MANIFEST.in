@@ -3,6 +3,7 @@ global-include *.py
 
 # include configuration files
 recursive-include jnpr/openclos/conf *
+recursive-include jnpr/openclos/overlay/conf *
 
 # include script files
 recursive-include jnpr/openclos/script *
