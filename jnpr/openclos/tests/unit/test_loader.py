@@ -34,7 +34,7 @@ class TestPropertyLoader(unittest.TestCase):
         self.propertyLoader = PropertyLoader('openclos.yaml', False)
         self.assertIsNot({}, self.propertyLoader._properties)
         self.assertEquals("out", self.propertyLoader._properties['outputDir'])
-        self.assertEquals(2, len(self.propertyLoader._properties['plugin']))
+        self.assertEquals(1, len(self.propertyLoader._properties['plugin']))
 
     def testLoadPropertyOverride(self):
         overridePath = os.path.join(os.path.expanduser('~'), 'openclos.yaml')
@@ -43,7 +43,7 @@ class TestPropertyLoader(unittest.TestCase):
         self.propertyLoader = PropertyLoader('openclos.yaml')
         self.assertIsNot({}, self.propertyLoader._properties)
         self.assertEquals("/tmp", self.propertyLoader._properties['outputDir'])
-        self.assertEquals(2, len(self.propertyLoader._properties['plugin']))
+        self.assertEquals(1, len(self.propertyLoader._properties['plugin']))
         os.remove(overridePath)
         
 

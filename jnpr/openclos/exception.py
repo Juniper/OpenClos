@@ -460,3 +460,12 @@ class PlatformError(BaseError):
             error.getErrorMessage(error.EC_PLATFORM_ERROR) % (reason), 
             cause)
 
+class ConfigurationCommitFailed(BaseError):
+    '''
+    Description of the error
+    '''
+    def __init__(self, reason, cause=None):
+        super(ConfigurationCommitFailed, self).__init__(error.EC_CONFIGURATION_COMMIT_FAILED,
+            error.getErrorMessage(error.EC_CONFIGURATION_COMMIT_FAILED) % (reason), 
+            cause)
+            

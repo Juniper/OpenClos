@@ -91,7 +91,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         
     def tearDown(self):
         shutil.rmtree(os.path.join(configLocation, 'test1'), ignore_errors=True)
-        self.restServer._reset()
+        self.restServer.stop()
         InMemoryDao._destroy()
         self.helper = None
 

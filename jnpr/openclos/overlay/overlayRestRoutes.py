@@ -9,16 +9,24 @@ from sqlalchemy.orm import exc
 import traceback
 
 from jnpr.openclos.exception import InvalidRequest, OverlayFabricNotFound, OverlayTenantNotFound, OverlayVrfNotFound, OverlayDeviceNotFound, OverlayNetworkNotFound, OverlaySubnetNotFound, OverlayL3portNotFound, OverlayL2portNotFound, OverlayAeNotFound, PlatformError
-from overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayDevice, OverlayNetwork, OverlaySubnet, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
-from overlay import Overlay
+from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayDevice, OverlayNetwork, OverlaySubnet, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
+from jnpr.openclos.overlay.overlay import Overlay
+from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue
 
 logger = None
+routes = None
 
 def install(context):
     global logger
     logger = context['logger']
-    OverlayRestRoutes().install(context)
+    global routes
+    routes = OverlayRestRoutes()
+    routes.install(context)
 
+def uninstall():
+    if routes:
+        routes.uninstall()
+    
 class OverlayRestRoutes():
     def install(self, context):
         self.baseUrl = context['baseUrl'] + '/overlay'
@@ -91,6 +99,15 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/l2ports/<l2portId>', 'DELETE', self.deleteL2port)
         self.app.route(self.baseUrl + '/aes/<aeId>', 'DELETE', self.deleteAe)
 
+        # commit engine
+        maxWorkers = context['pluginDict'].get('threadCount')
+        dispatchInterval = context['pluginDict'].get('dispatchInterval')
+        self.commitQueue = OverlayCommitQueue(self._overlay, maxWorkers, dispatchInterval)
+        self.commitQueue.start()
+        
+    def uninstall(self):
+        self.commitQueue.stop()
+    
     def _getUriPrefix(self):
         if self.uriPrefix is None:
             self.uriPrefix = '%s://%s%s' % (bottle.request.urlparts[0], bottle.request.urlparts[1], self.baseUrl)

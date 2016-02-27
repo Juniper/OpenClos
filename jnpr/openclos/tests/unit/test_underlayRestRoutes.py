@@ -7,6 +7,7 @@ import unittest
 import os
 import shutil
 import json
+from threading import Thread
 from webtest import TestApp, AppError
 
 from jnpr.openclos.rest import RestServer
@@ -31,7 +32,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(os.path.join(configLocation, 'test1'), ignore_errors=True)
-        self.restServer._reset()
+        self.restServer.stop()
         InMemoryDao._destroy()
 
     def testInit(self):
@@ -279,14 +280,10 @@ class TestUnderlayRestRoutes(unittest.TestCase):
         self.assertTrue('404 Not Found' in e.exception.message)
         
     def testgetOpenClosConfigParams(self):
-        self.tearDown()
-        restServer = RestServer({}, InMemoryDao)
-        restServer.protocol = 'http'
-        restServer.username = None
-        restServer.password = None
-        restServer.initRest()
-        restServer.installRoutes()
-        self.restServerTestApp = TestApp(restServer.app)
+        self.restServer._conf['dbUrl'] = InMemoryDao.getInstance()._getDbUrl()
+        self.restServer._conf['DOT'] = {'colors': []}
+        self.restServer._conf['restServer'] = {'version': 1, 'protocol': 'http', 'ipAddr': '0.0.0.0', 'port': 20080}
+        self.restServer._conf['snmpTrap'] = {'openclos_trap_group': {'port': 20162, 'target': '0.0.0.0'}}
         
         response = self.restServerTestApp.get('/openclos/v1/underlay/conf')
         self.assertEqual(200, response.status_int)
