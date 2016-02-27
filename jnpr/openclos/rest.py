@@ -8,19 +8,20 @@ import os
 import bottle
 from sqlalchemy.orm import exc
 import sqlalchemy
-import StringIO
-import zipfile
 import traceback
 import json
 import util
+import signal
+import sys
 import logging
 import importlib
 from bottle import error, request, response, PluginError, ServerAdapter, parse_auth
 import subprocess
+from threading import Thread, Event
 
 from error import EC_PLATFORM_ERROR
 from exception import BaseError, isOpenClosException, InvalidConfiguration, PlatformError
-from dao import Dao
+from jnpr.openclos.dao import Dao
 from loader import OpenClosProperty, loadLoggingConfig
 import underlayRestRoutes
 from crypt import Cryptic
@@ -29,6 +30,17 @@ moduleName = 'rest'
 loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 
+restServer = None
+
+def restServerStop():
+    restServer.stop()
+    
+def rest_server_signal_handler(signal, frame):
+    logger.debug("received signal %d", signal)
+    # REVISIT: The main thread hangs if we just call restServer.stop from the signal handler. 
+    # We have to spawn a thread to call restServer.stop
+    sys.exit(0)
+    
 def loggingPlugin(callback):
     def wrapper(*args, **kwargs):
         msg = '"{} {} {}"'.format(request.method, 
@@ -134,7 +146,33 @@ class BasicAuthPlugin(object):
         # Replace the route callback with the wrapped one.
         return wrapper
 
-class SSLServer(ServerAdapter):
+class StoppableServer(ServerAdapter):
+    server = None
+
+    def stop(self):
+        if self.server is not None:
+            # self.server.server_close() <--- alternative but causes bad fd exception
+            self.server.shutdown()
+
+class PlainWSGIRefServer(StoppableServer):
+    def run(self, handler):
+        from wsgiref.simple_server import make_server, WSGIRequestHandler
+        if self.quiet:
+            class QuietHandler(WSGIRequestHandler):
+                def log_request(*args, **kw): pass
+            self.options['handler_class'] = QuietHandler
+        self.server = make_server(self.host, self.port, handler, **self.options)
+        self.server.serve_forever()
+
+class PlainPasteServer(StoppableServer):
+    def run(self, handler): # pragma: no cover
+        from paste import httpserver
+        from paste.translogger import TransLogger
+        handler = TransLogger(handler, setup_console_handler=(not self.quiet))
+        self.server = httpserver.serve(handler, host=self.host, port=str(self.port),
+                         **self.options)
+                         
+class SSLServer(StoppableServer):
     def __init__(self, host, port, certificate, **options):
         # https server won't start unless we have a real IP so we can bind the IP to the server cert
         if host == '0.0.0.0':
@@ -191,7 +229,6 @@ class SSLServer(ServerAdapter):
         else:
             logger.info("Server cert %s found", self.certificate)
     
-            
 class SSLWSGIRefServer(SSLServer):
     def __init__(self, host, port, certificate, **options):
         super(SSLWSGIRefServer, self).__init__(host, port, certificate, **options)
@@ -205,11 +242,11 @@ class SSLWSGIRefServer(SSLServer):
             class QuietHandler(WSGIRequestHandler):
                 def log_request(*args, **kw): pass
             self.options['handler_class'] = QuietHandler
-        srv = make_server(self.host, self.port, handler, **self.options)
-        srv.socket = ssl.wrap_socket(srv.socket,
+        self.server = make_server(self.host, self.port, handler, **self.options)
+        self.server.socket = ssl.wrap_socket(self.server.socket,
                                      certfile=self.certificate,  # path to certificate
                                      server_side=True)
-        srv.serve_forever()
+        self.server.serve_forever()
        
 class SSLPasteServer(SSLServer):
     def __init__(self, host, port, certificate, **options):
@@ -222,7 +259,7 @@ class SSLPasteServer(SSLServer):
         from paste.translogger import TransLogger
         handler = TransLogger(handler, setup_console_handler=(not self.quiet))
         self.options["ssl_pem"] = self.certificate  # path to certificate
-        httpserver.serve(handler, host=self.host, port=str(self.port),
+        self.server = httpserver.serve(handler, host=self.host, port=str(self.port),
                          **self.options)
                          
 class RestServer():
@@ -285,14 +322,18 @@ class RestServer():
         
         # basic authentication plugin
         self.basicAuthPlugin = BasicAuthPlugin(self.username, self.cleartextPassword)
+        
+        self.srv = None
+        self.pluginModules = []
     
     def addIndexLink(self, indexLink):
         # index page should show all top level URLs
         # users whould be able to drill down through navigation
         self.indexLinks.append(indexLink)
         
-    def populateContext(self):
+    def populateContext(self, pluginDict = {}):
         context = {}
+        context['pluginDict'] = pluginDict
         context['conf'] = self._conf
         context['daoClass'] = self.__daoClass
         context['dao'] = self.__dao
@@ -363,10 +404,8 @@ class RestServer():
         logger.info('RestServer initRest() done')
 
     def installRoutes(self):
-        context = self.populateContext()
-        
         # install underlay routes. Note underlay is mandatory
-        underlayRestRoutes.install(context)
+        underlayRestRoutes.install(self.populateContext())
         
         # iterate 'plugin' section of openclos.yaml and install routes on all plugins
         if 'plugin' in self._conf:
@@ -376,9 +415,10 @@ class RestServer():
                 logger.info("loading plugin REST module '%s'", moduleName) 
                 try:
                     pluginModule = importlib.import_module(moduleName)
+                    self.pluginModules.append(pluginModule)
                     pluginInstall = getattr(pluginModule, 'install')
                     if pluginInstall is not None:
-                        pluginInstall(context)
+                        pluginInstall(self.populateContext(plugin))
                 except (AttributeError, ImportError) as err:
                     logger.error("Failed to load plugin REST module '%s'. Error: %s", moduleName, err) 
                 # XXX should we continue?
@@ -399,26 +439,45 @@ class RestServer():
 
 
     def start(self):
-        logger.info('REST %s server starting at %s:%d', self.protocol, self.host, self.port)
+        logger.info('REST server %s://%s:%d started', self.protocol, self.host, self.port)
+
         debugRest = False
         if logger.isEnabledFor(logging.DEBUG):
             debugRest = True
 
         if self.protocol == 'http':
             if self._openclosProperty.isSqliteUsed():
-                bottle.run(self.app, host=self.host, port=self.port, debug=debugRest)
+                self.srv = PlainWSGIRefServer(host=self.host, port=self.port)
             else:
-                bottle.run(self.app, host=self.host, port=self.port, debug=debugRest, server='paste')
+                self.srv = PlainPasteServer(host=self.host, port=self.port)
+            bottle.run(self.app, debug=debugRest, server=self.srv)
         elif self.protocol == 'https':
             if self._openclosProperty.isSqliteUsed():
-                srv = SSLWSGIRefServer(host=self.host, port=self.port, certificate=self.certificate)
-                bottle.run(self.app, debug=debugRest, server=srv)
+                self.srv = SSLWSGIRefServer(host=self.host, port=self.port, certificate=self.certificate)
             else:
-                srv = SSLPasteServer(host=self.host, port=self.port, certificate=self.certificate)
-                bottle.run(self.app, debug=debugRest, server=srv)
+                self.srv = SSLPasteServer(host=self.host, port=self.port, certificate=self.certificate)
+            bottle.run(self.app, debug=debugRest, server=self.srv)
         else:
             logger.error('REST server aborted: unknown protocol %s', self.protocol)
 
+    def stop(self):
+        self._reset()
+        
+        # iterate 'plugin' section of openclos.yaml and uninstall on all plugins
+        for pluginModule in self.pluginModules:
+            try:
+                pluginUninstall = getattr(pluginModule, 'uninstall')
+                if pluginUninstall is not None:
+                    pluginUninstall()
+            except Exception as exc:
+                logger.error("Error: %s", exc) 
+                continue
+        # stop rest server itself
+        if self.srv is not None:
+            self.srv.stop()
+        
+        logger.info('REST server %s://%s:%d stopped', self.protocol, self.host, self.port)
+    
     @staticmethod
     @error(400)
     def error400(error):
@@ -462,10 +521,17 @@ class RestServer():
             return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error)})
         
 def main():
+    signal.signal(signal.SIGINT, rest_server_signal_handler)
+    signal.signal(signal.SIGTERM, rest_server_signal_handler)
+    global restServer
     restServer = RestServer()
     restServer.initRest()
     restServer.installRoutes()
     restServer.start()
+    # Note we have to do this in order for signal to be properly caught by main thread
+    # We need to do the similar thing when we integrate this into sampleApplication.py
+    while True:
+        signal.pause()
     
 if __name__ == '__main__':
     main()

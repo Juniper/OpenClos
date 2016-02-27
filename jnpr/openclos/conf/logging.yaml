@@ -33,6 +33,9 @@ loggers:
     deviceConnector : 
         level: DEBUG
         handlers: [console, file] 
+    overlayCommit : 
+        level: DEBUG
+        handlers: [console, file] 
 formatters:
     detailed:
         format: '%(asctime)s [%(name)-12s] [%(levelname)-8s] [%(thread)8x] %(message)s'

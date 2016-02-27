@@ -23,7 +23,7 @@ class TestRest(unittest.TestCase):
         self.restServerTestApp = TestApp(self.restServer.app)
 
     def tearDown(self):
-        self.restServer._reset()
+        self.restServer.stop()
         InMemoryDao._destroy()
 
     def testInit(self):

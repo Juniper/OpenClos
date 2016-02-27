@@ -135,6 +135,7 @@ plugin:
     -
         name: overlay
         package: jnpr.openclos.overlay
-    -
-        name: vc
-        package: jnpr.openclos.vc
+        # Number of threads in the thread pool for commiting configuration on device
+        threadCount: 10
+        # Number of seconds. Controls how frequent to scan "commit job queue"
+        dispatchInterval: 10

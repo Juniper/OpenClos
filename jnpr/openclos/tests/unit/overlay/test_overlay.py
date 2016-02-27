@@ -157,7 +157,7 @@ class TestOverlay(unittest.TestCase):
         self.helper = None
 
     def testCreateDevice(self):
-        with self._dao.getReadSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.helper._createDevice(session)
             self.assertEqual(1, session.query(OverlayDevice).count())
             
@@ -177,7 +177,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('1.1.1.2', deviceObjectFromDb.routerId)
             
     def testCreateFabric(self):
-        with self._dao.getReadSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.helper._createFabric(session)
             self.assertEqual(1, session.query(OverlayFabric).count())
 
@@ -199,7 +199,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('3.3.3.3', fabricObjectFromDb.routeReflectorAddress)
     
     def testCreateTenant(self):
-        with self._dao.getReadSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.helper._createTenant(session)
             self.assertEqual(1, session.query(OverlayTenant).count())
 
@@ -249,7 +249,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('1.1.1.2', vrfObjectFromDb.loopbackAddress)
             
     def testCreateNetwork(self):        
-        with self._dao.getReadSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.helper._createNetwork(session)
             self.assertEqual(1, session.query(OverlayNetwork).count())
 
@@ -269,7 +269,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual(True, networkObjectFromDb.pureL3Int)
             
     def testCreateSubnet(self):        
-        with self._dao.getReadSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.helper._createSubnet(session)
             self.assertEqual(1, session.query(OverlaySubnet).count())
 
@@ -287,7 +287,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('1.2.3.5/16', subnetObjectFromDb.cidr)
             
     def testCreateL3port(self):
-        with self._dao.getReadSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.helper._createL3port(session)
             self.assertEqual(1, session.query(OverlayL3port).count())
             
@@ -304,7 +304,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('description for l3port2', l3portObjectFromDb.description)
             
     def testCreateL2port(self):        
-        with self._dao.getReadSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.helper._createL2port(session)
             self.assertEqual(1, session.query(OverlayL2port).count())
             
@@ -322,7 +322,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('xe-1/0/0', l2portObjectFromDb.interface)
             
     def testCreateAe(self):
-        with self._dao.getReadSession() as session:
+        with self._dao.getReadWriteSession() as session:
             self.helper._createAe(session)
             self.assertEqual(1, session.query(OverlayAe).count())
             
@@ -341,7 +341,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('11:00:00:01:01:01', aeObjectFromDb.lacp)
        
     def testCreateDeployStatus(self):
-        with self._dao.getReadSession() as session:
+        with self._dao.getReadWriteSession() as session:
             vrfObject = self.helper._createVrf(session)
             deviceObject = vrfObject.overlay_tenant.overlay_fabric.overlay_devices[0]
             self.helper._createDeployStatus(session, deviceObject, vrfObject)

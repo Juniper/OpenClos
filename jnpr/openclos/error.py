@@ -66,6 +66,7 @@ EC_CREATE_OVERLAY_L3PORT_FAILED             = 2014
 EC_CREATE_OVERLAY_L2PORT_FAILED             = 2015
 EC_CREATE_OVERLAY_AE_FAILED                 = 2016
 EC_PLATFORM_ERROR                           = 2017
+EC_CONFIGURATION_COMMIT_FAILED              = 2018
 
 dictErrorCode = {
     EC_OK                                       :   "Success",
@@ -115,6 +116,7 @@ dictErrorCode = {
     EC_CREATE_OVERLAY_L2PORT_FAILED             :   "Failed to create overlay L2 port: %s",
     EC_CREATE_OVERLAY_AE_FAILED                 :   "Failed to create overlay aggregated interface: %s",
     EC_PLATFORM_ERROR                           :   "Platform error: %s",
+    EC_CONFIGURATION_COMMIT_FAILED              :   "Failed to commit configuration: %s",
 }
 
 def getErrorMessage(errorCode):
