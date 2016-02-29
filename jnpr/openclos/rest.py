@@ -18,6 +18,7 @@ import importlib
 from bottle import error, request, response, PluginError, ServerAdapter, parse_auth
 import subprocess
 from threading import Thread, Event
+from urlparse import SplitResult
 
 from error import EC_PLATFORM_ERROR
 from exception import BaseError, isOpenClosException, InvalidConfiguration, PlatformError
@@ -39,12 +40,13 @@ def rest_server_signal_handler(signal, frame):
     logger.debug("received signal %d", signal)
     # REVISIT: The main thread hangs if we just call restServer.stop from the signal handler. 
     # We have to spawn a thread to call restServer.stop
+    Thread(target=restServerStop, args=()).start()
     sys.exit(0)
     
 def loggingPlugin(callback):
     def wrapper(*args, **kwargs):
         msg = '"{} {} {}"'.format(request.method, 
-                                  request.url,
+                                  request.path,
                                   request.environ.get('SERVER_PROTOCOL', ''))
         
         if logger.isEnabledFor(logging.DEBUG):
@@ -396,11 +398,18 @@ class RestServer():
         for prefix in prefixes:
             self.app.route(prefix, 'GET', self.getIndex)
     
+    def setScheme(self):
+        # REVISIT: this is a hack to set correct scheme in case of https
+        env = str(request.environ) # this line is necessary to populate environ['bottle.request.urlparts']
+        result = request.environ['bottle.request.urlparts']
+        request.environ['bottle.request.urlparts'] = SplitResult(self.protocol, result.netloc, result.path, result.query, result.fragment)
+        
     def initRest(self):
         self.app = bottle.app()
         self.app.install(loggingPlugin)
         self.app.install(self.basicAuthPlugin)
         self.app.install(self.openclosDbSessionPlugin)
+        self.app.add_hook('before_request', self.setScheme)
         logger.info('RestServer initRest() done')
 
     def installRoutes(self):
@@ -436,7 +445,7 @@ class RestServer():
         self.app.uninstall(loggingPlugin)
         self.app.uninstall(BasicAuthPlugin)
         self.app.uninstall(OpenclosDbSessionPlugin)
-
+        self.app.remove_hook('before_request', self.setScheme)
 
     def start(self):
         logger.info('REST server %s://%s:%d started', self.protocol, self.host, self.port)
