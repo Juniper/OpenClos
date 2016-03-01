@@ -1,11 +1,10 @@
 policy-options {
     policy-statement LEAF-IN {
-        replace:
+        {% if vni %}replace:
         term a{{vni}} {
             from community com{{vni}};
             then accept;
-        }
-        replace:
+        }{% else %}replace:
         term switch_options {
             from community switch_options_comm;
             then accept;
@@ -13,10 +12,9 @@ policy-options {
         replace:
         term reject {
             then reject;
-        }
+        }{% endif %}
     }
-    replace:
-    community com{{vni}} members target:{{vniRTarget}};
-    replace:
-    community switch_options_comm members target:{{esiRTarget}};
+    {% if vni %}replace:
+    community com{{vni}} members target:{{asn}}:{{vni}};{% else %}replace:
+    community switch_options_comm members target:{{esiRTarget}};{% endif %}
 }    

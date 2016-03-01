@@ -62,45 +62,65 @@ class TestOverlayHelper:
         return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
                     fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], devices)
 
-    def _createTenant(self, dbSession, offset="1"):
+    def _createTenant(self, dbSession, offset="1", fabricObject=None):
         tenantDict = {
             "name": "t" + offset,
             "description": "description for t" + offset
         }
-        fabricObject = self._createFabric(dbSession, offset)
+        if not fabricObject:
+            fabricObject = self._createFabric(dbSession, offset)
         return self.overlay.createTenant(dbSession, tenantDict['name'], tenantDict.get('description'), fabricObject)
         
-    def _createVrf(self, dbSession, offset="1"):
+    def _createVrf(self, dbSession, offset="1", tenantObject=None):
         vrfDict = {
             "name": "v" + offset,
             "description": "description for v" + offset,
             "routedVnid": 100,
             "loopbackAddress": "1.1.1." +offset
         }
-        tenantObject = self._createTenant(dbSession, offset)
+        if not tenantObject:
+            tenantObject = self._createTenant(dbSession, offset)
         return self.overlay.createVrf(dbSession, vrfDict['name'], vrfDict.get('description'), vrfDict.get('routedVnid'), vrfDict.get('loopbackAddress'), tenantObject)
         
-    def _createNetwork(self, dbSession):
+    def _createNetwork(self, dbSession, offset="1", vrfObject=None):
         networkDict = {
-            "name": "n1",
-            "description": "description for n1",
-            "vlanid": 1000,
-            "vnid": 100,
+            "name": "n" + offset,
+            "description": "description for n" + offset,
+            "vlanid": 100 + int(offset),
+            "vnid": 1000 + int(offset),
             "pureL3Int": False
         }
-        vrfObject = self._createVrf(dbSession)
+        if not vrfObject:
+            vrfObject = self._createVrf(dbSession, offset)
         return self.overlay.createNetwork(dbSession, networkDict['name'], networkDict.get('description'), vrfObject, 
                 networkDict.get('vlanid'), networkDict.get('vnid'), networkDict.get('pureL3Int'))
         
-    def _createSubnet(self, dbSession):
+    def _createSubnet(self, dbSession, offset="1", networkObject=None):
         subnetDict = {
-            "name": "s1",
-            "description": "description for s1",
-            "cidr": "1.2.3.4/24"
+            "name": "s" + offset,
+            "description": "description for s" + offset,
+            "cidr": offset+".2.3.4/24"
         }
-        networkObject = self._createNetwork(dbSession)
+        if not networkObject:
+            networkObject = self._createNetwork(dbSession, offset)
         return self.overlay.createSubnet(dbSession, subnetDict['name'], subnetDict.get('description'), networkObject, subnetDict['cidr'])
         
+    def _createSubnetOn2By3Fabric(self, dbSession):
+        fabric = self._createFabric2Spine3Leaf(dbSession)
+        tenant = self._createTenant(dbSession, fabricObject=fabric)
+        vrf = self._createVrf(dbSession, tenantObject=tenant)
+        network = self._createNetwork(dbSession, vrfObject=vrf)
+        return self._createSubnet(dbSession, networkObject=network)
+        
+    def _create2NetworkOn2By3Fabric(self, dbSession):
+        fabric = self._createFabric2Spine3Leaf(dbSession)
+        tenant = self._createTenant(dbSession, fabricObject=fabric)
+        vrf = self._createVrf(dbSession, tenantObject=tenant)
+        network1 = self._createNetwork(dbSession, offset="1", vrfObject=vrf)
+        network2 = self._createNetwork(dbSession, offset="2", vrfObject=vrf)
+        return [self._createSubnet(dbSession, offset="1", networkObject=network1),
+                self._createSubnet(dbSession, offset="2", networkObject=network2)]
+
     def _createL3port(self, dbSession):
         l3portDict = {
             "name": "l3port1",
@@ -384,9 +404,12 @@ class TestConfigEngine(unittest.TestCase):
             
             self.assertEqual(1, session.query(OverlayDeployStatus).count())
             config = session.query(OverlayDeployStatus).one().configlet
+            #print config
             self.assertIn("bgp", config)
             self.assertIn("group overlay", config)
             self.assertIn("cluster", config)
+            self.assertIn("routing-options {", config)
+            self.assertIn("router-id", config)
 
     def testConfigureFabric2Spine3Leaf(self):
         with self._dao.getReadWriteSession() as session:
@@ -396,16 +419,21 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(5, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
             spine1Config = deployments[0].configlet
+            print spine1Config
             self.assertIn("bgp", spine1Config)
             self.assertIn("group overlay", spine1Config)
             self.assertIn("cluster", spine1Config)
             self.assertEquals(4, spine1Config.count("neighbor"))
+            self.assertIn("switch-options", spine1Config)
+            self.assertIn("policy-options", spine1Config)
 
             leaf1Config = deployments[2].configlet
+            #print leaf1Config
             self.assertIn("bgp", leaf1Config)
             self.assertIn("group overlay", leaf1Config)
             self.assertNotIn("cluster", leaf1Config)
             self.assertEquals(2, leaf1Config.count("neighbor"))            
+            self.assertIn("policy-options", leaf1Config)
         
     def testGetNeighborList(self):
         self.assertEquals([], self.configEngine.getNeighborList("1.2.3.4", "spine", [], []))
@@ -434,9 +462,83 @@ class TestConfigEngine(unittest.TestCase):
             
             self.assertEqual(1, session.query(OverlayDeployStatus).count())
             config = session.query(OverlayDeployStatus).one().configlet
+            print "spine1:\n" + config
             self.assertIn("lo0 {", config)
             self.assertIn("routing-instances {", config)
             self.assertIn("instance-type vrf;", config)
+
+    def testConfigureSubnet(self):
+        with self._dao.getReadWriteSession() as session:
+            subnet = self.helper._createSubnetOn2By3Fabric(session)
+            self.configEngine.configureSubnet(session, subnet)
+            
+            self.assertEqual(2, session.query(OverlayDeployStatus).count())
+            deployments = session.query(OverlayDeployStatus).all()
+
+            config = deployments[0].configlet
+            print "spine1:\n" + config
+            self.assertIn("irb {", config)
+            self.assertIn("address 1.2.3.2/24 {", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1/24", config)
+            self.assertIn("route-distinguisher", config)
+            self.assertIn("vrf-target", config)
+            self.assertIn("encapsulation vxlan", config)
+            self.assertIn("policy-statement LEAF-IN", config)
+                        
+            config = deployments[1].configlet
+            print "spine2:\n" + config
+            self.assertIn("irb {", config)
+            self.assertIn("address 1.2.3.3/24 {", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1/24", config)
+            self.assertIn("route-distinguisher", config)
+            self.assertIn("vrf-target", config)
+            self.assertIn("encapsulation vxlan", config)
+            self.assertIn("policy-statement LEAF-IN", config)
                 
+    def testConfigure2Subnet(self):
+        with self._dao.getReadWriteSession() as session:
+            subnets = self.helper._create2NetworkOn2By3Fabric(session)
+            self.configEngine.configureSubnet(session, subnets[0])
+            self.configEngine.configureSubnet(session, subnets[1])
+            
+            self.assertEqual(4, session.query(OverlayDeployStatus).count())
+            deployments = session.query(OverlayDeployStatus).all()
+
+            config = deployments[0].configlet
+            print "spine1:\n" + config
+            self.assertIn("address 1.2.3.2/24 {", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1/24", config)
+            self.assertIn("route-distinguisher 1.1.1.1:1001", config)
+            self.assertIn("vrf-target target:65001:1001", config)
+            self.assertIn("vlan-id 101", config)
+            self.assertIn("vni 1001", config)
+                        
+            config = deployments[1].configlet
+            print "spine2:\n" + config
+            self.assertIn("address 1.2.3.3/24 {", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1/24", config)
+            self.assertIn("route-distinguisher 1.1.1.2:1001", config)
+            self.assertIn("vrf-target target:65001:1001", config)
+            self.assertIn("vlan-id 101", config)
+            self.assertIn("vni 1001", config)
+
+            config = deployments[2].configlet
+            print "spine1:\n" + config
+            self.assertIn("address 2.2.3.2/24 {", config)
+            self.assertIn("virtual-gateway-address 2.2.3.1/24", config)
+            self.assertIn("route-distinguisher 1.1.1.1:1001", config)
+            self.assertIn("vrf-target target:65001:1001", config)
+            self.assertIn("vlan-id 102", config)
+            self.assertIn("vni 1002", config)
+                        
+            config = deployments[3].configlet
+            print "spine2:\n" + config
+            self.assertIn("address 2.2.3.3/24 {", config)
+            self.assertIn("virtual-gateway-address 2.2.3.1/24", config)
+            self.assertIn("route-distinguisher 1.1.1.2:1001", config)
+            self.assertIn("vrf-target target:65001:1001", config)
+            self.assertIn("vlan-id 102", config)
+            self.assertIn("vni 1002", config)
+
 if __name__ == '__main__':
     unittest.main()
