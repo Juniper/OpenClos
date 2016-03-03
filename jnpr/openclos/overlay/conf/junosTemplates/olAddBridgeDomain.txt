@@ -1,6 +1,6 @@
 vlans {
     replace:
-    {{bdName}} {
+    bd{{vxlanId}} {
         vlan-id {{vlanId}};
         l3-interface irb.{{vlanId}};
         vxlan {

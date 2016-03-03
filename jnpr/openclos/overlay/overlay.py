@@ -17,12 +17,13 @@ from jnpr.openclos.templateLoader import TemplateLoader
 moduleName = 'overlay'
 loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
+esiRouteTarget = "9999:9999"
 
 class Overlay():
     def __init__(self, conf, dao):
         self._conf = conf
         self._dao = dao
-
+        self._configEngine = ConfigEngine(conf, dao)
     def createDevice(self, dbSession, name, description, role, address, routerId):
         '''
         Create a new Device
@@ -30,7 +31,7 @@ class Overlay():
         device = OverlayDevice(name, description, role, address, routerId)
 
         self._dao.createObjects(dbSession, [device])
-        logger.info("OverlayDevice[id='%s', name='%s']: created", device.id, device.name)
+        logger.info("OverlayDevice[id: '%s', name: '%s']: created", device.id, device.name)
         return device
 
     def createFabric(self, dbSession, name, description, overlayAsn, routeReflectorAddress, devices):
@@ -40,7 +41,8 @@ class Overlay():
         fabric = OverlayFabric(name, description, overlayAsn, routeReflectorAddress, devices)
 
         self._dao.createObjects(dbSession, [fabric])
-        logger.info("OverlayFabric[id='%s', name='%s']: created", fabric.id, fabric.name)
+        logger.info("OverlayFabric[id: '%s', name: '%s']: created", fabric.id, fabric.name)
+        self._configEngine.configureFabric(dbSession, fabric)
         return fabric
 
     def createTenant(self, dbSession, name, description, overlay_fabric):
@@ -50,7 +52,7 @@ class Overlay():
         tenant = OverlayTenant(name, description, overlay_fabric)
 
         self._dao.createObjects(dbSession, [tenant])
-        logger.info("OverlayTenant[id='%s', name='%s']: created", tenant.id, tenant.name)
+        logger.info("OverlayTenant[id: '%s', name: '%s']: created", tenant.id, tenant.name)
         return tenant
 
     def createVrf(self, dbSession, name, description, routedVnid, loopbackAddress, overlayTenant):
@@ -59,9 +61,10 @@ class Overlay():
         '''
         vrf = OverlayVrf(name, description, routedVnid, loopbackAddress, overlayTenant)
         vrf.loopbackCounter = self._dao.incrementAndGetCounter("OverlayVrf.loopbackCounter")
+
         self._dao.createObjects(dbSession, [vrf])
-        logger.info("OverlayVrf[id='%s', name='%s']: created", vrf.id, vrf.name)
-        #TODO: call ConfigEngine
+        logger.info("OverlayVrf[id: '%s', name: '%s']: created", vrf.id, vrf.name)
+        self._configEngine.configureVrf(dbSession, vrf)
         return vrf
 
     def createNetwork(self, dbSession, name, description, overlay_vrf, vlanid, vnid, pureL3Int):
@@ -71,7 +74,7 @@ class Overlay():
         network = OverlayNetwork(name, description, overlay_vrf, vlanid, vnid, pureL3Int)
 
         self._dao.createObjects(dbSession, [network])
-        logger.info("OverlayNetwork[id='%s', name='%s']: created", network.id, network.name)
+        logger.info("OverlayNetwork[id: '%s', name: '%s']: created", network.id, network.name)
         return network
 
     def createSubnet(self, dbSession, name, description, overlay_network, cidr):
@@ -81,7 +84,8 @@ class Overlay():
         subnet = OverlaySubnet(name, description, overlay_network, cidr)
 
         self._dao.createObjects(dbSession, [subnet])
-        logger.info("OverlaySubnet[id='%s', name='%s']: created", subnet.id, subnet.name)
+        logger.info("OverlaySubnet[id: '%s', name: '%s']: created", subnet.id, subnet.name)
+        self._configEngine.configureSubnet(dbSession, subnet)
         return subnet
 
     def createL3port(self, dbSession, name, description, overlay_subnet):
@@ -91,7 +95,7 @@ class Overlay():
         l3port = OverlayL3port(name, description, overlay_subnet)
 
         self._dao.createObjects(dbSession, [l3port])
-        logger.info("OverlayL3port[id='%s', name='%s']: created", l3port.id, l3port.name)
+        logger.info("OverlayL3port[id: '%s', name: '%s']: created", l3port.id, l3port.name)
         return l3port
 
     def createL2port(self, dbSession, name, description, interface, overlay_network, overlay_device, overlay_ae=None):
@@ -101,7 +105,7 @@ class Overlay():
         l2port = OverlayL2port(name, description, interface, overlay_network, overlay_device, overlay_ae)
 
         self._dao.createObjects(dbSession, [l2port])
-        logger.info("OverlayL2port[id='%s', name='%s']: created", l2port.id, l2port.name)
+        logger.info("OverlayL2port[id: '%s', name: '%s']: created", l2port.id, l2port.name)
         return l2port
 
     def createAe(self, dbSession, name, description, esi, lacp):
@@ -111,7 +115,7 @@ class Overlay():
         ae = OverlayAe(name, description, esi, lacp)
 
         self._dao.createObjects(dbSession, [ae])
-        logger.info("OverlayAe[id='%s', name='%s']: created", ae.id, ae.name)
+        logger.info("OverlayAe[id: '%s', name: '%s']: created", ae.id, ae.name)
         return ae
 
 class ConfigEngine():
@@ -138,19 +142,24 @@ class ConfigEngine():
                              device.name, device.address, device.role)
         
         template = self._templateLoader.getTemplate('olAddProtocolBgp.txt')
-        deployments = []
+        deployments = []        
         for device in fabric.overlay_devices:
             if device.role == 'spine':
                 routeReflector = fabric.routeReflectorAddress
             elif device.role == 'leaf':
                 routeReflector = None
-                
-            config = template.render(routeReflector=routeReflector, routerId=device.routerId, asn=fabric.overlayAS, 
+
+            config = self.configureRoutingOptions(device)
+            config += template.render(routeReflector=routeReflector, routerId=device.routerId, asn=fabric.overlayAS, 
                             neighbors=self.getNeighborList(device.address, device.role, spineIps, leafIps))
+            config += self.configureSwitchOptions(device.routerId)
+            config += self.configurePolicyOptions()
+            
             deployments.append(OverlayDeployStatus(config, fabric.getUrl(), "create", device))    
-            # TODO: add to job queue
+
         self._dao.createObjects(dbSession, deployments)
-        logger.info("configureFabric [id='%s', name='%s']: configured", fabric.id, fabric.name)
+        # TODO: add all deployments to job queue
+        logger.info("configureFabric [id: '%s', name: '%s']: configured", fabric.id, fabric.name)
         
     def getNeighborList(self, ip, role, spines, leaves):
         neighbors = []
@@ -161,18 +170,40 @@ class ConfigEngine():
             neighbors += spines
         return neighbors
     
+    def configureRoutingOptions(self, device):
+        if device.role == 'spine':
+            template = self._templateLoader.getTemplate('olAddRoutingOptions.txt')
+            return template.render(routerId=device.routerId)
+        else:
+            return ""
+    def configureSwitchOptions(self, routerId):
+        template = self._templateLoader.getTemplate('olAddSwitchOptions.txt')
+        return template.render(routerId=routerId, esiRouteTarget=esiRouteTarget)
+
+    def configurePolicyOptions(self, vni=None, asn=None):
+        template = self._templateLoader.getTemplate('olAddPolicyOptions.txt')
+        return template.render(vni=vni, esiRTarget=esiRouteTarget, asn=asn)
+
     def configureVrf(self, dbSession, vrf):
         deployments = []
         loopbackIps = self.getLoopbackIps(vrf.loopbackAddress)
-        for spine, loopback in itertools.izip(vrf.getSpines(), loopbackIps):
+        spines = vrf.getSpines()
+        
+        if len(loopbackIps) < len(spines):
+            logger.error("configureVrf [id: '%s', name: '%s']: loopback IPs count: %d less than spine count: %d", 
+                         vrf.id, vrf.name, len(loopbackIps), len(spines))
+            
+        template = self._templateLoader.getTemplate('olAddVrf.txt')
+        for spine, loopback in itertools.izip(spines, loopbackIps):
             config = self.configureLoopback(loopback, vrf.loopbackCounter)
             
-            template = self._templateLoader.getTemplate('olAddVrf.txt')
-            config += template.render(vrfName="VRF_" + vrf.overlay_tenant.name, vrfLoopbackName="lo0." + str(vrf.loopbackCounter), 
+            config += template.render(vrfName=vrf.overlay_tenant.name, vrfLoopbackName="lo0." + str(vrf.loopbackCounter), 
                 routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS)
-            deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "create", spine))    
-            # TODO: add to job queue
+            deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "create", spine, vrf))    
+
         self._dao.createObjects(dbSession, deployments)
+        # TODO: add all deployments to job queue
+        logger.info("configureVrf [id: '%s', name: '%s']: configured", vrf.id, vrf.name)
 
     def getLoopbackIps(self, loopbackBlock):
         '''
@@ -191,6 +222,77 @@ class ConfigEngine():
         template = self._templateLoader.getTemplate('olAddLoopback.txt')
         return template.render(loopbackUnit=loopbackUnit, loopbackAddress=loopbackIp)
 
+
+    def configureNetwork(self, dbSession):
+        '''
+        IRB needs address, so do not configure network till subnet is added
+        '''
+        pass
+    
+    def configureSubnet(self, dbSession, subnet):
+        '''
+        Create IRB, BD, update VRF, update evpn, update policy
+        '''
+        deployments = []        
+        network = subnet.overlay_network
+        vrf = network.overlay_vrf
+        spines = vrf.getSpines()
+        firstNetwork = vrf.overlay_networks[0]
+        asn = vrf.overlay_tenant.overlay_fabric.overlayAS
+
+        irbIps = self.getSubnetIps(subnet.cidr)
+        irbVirtualGateway = irbIps.pop(0)
+        
+        if len(irbIps) < len(spines):
+            logger.error("configureSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
+                         vrf.id, network.id, len(irbIps), len(spines))
+
+        irbTemplate = self._templateLoader.getTemplate("olAddIrb.txt")
+        vrfTemplate = self._templateLoader.getTemplate("olAddVrf.txt")
+        bdTemplate = self._templateLoader.getTemplate("olAddBridgeDomain.txt")
+        
+        for spine, irbIp in itertools.izip(spines, irbIps):            
+            
+            config = irbTemplate.render(firstIpFromSubnet=irbVirtualGateway, secondOrThirdIpFromSubnet=irbIp, 
+                vlanId=network.vlanid)
+            
+            config += vrfTemplate.render(vrfName=vrf.overlay_tenant.name, irbName="irb." + str(network.vlanid),
+                routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS, vni0=firstNetwork.vnid)
+            
+            config += self.configureEvpn(network.vnid, asn)
+            config += self.configurePolicyOptions(network.vnid, asn)
+            config += bdTemplate.render(vlanId=network.vlanid, vxlanId=network.vnid)
+            
+            deployments.append(OverlayDeployStatus(config, network.getUrl(), "create", spine, vrf))    
+
+        for leaf in vrf.getLeafs():            
+            
+            config = self.configureEvpn(network.vnid, asn)
+            config += self.configurePolicyOptions(network.vnid, asn)
+            config += bdTemplate.render(vlanId=network.vlanid, vxlanId=network.vnid)
+
+            deployments.append(OverlayDeployStatus(config, network.getUrl(), "create", leaf, vrf))    
+
+        self._dao.createObjects(dbSession, deployments)
+        # TODO: add all deployments to job queue
+        logger.info("configureSubnet [network id: '%s', network name: '%s']: configured", network.id, network.name)
+
+        
+    def configureEvpn(self, vni=None, asn=None):
+        template = self._templateLoader.getTemplate('olAddProtocolEvpn.txt')
+        return template.render(vni=vni, asn=asn)
+        
+            
+    def getSubnetIps(self, subnetBlock):
+        '''
+        returns all usable IPs in CIRD format (1.2.3.4/24) excluding network and broadcast
+        '''
+        cidr = subnetBlock.split("/")[1]
+        ips = [str(ip) + "/" + cidr for ip in IPNetwork(subnetBlock).iter_hosts()]
+        return ips        
+        
+        
+        
 # def main():        
     # conf = {}
     # conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')

@@ -202,6 +202,9 @@ class OverlayNetwork(ManagedElement, Base):
         self.vnid = vnid
         self.pureL3Int = pureL3Int
         
+    def getUrl(self):
+        return "/networks/" + self.id
+    
     def update(self, name, description, vlanid, vnid, pureL3Int):
         '''
         Updates network object.
