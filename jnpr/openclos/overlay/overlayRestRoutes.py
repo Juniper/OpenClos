@@ -36,6 +36,10 @@ class OverlayRestRoutes():
         self.uriPrefix = None
         self._overlay = Overlay(self._conf, self.__dao)
 
+        # commit engine
+        self.commitQueue = OverlayCommitQueue.getInstance()
+        self.commitQueue.start()
+        
         # install index links
         context['restServer'].addIndexLink(self.baseUrl + '/devices')
         context['restServer'].addIndexLink(self.baseUrl + '/fabrics')
@@ -99,12 +103,6 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/l2ports/<l2portId>', 'DELETE', self.deleteL2port)
         self.app.route(self.baseUrl + '/aes/<aeId>', 'DELETE', self.deleteAe)
 
-        # commit engine
-        maxWorkers = context['pluginDict'].get('threadCount')
-        dispatchInterval = context['pluginDict'].get('dispatchInterval')
-        self.commitQueue = OverlayCommitQueue(self._overlay, maxWorkers, dispatchInterval)
-        self.commitQueue.start()
-        
     def uninstall(self):
         self.commitQueue.stop()
     
@@ -172,8 +170,10 @@ class OverlayRestRoutes():
             role = deviceDict['role']
             address = deviceDict['address']
             routerId = deviceDict['routerId']
+            username = deviceDict.get('username')
+            password = deviceDict.get('password')
             
-            deviceObject = self._overlay.createDevice(dbSession, name, description, role, address, routerId)
+            deviceObject = self._overlay.createDevice(dbSession, name, description, role, address, routerId, username, password)
             device = {'device': self._populateDevice(deviceObject)}
             
         except KeyError as ex:
@@ -202,9 +202,11 @@ class OverlayRestRoutes():
             role = deviceDict['role']
             address = deviceDict['address']
             routerId = deviceDict['routerId']
+            username = deviceDict.get('username')
+            password = deviceDict.get('password')
             
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
-            deviceObject.update(name, description, role, address, routerId)
+            deviceObject.update(name, description, role, address, routerId, username, password)
             logger.info("OverlayDevice[id='%s', name='%s']: modified", deviceObject.id, deviceObject.name)
             
             device = {'device': self._populateDevice(deviceObject)}

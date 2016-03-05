@@ -8,7 +8,7 @@ import threading
 
 class SingletonBase(object):
     __singletonInstance = None
-    __singletonLock = threading.Lock() 
+    __singletonLock = threading.RLock() 
     
     @classmethod
     def getInstance(clazz):

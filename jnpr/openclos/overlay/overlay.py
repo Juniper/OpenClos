@@ -24,11 +24,11 @@ class Overlay():
         self._conf = conf
         self._dao = dao
         self._configEngine = ConfigEngine(conf, dao)
-    def createDevice(self, dbSession, name, description, role, address, routerId):
+    def createDevice(self, dbSession, name, description, role, address, routerId, username=None, password=None):
         '''
         Create a new Device
         '''
-        device = OverlayDevice(name, description, role, address, routerId)
+        device = OverlayDevice(name, description, role, address, routerId, username, password)
 
         self._dao.createObjects(dbSession, [device])
         logger.info("OverlayDevice[id: '%s', name: '%s']: created", device.id, device.name)
@@ -302,7 +302,7 @@ class ConfigEngine():
 
     # with dao.getReadWriteSession() as session:
         # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '1.2.3.4', '1.1.1.1')
-        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '1.2.3.5', '1.1.1.2')
+        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '1.2.3.5', '1.1.1.2', 'test', 'foobar')
         # d1_id = d1.id
         # d2_id = d2.id
         # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2])
@@ -354,6 +354,11 @@ class ConfigEngine():
         # dao.createObjects(session, statusList)
     
     # with dao.getReadSession() as session:
+        # devices = session.query(OverlayDevice).all()
+        # for device in devices:
+            # print 'device %s: username = %s, encrypted password = %s, cleartext password = %s, hash password = %s' % (device.id, device.username, device.encryptedPassword, device.getCleartextPassword(), device.getHashPassword())
+            
+    # with dao.getReadSession() as session:
         # v1 = dao.getObjectById(session, OverlayVrf, v1_id)
         # print 'v1.deploy_status = %s' % (v1.deploy_status)
         # v2 = dao.getObjectById(session, OverlayVrf, v2_id)
@@ -364,12 +369,6 @@ class ConfigEngine():
         # print 'd2.deploy_status = %s' % (d2.deploy_status)
     # raw_input("1 Press Enter to continue...")
     # with dao.getReadWriteSession() as session:
-        # # status_db = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.overlay_device_id == d1_id).all()
-        # # for s in status_db:
-            # # s.update('progress', 'd1 in progress', 'POST')
-        # # status_db = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.overlay_device_id == d2_id).all()
-        # # for s in status_db:
-            # # s.update('failure', 'd2 failed', 'POST')
         # object_url = '/openclos/v1/overlay/l2ports/' + l2port2_id
         # status_db = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == object_url).all()
         # for s in status_db:
@@ -387,15 +386,6 @@ class ConfigEngine():
         # for s, d in status_db:
             # print 'status %s: config "%s" in device %s' % (s.status, s.configlet, d.name)
     # raw_input("3 Press Enter to continue...")
-    # # with dao.getReadWriteSession() as session:
-        # # dao.deleteObject(session, d1)
-    # # raw_input("4 Press Enter to continue...")
-    # # with dao.getReadSession() as session:
-        # # v1 = dao.getObjectById(session, OverlayVrf, v1_id)
-        # # print 'v1.deploy_status = %s' % (v1.deploy_status)
-        # # v2 = dao.getObjectById(session, OverlayVrf, v2_id)
-        # # print 'v2.deploy_status = %s' % (v2.deploy_status)
-    # # raw_input("5 Press Enter to continue...")
         
 # if __name__ == '__main__':
     # main()

@@ -14,6 +14,10 @@ if OpenClosProperty().isSqliteUsed():
 else:
     from sqlalchemy.dialects.mysql import MEDIUMBLOB as BLOB
 from jnpr.openclos.model import ManagedElement, Base
+from jnpr.openclos.crypt import Cryptic
+
+DEFAULT_USERNAME = 'root'
+DEFAULT_ENCRYPTED_PASSWORD = '$9$CIBltuBMWx-dsBI7-VYZG369Cu1hSe'
 
 class OverlayDevice(ManagedElement, Base):
     __tablename__ = 'overlayDevice'
@@ -23,12 +27,15 @@ class OverlayDevice(ManagedElement, Base):
     role = Column(Enum('spine', 'leaf'))
     address = Column(String(60))
     routerId = Column(String(60))
+    username = Column(String(100), default='root')
+    encryptedPassword = Column(String(100)) # 2-way encrypted
+    cryptic = Cryptic()
     overlay_fabrics = relationship(
         'OverlayFabric',
         secondary='overlayFabricOverlayDeviceLink'
     )
 
-    def __init__(self, name, description, role, address, routerId):
+    def __init__(self, name, description, role, address, routerId, username=None, password=None):
         '''
         Creates device object.
         '''
@@ -38,8 +45,16 @@ class OverlayDevice(ManagedElement, Base):
         self.role = role
         self.address = address
         self.routerId = routerId
+        if username is not None:
+            self.username = username
+        else:
+            self.username = DEFAULT_USERNAME
+        if password is not None and len(password) > 0:
+            self.encryptedPassword = self.cryptic.encrypt(password)
+        else:
+            self.encryptedPassword = DEFAULT_ENCRYPTED_PASSWORD
         
-    def update(self, name, description, role, address, routerId):
+    def update(self, name, description, role, address, routerId, username=None, password=None):
         '''
         Updates device object.
         '''
@@ -48,7 +63,30 @@ class OverlayDevice(ManagedElement, Base):
         self.role = role
         self.address = address
         self.routerId = routerId
+        if username is not None:
+            self.username = username
+        if password is not None and len(password) > 0:
+            self.encryptedPassword = self.cryptic.encrypt(password)
     
+    def getCleartextPassword(self):
+        '''
+        Return decrypted password
+        '''
+        if self.encryptedPassword is not None and len(self.encryptedPassword) > 0:
+            return self.cryptic.decrypt(self.encryptedPassword)
+        else:
+            return None
+            
+    def getHashPassword(self):
+        '''
+        Return hashed password
+        '''
+        cleartext = self.getCleartextPassword()
+        if cleartext is not None:
+            return self.cryptic.hashify(cleartext)
+        else:
+            return None
+
 class OverlayFabric(ManagedElement, Base):
     __tablename__ = 'overlayFabric'
     id = Column(String(60), primary_key=True)

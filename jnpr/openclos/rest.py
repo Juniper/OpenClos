@@ -26,6 +26,7 @@ from jnpr.openclos.dao import Dao
 from loader import OpenClosProperty, loadLoggingConfig
 import underlayRestRoutes
 from crypt import Cryptic
+from deviceConnector import CachedConnectionFactory
 
 moduleName = 'rest'
 loadLoggingConfig(appName=moduleName)
@@ -470,6 +471,9 @@ class RestServer():
             logger.error('REST server aborted: unknown protocol %s', self.protocol)
 
     def stop(self):
+        # shutdown all live connections
+        CachedConnectionFactory.getInstance()._stop()
+        
         self._reset()
         
         # iterate 'plugin' section of openclos.yaml and uninstall on all plugins
@@ -486,48 +490,34 @@ class RestServer():
             self.srv.stop()
         
         logger.info('REST server %s://%s:%d stopped', self.protocol, self.host, self.port)
+
+    @staticmethod
+    def _populateErrorResponse(error):
+        bottle.response.headers['Content-Type'] = 'application/json'
+        if error.exception is not None:
+            if isOpenClosException(error.exception):
+                return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
+            elif issubclass(error.exception.__class__, sqlalchemy.exc.SQLAlchemyError):
+                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception.message)})
+            else:
+                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception)})
+        else:
+            return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error)})
     
     @staticmethod
     @error(400)
     def error400(error):
-        bottle.response.headers['Content-Type'] = 'application/json'
-        if error.exception is not None:
-            if isOpenClosException(error.exception):
-                return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
-            elif issubclass(error.exception.__class__, sqlalchemy.exc.SQLAlchemyError):
-                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception.message)})
-            else:
-                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception)})
-        else:
-            return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error)})
+        return RestServer._populateErrorResponse(error)
         
     @staticmethod
     @error(404)
     def error404(error):
-        bottle.response.headers['Content-Type'] = 'application/json'
-        if error.exception is not None:
-            if isOpenClosException(error.exception):
-                return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
-            elif issubclass(error.exception.__class__, sqlalchemy.exc.SQLAlchemyError):
-                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception.message)})
-            else:
-                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception)})
-        else:
-            return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error)})
+        return RestServer._populateErrorResponse(error)
         
     @staticmethod
     @error(500)
     def error500(error):
-        bottle.response.headers['Content-Type'] = 'application/json'
-        if error.exception is not None:
-            if isOpenClosException(error.exception):
-                return json.dumps({'errorCode': error.exception.code, 'errorMessage' : error.exception.message})
-            elif issubclass(error.exception.__class__, sqlalchemy.exc.SQLAlchemyError):
-                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception.message)})
-            else:
-                return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error.exception)})
-        else:
-            return json.dumps({'errorCode': EC_PLATFORM_ERROR, 'errorMessage' : str(error)})
+        return RestServer._populateErrorResponse(error)
         
 def main():
     signal.signal(signal.SIGINT, rest_server_signal_handler)

@@ -16,15 +16,17 @@ from jnpr.junos.factory import loadyaml
 from jnpr.junos.exception import ConnectError, RpcError, CommitError, LockError
 from jnpr.junos.utils.config import Config
 
-from loader import loadLoggingConfig
+from loader import loadLoggingConfig, OpenClosProperty
 from exception import DeviceConnectFailed, DeviceRpcFailed
 from common import SingletonBase
 
 moduleName = 'deviceConnector'
 loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
-connectionKeepAliveTimeoutSec = 90
-connectionCleanerThreadWaitTimeSec = 60
+
+DEFAULT_KEEP_ALIVE_TIMEOUT = 90
+DEFAULT_CLEANER_THREAD_WAIT_TIME = 60
+DEFAULT_AUTO_PROBE = 15
 
 class AbstractConnection(object):
     def __init__(self, ip):
@@ -62,7 +64,21 @@ class CachedConnectionFactory(SingletonBase):
         self.__cache = {}
         self.__cacheLock = RLock()
         self.__event = Event()
-        self._waitTime = connectionCleanerThreadWaitTimeSec
+
+        # find configurable parameters
+        self._waitTime = DEFAULT_CLEANER_THREAD_WAIT_TIME
+        self._keepAliveTimeout = DEFAULT_KEEP_ALIVE_TIMEOUT
+        # iterate relevant section of openclos.yaml
+        conf = OpenClosProperty().getProperties()
+        deviceConnectorDict = conf.get('deviceConnector')
+        if deviceConnectorDict is not None:
+            CachedConnectionFactoryDict = deviceConnectorDict.get('CachedConnectionFactory')
+            if CachedConnectionFactoryDict is not None:
+                if 'keepAliveTimeout' in CachedConnectionFactoryDict:
+                    self._keepAliveTimeout = CachedConnectionFactoryDict['keepAliveTimeout']
+                if 'cleanerThreadWaitTime' in CachedConnectionFactoryDict:
+                    self._waitTime = CachedConnectionFactoryDict['cleanerThreadWaitTime']
+
         self._thread = Thread(target=self.closeOldConnections)
         self._thread.start()
 
@@ -99,27 +115,42 @@ class CachedConnectionFactory(SingletonBase):
                     self.__cache[ip].append((connection, time.time()))
         
     def closeOldConnections(self):
-        while not self.__event.wait(self._waitTime):
-            try:
-                with self.__cacheLock:
-                    for ip, connections in self.__cache.items():
-                        liveConnections = []
-                        for connection in connections:
-                            if (time.time() - connection[1] > connectionKeepAliveTimeoutSec):
-                                connection[0].close()
-                            else:
-                                liveConnections.append(connection)
-                        if liveConnections:
-                            self.__cache[ip] = liveConnections
-                        else:
-                            del self.__cache[ip]
-            except Exception as exc:
-                logger.debug('closeOldConnections failed, %s', exc)
-            finally:
-                pass
+        try:
+            while True:
+                self.__event.wait(self._waitTime)
+                if not self.__event.is_set():
+                    try:
+                        with self.__cacheLock:
+                            for ip, connections in self.__cache.items():
+                                liveConnections = []
+                                for connection in connections:
+                                    if (time.time() - connection[1] > self._keepAliveTimeout):
+                                        connection[0].close()
+                                    else:
+                                        liveConnections.append(connection)
+                                if liveConnections:
+                                    self.__cache[ip] = liveConnections
+                                else:
+                                    del self.__cache[ip]
+                    except Exception as exc:
+                        logger.debug('closeOldConnections failed, %s', exc)
+                    finally:
+                        pass
+                else:
+                    logger.debug('closeOldConnections exited')
+                    return
+        except Exception:
+            # not safe to log anything at this point
+            return
 
     def _stop(self):
+        if self.__event.is_set():
+            # in the middle of shutting down
+            return
+            
         self.__event.set()
+        # Note we don't join the self._thread because there might be delays when closing all connections.
+        #self._thread.join()
         try:
             with self.__cacheLock:
                 for ip, connections in self.__cache.items():
@@ -139,6 +170,17 @@ class NetconfConnection(AbstractConnection):
         self._username = kwargs.pop("username", None)
         self._password = kwargs.pop("password", None)
         
+        # find configurable parameters
+        self._autoProbe = DEFAULT_AUTO_PROBE
+        conf = OpenClosProperty().getProperties()
+        # iterate relevant section of openclos.yaml
+        deviceConnectorDict = conf.get('deviceConnector')
+        if deviceConnectorDict is not None:
+            NetconfConnectionDict = deviceConnectorDict.get('NetconfConnection')
+            if NetconfConnectionDict is not None:
+                if 'autoProbe' in NetconfConnectionDict:
+                    self._autoProbe = NetconfConnectionDict['autoProbe']
+        
         if not self._username :
             raise DeviceConnectFailed('%s username is None' % (self._debugContext))
         if not self._password:
@@ -148,6 +190,7 @@ class NetconfConnection(AbstractConnection):
         self._deviceConnection = None
         
         try:
+            DeviceConnection.auto_probe = self._autoProbe
             deviceConnection = DeviceConnection(host=self._ip, user=self._username, password=self._password, port=22, gather_facts=False)
             deviceConnection.open()
             logger.info('%s connected', self._debugContext)

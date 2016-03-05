@@ -16,6 +16,7 @@ from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, Ove
 from jnpr.openclos.loader import loadLoggingConfig
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.tests.unit.overlay.test_overlay import TestOverlayHelper
+from jnpr.openclos.deviceConnector import CachedConnectionFactory
 
 # Note: Please don't use MemoryDao. Use following TempFileDao to test threadpoolexecutor
 # sqlite in-memory db does not support scoped_session well. Every connection is a new one:
@@ -32,53 +33,49 @@ class TestOverlayCommitQueue(unittest.TestCase):
     def setUp(self):
         if os.path.isfile('/tmp/sqllite3.db'):
             os.remove('/tmp/sqllite3.db')
-        self._conf = {}
-        self._conf['plugin'] = [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]
+        from jnpr.openclos import deviceConnector
+        deviceConnector.DEFAULT_AUTO_PROBE = 1
         self._dao = TempFileDao.getInstance()
-        self._overlay = Overlay(self._conf, self._dao)
-        self.helper = TestOverlayHelper(self._conf, self._dao)
-    
+        self.helper = TestOverlayHelper(None, self._dao)
+        self.commitQueue = OverlayCommitQueue.getInstance()
+        self.commitQueue.dao = self._dao
+        self.commitQueue.dispatchInterval = 1
+        
     def tearDown(self):
+        # shutdown all live connections
+        CachedConnectionFactory.getInstance()._stop()
         ''' Deletes 'out' folder under test dir'''
         if os.path.isfile('/tmp/sqllite3.db'):
             os.remove('/tmp/sqllite3.db')
         self.helper = None
-        self._overlay = None
         TempFileDao._destroy()
+        self.commitQueue = None
     
     def testAddJob(self):
-        commitQueue = OverlayCommitQueue(self._overlay, 10, 1)
-        with self._dao.getReadWriteSession() as session:
-            device = self.helper._createDevice(session)
-            vrf = self.helper._createVrf(session)
-            status = self.helper._createDeployStatus(session, device, vrf)
-            job = commitQueue.addJob(status)
-            deviceQueues = commitQueue._getDeviceQueues()
-            self.assertEqual(status.id, job.id)
-            self.assertEqual(job, deviceQueues[device.id].get_nowait())
-            
-    def testRunJobs(self):
-        commitQueue = OverlayCommitQueue(self._overlay, 10, 1)
-        
-        with self._dao.getReadWriteSession() as session:
+        with self.commitQueue.dao.getReadWriteSession() as session:
             vrf = self.helper._createVrf(session)
             device = session.query(OverlayDevice).one()
             status = self.helper._createDeployStatus(session, device, vrf)
-            job = commitQueue.addJob(status)
+            job = self.commitQueue.addJob(status)
+            deviceQueues = self.commitQueue._getDeviceQueues()
+            self.assertEqual(status.id, job.id)
+            self.assertEqual(job, deviceQueues[job.queueId].get_nowait())
+            
+    def testRunJobs(self):
+        self.commitQueue.start()
         
-        commitQueue.runJobs()
-        
+        with self.commitQueue.dao.getReadWriteSession() as session:
+            vrf = self.helper._createVrf(session)
+            device = session.query(OverlayDevice).one()
+            status = self.helper._createDeployStatus(session, device, vrf)
+            job = self.commitQueue.addJob(status)
         import time
         time.sleep(5)
+        self.commitQueue.stop()
         
-        deviceQueues = commitQueue._getDeviceQueues()
+        deviceQueues = self.commitQueue._getDeviceQueues()
         self.assertEqual(0, len(deviceQueues))
-            
-    def testStartStop(self):
-        commitQueue = OverlayCommitQueue(self._overlay, 10, 1)
-        commitQueue.start()
-        commitQueue.stop()
-        self.assertFalse(commitQueue.thread.isAlive())
+        self.assertFalse(self.commitQueue.thread.isAlive())
         
 if __name__ == '__main__':
     unittest.main()

@@ -18,6 +18,7 @@ import concurrent.futures
 from devicePlugin import TwoStageConfigurator 
 from loader import OpenClosProperty, loadLoggingConfig
 from exception import TrapDaemonError
+from deviceConnector import CachedConnectionFactory
 
 moduleName = 'trapd'
 loadLoggingConfig(appName=moduleName)
@@ -135,7 +136,15 @@ class TrapReceiver():
         logger.info("Trap receiver started on %s:%d", self.target, self.port)
 
     def stop(self):
+        if self.stopEvent.is_set():
+            # in the middle of shutting down
+            return
+        
         logger.info("Stopping trap receiver...")
+
+        # shutdown all live connections
+        CachedConnectionFactory.getInstance()._stop()
+        
         self.stopEvent.set()
         self.executor.shutdown()
         self.transportDispatcher.jobFinished(1)  
