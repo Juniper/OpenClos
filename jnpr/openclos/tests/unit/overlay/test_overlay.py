@@ -184,7 +184,7 @@ class TestOverlay(unittest.TestCase):
     def testUpdateDevice(self):        
         with self._dao.getReadWriteSession() as session:        
             deviceObject = self.helper._createDevice(session)
-            deviceObject.update('d2', 'description for d2', 'leaf', '1.2.3.5', '1.1.1.2')
+            deviceObject.update('d2', 'description for d2', 'leaf', '1.2.3.5', '1.1.1.2', 'test', 'foobar')
             self._dao.updateObjects(session, [deviceObject])
             
         with self._dao.getReadSession() as session:
@@ -195,6 +195,8 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('leaf', deviceObjectFromDb.role)
             self.assertEqual('1.2.3.5', deviceObjectFromDb.address)
             self.assertEqual('1.1.1.2', deviceObjectFromDb.routerId)
+            self.assertEqual('test', deviceObjectFromDb.username)
+            self.assertEqual('foobar', deviceObjectFromDb.getCleartextPassword())
             
     def testCreateFabric(self):
         with self._dao.getReadWriteSession() as session:

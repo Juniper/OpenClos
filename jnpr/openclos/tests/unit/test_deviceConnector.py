@@ -68,8 +68,8 @@ class TestCachedConnectionFactory(unittest.TestCase):
         flexmock(Device).new_instances(self.mockDevice)
         
         from jnpr.openclos import deviceConnector
-        deviceConnector.connectionCleanerThreadWaitTimeSec = 4
-        deviceConnector.connectionKeepAliveTimeoutSec = 2
+        deviceConnector.DEFAULT_KEEP_ALIVE_TIMEOUT = 2
+        deviceConnector.DEFAULT_CLEANER_THREAD_WAIT_TIME = 4
         print 'setup'
 
     def tearDown(self):

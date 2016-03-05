@@ -5,6 +5,7 @@ Created on Feb 15, 2016
 '''
 
 import os
+import traceback
 import uuid
 import logging
 from threading import Thread, Event, RLock
@@ -14,15 +15,16 @@ import Queue
 from sqlalchemy.orm import exc
 import time
 
-from jnpr.openclos.overlay.overlay import Overlay
 from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.loader import defaultPropertyLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
 from jnpr.openclos.common import SingletonBase
-from jnpr.openclos.exception import ConfigurationCommitFailed
+from jnpr.openclos.exception import ConfigurationCommitFailed, DeviceRpcFailed, DeviceConnectFailed
+from jnpr.openclos.deviceConnector import CachedConnectionFactory, NetconfConnection
 
 DEFAULT_MAX_THREADS = 10
 DEFAULT_DISPATCH_INTERVAL = 10
+DEFAULT_DAO_CLASS = Dao
 
 moduleName = 'overlayCommit'
 loadLoggingConfig(appName=moduleName)
@@ -30,62 +32,111 @@ logger = logging.getLogger(moduleName)
 
 class OverlayCommitJob():
     def __init__(self, parent, deployStatusObject):
+        # Note we only hold on to the data from the deployStatusObject (deviceId, configlet, etc.). 
+        # We are not holding reference to the deployStatusObject itself as it can become invalid when db session is out of scope
         self.parent = parent
         self.id = deployStatusObject.id
-        self.deviceId = deployStatusObject.overlay_device_id
+        self.deviceId = deployStatusObject.overlay_device.id
+        self.deviceIp = deployStatusObject.overlay_device.address
+        self.deviceUser = deployStatusObject.overlay_device.username
+        self.devicePass = deployStatusObject.overlay_device.getCleartextPassword()
         self.configlet = deployStatusObject.configlet
         self.operation = deployStatusObject.operation
+        self.queueId = '%s:%s' % (self.deviceIp, self.deviceId)
 
     def commit(self):
         try:
             # Note we don't want to hold the caller's session for too long since this function is potentially lengthy
             # that is why we don't ask caller to pass a dbSession to us. Instead we get the session inside this method
             # only long enough to update the status value
-            logger.info("Job %s: starting commit on device %s", self.id, self.deviceId)
+            logger.info("Job %s: starting commit on device [%s]", self.id, self.queueId)
 
             # first update the status to 'progress'
-            with self.parent.overlay._dao.getReadWriteSession() as session:
-                statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).one()
-                statusObject.update('progress', 'commit in progress', self.operation)
-
-            ######################################################
-            #
-            # TODO: do the actual commit
-            #
-            ######################################################
-            result = 'success' # or 'failure'
-            reason = ''
-            time.sleep(3)
-            
-            # upon succeess, remove device id from cache
-            with self.parent.overlay._dao.getReadWriteSession() as session:
-                statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).one()
-                statusObject.update(result, reason, self.operation)
+            try:
+                with self.parent.dao.getReadWriteSession() as session:
+                    statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).one()
+                    statusObject.update('progress', 'commit in progress', self.operation)
+            except Exception as exc:
+                logger.error("%s", exc)
+                #logger.error('StackTrace: %s', traceback.format_exc())
                 
-            logger.info("Job %s: done with device %s", self.id, self.deviceId)
-            self.parent.markDeviceIdle(self.deviceId)
+            # now commit and set the result/reason accordingly
+            result = 'success'
+            reason = ''
+            try:
+                with CachedConnectionFactory.getInstance().connection(NetconfConnection,
+                                                                      self.deviceIp,
+                                                                      username=self.deviceUser,
+                                                                      password=self.devicePass) as connector:
+                    connector.updateConfig(self.configlet)
+            except DeviceConnectFailed as exc:
+                #logger.error("%s", exc)
+                #logger.error('StackTrace: %s', traceback.format_exc())
+                result = 'failure'
+                reason = exc.message
+            except DeviceRpcFailed as exc:
+                #logger.error("%s", exc)
+                #logger.error('StackTrace: %s', traceback.format_exc())
+                result = 'failure'
+                reason = exc.message
+            except Exception as exc:
+                #logger.error("%s", exc)
+                #logger.error('StackTrace: %s', traceback.format_exc())
+                result = 'failure'
+                reason = str(exc)
+            
+            # commit is done so update the result and remove device id from cache
+            try:
+                with self.parent.dao.getReadWriteSession() as session:
+                    statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).one()
+                    statusObject.update(result, reason, self.operation)
+            except Exception as exc:
+                logger.error("%s", exc)
+                #logger.error('StackTrace: %s', traceback.format_exc())
+                
+            logger.info("Job %s: done with device [%s]", self.id, self.queueId)
+            self.parent.markDeviceIdle(self.queueId)
         except Exception as exc:
-            logger.error("Job %s: encounted error '%s'", self.id, exc)
+            logger.error("Job %s: error '%s'", self.id, exc)
+            logger.error('StackTrace: %s', traceback.format_exc())
             raise
 
 class OverlayCommitQueue(SingletonBase):
-    def __init__(self, overlay, maxWorkers=DEFAULT_MAX_THREADS, dispatchInterval=DEFAULT_DISPATCH_INTERVAL):
-        self.dispatchInterval = dispatchInterval
-        self.overlay = overlay
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=maxWorkers)
+    def __init__(self):
+        self.dao = DEFAULT_DAO_CLASS.getInstance()
         # event to stop from sleep
         self.stopEvent = Event()
         self.__lock = RLock()
         self.__devicesInProgress = set()
         self.__deviceQueues = {}
+        self.maxWorkers = DEFAULT_MAX_THREADS
+        self.dispatchInterval = DEFAULT_DISPATCH_INTERVAL
+        self.thread = Thread(target=self.dispatchThreadFunction, args=())
+        self.started = False
+        
+        conf = OpenClosProperty().getProperties()
+        # iterate 'plugin' section of openclos.yaml and install routes on all plugins
+        if 'plugin' in conf:
+            plugins = conf['plugin']
+            for plugin in plugins:
+                if plugin['name'] == 'overlay':
+                    maxWorkers = plugin.get('threadCount')
+                    if maxWorkers is not None:
+                        self.maxWorkers = maxWorkers
+                    dispatchInterval = plugin.get('dispatchInterval')
+                    if dispatchInterval is not None:
+                        self.dispatchInterval = dispatchInterval
+                    break
+        
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.maxWorkers)
 
     def addJob(self, deployStatusObject):
         job = OverlayCommitJob(self, deployStatusObject)
-        logger.debug("Job %s: added to device %s", job.id, job.deviceId)
+        logger.debug("Job %s: added to device [%s]", job.id, job.queueId)
         with self.__lock:
-            if job.deviceId not in self.__deviceQueues:
-                self.__deviceQueues[job.deviceId] = Queue.Queue()
-            self.__deviceQueues[job.deviceId].put(job)
+            if job.queueId not in self.__deviceQueues:
+                self.__deviceQueues[job.queueId] = Queue.Queue()
+            self.__deviceQueues[job.queueId].put(job)
         return job
     
     '''
@@ -100,11 +151,11 @@ class OverlayCommitQueue(SingletonBase):
         # Then we release the lock before we do the actual commit
         with self.__lock:
             toBeDeleted = []
-            for deviceId, deviceQueue in self.__deviceQueues.iteritems():
+            for queueId, deviceQueue in self.__deviceQueues.iteritems():
                 # find an idle device
-                if deviceId not in self.__devicesInProgress:
-                    self.__devicesInProgress.add(deviceId)
-                    logger.debug("Device %s has NO commit in progress. Prepare for commit", deviceId)
+                if queueId not in self.__devicesInProgress:
+                    self.__devicesInProgress.add(queueId)
+                    logger.debug("Device [%s] has NO commit in progress. Prepare for commit", queueId)
                     # retrieve the job
                     try:
                         job = deviceQueue.get_nowait()
@@ -112,28 +163,33 @@ class OverlayCommitQueue(SingletonBase):
                         self.executor.submit(job.commit)
                         deviceQueue.task_done()
                         if deviceQueue.empty():
-                            logger.debug("Device %s job queue is empty", deviceId)
+                            logger.debug("Device [%s] job queue is empty", queueId)
                             # Note don't delete the empty job queues within the iteration.
-                            toBeDeleted.append(deviceId)
+                            toBeDeleted.append(queueId)
                     except Queue.Empty as exc:
-                        logger.debug("Device %s job queue is empty", deviceId)
+                        logger.debug("Device [%s] job queue is empty", queueId)
                         # Note don't delete the empty job queues within the iteration.
-                        toBeDeleted.append(deviceId)
+                        toBeDeleted.append(queueId)
                 else:
-                    logger.debug("Device %s has commit in progress. Skipped", deviceId)
+                    logger.debug("Device [%s] has commit in progress. Skipped", queueId)
             
             # Now it is safe to delete all empty job queues
-            for deviceId in toBeDeleted:
-                logger.debug("Deleting job queue for device %s", deviceId)
-                del self.__deviceQueues[deviceId]
+            for queueId in toBeDeleted:
+                logger.debug("Deleting job queue for device [%s]", queueId)
+                del self.__deviceQueues[queueId]
     
-    def markDeviceIdle(self, deviceId):
+    def markDeviceIdle(self, queueId):
         with self.__lock:
-            self.__devicesInProgress.discard(deviceId)
+            self.__devicesInProgress.discard(queueId)
     
     def start(self):
+        with self.__lock:
+            if self.started:
+                return
+            else:
+                self.started = True
+                
         logger.info("Starting OverlayCommitQueue...")
-        self.thread = Thread(target=self.dispatchThreadFunction, args=())
         self.thread.start()
         logger.info("OverlayCommitQueue started")
    
@@ -141,7 +197,9 @@ class OverlayCommitQueue(SingletonBase):
         logger.info("Stopping OverlayCommitQueue...")
         self.stopEvent.set()
         self.executor.shutdown()
-        self.thread.join()
+        with self.__lock:
+            if self.started:
+                self.thread.join()
         logger.info("OverlayCommitQueue stopped")
     
     def dispatchThreadFunction(self):
@@ -159,18 +217,13 @@ class OverlayCommitQueue(SingletonBase):
             raise
 
 # def main():        
-    # conf = {}
-    # conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
-    # conf['plugin'] = [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]
+    # conf = OpenClosProperty().getProperties()
     # dao = Dao.getInstance()
-    # overlay = Overlay(conf, dao)
-
-    # commitQueue = OverlayCommitQueue(overlay, 10, 1)
-    # commitQueue.start()
-    
+    # from jnpr.openclos.overlay.overlay import Overlay
+    # overlay = Overlay(conf, Dao.getInstance())
     # with dao.getReadWriteSession() as session:
-        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '1.2.3.4', '1.1.1.1')
-        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '1.2.3.5', '1.1.1.2')
+        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '192.168.48.201', '1.1.1.1')
+        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '192.168.48.202', '1.1.1.2', 'test', 'foobar')
         # d1_id = d1.id
         # d2_id = d2.id
         # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2])
@@ -189,16 +242,6 @@ class OverlayCommitQueue(SingletonBase):
         # n1_id = n1.id
         # n2 = overlay.createNetwork(session, 'n2', '', v1, 1001, 101, False)
         # n2_id = n2.id
-        # s1 = overlay.createSubnet(session, 's1', '', n1, '1.2.3.4/24')
-        # s1_id = s1.id
-        # s2 = overlay.createSubnet(session, 's2', '', n1, '1.2.3.5/24')
-        # s2_id = s2.id
-        # ae1 = overlay.createAe(session, 'ae1', '', '00:11', '11:00')
-        # ae1_id = ae1.id
-        # l2port1 = overlay.createL2port(session, 'l2port1', '', 'xe-0/0/1', n1, d1, ae1)
-        # l2port1_id = l2port1.id
-        # l2port2 = overlay.createL2port(session, 'l2port2', '', 'xe-0/0/1', n1, d2, ae1)
-        # l2port2_id = l2port2.id
         
         # statusList = []
         # object_url = '/openclos/v1/overlay/fabrics/' + f1_id
@@ -210,17 +253,12 @@ class OverlayCommitQueue(SingletonBase):
         # object_url = '/openclos/v1/overlay/networks/' + n1_id
         # statusList.append(OverlayDeployStatus('n1config', object_url, 'POST', d1, v1))
         # statusList.append(OverlayDeployStatus('n1config', object_url, 'POST', d2, v1))
-        # object_url = '/openclos/v1/overlay/aes/' + ae1_id
-        # statusList.append(OverlayDeployStatus('ae1config', object_url, 'POST', d1, v1))
-        # statusList.append(OverlayDeployStatus('ae1config', object_url, 'POST', d2, v1))
-        # object_url = '/openclos/v1/overlay/l2ports/' + l2port1_id
-        # statusList.append(OverlayDeployStatus('l2port1config', object_url, 'POST', d1, v1))
-        # statusList.append(OverlayDeployStatus('l2port1config', object_url, 'POST', d2, v1))
-        # object_url = '/openclos/v1/overlay/l2ports/' + l2port2_id
-        # statusList.append(OverlayDeployStatus('l2port2config', object_url, 'POST', d1, v1))
-        # statusList.append(OverlayDeployStatus('l2port2config', object_url, 'POST', d2, v1))
         # dao.createObjects(session, statusList)
 
+    # commitQueue = OverlayCommitQueue.getInstance()
+    # commitQueue.dispatchInterval = 1
+    # commitQueue.start()
+    
     # with dao.getReadWriteSession() as session:
         # status_db = session.query(OverlayDeployStatus).all()
         # for s in status_db:
