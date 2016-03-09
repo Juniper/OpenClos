@@ -98,14 +98,15 @@ class Overlay():
         logger.info("OverlayL3port[id: '%s', name: '%s']: created", l3port.id, l3port.name)
         return l3port
 
-    def createL2port(self, dbSession, name, description, interface, overlay_network, overlay_device, overlay_ae=None):
+    def createL2port(self, dbSession, name, description, interface, overlay_networks, overlay_device, overlay_ae=None):
         '''
         Create a new L2port
         '''
-        l2port = OverlayL2port(name, description, interface, overlay_network, overlay_device, overlay_ae)
+        l2port = OverlayL2port(name, description, interface, overlay_networks, overlay_device, overlay_ae)
 
         self._dao.createObjects(dbSession, [l2port])
         logger.info("OverlayL2port[id: '%s', name: '%s']: created", l2port.id, l2port.name)
+        self._configEngine.configureL2Port(dbSession, l2port)
         return l2port
 
     def createAe(self, dbSession, name, description, esi, lacp):
@@ -291,6 +292,21 @@ class ConfigEngine():
         ips = [str(ip) + "/" + cidr for ip in IPNetwork(subnetBlock).iter_hosts()]
         return ips        
         
+    def configureL2Port(self, dbSession, l2Port):
+        '''
+        Create access port interface
+        '''
+        networks = [(net.vlanid, net.vnid) for net in l2Port.overlay_networks]
+        vrf = l2Port.overlay_networks[0].overlay_vrf
+        template = self._templateLoader.getTemplate('olAddInterface.txt')
+        config = template.render(interfaceName=l2Port.interface, networks=networks)
+
+        self._dao.createObjects(dbSession, [OverlayDeployStatus(config, l2Port.getUrl(), "create", l2Port.overlay_device, vrf)])
+        # TODO: add all deployments to job queue
+        logger.info("configureL2Port [l2Port id: '%s', l2Port name: '%s']: configured", l2Port.id, l2Port.interface)
+
+        
+
         
         
 # def main():        

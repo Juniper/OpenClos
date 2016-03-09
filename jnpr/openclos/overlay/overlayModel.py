@@ -5,7 +5,7 @@ Created on Nov 23, 2015
 
 '''
 import uuid
-from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Enum, UniqueConstraint, Index, Boolean
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Enum, UniqueConstraint, Index, Boolean, Table
 from sqlalchemy.orm import relationship, backref
 
 from jnpr.openclos.loader import OpenClosProperty
@@ -213,7 +213,12 @@ class OverlayVrf(ManagedElement, Base):
         return self.getDevices("spine")
     def getLeafs(self):
         return self.getDevices("leaf")
-    
+
+overlayNetworkOverlayL2portTable = Table('overlayNetworkOverlayL2portLink', Base.metadata,
+    Column('overlay_network_id', String(60), ForeignKey('overlayNetwork.id'), nullable=False),
+    Column('overlay_l2port_id', String(60), ForeignKey('overlayL2port.id'), nullable=False)
+)
+
 class OverlayNetwork(ManagedElement, Base):
     __tablename__ = 'overlayNetwork'
     id = Column(String(60), primary_key=True)
@@ -224,6 +229,7 @@ class OverlayNetwork(ManagedElement, Base):
     pureL3Int = Column(Boolean)
     overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'), nullable=False)
     overlay_vrf = relationship("OverlayVrf", backref=backref('overlay_networks', order_by=name, cascade='all, delete, delete-orphan'))
+    overlay_l2ports = relationship("OverlayL2port", secondary=overlayNetworkOverlayL2portTable, back_populates="overlay_networks")
     __table_args__ = (
         Index('overlay_vrf_id_overlay_network_name_uindex', 'overlay_vrf_id', 'name', unique=True),
     )
@@ -318,17 +324,14 @@ class OverlayL2port(ManagedElement, Base):
     interface = Column(String(100), nullable=False)
     overlay_ae_id = Column(String(60), ForeignKey('overlayAe.id'))
     overlay_ae = relationship("OverlayAe", backref=backref('overlay_members', order_by=name, cascade='all, delete, delete-orphan'))
-    overlay_network_id = Column(String(60), ForeignKey('overlayNetwork.id'), nullable=False)
-    overlay_network = relationship("OverlayNetwork", backref=backref('overlay_l2ports', order_by=name, cascade='all, delete, delete-orphan'))
+    overlay_networks = relationship("OverlayNetwork", secondary=overlayNetworkOverlayL2portTable, back_populates="overlay_l2ports")
     overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
     overlay_device = relationship("OverlayDevice", backref=backref('overlay_l2ports', order_by=name, cascade='all, delete, delete-orphan'))
     __table_args__ = (
-        #Index('overlay_ae_id_overlay_l2port_name_uindex', 'overlay_ae_id', 'name', unique=True),
-        Index('overlay_network_id_overlay_l2port_name_uindex', 'overlay_network_id', 'name', unique=True),
         Index('overlay_device_id_overlay_l2port_name_uindex', 'overlay_device_id', 'name', unique=True),
     )
 
-    def __init__(self, name, description, interface, overlay_network, overlay_device, overlay_ae=None):
+    def __init__(self, name, description, interface, overlay_networks, overlay_device, overlay_ae=None):
         '''
         Creates L2 port object.
         '''
@@ -336,10 +339,13 @@ class OverlayL2port(ManagedElement, Base):
         self.name = name
         self.description = description
         self.interface = interface
-        self.overlay_network = overlay_network
+        self.overlay_networks = overlay_networks
         self.overlay_device = overlay_device
         self.overlay_ae = overlay_ae
         
+    def getUrl(self):
+        return "/l2ports/" + self.id
+    
     def update(self, name, description, interface):
         '''
         Updates L2 port object.
