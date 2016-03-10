@@ -825,6 +825,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         response = self.restServerTestApp.get('/openclos/v1/overlay/l2ports/' + l2portId)
         self.assertEqual(200, response.status_int) 
         self.assertEqual(l2portName, response.json['l2port']['name'])
+        self.assertIsNotNone(response.json['l2port']['networks'][0])
         self.assertTrue("/openclos/v1/overlay/l2ports/" + l2portId in response.json['l2port']['uri'])
         
     def testGetL2portNotFound(self):
@@ -845,7 +846,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "interface": "xe-0/0/0"
             }
         }
-        l2portDict['l2port']['network'] = networkId
+        l2portDict['l2port']['networks'] = [networkId]
         l2portDict['l2port']['device'] = deviceId
         response = self.restServerTestApp.post('/openclos/v1/overlay/l2ports', 
                                                headers = {'Content-Type':'application/json'}, 
@@ -858,7 +859,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:        
             l2portObject = self.helper._createL2port(session)
             l2portId = l2portObject.id
-            networkId = l2portObject.overlay_network.id
+            networkId = l2portObject.overlay_networks[0].id
             deviceId = l2portObject.overlay_device.id
 
         l2portDict = {
@@ -868,7 +869,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "interface": "xe-0/0/0"
             }
         }
-        l2portDict['l2port']['network'] = networkId
+        l2portDict['l2port']['networks'] = [networkId]
         l2portDict['l2port']['device'] = deviceId
         l2portDict['l2port']['id'] = l2portId
         response = self.restServerTestApp.put('/openclos/v1/overlay/l2ports/' + l2portId, 

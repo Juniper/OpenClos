@@ -137,8 +137,19 @@ class TestOverlayHelper:
         }
         networkObject = self._createNetwork(dbSession)
         deviceObject = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0]
-        return self.overlay.createL2port(dbSession, l2portDict['name'], l2portDict['description'], l2portDict['interface'], networkObject, deviceObject)
+        return self.overlay.createL2port(dbSession, l2portDict['name'], l2portDict['description'], l2portDict['interface'], [networkObject], deviceObject)
+
+    def _create2Network4L2port(self, dbSession):
+        networkObject1 = self._createNetwork(dbSession, offset="1")
+        networkObject2 = self._createNetwork(dbSession, offset="2", vrfObject=networkObject1.overlay_vrf)
+        deviceObject = networkObject1.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0]
         
+        port1 = self.overlay.createL2port(dbSession, "l2port1", "description for l2port1", "xe-0/0/1", [networkObject1], deviceObject)
+        port2 = self.overlay.createL2port(dbSession, "l2port2", "description for l2port2", "xe-0/0/2", [networkObject2], deviceObject)
+        port3 = self.overlay.createL2port(dbSession, "l2port3", "description for l2port3", "xe-0/0/3", [networkObject1, networkObject2], deviceObject)
+        port4 = self.overlay.createL2port(dbSession, "l2port4", "description for l2port4", "xe-0/0/4", [networkObject1], deviceObject)
+        return [port1, port2, port3, port4]
+
     def _createAe(self, dbSession):
         aeDict = {
             "name": "ae1",
@@ -330,6 +341,16 @@ class TestOverlay(unittest.TestCase):
             self.helper._createL2port(session)
             self.assertEqual(1, session.query(OverlayL2port).count())
             
+    def testCreateL2portManyToManyNetwork(self):        
+        with self._dao.getReadWriteSession() as session:
+            self.helper._create2Network4L2port(session)
+            ports = session.query(OverlayL2port).all()
+            self.assertEqual(4, len(ports))
+            self.assertEqual(1, len(ports[0].overlay_networks))
+            self.assertEqual(2, len(ports[2].overlay_networks))
+            self.assertEqual(3, len(ports[0].overlay_networks[0].overlay_l2ports))
+            self.assertEqual(2, len(ports[1].overlay_networks[0].overlay_l2ports))
+
     def testUpdateL2port(self):        
         with self._dao.getReadWriteSession() as session:        
             l2portObject = self.helper._createL2port(session)
@@ -559,6 +580,20 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("vrf-target target:65001:1001", config)
             self.assertIn("vlan-id 102", config)
             self.assertIn("vni 1002", config)
+
+    def testConfigureL2Port(self):
+        import re
+        with self._dao.getReadWriteSession() as session:
+            ports = self.helper._create2Network4L2port(session)
+            
+            # 6 deployments 1 fabric, 1 vrf and 4 ports. As there is no subnet, network was not deployed            
+            deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(6, len(deployments))
+            
+            #print deployments[2].configlet
+            #print deployments[4].configlet
+            self.assertEquals(1, deployments[2].configlet.count("interface "))
+            self.assertEquals(2, deployments[4].configlet.count("interface "))
 
 if __name__ == '__main__':
     unittest.main()

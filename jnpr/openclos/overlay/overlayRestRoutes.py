@@ -1177,7 +1177,9 @@ class OverlayRestRoutes():
         l2port['uri'] = '%s/l2ports/%s' % (self._getUriPrefix(), l2portObject.id)
         if l2portObject.overlay_ae:
             l2port['ae'] = '%s/aes/%s' % (self._getUriPrefix(), l2portObject.overlay_ae.id)
-        l2port['network'] = '%s/networks/%s' % (self._getUriPrefix(), l2portObject.overlay_network.id)
+        l2port['networks'] = []
+        for network in l2portObject.overlay_networks:
+            l2port['networks'].append('%s/networks/%s' % (self._getUriPrefix(), network.id))
         l2port['device'] = '%s/devices/%s' % (self._getUriPrefix(), l2portObject.overlay_device.id)
         return l2port
         
@@ -1209,6 +1211,20 @@ class OverlayRestRoutes():
             raise bottle.HTTPError(500, exception=PlatformError(ex.message))
         
         return {'l2port': self._populateL2port(l2portObject)}
+    
+    def getIdFromUri(self, uri):
+        return uri.split("/")[-1]
+        
+    def getNetworkObjects(self, dbSession, networkUris):
+        networkObjects = []
+        for networkUri in networkUris:
+            id = self.getIdFromUri(networkUri)
+            try:
+                networkObjects.append(self.__dao.getObjectById(dbSession, OverlayNetwork, id))
+            except (exc.NoResultFound) as ex:
+                logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", id, ex.message)
+                raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(id))
+        return networkObjects
         
     def createL2port(self, dbSession):  
             
@@ -1226,28 +1242,22 @@ class OverlayRestRoutes():
             aeUri = l2portDict.get('ae')
             aeObject = None
             if aeUri is not None:
-                aeId = l2portDict['ae'].split('/')[-1]
+                aeId = self.getIdFromUri(l2portDict['ae'])
                 try:
                     aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
                 except (exc.NoResultFound) as ex:
                     logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
                     raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
                 
-            networkId = l2portDict['network'].split('/')[-1]
-            try:
-                networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
-            except (exc.NoResultFound) as ex:
-                logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
-                raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
-                
-            deviceId = l2portDict['device'].split('/')[-1]
+            networkObjects = self.getNetworkObjects(dbSession, l2portDict['networks'])                
+            deviceId = self.getIdFromUri(l2portDict['device'])
             try:
                 deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             except (exc.NoResultFound) as ex:
                 logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
                 raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
                 
-            l2portObject = self._overlay.createL2port(dbSession, name, description, interface, networkObject, deviceObject, aeObject)
+            l2portObject = self._overlay.createL2port(dbSession, name, description, interface, networkObjects, deviceObject, aeObject)
             logger.info("OverlayL2port[id='%s', name='%s']: created", l2portObject.id, l2portObject.name)
 
             l2port = {'l2port': self._populateL2port(l2portObject)}
