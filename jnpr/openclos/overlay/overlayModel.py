@@ -27,6 +27,7 @@ class OverlayDevice(ManagedElement, Base):
     role = Column(Enum('spine', 'leaf'))
     address = Column(String(60))
     routerId = Column(String(60))
+    podName = Column(String(60))
     username = Column(String(100), default='root')
     encryptedPassword = Column(String(100)) # 2-way encrypted
     cryptic = Cryptic()
@@ -34,8 +35,11 @@ class OverlayDevice(ManagedElement, Base):
         'OverlayFabric',
         secondary='overlayFabricOverlayDeviceLink'
     )
+    __table_args__ = (
+        Index('podName_id_uindex', 'podName', 'id', unique=True),
+    )
 
-    def __init__(self, name, description, role, address, routerId, username=None, password=None):
+    def __init__(self, name, description, role, address, routerId, podName, username=None, password=None):
         '''
         Creates device object.
         '''
@@ -45,6 +49,7 @@ class OverlayDevice(ManagedElement, Base):
         self.role = role
         self.address = address
         self.routerId = routerId
+        self.podName = podName
         if username is not None:
             self.username = username
         else:
@@ -54,7 +59,7 @@ class OverlayDevice(ManagedElement, Base):
         else:
             self.encryptedPassword = DEFAULT_ENCRYPTED_PASSWORD
         
-    def update(self, name, description, role, address, routerId, username=None, password=None):
+    def update(self, name, description, role, address, routerId, podName, username=None, password=None):
         '''
         Updates device object.
         '''
@@ -63,6 +68,7 @@ class OverlayDevice(ManagedElement, Base):
         self.role = role
         self.address = address
         self.routerId = routerId
+        self.podName = podName
         if username is not None:
             self.username = username
         if password is not None and len(password) > 0:
@@ -393,9 +399,11 @@ class OverlayDeployStatus(ManagedElement, Base):
     overlay_vrf = relationship("OverlayVrf", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
     status = Column(Enum('unknown', 'progress', 'success', 'failure'), default='unknown')
     statusReason = Column(String(1024))
-    __table_args__ = (
-        Index('object_url_overlay_device_id_uindex', 'object_url', 'overlay_device_id', unique=True),
-    )
+    # REVISIT: This constraint seems wrong. If we configure 2 subnets under the same network, 2 rows will be created. 
+    # Both rows will have the same object_url which is the network object's url and the same device id.
+    # __table_args__ = (
+        # Index('object_url_overlay_device_id_uindex', 'object_url', 'overlay_device_id', unique=True),
+    # )
     
     def __init__(self, configlet, object_url, operation, overlay_device, overlay_vrf=None, status=None, statusReason=None):
         '''

@@ -119,6 +119,7 @@ class OverlayRestRoutes():
         device['role'] = deviceObject.role
         device['address'] = deviceObject.address
         device['routerId'] = deviceObject.routerId
+        device['podName'] = deviceObject.podName
         device['uri'] = '%s/devices/%s' % (self._getUriPrefix(), deviceObject.id)
         fabrics = []
         for fabric in deviceObject.overlay_fabrics:
@@ -170,10 +171,11 @@ class OverlayRestRoutes():
             role = deviceDict['role']
             address = deviceDict['address']
             routerId = deviceDict['routerId']
+            podName = deviceDict['podName']
             username = deviceDict.get('username')
             password = deviceDict.get('password')
             
-            deviceObject = self._overlay.createDevice(dbSession, name, description, role, address, routerId, username, password)
+            deviceObject = self._overlay.createDevice(dbSession, name, description, role, address, routerId, podName, username, password)
             device = {'device': self._populateDevice(deviceObject)}
             
         except KeyError as ex:
@@ -202,11 +204,12 @@ class OverlayRestRoutes():
             role = deviceDict['role']
             address = deviceDict['address']
             routerId = deviceDict['routerId']
+            podName = deviceDict['podName']
             username = deviceDict.get('username')
             password = deviceDict.get('password')
             
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
-            deviceObject.update(name, description, role, address, routerId, username, password)
+            deviceObject.update(name, description, role, address, routerId, podName, username, password)
             logger.info("OverlayDevice[id='%s', name='%s']: modified", deviceObject.id, deviceObject.name)
             
             device = {'device': self._populateDevice(deviceObject)}

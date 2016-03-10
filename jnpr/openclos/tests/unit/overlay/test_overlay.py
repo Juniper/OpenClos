@@ -30,10 +30,11 @@ class TestOverlayHelper:
             "description": "description for d" + offset,
             "role": role,
             "address": "1.2.3." + offset,
-            "routerId": "1.1.1." + offset
+            "routerId": "1.1.1." + offset,
+            "podName": "pod1"
         }
         return self.overlay.createDevice(dbSession, deviceDict['name'], deviceDict.get('description'), 
-                                         deviceDict['role'], deviceDict['address'], deviceDict['routerId'])
+                                         deviceDict['role'], deviceDict['address'], deviceDict['routerId'], deviceDict['podName'])
         
     def _createFabric(self, dbSession, offset="1"):
         fabricDict = {
@@ -195,7 +196,7 @@ class TestOverlay(unittest.TestCase):
     def testUpdateDevice(self):        
         with self._dao.getReadWriteSession() as session:        
             deviceObject = self.helper._createDevice(session)
-            deviceObject.update('d2', 'description for d2', 'leaf', '1.2.3.5', '1.1.1.2', 'test', 'foobar')
+            deviceObject.update('d2', 'description for d2', 'leaf', '1.2.3.5', '1.1.1.2', 'pod2', 'test', 'foobar')
             self._dao.updateObjects(session, [deviceObject])
             
         with self._dao.getReadSession() as session:
@@ -206,6 +207,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('leaf', deviceObjectFromDb.role)
             self.assertEqual('1.2.3.5', deviceObjectFromDb.address)
             self.assertEqual('1.1.1.2', deviceObjectFromDb.routerId)
+            self.assertEqual('pod2', deviceObjectFromDb.podName)
             self.assertEqual('test', deviceObjectFromDb.username)
             self.assertEqual('foobar', deviceObjectFromDb.getCleartextPassword())
             

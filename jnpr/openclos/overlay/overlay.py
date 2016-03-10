@@ -24,11 +24,11 @@ class Overlay():
         self._conf = conf
         self._dao = dao
         self._configEngine = ConfigEngine(conf, dao)
-    def createDevice(self, dbSession, name, description, role, address, routerId, username=None, password=None):
+    def createDevice(self, dbSession, name, description, role, address, routerId, podName, username=None, password=None):
         '''
         Create a new Device
         '''
-        device = OverlayDevice(name, description, role, address, routerId, username, password)
+        device = OverlayDevice(name, description, role, address, routerId, podName, username, password)
 
         self._dao.createObjects(dbSession, [device])
         logger.info("OverlayDevice[id: '%s', name: '%s']: created", device.id, device.name)
@@ -317,8 +317,8 @@ class ConfigEngine():
     # overlay = Overlay(conf, dao)
 
     # with dao.getReadWriteSession() as session:
-        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '1.2.3.4', '1.1.1.1')
-        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '1.2.3.5', '1.1.1.2', 'test', 'foobar')
+        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '1.2.3.4', '1.1.1.1', 'pod1')
+        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '1.2.3.5', '1.1.1.2', 'pod1', 'test', 'foobar')
         # d1_id = d1.id
         # d2_id = d2.id
         # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2])
@@ -348,27 +348,6 @@ class ConfigEngine():
         # l2port2 = overlay.createL2port(session, 'l2port2', '', 'xe-0/0/1', n1, d2, ae1)
         # l2port2_id = l2port2.id
         
-        # statusList = []
-        # object_url = '/openclos/v1/overlay/fabrics/' + f1_id
-        # statusList.append(OverlayDeployStatus('f1config', object_url, 'POST', d1, None, 'success', 'f1config on d1'))
-        # statusList.append(OverlayDeployStatus('f1config', object_url, 'POST', d2, None, 'success', 'f1config on d2'))
-        # object_url = '/openclos/v1/overlay/vrfs/' + v1_id
-        # statusList.append(OverlayDeployStatus('v1config', object_url, 'POST', d1, v1, 'success', 'v1config on d1'))
-        # statusList.append(OverlayDeployStatus('v1config', object_url, 'POST', d2, v1, 'success', 'v1config on d2'))
-        # object_url = '/openclos/v1/overlay/networks/' + n1_id
-        # statusList.append(OverlayDeployStatus('n1config', object_url, 'POST', d1, v1, 'success', 'n1config on d1'))
-        # statusList.append(OverlayDeployStatus('n1config', object_url, 'POST', d2, v1, 'success', 'n1config on d2'))
-        # object_url = '/openclos/v1/overlay/aes/' + ae1_id
-        # statusList.append(OverlayDeployStatus('ae1config', object_url, 'POST', d1, v1, 'success', 'ae1config on d1'))
-        # statusList.append(OverlayDeployStatus('ae1config', object_url, 'POST', d2, v1, 'success', 'ae1config on d2'))
-        # object_url = '/openclos/v1/overlay/l2ports/' + l2port1_id
-        # statusList.append(OverlayDeployStatus('l2port1config', object_url, 'POST', d1, v1, 'success', 'l2port1config on d1'))
-        # statusList.append(OverlayDeployStatus('l2port1config', object_url, 'POST', d2, v1, 'success', 'l2port1config on d2'))
-        # object_url = '/openclos/v1/overlay/l2ports/' + l2port2_id
-        # statusList.append(OverlayDeployStatus('l2port2config', object_url, 'POST', d1, v1, 'success', 'l2port2config on d1'))
-        # statusList.append(OverlayDeployStatus('l2port2config', object_url, 'POST', d2, v1, 'success', 'l2port2config on d2'))
-        # dao.createObjects(session, statusList)
-    
     # with dao.getReadSession() as session:
         # devices = session.query(OverlayDevice).all()
         # for device in devices:
