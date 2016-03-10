@@ -136,7 +136,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "description": "description for d1",
                 "role": "spine",
                 "address": "1.2.3.4",
-                "routerId": "1.1.1.1"
+                "routerId": "1.1.1.1",
+                "podName": "pod1"
             }
         }
         response = self.restServerTestApp.post('/openclos/v1/overlay/devices', 
@@ -156,7 +157,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "description": "changed",
                 "role": "spine",
                 "address": "1.2.3.5",
-                "routerId": "1.1.1.2"
+                "routerId": "1.1.1.2",
+                "podName": "pod2"
             }
         }
         response = self.restServerTestApp.put('/openclos/v1/overlay/devices/' + deviceId, 
@@ -166,6 +168,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual('changed', response.json['device']['description'])
         self.assertEqual('1.2.3.5', response.json['device']['address'])
         self.assertEqual('1.1.1.2', response.json['device']['routerId'])
+        self.assertEqual('pod2', response.json['device']['podName'])
         
     def testModifyDeviceNotFound(self):
         deviceDict = {
@@ -175,7 +178,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "description": "changed",
                 "role": "spine",
                 "address": "1.2.3.5",
-                "routerId": "1.1.1.2"
+                "routerId": "1.1.1.2",
+                "podName": "pod1"
             }
         }
         with self.assertRaises(AppError) as e:

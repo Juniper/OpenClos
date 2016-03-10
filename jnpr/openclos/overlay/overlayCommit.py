@@ -222,8 +222,8 @@ class OverlayCommitQueue(SingletonBase):
     # from jnpr.openclos.overlay.overlay import Overlay
     # overlay = Overlay(conf, Dao.getInstance())
     # with dao.getReadWriteSession() as session:
-        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '192.168.48.201', '1.1.1.1')
-        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '192.168.48.202', '1.1.1.2', 'test', 'foobar')
+        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '192.168.48.201', '1.1.1.1', 'pod1')
+        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '192.168.48.202', '1.1.1.2', 'pod1', 'test', 'foobar')
         # d1_id = d1.id
         # d2_id = d2.id
         # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2])
@@ -243,18 +243,6 @@ class OverlayCommitQueue(SingletonBase):
         # n2 = overlay.createNetwork(session, 'n2', '', v1, 1001, 101, False)
         # n2_id = n2.id
         
-        # statusList = []
-        # object_url = '/openclos/v1/overlay/fabrics/' + f1_id
-        # statusList.append(OverlayDeployStatus('f1config', object_url, 'POST', d1, None))
-        # statusList.append(OverlayDeployStatus('f1config', object_url, 'POST', d2, None))
-        # object_url = '/openclos/v1/overlay/vrfs/' + v1_id
-        # statusList.append(OverlayDeployStatus('v1config', object_url, 'POST', d1, v1))
-        # statusList.append(OverlayDeployStatus('v1config', object_url, 'POST', d2, v1))
-        # object_url = '/openclos/v1/overlay/networks/' + n1_id
-        # statusList.append(OverlayDeployStatus('n1config', object_url, 'POST', d1, v1))
-        # statusList.append(OverlayDeployStatus('n1config', object_url, 'POST', d2, v1))
-        # dao.createObjects(session, statusList)
-
     # commitQueue = OverlayCommitQueue.getInstance()
     # commitQueue.dispatchInterval = 1
     # commitQueue.start()
