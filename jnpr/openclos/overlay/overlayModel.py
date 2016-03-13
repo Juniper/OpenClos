@@ -124,6 +124,7 @@ class OverlayFabric(ManagedElement, Base):
     def update(self, name, description, overlayAS, routeReflectorAddress, devices):
         '''
         Updates Fabric object.
+        NOTE: you MUST call clearDevices() before you call update(). Othewise you will receive a "conflict key" error
         '''
         self.name = name
         self.description = description
@@ -345,20 +346,32 @@ class OverlayL2port(ManagedElement, Base):
         self.name = name
         self.description = description
         self.interface = interface
-        self.overlay_networks = overlay_networks
+        for network in overlay_networks:
+            self.overlay_networks.append(network)
         self.overlay_device = overlay_device
         self.overlay_ae = overlay_ae
         
     def getUrl(self):
         return "/l2ports/" + self.id
     
-    def update(self, name, description, interface):
+    def update(self, name, description, interface, overlay_networks, overlay_device, overlay_ae=None):
         '''
         Updates L2 port object.
+        NOTE: you MUST call clearNetworks() before you call update(). Othewise you will receive a "conflict key" error
         '''
         self.name = name
         self.description = description
         self.interface = interface
+        for network in overlay_networks:
+            self.overlay_networks.append(network)
+        self.overlay_device = overlay_device
+        self.overlay_ae = overlay_ae
+    
+    def clearNetworks(self):
+        '''
+        Remove existing networks
+        '''
+        del self.overlay_networks[:]
     
 class OverlayAe(ManagedElement, Base):
     __tablename__ = 'overlayAe'

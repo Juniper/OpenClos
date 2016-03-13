@@ -888,7 +888,9 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "id": '12345',
                 "name": "l2port1",
                 "description": "description for l2port1",
-                "interface": "xe-0/0/0"
+                "interface": "xe-0/0/0",
+                "networks": ["56789"],
+                "device": "11111"
             }
         }
         with self.assertRaises(AppError) as e:
