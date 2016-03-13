@@ -343,9 +343,9 @@ class ConfigEngine():
         # s2_id = s2.id
         # ae1 = overlay.createAe(session, 'ae1', '', '00:11', '11:00')
         # ae1_id = ae1.id
-        # l2port1 = overlay.createL2port(session, 'l2port1', '', 'xe-0/0/1', n1, d1, ae1)
+        # l2port1 = overlay.createL2port(session, 'l2port1', '', 'xe-0/0/1', [n1], d1, ae1)
         # l2port1_id = l2port1.id
-        # l2port2 = overlay.createL2port(session, 'l2port2', '', 'xe-0/0/1', n1, d2, ae1)
+        # l2port2 = overlay.createL2port(session, 'l2port2', '', 'xe-0/0/1', [n1, n2], d2, ae1)
         # l2port2_id = l2port2.id
         
     # with dao.getReadSession() as session:
@@ -381,6 +381,10 @@ class ConfigEngine():
         # for s, d in status_db:
             # print 'status %s: config "%s" in device %s' % (s.status, s.configlet, d.name)
     # raw_input("3 Press Enter to continue...")
+    # with dao.getReadWriteSession() as session:
+        # l2port2 = session.query(OverlayL2port).filter(OverlayL2port.id == l2port2_id).one()
+        # l2port2.clearNetworks()
+        # l2port2.update(l2port2.name, l2port2.description, l2port2.interface, [n2], l2port2.overlay_device, l2port2.overlay_ae)
         
 # if __name__ == '__main__':
     # main()

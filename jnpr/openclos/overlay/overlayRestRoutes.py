@@ -345,6 +345,7 @@ class OverlayRestRoutes():
             overlayAsn = fabricDict['overlayAsn']
             routeReflectorAddress = fabricDict['routeReflectorAddress']
             devices = fabricDict['devices']
+            fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
             deviceObjects = []
             for device in devices:
                 try:
@@ -356,7 +357,6 @@ class OverlayRestRoutes():
                     logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
                     raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
 
-            fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
             fabricObject.clearDevices()
             self.__dao.updateObjects(dbSession, [fabricObject])
             fabricObject.update(name, description, overlayAsn, routeReflectorAddress, deviceObjects)
@@ -1289,9 +1289,27 @@ class OverlayRestRoutes():
             name = l2portDict['name']
             description = l2portDict.get('description')
             interface = l2portDict['interface']
-            
+            aeUri = l2portDict.get('ae')
             l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
-            l2portObject.update(name, description, interface)
+            aeObject = None
+            if aeUri is not None:
+                aeId = self.getIdFromUri(l2portDict['ae'])
+                try:
+                    aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
+                except (exc.NoResultFound) as ex:
+                    logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
+                    raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
+                
+            networkObjects = self.getNetworkObjects(dbSession, l2portDict['networks'])                
+            deviceId = self.getIdFromUri(l2portDict['device'])
+            try:
+                deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
+            except (exc.NoResultFound) as ex:
+                logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+                raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
+            
+            l2portObject.clearNetworks()
+            l2portObject.update(name, description, interface, networkObjects, deviceObject, aeObject)
             logger.info("OverlayL2port[id='%s', name='%s']: modified", l2portObject.id, l2portObject.name)
 
             l2port = {'l2port': self._populateL2port(l2portObject)}

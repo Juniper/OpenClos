@@ -221,7 +221,6 @@ class TestOverlay(unittest.TestCase):
             fabricObject = self.helper._createFabric(session)
             fabricObjectFromDb = session.query(OverlayFabric).one()
             fabricObjectFromDb.clearDevices()
-            self._dao.updateObjects(session, [fabricObjectFromDb])
             fabricObjectFromDb.update('f2', 'description for f2', 65002, '3.3.3.3', [])
             self._dao.updateObjects(session, [fabricObjectFromDb])
             
@@ -232,6 +231,7 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('description for f2', fabricObjectFromDb.description)
             self.assertEqual(65002, fabricObjectFromDb.overlayAS)
             self.assertEqual('3.3.3.3', fabricObjectFromDb.routeReflectorAddress)
+            self.assertEqual(0, len(fabricObjectFromDb.overlay_devices))
     
     def testCreateTenant(self):
         with self._dao.getReadWriteSession() as session:
@@ -355,16 +355,18 @@ class TestOverlay(unittest.TestCase):
 
     def testUpdateL2port(self):        
         with self._dao.getReadWriteSession() as session:        
-            l2portObject = self.helper._createL2port(session)
-            l2portObject.update('l2port2', 'description for l2port2', 'xe-1/0/0')
-            self._dao.updateObjects(session, [l2portObject])
+            self.helper._create2Network4L2port(session)
+            ports = session.query(OverlayL2port).all()
+            ports[0].clearNetworks()
+            ports[0].update('l2port.changed', 'description changed', 'xe-1/0/0', ports[2].overlay_networks, ports[0].overlay_device, ports[0].overlay_ae)
+            self._dao.updateObjects(session, ports)
             
         with self._dao.getReadSession() as session:
-            self.assertEqual(1, session.query(OverlayL2port).count())
-            l2portObjectFromDb = session.query(OverlayL2port).one()
-            self.assertEqual('l2port2', l2portObjectFromDb.name)
-            self.assertEqual('description for l2port2', l2portObjectFromDb.description)
-            self.assertEqual('xe-1/0/0', l2portObjectFromDb.interface)
+            ports = session.query(OverlayL2port).all()
+            self.assertEqual('l2port.changed', ports[0].name)
+            self.assertEqual('description changed', ports[0].description)
+            self.assertEqual('xe-1/0/0', ports[0].interface)
+            self.assertEqual(2, len(ports[0].overlay_networks))
             
     def testCreateAe(self):
         with self._dao.getReadWriteSession() as session:
