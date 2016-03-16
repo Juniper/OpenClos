@@ -24,14 +24,14 @@ class TestOverlayHelper:
     def __init__(self, conf, dao):
         self.overlay = Overlay(conf, dao)
     
-    def _createDevice(self, dbSession, offset="1", role="spine"):
+    def _createDevice(self, dbSession, offset="1", role="spine", podName="pod1"):
         deviceDict = {
             "name": "d" + offset,
             "description": "description for d" + offset,
             "role": role,
             "address": "1.2.3." + offset,
             "routerId": "1.1.1." + offset,
-            "podName": "pod1"
+            "podName": podName
         }
         return self.overlay.createDevice(dbSession, deviceDict['name'], deviceDict.get('description'), 
                                          deviceDict['role'], deviceDict['address'], deviceDict['routerId'], deviceDict['podName'])
@@ -54,6 +54,28 @@ class TestOverlayHelper:
         devices.append(self._createDevice(dbSession, "3", "leaf"))
         devices.append(self._createDevice(dbSession, "4", "leaf"))
         devices.append(self._createDevice(dbSession, "5", "leaf"))
+        fabricDict = {
+            "name": "f1",
+            "description": "description for f1",
+            "overlayAsn": 65001,
+            "routeReflectorAddress": "2.2.2.2"
+        }
+        return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
+                    fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], devices)
+
+    def _createFabric2Pods(self, dbSession):
+        devices = []
+        devices.append(self._createDevice(dbSession, "1", "spine", "pod1"))
+        devices.append(self._createDevice(dbSession, "2", "spine", "pod1"))
+        devices.append(self._createDevice(dbSession, "3", "leaf", "pod1"))
+        devices.append(self._createDevice(dbSession, "4", "leaf", "pod1"))
+        devices.append(self._createDevice(dbSession, "5", "leaf", "pod1"))
+
+        devices.append(self._createDevice(dbSession, "6", "spine", "pod2"))
+        devices.append(self._createDevice(dbSession, "7", "spine", "pod2"))
+        devices.append(self._createDevice(dbSession, "8", "leaf", "pod2"))
+        devices.append(self._createDevice(dbSession, "9", "leaf", "pod2"))
+
         fabricDict = {
             "name": "f1",
             "description": "description for f1",
@@ -433,9 +455,10 @@ class TestConfigEngine(unittest.TestCase):
             
             self.assertEqual(1, session.query(OverlayDeployStatus).count())
             config = session.query(OverlayDeployStatus).one().configlet
-            #print config
+            print config
             self.assertIn("bgp", config)
-            self.assertIn("group overlay", config)
+            self.assertIn("group overlay-evpn ", config)
+            self.assertIn("group overlay-evpn-rr", config)
             self.assertIn("cluster", config)
             self.assertIn("routing-options {", config)
             self.assertIn("router-id", config)
@@ -457,28 +480,65 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEquals(4, spine1Config.count("neighbor"))
             self.assertIn("switch-options", spine1Config)
             self.assertIn("policy-options", spine1Config)
-
+            self.assertNotIn("policy-statement OVERLAY-IN", spine1Config)
+            
             leaf1Config = deployments[2].configlet
             print "leaf:\n" + leaf1Config
             self.assertNotIn("routing-options {", leaf1Config)
             self.assertIn("bgp", leaf1Config)
             self.assertIn("group overlay", leaf1Config)
             self.assertNotIn("cluster", leaf1Config)
-            self.assertEquals(2, leaf1Config.count("neighbor"))            
+            self.assertEquals(2, leaf1Config.count("neighbor"))
+            self.assertNotIn("import OVERLAY-IN", leaf1Config)   
             self.assertIn("switch-options", leaf1Config)
             self.assertIn("policy-options", leaf1Config)
-        
-    def testGetNeighborList(self):
-        self.assertEquals([], self.configEngine.getNeighborList("1.2.3.4", "spine", [], []))
-        
-        neighbors = self.configEngine.getNeighborList("1.2.3.4", "spine", ["1.2.3.4", "1.2.3.5", "1.2.3.6"], ["1.2.3.10", "1.2.3.11"])
-        self.assertEquals(4, len(neighbors))
-        self.assertNotIn("1.2.3.4", neighbors)
+            self.assertNotIn("policy-statement OVERLAY-IN", leaf1Config)
 
-        neighbors = self.configEngine.getNeighborList("1.2.3.4", "leaf", ["1.2.3.4", "1.2.3.5", "1.2.3.6"], ["1.2.3.10", "1.2.3.11"])
-        self.assertEquals(3, len(neighbors))
-        self.assertIn("1.2.3.4", neighbors)
-        self.assertNotIn("1.2.3.10", neighbors)
+    def testConfigureFabric2Pods(self):
+        import re
+        regex = re.compile(".*(group\soverlay-evpn\s\{.*?}).*(group\soverlay-evpn-rr\s\{.*?}).*", re.DOTALL)
+        with self._dao.getReadWriteSession() as session:
+            fabric= self.helper._createFabric2Pods(session)
+            # overlay.createXYZ would also call required configure
+            #self.configEngine.configureFabric(session, fabric)
+            
+            self.assertEqual(9, session.query(OverlayDeployStatus).count())
+            deployments = session.query(OverlayDeployStatus).all()
+            spine1Config = deployments[0].configlet
+            print "spine1 pod1:\n" + spine1Config
+            
+            evpn = regex.match(spine1Config).group(1)
+            evpnRr = regex.match(spine1Config).group(2)
+            self.assertIn("cluster", evpn)
+            self.assertEquals(3, evpn.count("neighbor"))
+            self.assertEquals(3, evpnRr.count("neighbor"))
+            self.assertNotIn("policy-statement OVERLAY-IN", spine1Config)
+
+            leaf3Config = deployments[2].configlet
+            print "leaf1 pod1:\n" + leaf3Config
+            self.assertIn("group overlay-evpn {", leaf3Config)
+            self.assertNotIn("cluster", leaf3Config)
+            self.assertEquals(2, leaf3Config.count("neighbor"))            
+            self.assertIn("import OVERLAY-IN", leaf3Config)   
+            self.assertIn("policy-statement OVERLAY-IN", leaf3Config)
+            
+            spine6Config = deployments[5].configlet
+            print "spine6 pod2:\n" + spine6Config
+            evpn = regex.match(spine6Config).group(1)
+            evpnRr = regex.match(spine6Config).group(2)
+            self.assertIn("cluster", evpn)
+            self.assertEquals(2, evpn.count("neighbor"))
+            self.assertEquals(3, evpnRr.count("neighbor"))
+            self.assertNotIn("policy-statement OVERLAY-IN", spine6Config)
+
+            leaf8Config = deployments[7].configlet
+            print "leaf8 pod2:\n" + leaf8Config
+            self.assertIn("group overlay-evpn {", leaf8Config)
+            self.assertNotIn("cluster", leaf8Config)
+            self.assertEquals(2, leaf8Config.count("neighbor"))
+            self.assertIn("import OVERLAY-IN", leaf8Config)   
+            self.assertIn("policy-statement OVERLAY-IN", leaf8Config)
+
 
     def testGetLoopbackIps(self):
         ips = self.configEngine.getLoopbackIps("192.168.48.0/30")
@@ -516,7 +576,7 @@ class TestConfigEngine(unittest.TestCase):
             print "spine1:\n" + config
             self.assertIn("irb {", config)
             self.assertIn("address 1.2.3.2/24 {", config)
-            self.assertIn("virtual-gateway-address 1.2.3.1/24", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1", config)
             self.assertIn("route-distinguisher", config)
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
@@ -526,7 +586,7 @@ class TestConfigEngine(unittest.TestCase):
             print "spine2:\n" + config
             self.assertIn("irb {", config)
             self.assertIn("address 1.2.3.3/24 {", config)
-            self.assertIn("virtual-gateway-address 1.2.3.1/24", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1", config)
             self.assertIn("route-distinguisher", config)
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
@@ -552,7 +612,7 @@ class TestConfigEngine(unittest.TestCase):
             config = deployments[7].configlet
             print "spine1 net1:\n" + config
             self.assertIn("address 1.2.3.2/24 {", config)
-            self.assertIn("virtual-gateway-address 1.2.3.1/24", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1", config)
             self.assertIn("route-distinguisher 1.1.1.1:1001", config)
             self.assertIn("vrf-target target:65001:1001", config)
             self.assertIn("vlan-id 101", config)
@@ -561,7 +621,7 @@ class TestConfigEngine(unittest.TestCase):
             config = deployments[8].configlet
             print "spine2 net1:\n" + config
             self.assertIn("address 1.2.3.3/24 {", config)
-            self.assertIn("virtual-gateway-address 1.2.3.1/24", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1", config)
             self.assertIn("route-distinguisher 1.1.1.2:1001", config)
             self.assertIn("vrf-target target:65001:1001", config)
             self.assertIn("vlan-id 101", config)
@@ -570,7 +630,7 @@ class TestConfigEngine(unittest.TestCase):
             config = deployments[12].configlet
             print "spine1 net2:\n" + config
             self.assertIn("address 2.2.3.2/24 {", config)
-            self.assertIn("virtual-gateway-address 2.2.3.1/24", config)
+            self.assertIn("virtual-gateway-address 2.2.3.1", config)
             self.assertIn("route-distinguisher 1.1.1.1:1001", config)
             self.assertIn("vrf-target target:65001:1001", config)
             self.assertIn("vlan-id 102", config)
@@ -579,7 +639,7 @@ class TestConfigEngine(unittest.TestCase):
             config = deployments[13].configlet
             print "spine2 net2:\n" + config
             self.assertIn("address 2.2.3.3/24 {", config)
-            self.assertIn("virtual-gateway-address 2.2.3.1/24", config)
+            self.assertIn("virtual-gateway-address 2.2.3.1", config)
             self.assertIn("route-distinguisher 1.1.1.2:1001", config)
             self.assertIn("vrf-target target:65001:1001", config)
             self.assertIn("vlan-id 102", config)

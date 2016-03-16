@@ -1,5 +1,4 @@
 protocols {
-    merge:
     evpn {
         encapsulation vxlan;
         extended-vni-list [ {{vni}} ];

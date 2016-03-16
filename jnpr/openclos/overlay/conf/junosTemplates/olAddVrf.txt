@@ -1,5 +1,4 @@
 routing-instances {
-    merge:
     VRF_{{vrfName}} {
         instance-type vrf;
         {% if vrfLoopbackName %}interface {{vrfLoopbackName}};{% endif %}

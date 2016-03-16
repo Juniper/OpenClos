@@ -130,60 +130,59 @@ class ConfigEngine():
         '''
         Generate iBGP config
         '''
-
-        spineIps = []
-        leafIps = []
-        for device in fabric.overlay_devices:
-            if device.role == 'spine':
-                spineIps.append(device.address)
-            elif device.role == 'leaf':
-                leafIps.append(device.address)
-            else:
-                logger.error("configureFabric: unknown device role, name: %s, ip: %s, role: %s", 
-                             device.name, device.address, device.role)
         
-        template = self._templateLoader.getTemplate('olAddProtocolBgp.txt')
+        spineTemplate = self._templateLoader.getTemplate('olAddProtocolBgpSpine.txt')
+        leafTemplate = self._templateLoader.getTemplate('olAddProtocolBgpLeaf.txt')
         deployments = []        
         for device in fabric.overlay_devices:
-            if device.role == 'spine':
-                routeReflector = fabric.routeReflectorAddress
-            elif device.role == 'leaf':
-                routeReflector = None
-
             config = self.configureRoutingOptions(device)
-            config += template.render(routeReflector=routeReflector, routerId=device.routerId, asn=fabric.overlayAS, 
-                            neighbors=self.getNeighborList(device.address, device.role, spineIps, leafIps))
             config += self.configureSwitchOptions(device.routerId)
-            config += self.configurePolicyOptions()
+
+            if device.role == 'spine':
+                config += spineTemplate.render(routerId=device.routerId, asn=fabric.overlayAS, 
+                            podLeafs=[l.routerId for l in fabric.getPodLeafs(device.podName)], 
+                            allSpines=[s.routerId for s in fabric.getSpines() if s != device], 
+                            routeReflector=fabric.routeReflectorAddress)
+            elif device.role == 'leaf':
+                config += leafTemplate.render(routerId=device.routerId, asn=fabric.overlayAS, 
+                            podSpines=[s.routerId for s in fabric.getPodSpines(device.podName)],
+                            remoteGateways=self.getRemoteGateways(fabric, device.podName))
+            config += self.configureFabricPolicyOptions(fabric, device)
             
             deployments.append(OverlayDeployStatus(config, fabric.getUrl(), "create", device))    
 
         self._dao.createObjects(dbSession, deployments)
         # TODO: add all deployments to job queue
         logger.info("configureFabric [id: '%s', name: '%s']: configured", fabric.id, fabric.name)
-        
-    def getNeighborList(self, ip, role, spines, leaves):
-        neighbors = []
-        if role == 'spine':
-            neighbors = [s for s in spines if s != ip]
-            neighbors += leaves
-        elif role == 'leaf':
-            neighbors += spines
-        return neighbors
     
+    def getRemoteGateways(self, fabric, podName):
+        allSpines = set(fabric.getSpines())
+        podSpines = set(fabric.getPodSpines(podName))
+        remoteGatewayDevices = allSpines.difference(podSpines)
+        if remoteGatewayDevices:
+            return [d.routerId for d in remoteGatewayDevices]
+
     def configureRoutingOptions(self, device):
         if device.role == 'spine':
             template = self._templateLoader.getTemplate('olAddRoutingOptions.txt')
             return template.render(routerId=device.routerId)
         else:
             return ""
+        
     def configureSwitchOptions(self, routerId):
         template = self._templateLoader.getTemplate('olAddSwitchOptions.txt')
         return template.render(routerId=routerId, esiRouteTarget=esiRouteTarget)
 
-    def configurePolicyOptions(self, vni=None, asn=None):
+    def configureFabricPolicyOptions(self, fabric, device):
         template = self._templateLoader.getTemplate('olAddPolicyOptions.txt')
-        return template.render(vni=vni, esiRTarget=esiRouteTarget, asn=asn)
+        if device.role == 'spine':
+            return template.render(esiRTarget=esiRouteTarget)
+        else:
+            return template.render(remoteGateways=self.getRemoteGateways(fabric, device.podName), esiRTarget=esiRouteTarget)
+        
+    def configureNetworkPolicyOptions(self, vni=None, asn=None):
+        template = self._templateLoader.getTemplate('olAddPolicyOptions.txt')
+        return template.render(vni=vni, asn=asn)
 
     def configureVrf(self, dbSession, vrf):
         deployments = []
@@ -198,7 +197,7 @@ class ConfigEngine():
         for spine, loopback in itertools.izip(spines, loopbackIps):
             config = self.configureLoopback(loopback, vrf.loopbackCounter)
             
-            config += template.render(vrfName=vrf.overlay_tenant.name, vrfLoopbackName="lo0." + str(vrf.loopbackCounter), 
+            config += template.render(vrfName=vrf.overlay_tenant.name,  
                 routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS)
             deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "create", spine, vrf))    
 
@@ -242,7 +241,7 @@ class ConfigEngine():
         asn = vrf.overlay_tenant.overlay_fabric.overlayAS
 
         irbIps = self.getSubnetIps(subnet.cidr)
-        irbVirtualGateway = irbIps.pop(0)
+        irbVirtualGateway = irbIps.pop(0).split("/")[0]
         
         if len(irbIps) < len(spines):
             logger.error("configureSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
@@ -257,11 +256,11 @@ class ConfigEngine():
             config = irbTemplate.render(firstIpFromSubnet=irbVirtualGateway, secondOrThirdIpFromSubnet=irbIp, 
                 vlanId=network.vlanid)
             
-            config += vrfTemplate.render(vrfName=vrf.overlay_tenant.name, irbName="irb." + str(network.vlanid),
-                routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS, vni0=firstNetwork.vnid)
-            
+            config += vrfTemplate.render(vrfName=vrf.overlay_tenant.name, vrfLoopbackName="lo0." + str(vrf.loopbackCounter),
+                                         irbName="irb." + str(network.vlanid), routerId=spine.routerId, 
+                                         asn=vrf.overlay_tenant.overlay_fabric.overlayAS, vni0=firstNetwork.vnid)
             config += self.configureEvpn(network.vnid, asn)
-            config += self.configurePolicyOptions(network.vnid, asn)
+            config += self.configureNetworkPolicyOptions(network.vnid, asn)
             config += bdTemplate.render(vlanId=network.vlanid, vxlanId=network.vnid)
             
             deployments.append(OverlayDeployStatus(config, network.getUrl(), "create", spine, vrf))    
@@ -269,7 +268,7 @@ class ConfigEngine():
         for leaf in vrf.getLeafs():            
             
             config = self.configureEvpn(network.vnid, asn)
-            config += self.configurePolicyOptions(network.vnid, asn)
+            config += self.configureNetworkPolicyOptions(network.vnid, asn)
             config += bdTemplate.render(vlanId=network.vlanid, vxlanId=network.vnid)
 
             deployments.append(OverlayDeployStatus(config, network.getUrl(), "create", leaf, vrf))    

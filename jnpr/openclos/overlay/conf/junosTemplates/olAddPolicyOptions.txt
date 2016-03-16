@@ -5,16 +5,29 @@ policy-options {
             from community com{{vni}};
             then accept;
         }{% else %}replace:
-        term switch_options {
-            from community switch_options_comm;
+        term import_leaf_esi {
+            from community comm-leaf-esi;
             then accept;
         }
         replace:
-        term reject {
+        term default {
             then reject;
         }{% endif %}
     }
+    {% if remoteGateways %}policy-statement OVERLAY-IN {
+        term reject-remote-gw {
+            from {
+                family evpn;
+                next-hop [ {% for gw in remoteGateways %}{{gw}} {% endfor %}];
+                nlri-route-type [ 1 2 ];
+            }
+            then reject;
+        }
+        term accept-all {
+            then accept;
+        }
+    }{% endif %}
     {% if vni %}replace:
     community com{{vni}} members target:{{asn}}:{{vni}};{% else %}replace:
-    community switch_options_comm members target:{{esiRTarget}};{% endif %}
+    community comm-leaf-esi members target:{{esiRTarget}};{% endif %}
 }    
