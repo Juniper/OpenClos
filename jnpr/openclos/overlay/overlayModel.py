@@ -138,6 +138,15 @@ class OverlayFabric(ManagedElement, Base):
         Remove existing devices
         '''
         del self.overlay_devices[:]
+
+    def getSpines(self):
+        return [dev for dev in self.overlay_devices if dev.role == "spine"]
+    def getLeafs(self):
+        return [dev for dev in self.overlay_devices if dev.role == "leaf"]
+    def getPodSpines(self, podName):
+        return [dev for dev in self.overlay_devices if dev.role == "spine" and dev.podName == podName]
+    def getPodLeafs(self, podName):
+        return [dev for dev in self.overlay_devices if dev.role == "leaf" and dev.podName == podName]
     
 class OverlayFabricOverlayDeviceLink(ManagedElement, Base):
     __tablename__ = 'overlayFabricOverlayDeviceLink'

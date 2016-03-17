@@ -1,0 +1,31 @@
+protocols {
+    bgp {
+        log-updown;
+        graceful-restart;
+        replace:
+        group overlay-evpn {
+            type internal;
+            family evpn signaling;
+            local-address {{routerId}};
+            local-as {{asn}};
+            multipath;
+            {% for neighborIp in podLeafs %}neighbor {{neighborIp}};
+            {% endfor %}        
+            cluster {{routeReflector}};
+        }
+        group overlay-evpn-rr {
+            type internal;
+            family evpn signaling;
+            local-address {{routerId}};
+            local-as {{asn}};
+            multipath;
+            {% for neighborIp in allSpines %}neighbor {{neighborIp}};
+            {% endfor %}        
+        }
+        bfd-liveness-detection {
+            minimum-interval 350;
+            multiplier 3;
+            session-mode automatic;
+        }
+    }
+}
