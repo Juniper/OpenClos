@@ -5,24 +5,20 @@ Created on Nov 23, 2015
 '''
 import os
 import sys
-from netaddr.ip.sets import IPSet
 sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../../..')) #trick to make it run from CLI
 
 import unittest
-import shutil
-from jnpr.openclos.overlay.overlay import Overlay, ConfigEngine
 from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
-from jnpr.openclos.loader import loadLoggingConfig
-from jnpr.openclos.dao import Dao
-
-class InMemoryDao(Dao):
-    def _getDbUrl(self):
-        loadLoggingConfig(appName = 'unittest')
-        return 'sqlite:///'
+from jnpr.openclos.tests.unit.test_dao import InMemoryDao
+from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue
+from jnpr.openclos.overlay.overlay import ConfigEngine
         
 class TestOverlayHelper:
-    def __init__(self, conf, dao):
-        self.overlay = Overlay(conf, dao)
+    def __init__(self, conf, dao, commitQueue=None):
+        if not commitQueue:
+            commitQueue = OverlayCommitQueue(type(dao))
+        import jnpr.openclos.overlay.overlay
+        self.overlay = jnpr.openclos.overlay.overlay.Overlay(conf, dao, commitQueue)
     
     def _createDevice(self, dbSession, offset="1", role="spine", podName="pod1"):
         deviceDict = {
@@ -198,15 +194,10 @@ class TestOverlayHelper:
     
 class TestOverlay(unittest.TestCase):
     def setUp(self):
-        self._conf = {}
-        self._conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
-        self._conf['plugin'] = [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]
         self._dao = InMemoryDao.getInstance()
-        self.helper = TestOverlayHelper(self._conf, self._dao)
+        self.helper = TestOverlayHelper({}, self._dao)
     
     def tearDown(self):
-        ''' Deletes 'out' folder under test dir'''
-        shutil.rmtree(self._conf['outputDir'], ignore_errors=True)
         InMemoryDao._destroy()
         self.helper = None
 
@@ -434,16 +425,10 @@ class TestOverlay(unittest.TestCase):
 
 class TestConfigEngine(unittest.TestCase):
     def setUp(self):
-        self._conf = {}
-        #self._conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
-        self._conf['plugin'] = [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]
         self._dao = InMemoryDao.getInstance()
-        self.helper = TestOverlayHelper(self._conf, self._dao)
-        self.configEngine = ConfigEngine(self._conf, self._dao)
+        self.helper = TestOverlayHelper({}, self._dao)
     
     def tearDown(self):
-        ''' Deletes 'out' folder under test dir'''
-        #shutil.rmtree(self._conf['outputDir'], ignore_errors=True)
         InMemoryDao._destroy()
         self.helper = None
 
@@ -541,11 +526,13 @@ class TestConfigEngine(unittest.TestCase):
 
 
     def testGetLoopbackIps(self):
-        ips = self.configEngine.getLoopbackIps("192.168.48.0/30")
+        configEngine = self.helper.overlay._configEngine
+
+        ips = configEngine.getLoopbackIps("192.168.48.0/30")
         self.assertEquals(['192.168.48.0/32', '192.168.48.1/32', '192.168.48.2/32', '192.168.48.3/32'], ips)
-        ips = self.configEngine.getLoopbackIps("192.168.48.0/31")
+        ips = configEngine.getLoopbackIps("192.168.48.0/31")
         self.assertEquals(['192.168.48.0/32', '192.168.48.1/32'], ips)
-        ips = self.configEngine.getLoopbackIps("192.168.48.0/32")
+        ips = configEngine.getLoopbackIps("192.168.48.0/32")
         self.assertEquals(['192.168.48.0/32'], ips)
 
     def testConfigureVrf(self):
@@ -654,8 +641,8 @@ class TestConfigEngine(unittest.TestCase):
             deployments = session.query(OverlayDeployStatus).all()
             self.assertEqual(6, len(deployments))
             
-            #print deployments[2].configlet
-            #print deployments[4].configlet
+            print deployments[2].configlet
+            print deployments[4].configlet
             self.assertEquals(1, deployments[2].configlet.count("interface "))
             self.assertEquals(2, deployments[4].configlet.count("interface "))
 
