@@ -13,6 +13,7 @@ from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, Ove
 from jnpr.openclos.loader import loadLoggingConfig
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.templateLoader import TemplateLoader
+from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue
 
 moduleName = 'overlay'
 loadLoggingConfig(appName=moduleName)
@@ -20,10 +21,10 @@ logger = logging.getLogger(moduleName)
 esiRouteTarget = "9999:9999"
 
 class Overlay():
-    def __init__(self, conf, dao):
+    def __init__(self, conf, dao, commitQueue=None):
         self._conf = conf
         self._dao = dao
-        self._configEngine = ConfigEngine(conf, dao)
+        self._configEngine = ConfigEngine(conf, dao, commitQueue)
     def createDevice(self, dbSession, name, description, role, address, routerId, podName, username=None, password=None):
         '''
         Create a new Device
@@ -120,10 +121,14 @@ class Overlay():
         return ae
 
 class ConfigEngine():
-    def __init__(self, conf, dao):
+    def __init__(self, conf, dao, commitQueue=None):
         self._conf = conf
         self._dao = dao
         self._templateLoader = TemplateLoader(junosTemplatePackage="jnpr.openclos.overlay")
+        if commitQueue:
+            self._commitQueue = commitQueue
+        else:
+            self._commitQueue = OverlayCommitQueue.getInstance()
         
 
     def configureFabric(self, dbSession, fabric):
@@ -152,8 +157,8 @@ class ConfigEngine():
             deployments.append(OverlayDeployStatus(config, fabric.getUrl(), "create", device))    
 
         self._dao.createObjects(dbSession, deployments)
-        # TODO: add all deployments to job queue
         logger.info("configureFabric [id: '%s', name: '%s']: configured", fabric.id, fabric.name)
+        self._commitQueue.addJobs(deployments)
     
     def getRemoteGateways(self, fabric, podName):
         allSpines = set(fabric.getSpines())
@@ -202,8 +207,8 @@ class ConfigEngine():
             deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "create", spine, vrf))    
 
         self._dao.createObjects(dbSession, deployments)
-        # TODO: add all deployments to job queue
         logger.info("configureVrf [id: '%s', name: '%s']: configured", vrf.id, vrf.name)
+        self._commitQueue.addJobs(deployments)
 
     def getLoopbackIps(self, loopbackBlock):
         '''
@@ -274,9 +279,8 @@ class ConfigEngine():
             deployments.append(OverlayDeployStatus(config, network.getUrl(), "create", leaf, vrf))    
 
         self._dao.createObjects(dbSession, deployments)
-        # TODO: add all deployments to job queue
         logger.info("configureSubnet [network id: '%s', network name: '%s']: configured", network.id, network.name)
-
+        self._commitQueue.addJobs(deployments)
         
     def configureEvpn(self, vni=None, asn=None):
         template = self._templateLoader.getTemplate('olAddProtocolEvpn.txt')

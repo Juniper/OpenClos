@@ -4,22 +4,18 @@ Created on Feb 15, 2016
 @author: yunli
 '''
 
-import os
 import traceback
-import uuid
 import logging
 from threading import Thread, Event, RLock
-import subprocess
 import concurrent.futures
 import Queue
 from sqlalchemy.orm import exc
-import time
 
-from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
+from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus
 from jnpr.openclos.dao import Dao
-from jnpr.openclos.loader import defaultPropertyLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
+from jnpr.openclos.loader import OpenClosProperty, loadLoggingConfig
 from jnpr.openclos.common import SingletonBase
-from jnpr.openclos.exception import ConfigurationCommitFailed, DeviceRpcFailed, DeviceConnectFailed
+from jnpr.openclos.exception import DeviceRpcFailed, DeviceConnectFailed
 from jnpr.openclos.deviceConnector import CachedConnectionFactory, NetconfConnection
 
 DEFAULT_MAX_THREADS = 10
@@ -53,12 +49,12 @@ class OverlayCommitJob():
 
             # first update the status to 'progress'
             try:
-                with self.parent.dao.getReadWriteSession() as session:
+                with self.parent._dao.getReadWriteSession() as session:
                     statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).one()
                     statusObject.update('progress', 'commit in progress', self.operation)
             except Exception as exc:
                 logger.error("%s", exc)
-                #logger.error('StackTrace: %s', traceback.format_exc())
+                logger.error('StackTrace: %s', traceback.format_exc())
                 
             # now commit and set the result/reason accordingly
             result = 'success'
@@ -87,7 +83,7 @@ class OverlayCommitJob():
             
             # commit is done so update the result and remove device id from cache
             try:
-                with self.parent.dao.getReadWriteSession() as session:
+                with self.parent._dao.getReadWriteSession() as session:
                     statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).one()
                     statusObject.update(result, reason, self.operation)
             except Exception as exc:
@@ -102,8 +98,8 @@ class OverlayCommitJob():
             raise
 
 class OverlayCommitQueue(SingletonBase):
-    def __init__(self):
-        self.dao = DEFAULT_DAO_CLASS.getInstance()
+    def __init__(self, daoClass=DEFAULT_DAO_CLASS):
+        self._dao = daoClass.getInstance()
         # event to stop from sleep
         self.stopEvent = Event()
         self.__lock = RLock()
@@ -130,15 +126,20 @@ class OverlayCommitQueue(SingletonBase):
         
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.maxWorkers)
 
-    def addJob(self, deployStatusObject):
-        job = OverlayCommitJob(self, deployStatusObject)
-        logger.debug("Job %s: added to device [%s]", job.id, job.queueId)
+    def addJobs(self, deployStatusObjects):
+        jobs = []
+        for deployStatusObject in deployStatusObjects:
+            jobs.append(OverlayCommitJob(self, deployStatusObject))
+            logger.debug("Job %s: added to device [%s]", jobs[-1].id, jobs[-1].queueId)
+            
         with self.__lock:
-            if job.queueId not in self.__deviceQueues:
-                self.__deviceQueues[job.queueId] = Queue.Queue()
-            self.__deviceQueues[job.queueId].put(job)
-        return job
-    
+            for job in jobs:
+                if job.queueId not in self.__deviceQueues:
+                    self.__deviceQueues[job.queueId] = Queue.Queue()
+                self.__deviceQueues[job.queueId].put(job)
+
+        return jobs
+
     '''
     To be used by unit test only
     '''

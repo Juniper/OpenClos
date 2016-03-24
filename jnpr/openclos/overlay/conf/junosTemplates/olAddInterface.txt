@@ -1,5 +1,5 @@
+merge:
 interfaces {
-    merge:
     {{interfaceName}} {
         flexible-vlan-tagging;
         {% for network in networks %}unit {{network[0]}} {
