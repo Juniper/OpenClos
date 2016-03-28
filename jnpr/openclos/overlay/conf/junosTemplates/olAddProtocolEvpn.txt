@@ -1,12 +1,12 @@
 protocols {
     evpn {
         encapsulation vxlan;
-        extended-vni-list [ {{vni}} ];
         multicast-mode ingress-replication;
+        {% if vni %}extended-vni-list [ {{vni}} ];
         vni-options {
             vni {{vni}} {
                 vrf-target export target:{{asn}}:{{vni}};
             }
-        }
+        }{% endif %}
     }
 }

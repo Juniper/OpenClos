@@ -153,6 +153,7 @@ class ConfigEngine():
                             podSpines=[s.routerId for s in fabric.getPodSpines(device.podName)],
                             remoteGateways=self.getRemoteGateways(fabric, device.podName))
             config += self.configureFabricPolicyOptions(fabric, device)
+            config += self.configureEvpn()
             
             deployments.append(OverlayDeployStatus(config, fabric.getUrl(), "create", device))    
 
