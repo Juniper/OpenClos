@@ -277,10 +277,10 @@ class TestOverlay(unittest.TestCase):
             self.helper._createVrf(session, "5")
             vrfs = session.query(OverlayVrf).all()
             self.assertEquals(5, len(vrfs))
-            self.assertEquals(1, vrfs[0].loopbackCounter)
-            self.assertEquals(2, vrfs[1].loopbackCounter)
-            self.assertEquals(3, vrfs[2].loopbackCounter)
-            self.assertEquals(5, vrfs[4].loopbackCounter)
+            self.assertEquals(1, vrfs[0].vrfCounter)
+            self.assertEquals(2, vrfs[1].vrfCounter)
+            self.assertEquals(3, vrfs[2].vrfCounter)
+            self.assertEquals(5, vrfs[4].vrfCounter)
 
     def testUpdateVrf(self):
         with self._dao.getReadWriteSession() as session:        
@@ -548,6 +548,7 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("lo0 {", config)
             self.assertIn("routing-instances {", config)
             self.assertIn("instance-type vrf;", config)
+            self.assertIn("route-distinguisher", config)
 
     def testConfigureSubnet(self):
         with self._dao.getReadWriteSession() as session:
@@ -564,7 +565,6 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("irb {", config)
             self.assertIn("address 1.2.3.2/24 {", config)
             self.assertIn("virtual-gateway-address 1.2.3.1", config)
-            self.assertIn("route-distinguisher", config)
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
@@ -574,7 +574,6 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("irb {", config)
             self.assertIn("address 1.2.3.3/24 {", config)
             self.assertIn("virtual-gateway-address 1.2.3.1", config)
-            self.assertIn("route-distinguisher", config)
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
