@@ -187,7 +187,7 @@ class OverlayVrf(ManagedElement, Base):
     description = Column(String(256))
     routedVnid = Column(Integer)
     loopbackAddress = Column(String(60))
-    loopbackCounter = Column(Integer)
+    vrfCounter = Column(Integer)
     overlay_tenant_id = Column(String(60), ForeignKey('overlayTenant.id'), nullable=False)
     overlay_tenant = relationship("OverlayTenant", backref=backref('overlay_vrfs', order_by=name, cascade='all, delete, delete-orphan'))
     __table_args__ = (

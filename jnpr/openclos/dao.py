@@ -185,7 +185,6 @@ class AbstractDao(SingletonBase):
                 session.merge(Counter(counterName, count))
             except (exc.NoResultFound):
                 session.add(Counter(counterName, count))
-            session.commit()
         return count
 
 class Dao(AbstractDao):

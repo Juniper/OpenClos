@@ -61,7 +61,7 @@ class Overlay():
         Create a new Vrf
         '''
         vrf = OverlayVrf(name, description, routedVnid, loopbackAddress, overlayTenant)
-        vrf.loopbackCounter = self._dao.incrementAndGetCounter("OverlayVrf.loopbackCounter")
+        vrf.vrfCounter = self._dao.incrementAndGetCounter("OverlayVrf.vrfCounter")
 
         self._dao.createObjects(dbSession, [vrf])
         logger.info("OverlayVrf[id: '%s', name: '%s']: created", vrf.id, vrf.name)
@@ -201,9 +201,9 @@ class ConfigEngine():
             
         template = self._templateLoader.getTemplate('olAddVrf.txt')
         for spine, loopback in itertools.izip(spines, loopbackIps):
-            config = self.configureLoopback(loopback, vrf.loopbackCounter)
+            config = self.configureLoopback(loopback, vrf.vrfCounter)
             
-            config += template.render(vrfName=vrf.overlay_tenant.name,  
+            config += template.render(vrfName=vrf.overlay_tenant.name,  vrfCounter=vrf.vrfCounter,
                 routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS)
             deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "create", spine, vrf))    
 
@@ -243,7 +243,6 @@ class ConfigEngine():
         network = subnet.overlay_network
         vrf = network.overlay_vrf
         spines = vrf.getSpines()
-        firstNetwork = vrf.overlay_networks[0]
         asn = vrf.overlay_tenant.overlay_fabric.overlayAS
 
         irbIps = self.getSubnetIps(subnet.cidr)
@@ -262,9 +261,7 @@ class ConfigEngine():
             config = irbTemplate.render(firstIpFromSubnet=irbVirtualGateway, secondOrThirdIpFromSubnet=irbIp, 
                 vlanId=network.vlanid)
             
-            config += vrfTemplate.render(vrfName=vrf.overlay_tenant.name, vrfLoopbackName="lo0." + str(vrf.loopbackCounter),
-                                         irbName="irb." + str(network.vlanid), routerId=spine.routerId, 
-                                         asn=vrf.overlay_tenant.overlay_fabric.overlayAS, vni0=firstNetwork.vnid)
+            config += vrfTemplate.render(vrfName=vrf.overlay_tenant.name, irbName="irb." + str(network.vlanid))
             config += self.configureEvpn(network.vnid, asn)
             config += self.configureNetworkPolicyOptions(network.vnid, asn)
             config += bdTemplate.render(vlanId=network.vlanid, vxlanId=network.vnid)
