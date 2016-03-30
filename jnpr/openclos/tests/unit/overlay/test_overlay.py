@@ -599,8 +599,6 @@ class TestConfigEngine(unittest.TestCase):
             print "spine1 net1:\n" + config
             self.assertIn("address 1.2.3.2/24 {", config)
             self.assertIn("virtual-gateway-address 1.2.3.1", config)
-            self.assertIn("route-distinguisher 1.1.1.1:1001", config)
-            self.assertIn("vrf-target target:65001:1001", config)
             self.assertIn("vlan-id 101", config)
             self.assertIn("vni 1001", config)
                         
@@ -608,8 +606,6 @@ class TestConfigEngine(unittest.TestCase):
             print "spine2 net1:\n" + config
             self.assertIn("address 1.2.3.3/24 {", config)
             self.assertIn("virtual-gateway-address 1.2.3.1", config)
-            self.assertIn("route-distinguisher 1.1.1.2:1001", config)
-            self.assertIn("vrf-target target:65001:1001", config)
             self.assertIn("vlan-id 101", config)
             self.assertIn("vni 1001", config)
 
@@ -617,8 +613,6 @@ class TestConfigEngine(unittest.TestCase):
             print "spine1 net2:\n" + config
             self.assertIn("address 2.2.3.2/24 {", config)
             self.assertIn("virtual-gateway-address 2.2.3.1", config)
-            self.assertIn("route-distinguisher 1.1.1.1:1001", config)
-            self.assertIn("vrf-target target:65001:1001", config)
             self.assertIn("vlan-id 102", config)
             self.assertIn("vni 1002", config)
                         
@@ -626,8 +620,6 @@ class TestConfigEngine(unittest.TestCase):
             print "spine2 net2:\n" + config
             self.assertIn("address 2.2.3.3/24 {", config)
             self.assertIn("virtual-gateway-address 2.2.3.1", config)
-            self.assertIn("route-distinguisher 1.1.1.2:1001", config)
-            self.assertIn("vrf-target target:65001:1001", config)
             self.assertIn("vlan-id 102", config)
             self.assertIn("vni 1002", config)
 
