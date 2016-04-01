@@ -1,4 +1,3 @@
-merge:
 interfaces {
     {{interfaceName}} {
         flexible-vlan-tagging;

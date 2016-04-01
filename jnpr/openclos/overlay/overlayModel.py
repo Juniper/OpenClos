@@ -414,7 +414,7 @@ class OverlayDeployStatus(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     configlet = Column(BLOB)
     object_url = Column(String(1024), nullable=False)
-    operation = Column(String(60))
+    operation = Column(Enum('create', 'update', 'delete'))
     overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
     overlay_device = relationship("OverlayDevice", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
     overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'))
@@ -440,11 +440,25 @@ class OverlayDeployStatus(ManagedElement, Base):
         self.status = status
         self.statusReason = statusReason
         
-    def update(self, status, statusReason, operation):
+    def update(self, status, statusReason=None):
         '''
         Update status object.
         '''
         self.status = status
         self.statusReason = statusReason
-        self.operation = operation
+        
+    def getObjectTypeAndId(self):
+        
+        '''
+        returns tuple with objectType and objectId
+        '''
+        objectUrlSplit = self.object_url.split("/")
+        if objectUrlSplit[1] == "fabrics":
+            return(OverlayFabric, objectUrlSplit[2])
+        elif objectUrlSplit[1] == "vrfs":
+            return(OverlayVrf, objectUrlSplit[2])
+        elif objectUrlSplit[1] == "networks":
+            return(OverlayNetwork, objectUrlSplit[2])
+        elif objectUrlSplit[1] == "l2ports":
+            return(OverlayL2port, objectUrlSplit[2])
         

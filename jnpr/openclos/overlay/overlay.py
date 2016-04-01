@@ -120,6 +120,14 @@ class Overlay():
         logger.info("OverlayAe[id: '%s', name: '%s']: created", ae.id, ae.name)
         return ae
 
+    def deleteL2port(self, dbSession, l2Port):
+        '''
+        Delete L2port from device, if success then from DB
+        '''
+        self._configEngine.deleteL2Port(dbSession, l2Port)
+        #self._dao.deleteObject(dbSession, l2Port)
+        logger.info("OverlayL2port[id: '%s', name: '%s']: deleted", l2Port.id, l2Port.name)
+
 class ConfigEngine():
     def __init__(self, conf, dao, commitQueue=None):
         self._conf = conf
@@ -297,16 +305,31 @@ class ConfigEngine():
         '''
         Create access port interface
         '''
+        deployments = []
         networks = [(net.vlanid, net.vnid) for net in l2Port.overlay_networks]
         vrf = l2Port.overlay_networks[0].overlay_vrf
         template = self._templateLoader.getTemplate('olAddInterface.txt')
         config = template.render(interfaceName=l2Port.interface, networks=networks)
 
-        self._dao.createObjects(dbSession, [OverlayDeployStatus(config, l2Port.getUrl(), "create", l2Port.overlay_device, vrf)])
-        # TODO: add all deployments to job queue
+        deployments.append(OverlayDeployStatus(config, l2Port.getUrl(), "create", l2Port.overlay_device, vrf))
+        self._dao.createObjects(dbSession, deployments)
         logger.info("configureL2Port [l2Port id: '%s', l2Port name: '%s']: configured", l2Port.id, l2Port.interface)
+        self._commitQueue.addJobs(deployments)
 
-        
+    def deleteL2Port(self, dbSession, l2Port):
+        '''
+        Delete L2port from device
+        '''
+        deployments = []
+        networks = [(net.vlanid, net.vnid) for net in l2Port.overlay_networks]
+        vrf = l2Port.overlay_networks[0].overlay_vrf
+        template = self._templateLoader.getTemplate('olDelInterface.txt')
+        config = template.render(interfaceName=l2Port.interface, networks=networks)
+
+        deployments.append(OverlayDeployStatus(config, l2Port.getUrl(), "delete", l2Port.overlay_device, vrf))
+        self._dao.createObjects(dbSession, deployments)
+        logger.info("deleteL2port [l2Port id: '%s', l2Port name: '%s']: configured", l2Port.id, l2Port.interface)
+        self._commitQueue.addJobs(deployments)
 
         
         
