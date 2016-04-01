@@ -1330,7 +1330,7 @@ class OverlayRestRoutes():
             
         try:
             l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
-            self.__dao.deleteObject(dbSession, l2portObject)
+            self._overlay.deleteL2port(dbSession, l2portObject)
             logger.info("OverlayL2port[id='%s', name='%s']: deleted", l2portObject.id, l2portObject.name)
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, ex.message)

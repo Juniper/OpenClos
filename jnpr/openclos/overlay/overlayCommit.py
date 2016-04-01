@@ -40,6 +40,34 @@ class OverlayCommitJob():
         self.operation = deployStatusObject.operation
         self.queueId = '%s:%s' % (self.deviceIp, self.deviceId)
 
+    def updateStatus(self, status, reason=None):
+        try:
+            with self.parent._dao.getReadWriteSession() as session:
+                statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).one()
+                
+                if statusObject.operation == "create":
+                    statusObject.update(status, reason)
+                elif statusObject.operation == "delete":
+                    if status == "failure":
+                        statusObject.update(status, reason)
+                    else:
+                        relatedStatusObjects = session.query(OverlayDeployStatus).filter(
+                                            OverlayDeployStatus.object_url == statusObject.object_url).all()
+                        self.parent._dao.deleteObjects(session, relatedStatusObjects)
+                        
+                        objectTypeId = statusObject.getObjectTypeAndId()
+                        obj = session.query(objectTypeId[0]).filter_by(id=objectTypeId[1]).one()
+                        if obj:
+                            session.delete(obj)
+                        
+                elif statusObject.operation == "update":
+                    statusObject.update(status, reason)
+                    ## TODO: add hook to update the actual object
+
+        except Exception as exc:
+            logger.error("%s", exc)
+            logger.error('StackTrace: %s', traceback.format_exc())
+
     def commit(self):
         try:
             # Note we don't want to hold the caller's session for too long since this function is potentially lengthy
@@ -48,17 +76,11 @@ class OverlayCommitJob():
             logger.info("Job %s: starting commit on device [%s]", self.id, self.queueId)
 
             # first update the status to 'progress'
-            try:
-                with self.parent._dao.getReadWriteSession() as session:
-                    statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).one()
-                    statusObject.update('progress', 'commit in progress', self.operation)
-            except Exception as exc:
-                logger.error("%s", exc)
-                logger.error('StackTrace: %s', traceback.format_exc())
+            self.updateStatus("progress")
                 
             # now commit and set the result/reason accordingly
             result = 'success'
-            reason = ''
+            reason = None
             try:
                 with CachedConnectionFactory.getInstance().connection(NetconfConnection,
                                                                       self.deviceIp,
@@ -81,16 +103,11 @@ class OverlayCommitJob():
                 result = 'failure'
                 reason = str(exc)
             
-            # commit is done so update the result and remove device id from cache
-            try:
-                with self.parent._dao.getReadWriteSession() as session:
-                    statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).one()
-                    statusObject.update(result, reason, self.operation)
-            except Exception as exc:
-                logger.error("%s", exc)
-                #logger.error('StackTrace: %s', traceback.format_exc())
+            # commit is done so update the result
+            self.updateStatus(result, reason)
                 
             logger.info("Job %s: done with device [%s]", self.id, self.queueId)
+            # remove device id from cache
             self.parent.markDeviceIdle(self.queueId)
         except Exception as exc:
             logger.error("Job %s: error '%s'", self.id, exc)

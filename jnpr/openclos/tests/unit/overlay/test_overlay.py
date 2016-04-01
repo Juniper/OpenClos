@@ -184,7 +184,7 @@ class TestOverlayHelper:
             "object_url": "http://host:port/openclos/v1/overlay/vrfs/%s" % (vrfObject.id),
             "status": "failure",
             "statusReason": "conflict",
-            "operation": "POST"
+            "operation": "create"
         }
         status = OverlayDeployStatus(deployStatusDict['configlet'], deployStatusDict['object_url'], 
             deployStatusDict['operation'], deviceObject, vrfObject, deployStatusDict['status'], deployStatusDict['statusReason'])
@@ -413,7 +413,7 @@ class TestOverlay(unittest.TestCase):
             vrfObject = self.helper._createVrf(session)
             deviceObject = vrfObject.overlay_tenant.overlay_fabric.overlay_devices[0]
             deployStatusObject = self.helper._createDeployStatus(session, deviceObject, vrfObject)
-            deployStatusObject.update('progress', 'in progress', 'PUT')
+            deployStatusObject.update('progress', 'in progress')
             self._dao.updateObjects(session, [deployStatusObject])
             id = deployStatusObject.id
             
@@ -421,7 +421,7 @@ class TestOverlay(unittest.TestCase):
             deployStatusObjectFromDb = session.query(OverlayDeployStatus).filter_by(id = id).one()
             self.assertEqual('progress', deployStatusObjectFromDb.status)
             self.assertEqual('in progress', deployStatusObjectFromDb.statusReason)
-            self.assertEqual('PUT', deployStatusObjectFromDb.operation)
+            self.assertEqual('create', deployStatusObjectFromDb.operation)
 
 class TestConfigEngine(unittest.TestCase):
     def setUp(self):
@@ -636,6 +636,18 @@ class TestConfigEngine(unittest.TestCase):
             print deployments[4].configlet
             self.assertEquals(1, deployments[2].configlet.count("interface "))
             self.assertEquals(2, deployments[4].configlet.count("interface "))
+
+    def testDeleteL2Port(self):
+        with self._dao.getReadWriteSession() as session:
+            port = self.helper._createL2port(session)
+            configEngine = self.helper.overlay._configEngine
+            configEngine.deleteL2Port(session, port)
+            # 4 deployments 1 fabric, 1 vrf and 1 port add, 1 port delete            
+            deployments = session.query(OverlayDeployStatus).all()
+            print deployments[-1].configlet
+            self.assertEquals(1, deployments[-1].configlet.count("interfaces "))
+            self.assertEquals(1, deployments[-1].configlet.count("vlans "))
+            self.assertEquals(2, deployments[-1].configlet.count("delete:"))
 
 if __name__ == '__main__':
     unittest.main()
