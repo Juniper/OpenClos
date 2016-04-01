@@ -272,7 +272,7 @@ class ConfigEngine():
             config += vrfTemplate.render(vrfName=vrf.overlay_tenant.name, irbName="irb." + str(network.vlanid))
             config += self.configureEvpn(network.vnid, asn)
             config += self.configureNetworkPolicyOptions(network.vnid, asn)
-            config += bdTemplate.render(vlanId=network.vlanid, vxlanId=network.vnid)
+            config += bdTemplate.render(vlanId=network.vlanid, vxlanId=network.vnid, role="spine")
             
             deployments.append(OverlayDeployStatus(config, network.getUrl(), "create", spine, vrf))    
 

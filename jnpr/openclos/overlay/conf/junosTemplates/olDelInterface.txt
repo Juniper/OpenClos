@@ -6,7 +6,9 @@ interfaces {
     }
 }
 vlans {
-    {% for network in networks %}delete:
-    bd{{network[1]}};
+    {% for network in networks %}bd{{network[1]}} {
+        delete:
+        l3-interface {{interfaceName}}.{{network[0]}};
+    }
     {% endfor %}
 }
