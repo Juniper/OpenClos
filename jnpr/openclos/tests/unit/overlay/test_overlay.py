@@ -568,6 +568,8 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
+            self.assertIn("bd1001", config)
+            self.assertIn("l3-interface irb.101", config)
                         
             config = deployments[8].configlet
             print "spine2:\n" + config
@@ -577,12 +579,15 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
+            self.assertIn("bd1001", config)
+            self.assertIn("l3-interface irb.101", config)
                 
             config = deployments[9].configlet
             print "leaf1:\n" + config
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
             self.assertIn("bd1001", config)
+            self.assertNotIn("l3-interface irb.", config)
 
     def testConfigure2Subnet(self):
         with self._dao.getReadWriteSession() as session:
@@ -624,7 +629,6 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("vni 1002", config)
 
     def testConfigureL2Port(self):
-        import re
         with self._dao.getReadWriteSession() as session:
             ports = self.helper._create2Network4L2port(session)
             
@@ -648,6 +652,21 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEquals(1, deployments[-1].configlet.count("interfaces "))
             self.assertEquals(1, deployments[-1].configlet.count("vlans "))
             self.assertEquals(2, deployments[-1].configlet.count("delete:"))
+            self.assertTrue("l3-interface xe-0/0/1.101" in deployments[-1].configlet)
+
+    def testDeleteL2PortWithTwoNetworks(self):
+        with self._dao.getReadWriteSession() as session:
+            ports = self.helper._create2Network4L2port(session)
+            configEngine = self.helper.overlay._configEngine
+            configEngine.deleteL2Port(session, ports[2])
+            # 4 deployments 1 fabric, 1 vrf and 1 port add, 1 port delete            
+            deployments = session.query(OverlayDeployStatus).all()
+            print deployments[-1].configlet
+            self.assertEquals(1, deployments[-1].configlet.count("interfaces "))
+            self.assertEquals(1, deployments[-1].configlet.count("vlans "))
+            self.assertEquals(4, deployments[-1].configlet.count("delete:"))
+            self.assertTrue("l3-interface xe-0/0/3.101" in deployments[-1].configlet)
+            self.assertTrue("l3-interface xe-0/0/3.102" in deployments[-1].configlet)
 
 if __name__ == '__main__':
     unittest.main()

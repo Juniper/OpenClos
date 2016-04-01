@@ -1,8 +1,8 @@
 vlans {
     replace:
     bd{{vxlanId}} {
-        vlan-id {{vlanId}};
-        l3-interface irb.{{vlanId}};
+        {% if role == "spine" %}vlan-id {{vlanId}};
+        l3-interface irb.{{vlanId}};{% endif %}
         vxlan {
             vni {{vxlanId}};
             ingress-node-replication;
