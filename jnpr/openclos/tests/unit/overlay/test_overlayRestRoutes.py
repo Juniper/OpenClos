@@ -137,7 +137,9 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "role": "spine",
                 "address": "1.2.3.4",
                 "routerId": "1.1.1.1",
-                "podName": "pod1"
+                "podName": "pod1",
+                "username": "root",
+                "password": "testing123"
             }
         }
         response = self.restServerTestApp.post('/openclos/v1/overlay/devices', 
@@ -158,7 +160,9 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "role": "spine",
                 "address": "1.2.3.5",
                 "routerId": "1.1.1.2",
-                "podName": "pod2"
+                "podName": "pod2",
+                "username": "root",
+                "password": "testing123"
             }
         }
         response = self.restServerTestApp.put('/openclos/v1/overlay/devices/' + deviceId, 
@@ -179,7 +183,9 @@ class TestOverlayRestRoutes(unittest.TestCase):
                 "role": "spine",
                 "address": "1.2.3.5",
                 "routerId": "1.1.1.2",
-                "podName": "pod1"
+                "podName": "pod1",
+                "username": "root",
+                "password": "testing123"
             }
         }
         with self.assertRaises(AppError) as e:

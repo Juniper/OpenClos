@@ -16,9 +16,6 @@ else:
 from jnpr.openclos.model import ManagedElement, Base
 from jnpr.openclos.crypt import Cryptic
 
-DEFAULT_USERNAME = 'root'
-DEFAULT_ENCRYPTED_PASSWORD = '$9$CIBltuBMWx-dsBI7-VYZG369Cu1hSe'
-
 class OverlayDevice(ManagedElement, Base):
     __tablename__ = 'overlayDevice'
     id = Column(String(60), primary_key=True)
@@ -28,7 +25,7 @@ class OverlayDevice(ManagedElement, Base):
     address = Column(String(60))
     routerId = Column(String(60))
     podName = Column(String(60))
-    username = Column(String(100), default='root')
+    username = Column(String(100))
     encryptedPassword = Column(String(100)) # 2-way encrypted
     cryptic = Cryptic()
     overlay_fabrics = relationship(
@@ -39,10 +36,15 @@ class OverlayDevice(ManagedElement, Base):
         Index('podName_id_uindex', 'podName', 'id', unique=True),
     )
 
-    def __init__(self, name, description, role, address, routerId, podName, username=None, password=None):
+    def __init__(self, name, description, role, address, routerId, podName, username, password):
         '''
         Creates device object.
         '''
+        if username is None or len(username) == 0:
+            raise ValueError("username cannot be None or empty")
+        if password is None or len(password) == 0:
+            raise ValueError("password cannot be None or empty")
+            
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
@@ -50,29 +52,26 @@ class OverlayDevice(ManagedElement, Base):
         self.address = address
         self.routerId = routerId
         self.podName = podName
-        if username is not None:
-            self.username = username
-        else:
-            self.username = DEFAULT_USERNAME
-        if password is not None and len(password) > 0:
-            self.encryptedPassword = self.cryptic.encrypt(password)
-        else:
-            self.encryptedPassword = DEFAULT_ENCRYPTED_PASSWORD
+        self.username = username
+        self.encryptedPassword = self.cryptic.encrypt(password)
         
-    def update(self, name, description, role, address, routerId, podName, username=None, password=None):
+    def update(self, name, description, role, address, routerId, podName, username, password):
         '''
         Updates device object.
         '''
+        if username is None or len(username) == 0:
+            raise ValueError("username cannot be None or empty")
+        if password is None or len(password) == 0:
+            raise ValueError("password cannot be None or empty")
+            
         self.name = name
         self.description = description
         self.role = role
         self.address = address
         self.routerId = routerId
         self.podName = podName
-        if username is not None:
-            self.username = username
-        if password is not None and len(password) > 0:
-            self.encryptedPassword = self.cryptic.encrypt(password)
+        self.username = username
+        self.encryptedPassword = self.cryptic.encrypt(password)
     
     def getCleartextPassword(self):
         '''

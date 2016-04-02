@@ -25,7 +25,7 @@ class Overlay():
         self._conf = conf
         self._dao = dao
         self._configEngine = ConfigEngine(conf, dao, commitQueue)
-    def createDevice(self, dbSession, name, description, role, address, routerId, podName, username=None, password=None):
+    def createDevice(self, dbSession, name, description, role, address, routerId, podName, username, password):
         '''
         Create a new Device
         '''
@@ -341,7 +341,7 @@ class ConfigEngine():
     # overlay = Overlay(conf, dao)
 
     # with dao.getReadWriteSession() as session:
-        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '1.2.3.4', '1.1.1.1', 'pod1')
+        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '1.2.3.4', '1.1.1.1', 'pod1', 'test', 'foobar')
         # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '1.2.3.5', '1.1.1.2', 'pod1', 'test', 'foobar')
         # d1_id = d1.id
         # d2_id = d2.id

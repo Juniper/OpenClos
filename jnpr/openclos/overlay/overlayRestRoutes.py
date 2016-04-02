@@ -172,13 +172,16 @@ class OverlayRestRoutes():
             address = deviceDict['address']
             routerId = deviceDict['routerId']
             podName = deviceDict['podName']
-            username = deviceDict.get('username')
-            password = deviceDict.get('password')
+            username = deviceDict['username']
+            password = deviceDict['password']
             
             deviceObject = self._overlay.createDevice(dbSession, name, description, role, address, routerId, podName, username, password)
             device = {'device': self._populateDevice(deviceObject)}
             
         except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except ValueError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
         except Exception as ex:
@@ -205,8 +208,8 @@ class OverlayRestRoutes():
             address = deviceDict['address']
             routerId = deviceDict['routerId']
             podName = deviceDict['podName']
-            username = deviceDict.get('username')
-            password = deviceDict.get('password')
+            username = deviceDict['username']
+            password = deviceDict['password']
             
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             deviceObject.update(name, description, role, address, routerId, podName, username, password)
@@ -218,6 +221,9 @@ class OverlayRestRoutes():
             logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
         except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except ValueError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
         except Exception as ex:
