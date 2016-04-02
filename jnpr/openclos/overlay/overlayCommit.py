@@ -240,7 +240,7 @@ class OverlayCommitQueue(SingletonBase):
     # from jnpr.openclos.overlay.overlay import Overlay
     # overlay = Overlay(conf, Dao.getInstance())
     # with dao.getReadWriteSession() as session:
-        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '192.168.48.201', '1.1.1.1', 'pod1')
+        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '192.168.48.201', '1.1.1.1', 'pod1', 'test', 'foobar')
         # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '192.168.48.202', '1.1.1.2', 'pod1', 'test', 'foobar')
         # d1_id = d1.id
         # d2_id = d2.id
