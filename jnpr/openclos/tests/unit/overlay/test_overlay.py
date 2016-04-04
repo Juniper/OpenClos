@@ -665,7 +665,7 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEquals(1, deployments[-1].configlet.count("interfaces "))
             self.assertEquals(1, deployments[-1].configlet.count("vlans "))
             self.assertEquals(2, deployments[-1].configlet.count("delete:"))
-            self.assertTrue("l3-interface xe-0/0/1.101" in deployments[-1].configlet)
+            self.assertTrue("interface xe-0/0/1.101" in deployments[-1].configlet)
 
     def testDeleteL2PortWithTwoNetworks(self):
         with self._dao.getReadWriteSession() as session:
@@ -678,8 +678,8 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEquals(1, deployments[-1].configlet.count("interfaces "))
             self.assertEquals(1, deployments[-1].configlet.count("vlans "))
             self.assertEquals(4, deployments[-1].configlet.count("delete:"))
-            self.assertTrue("l3-interface xe-0/0/3.101" in deployments[-1].configlet)
-            self.assertTrue("l3-interface xe-0/0/3.102" in deployments[-1].configlet)
+            self.assertTrue("interface xe-0/0/3.101" in deployments[-1].configlet)
+            self.assertTrue("interface xe-0/0/3.102" in deployments[-1].configlet)
 
 if __name__ == '__main__':
     unittest.main()

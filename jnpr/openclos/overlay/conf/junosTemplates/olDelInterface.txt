@@ -8,7 +8,7 @@ interfaces {
 vlans {
     {% for network in networks %}bd{{network[1]}} {
         delete:
-        l3-interface {{interfaceName}}.{{network[0]}};
+        interface {{interfaceName}}.{{network[0]}};
     }
     {% endfor %}
 }
