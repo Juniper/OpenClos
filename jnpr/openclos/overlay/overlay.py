@@ -126,7 +126,7 @@ class Overlay():
         '''
         self._configEngine.deleteL2Port(dbSession, l2Port)
         #self._dao.deleteObject(dbSession, l2Port)
-        logger.info("OverlayL2port[id: '%s', name: '%s']: deleted", l2Port.id, l2Port.name)
+        logger.info("OverlayL2port[id: '%s', name: '%s']: delete request submitted", l2Port.id, l2Port.name)
 
 class ConfigEngine():
     def __init__(self, conf, dao, commitQueue=None):

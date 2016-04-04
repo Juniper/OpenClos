@@ -48,17 +48,23 @@ class OverlayCommitJob():
                 if statusObject.operation == "create":
                     statusObject.update(status, reason)
                 elif statusObject.operation == "delete":
-                    if status == "failure":
-                        statusObject.update(status, reason)
-                    else:
+                    if status == "success":
                         relatedStatusObjects = session.query(OverlayDeployStatus).filter(
-                                            OverlayDeployStatus.object_url == statusObject.object_url).all()
+                                            OverlayDeployStatus.object_url == statusObject.object_url).filter(
+                                            OverlayDeployStatus.overlay_device_id == self.deviceId).all()
                         self.parent._dao.deleteObjects(session, relatedStatusObjects)
                         
-                        objectTypeId = statusObject.getObjectTypeAndId()
-                        obj = session.query(objectTypeId[0]).filter_by(id=objectTypeId[1]).one()
-                        if obj:
-                            session.delete(obj)
+                        # If all devices are done, then delete the object
+                        deployStatusCount = session.query(OverlayDeployStatus).filter(
+                                            OverlayDeployStatus.object_url == statusObject.object_url).count()
+                        
+                        if deployStatusCount == 0:
+                            objectTypeId = statusObject.getObjectTypeAndId()
+                            obj = session.query(objectTypeId[0]).filter_by(id=objectTypeId[1]).one()
+                            if obj:
+                                session.delete(obj)
+                    else:
+                        statusObject.update(status, reason)
                         
                 elif statusObject.operation == "update":
                     statusObject.update(status, reason)
