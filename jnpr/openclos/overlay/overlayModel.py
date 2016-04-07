@@ -229,9 +229,9 @@ class OverlayVrf(ManagedElement, Base):
     def getLeafs(self):
         return self.getDevices("leaf")
 
-overlayNetworkOverlayL2portTable = Table('overlayNetworkOverlayL2portLink', Base.metadata,
+overlayNetworkOverlayL2apTable = Table('overlayNetworkOverlayL2apLink', Base.metadata,
     Column('overlay_network_id', String(60), ForeignKey('overlayNetwork.id'), nullable=False),
-    Column('overlay_l2port_id', String(60), ForeignKey('overlayL2port.id'), nullable=False)
+    Column('overlay_l2ap_id', String(60), ForeignKey('overlayL2ap.id'), nullable=False)
 )
 
 class OverlayNetwork(ManagedElement, Base):
@@ -244,7 +244,7 @@ class OverlayNetwork(ManagedElement, Base):
     pureL3Int = Column(Boolean)
     overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'), nullable=False)
     overlay_vrf = relationship("OverlayVrf", backref=backref('overlay_networks', order_by=name, cascade='all, delete, delete-orphan'))
-    overlay_l2ports = relationship("OverlayL2port", secondary=overlayNetworkOverlayL2portTable, back_populates="overlay_networks")
+    overlay_l2aps = relationship("OverlayL2ap", secondary=overlayNetworkOverlayL2apTable, back_populates="overlay_networks")
     __table_args__ = (
         Index('overlay_vrf_id_overlay_network_name_uindex', 'overlay_vrf_id', 'name', unique=True),
     )
@@ -330,84 +330,140 @@ class OverlayL3port(ManagedElement, Base):
         '''
         self.name = name
         self.description = description
-    
-class OverlayL2port(ManagedElement, Base):
-    __tablename__ = 'overlayL2port'
+
+class OverlayL2ap(ManagedElement, Base):
+    __tablename__ = 'overlayL2ap'
     id = Column(String(60), primary_key=True)
     name = Column(String(255), nullable=False)
     description = Column(String(256))
-    interface = Column(String(100), nullable=False)
-    overlay_ae_id = Column(String(60), ForeignKey('overlayAe.id'))
-    overlay_ae = relationship("OverlayAe", backref=backref('overlay_members', order_by=name, cascade='all, delete, delete-orphan'))
-    overlay_networks = relationship("OverlayNetwork", secondary=overlayNetworkOverlayL2portTable, back_populates="overlay_l2ports")
-    overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
-    overlay_device = relationship("OverlayDevice", backref=backref('overlay_l2ports', order_by=name, cascade='all, delete, delete-orphan'))
-    __table_args__ = (
-        Index('overlay_device_id_overlay_l2port_name_uindex', 'overlay_device_id', 'name', unique=True),
-    )
-
-    def __init__(self, name, description, interface, overlay_networks, overlay_device, overlay_ae=None):
+    overlay_networks = relationship("OverlayNetwork", secondary=overlayNetworkOverlayL2apTable, back_populates="overlay_l2aps")
+    type = Column(String(20), nullable=False) # l2ap/l2port/aggregatedL2port
+    
+    __mapper_args__ = {
+        'polymorphic_identity': 'l2ap',
+        'polymorphic_on':type
+    }
+        
+    def __init__(self, name, description, overlay_networks):
         '''
         Creates L2 port object.
         '''
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
-        self.interface = interface
         for network in overlay_networks:
             self.overlay_networks.append(network)
-        self.overlay_device = overlay_device
-        self.overlay_ae = overlay_ae
         
-    def getUrl(self):
-        return "/l2ports/" + self.id
-    
-    def update(self, name, description, interface, overlay_networks, overlay_device, overlay_ae=None):
+    def update(self, name, description, overlay_networks):
         '''
         Updates L2 port object.
         NOTE: you MUST call clearNetworks() before you call update(). Othewise you will receive a "conflict key" error
         '''
         self.name = name
         self.description = description
-        self.interface = interface
         for network in overlay_networks:
             self.overlay_networks.append(network)
-        self.overlay_device = overlay_device
-        self.overlay_ae = overlay_ae
     
     def clearNetworks(self):
         '''
         Remove existing networks
         '''
         del self.overlay_networks[:]
+        
+class OverlayL2port(OverlayL2ap):
+    __tablename__ = 'overlayL2port'
+    id = Column(String(60), ForeignKey('overlayL2ap.id'), primary_key=True)
+    interface = Column(String(100), nullable=True)
+    overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=True)
+    overlay_device = relationship("OverlayDevice", backref=backref('overlay_l2ports', order_by='OverlayL2ap.name', cascade='all, delete, delete-orphan'))
+    __mapper_args__ = {
+        'polymorphic_identity': 'l2port'
+    }
     
-class OverlayAe(ManagedElement, Base):
-    __tablename__ = 'overlayAe'
+    def __init__(self, name, description, overlay_networks, interface, overlay_device):
+        '''
+        Creates L2 port object.
+        '''
+        super(OverlayL2port, self).__init__(name, description, overlay_networks)
+        self.interface = interface
+        self.overlay_device = overlay_device
+        
+    def getUrl(self):
+        return "/l2ports/" + self.id
+    
+    def update(self, name, description, overlay_networks, interface, overlay_device):
+        '''
+        Updates L2 port object.
+        NOTE: you MUST call clearNetworks() before you call update(). Othewise you will receive a "conflict key" error
+        '''
+        super(OverlayL2port, self).update(name, description, overlay_networks)
+        self.interface = interface
+        self.overlay_device = overlay_device
+    
+class OverlayAggregatedL2portMember(ManagedElement, Base):
+    __tablename__ = 'overlayAggregatedL2portMember'
     id = Column(String(60), primary_key=True)
-    name = Column(String(255), nullable=False)
-    description = Column(String(256))
-    esi = Column(String(60), nullable=False)
-    lacp = Column(String(60), nullable=False)
+    interface = Column(String(100), nullable=True)
+    overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=True)
+    overlay_aggregatedL2port_id = Column(String(60), ForeignKey('overlayAggregatedL2port.id'))
+    overlay_device = relationship("OverlayDevice", backref=backref('aggregatedL2port_members', order_by=overlay_aggregatedL2port_id, cascade='all, delete, delete-orphan'))
+    overlay_aggregatedL2port = relationship("OverlayAggregatedL2port", backref=backref('members', order_by=overlay_device_id, cascade='all, delete, delete-orphan'))
+    __table_args__ = (
+        Index('overlay_device_id_interface_uindex', 'overlay_device_id', 'interface', unique=True),
+    )
+    
+    def __init__(self, interface, overlay_device, overlay_aggregatedL2port):
+        '''
+        Creates aggregated interface member object.
+        '''
+        self.id = str(uuid.uuid4())
+        self.interface = interface
+        self.overlay_device = overlay_device
+        self.overlay_aggregatedL2port = overlay_aggregatedL2port
+        
+    def update(self, interface, overlay_device, overlay_aggregatedL2port):
+        '''
+        Updates aggregated interface member object.
+        '''
+        self.interface = interface
+        self.overlay_device = overlay_device
+        self.overlay_aggregatedL2port = overlay_aggregatedL2port
+    
+class OverlayAggregatedL2port(OverlayL2ap):
+    __tablename__ = 'overlayAggregatedL2port'
+    id = Column(String(60), ForeignKey('overlayL2ap.id'), primary_key=True)
+    esi = Column(String(60), nullable=True)
+    lacp = Column(String(60), nullable=True)
+    __mapper_args__ = {
+        'polymorphic_identity': 'aggregatedL2port'
+    }
 
-    def __init__(self, name, description, esi, lacp):
+    def __init__(self, name, description, overlay_networks, esi, lacp):
         '''
         Creates aggregated interface object.
         '''
-        self.id = str(uuid.uuid4())
-        self.name = name
-        self.description = description
+        super(OverlayAggregatedL2port, self).__init__(name, description, overlay_networks)
         self.esi = esi
         self.lacp = lacp
         
-    def update(self, name, description, esi, lacp):
+    def getUrl(self):
+        return "/aggregatedL2ports/" + self.id
+    
+    def update(self, name, description, overlay_networks, esi, lacp):
         '''
-        Updates L2 port object.
+        Updates aggregated interface object.
+        NOTE: you MUST call clearNetworks() before you call update(). Othewise you will receive a "conflict key" error
         '''
-        self.name = name
-        self.description = description
+        super(OverlayAggregatedL2port, self).update(name, description, overlay_networks)
         self.esi = esi
         self.lacp = lacp
-
+    
+    def clearMembers(self):
+        '''
+        Remove existing members
+        '''
+        del self.members[:]
+        
 class OverlayDeployStatus(ManagedElement, Base):
     __tablename__ = 'overlayDeployStatus'
     id = Column(String(60), primary_key=True)
@@ -460,4 +516,3 @@ class OverlayDeployStatus(ManagedElement, Base):
             return(OverlayNetwork, objectUrlSplit[2])
         elif objectUrlSplit[1] == "l2ports":
             return(OverlayL2port, objectUrlSplit[2])
-        

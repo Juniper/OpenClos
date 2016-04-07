@@ -9,7 +9,8 @@ import os
 import itertools
 from netaddr import IPNetwork
 
-from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
+from jnpr.openclos.exception import OverlayDeviceNotFound
+from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAggregatedL2port, OverlayAggregatedL2portMember, OverlayDeployStatus
 from jnpr.openclos.loader import loadLoggingConfig
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.templateLoader import TemplateLoader
@@ -99,32 +100,42 @@ class Overlay():
         logger.info("OverlayL3port[id: '%s', name: '%s']: created", l3port.id, l3port.name)
         return l3port
 
-    def createL2port(self, dbSession, name, description, interface, overlay_networks, overlay_device, overlay_ae=None):
+    def createL2port(self, dbSession, name, description, overlay_networks, interface, overlay_device):
         '''
         Create a new L2port
         '''
-        l2port = OverlayL2port(name, description, interface, overlay_networks, overlay_device, overlay_ae)
+        l2port = OverlayL2port(name, description, overlay_networks, interface, overlay_device)
 
         self._dao.createObjects(dbSession, [l2port])
         logger.info("OverlayL2port[id: '%s', name: '%s']: created", l2port.id, l2port.name)
-        self._configEngine.configureL2Port(dbSession, l2port)
+        self._configEngine.configureL2port(dbSession, l2port)
         return l2port
 
-    def createAe(self, dbSession, name, description, esi, lacp):
+    def createAggregatedL2port(self, dbSession, name, description, overlay_networks, esi, lacp):
         '''
-        Create a new Ae
+        Create a new AggregatedL2port
         '''
-        ae = OverlayAe(name, description, esi, lacp)
+        aggregatedL2port = OverlayAggregatedL2port(name, description, overlay_networks, esi, lacp)
 
-        self._dao.createObjects(dbSession, [ae])
-        logger.info("OverlayAe[id: '%s', name: '%s']: created", ae.id, ae.name)
-        return ae
+        self._dao.createObjects(dbSession, [aggregatedL2port])
+        logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: created", aggregatedL2port.id, aggregatedL2port.name)
+        return aggregatedL2port
 
+    def createAggregatedL2portMember(self, dbSession, interface, overlay_device, overlay_aggregatedL2port):
+        '''
+        Create a new AggregatedL2port member
+        '''
+        member = OverlayAggregatedL2portMember(interface, overlay_device, overlay_aggregatedL2port)
+
+        self._dao.createObjects(dbSession, [member])
+        logger.info("OverlayAggregatedL2portMember[id: '%s', device: '%s', interface: '%s']: created", member.id, member.overlay_device.name, member.interface)
+        return member
+        
     def deleteL2port(self, dbSession, l2Port):
         '''
         Delete L2port from device, if success then from DB
         '''
-        self._configEngine.deleteL2Port(dbSession, l2Port)
+        self._configEngine.deleteL2port(dbSession, l2Port)
         #self._dao.deleteObject(dbSession, l2Port)
         logger.info("OverlayL2port[id: '%s', name: '%s']: delete request submitted", l2Port.id, l2Port.name)
 
@@ -301,7 +312,7 @@ class ConfigEngine():
         ips = [str(ip) + "/" + cidr for ip in IPNetwork(subnetBlock).iter_hosts()]
         return ips        
         
-    def configureL2Port(self, dbSession, l2Port):
+    def configureL2port(self, dbSession, l2Port):
         '''
         Create access port interface
         '''
@@ -313,10 +324,10 @@ class ConfigEngine():
 
         deployments.append(OverlayDeployStatus(config, l2Port.getUrl(), "create", l2Port.overlay_device, vrf))
         self._dao.createObjects(dbSession, deployments)
-        logger.info("configureL2Port [l2Port id: '%s', l2Port name: '%s']: configured", l2Port.id, l2Port.interface)
+        logger.info("configureL2port [l2Port id: '%s', l2Port name: '%s']: configured", l2Port.id, l2Port.interface)
         self._commitQueue.addJobs(deployments)
 
-    def deleteL2Port(self, dbSession, l2Port):
+    def deleteL2port(self, dbSession, l2Port):
         '''
         Delete L2port from device
         '''
@@ -365,27 +376,20 @@ class ConfigEngine():
         # s1_id = s1.id
         # s2 = overlay.createSubnet(session, 's2', '', n1, '1.2.3.5/24')
         # s2_id = s2.id
-        # ae1 = overlay.createAe(session, 'ae1', '', '00:11', '11:00')
-        # ae1_id = ae1.id
-        # l2port1 = overlay.createL2port(session, 'l2port1', '', 'xe-0/0/1', [n1], d1, ae1)
+        # l2port1 = overlay.createL2port(session, 'l2port1', '', [n1], 'xe-0/0/1', d1)
         # l2port1_id = l2port1.id
-        # l2port2 = overlay.createL2port(session, 'l2port2', '', 'xe-0/0/1', [n1, n2], d2, ae1)
+        # l2port2 = overlay.createL2port(session, 'l2port2', '', [n1, n2], 'xe-0/0/1', d2)
         # l2port2_id = l2port2.id
+        # aggregatedL2port1 = overlay.createAggregatedL2port(session, 'aggregatedL2port1', '', [n1, n2], '00:11', '11:00')
+        # aggregatedL2port1_id = aggregatedL2port1.id
+        # overlay.createAggregatedL2portMember(session, 'xe-0/0/11', d1, aggregatedL2port1)
+        # overlay.createAggregatedL2portMember(session, 'xe-0/0/11', d2, aggregatedL2port1)
         
     # with dao.getReadSession() as session:
         # devices = session.query(OverlayDevice).all()
         # for device in devices:
             # print 'device %s: username = %s, encrypted password = %s, cleartext password = %s, hash password = %s' % (device.id, device.username, device.encryptedPassword, device.getCleartextPassword(), device.getHashPassword())
             
-    # with dao.getReadSession() as session:
-        # v1 = dao.getObjectById(session, OverlayVrf, v1_id)
-        # print 'v1.deploy_status = %s' % (v1.deploy_status)
-        # v2 = dao.getObjectById(session, OverlayVrf, v2_id)
-        # print 'v2.deploy_status = %s' % (v2.deploy_status)
-        # d1 = dao.getObjectById(session, OverlayDevice, d1_id)
-        # print 'd1.deploy_status = %s' % (d1.deploy_status)
-        # d2 = dao.getObjectById(session, OverlayDevice, d2_id)
-        # print 'd2.deploy_status = %s' % (d2.deploy_status)
     # raw_input("1 Press Enter to continue...")
     # with dao.getReadWriteSession() as session:
         # object_url = '/openclos/v1/overlay/l2ports/' + l2port2_id
@@ -408,7 +412,31 @@ class ConfigEngine():
     # with dao.getReadWriteSession() as session:
         # l2port2 = session.query(OverlayL2port).filter(OverlayL2port.id == l2port2_id).one()
         # l2port2.clearNetworks()
-        # l2port2.update(l2port2.name, l2port2.description, l2port2.interface, [n2], l2port2.overlay_device, l2port2.overlay_ae)
+        # l2port2.update(l2port2.name, l2port2.description, [n2], l2port2.interface, l2port2.overlay_device)
+    # raw_input("4 Press Enter to continue...")
+    # with dao.getReadSession() as session:
+        # networks = session.query(OverlayNetwork).all()
+        # for network in networks:
+            # for l2ap in network.overlay_l2aps:
+                # print 'network %s: l2ap = [%s:%s]' % (network.id, l2ap.id, l2ap.type)
+    # raw_input("5 Press Enter to continue...")
+    # with dao.getReadSession() as session:
+        # for member in session.query(OverlayAggregatedL2portMember).all():
+            # print 'aggregatedL2port = %s: member = [%s:%s]' % (member.overlay_aggregatedL2port_id, member.overlay_device_id, member.interface)
+    # raw_input("6 Press Enter to continue...")
+    # with dao.getReadWriteSession() as session:
+        # session.delete(session.query(OverlayDevice).first())
+    # raw_input("7 Press Enter to continue...")
+    # with dao.getReadSession() as session:
+        # for member in session.query(OverlayAggregatedL2portMember).all():
+            # print 'aggregatedL2port = %s: member = [%s:%s]' % (member.overlay_aggregatedL2port_id, member.overlay_device_id, member.interface)
+    # raw_input("8 Press Enter to continue...")
+    # with dao.getReadWriteSession() as session:
+        # session.delete(session.query(OverlayAggregatedL2port).first())
+    # raw_input("9 Press Enter to continue...")
+    # with dao.getReadSession() as session:
+        # for member in session.query(OverlayAggregatedL2portMember).all():
+            # print 'aggregatedL2port = %s: member = [%s:%s]' % (member.overlay_aggregatedL2port_id, member.overlay_device_id, member.interface)
         
 # if __name__ == '__main__':
     # main()

@@ -44,7 +44,7 @@ EC_OVERLAY_NETWORK_NOT_FOUND                = 1109
 EC_OVERLAY_SUBNET_NOT_FOUND                 = 1110
 EC_OVERLAY_L3PORT_NOT_FOUND                 = 1111
 EC_OVERLAY_L2PORT_NOT_FOUND                 = 1112
-EC_OVERLAY_AE_NOT_FOUND                     = 1113
+EC_OVERLAY_AGGREGATED_L2PORT_NOT_FOUND      = 1113
 
 # server side 
 # error at 2000 level
@@ -64,7 +64,7 @@ EC_CREATE_OVERLAY_NETWORK_FAILED            = 2012
 EC_CREATE_OVERLAY_SUBNET_FAILED             = 2013
 EC_CREATE_OVERLAY_L3PORT_FAILED             = 2014
 EC_CREATE_OVERLAY_L2PORT_FAILED             = 2015
-EC_CREATE_OVERLAY_AE_FAILED                 = 2016
+EC_CREATE_OVERLAY_AGGREGATED_L2PORT_FAILED  = 2016
 EC_PLATFORM_ERROR                           = 2017
 EC_CONFIGURATION_COMMIT_FAILED              = 2018
 
@@ -97,7 +97,7 @@ dictErrorCode = {
     EC_OVERLAY_SUBNET_NOT_FOUND                 :   "Overlay subnet not found: %s", 
     EC_OVERLAY_L3PORT_NOT_FOUND                 :   "Overlay L3 port not found: %s", 
     EC_OVERLAY_L2PORT_NOT_FOUND                 :   "Overlay L2 port not found: %s", 
-    EC_OVERLAY_AE_NOT_FOUND                     :   "Overlay aggregated interface not found: %s", 
+    EC_OVERLAY_AGGREGATED_L2PORT_NOT_FOUND      :   "Overlay aggregated L2 port not found: %s", 
     EC_CREATE_POD_FAILED                        :   "Failed to create pod: %s",
     EC_UPDATE_POD_FAILED                        :   "Failed to update pod: %s",
     EC_DEVICE_CONNECT_FAILED                    :   "Failed to connect to device: %s",
@@ -114,7 +114,7 @@ dictErrorCode = {
     EC_CREATE_OVERLAY_SUBNET_FAILED             :   "Failed to create overlay subnet: %s",
     EC_CREATE_OVERLAY_L3PORT_FAILED             :   "Failed to create overlay L3 port: %s",
     EC_CREATE_OVERLAY_L2PORT_FAILED             :   "Failed to create overlay L2 port: %s",
-    EC_CREATE_OVERLAY_AE_FAILED                 :   "Failed to create overlay aggregated interface: %s",
+    EC_CREATE_OVERLAY_AGGREGATED_L2PORT_FAILED  :   "Failed to create overlay aggregated L2 port: %s",
     EC_PLATFORM_ERROR                           :   "Platform error: %s",
     EC_CONFIGURATION_COMMIT_FAILED              :   "Failed to commit configuration: %s",
 }

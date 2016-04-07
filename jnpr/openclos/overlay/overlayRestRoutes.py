@@ -7,9 +7,10 @@ Created on Nov 23, 2015
 import bottle
 from sqlalchemy.orm import exc
 import traceback
+import json
 
-from jnpr.openclos.exception import InvalidRequest, OverlayFabricNotFound, OverlayTenantNotFound, OverlayVrfNotFound, OverlayDeviceNotFound, OverlayNetworkNotFound, OverlaySubnetNotFound, OverlayL3portNotFound, OverlayL2portNotFound, OverlayAeNotFound, PlatformError
-from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayDevice, OverlayNetwork, OverlaySubnet, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
+from jnpr.openclos.exception import InvalidRequest, OverlayFabricNotFound, OverlayTenantNotFound, OverlayVrfNotFound, OverlayDeviceNotFound, OverlayNetworkNotFound, OverlaySubnetNotFound, OverlayL3portNotFound, OverlayL2portNotFound, OverlayAggregatedL2portNotFound, PlatformError
+from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayDevice, OverlayNetwork, OverlaySubnet, OverlayL3port, OverlayL2port, OverlayAggregatedL2port, OverlayDeployStatus
 from jnpr.openclos.overlay.overlay import Overlay
 from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue
 
@@ -49,7 +50,7 @@ class OverlayRestRoutes():
         context['restServer'].addIndexLink(self.baseUrl + '/subnets')
         context['restServer'].addIndexLink(self.baseUrl + '/l3ports')
         context['restServer'].addIndexLink(self.baseUrl + '/l2ports')
-        context['restServer'].addIndexLink(self.baseUrl + '/aes')
+        context['restServer'].addIndexLink(self.baseUrl + '/aggregatedL2ports')
         
         # GET APIs
         self.app.route(self.baseUrl + '/devices', 'GET', self.getDevices)
@@ -69,8 +70,8 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/l3ports/<l3portId>', 'GET', self.getL3port)
         self.app.route(self.baseUrl + '/l2ports', 'GET', self.getL2ports)
         self.app.route(self.baseUrl + '/l2ports/<l2portId>', 'GET', self.getL2port)
-        self.app.route(self.baseUrl + '/aes', 'GET', self.getAes)
-        self.app.route(self.baseUrl + '/aes/<aeId>', 'GET', self.getAe)
+        self.app.route(self.baseUrl + '/aggregatedL2ports', 'GET', self.getAggregatedL2ports)
+        self.app.route(self.baseUrl + '/aggregatedL2ports/<aggregatedL2portId>', 'GET', self.getAggregatedL2port)
 
         # POST/PUT APIs
         self.app.route(self.baseUrl + '/devices', 'POST', self.createDevice)
@@ -89,8 +90,8 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/l3ports/<l3portId>', 'PUT', self.modifyL3port)
         self.app.route(self.baseUrl + '/l2ports', 'POST', self.createL2port)
         self.app.route(self.baseUrl + '/l2ports/<l2portId>', 'PUT', self.modifyL2port)
-        self.app.route(self.baseUrl + '/aes', 'POST', self.createAe)
-        self.app.route(self.baseUrl + '/aes/<aeId>', 'PUT', self.modifyAe)
+        self.app.route(self.baseUrl + '/aggregatedL2ports', 'POST', self.createAggregatedL2port)
+        self.app.route(self.baseUrl + '/aggregatedL2ports/<aggregatedL2portId>', 'PUT', self.modifyAggregatedL2port)
 
         # DELETE APIs
         self.app.route(self.baseUrl + '/devices/<deviceId>', 'DELETE', self.deleteDevice)
@@ -101,7 +102,7 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/subnets/<subnetId>', 'DELETE', self.deleteSubnet)
         self.app.route(self.baseUrl + '/l3ports/<l3portId>', 'DELETE', self.deleteL3port)
         self.app.route(self.baseUrl + '/l2ports/<l2portId>', 'DELETE', self.deleteL2port)
-        self.app.route(self.baseUrl + '/aes/<aeId>', 'DELETE', self.deleteAe)
+        self.app.route(self.baseUrl + '/aggregatedL2ports/<aggregatedL2portId>', 'DELETE', self.deleteAggregatedL2port)
 
     def uninstall(self):
         self.commitQueue.stop()
@@ -810,10 +811,10 @@ class OverlayRestRoutes():
         for subnet in networkObject.overlay_subnets:
             subnets.append({'uri': '%s/subnets/%s' % (self._getUriPrefix(), subnet.id)})
         network['subnets'] = {'subnet': subnets, 'total': len(networkObject.overlay_subnets)}
-        l2ports = []
-        for l2port in networkObject.overlay_l2ports:
-            l2ports.append({'uri': '%s/l2ports/%s' % (self._getUriPrefix(), l2port.id)})
-        network['l2ports'] = {'l2port': l2ports, 'total': len(networkObject.overlay_l2ports)}
+        l2aps = []
+        for l2ap in networkObject.overlay_l2aps:
+            l2aps.append({'uri': '%s%s' % (self._getUriPrefix(), l2ap.getUrl()), 'type': '%s' % (l2ap.type)})
+        network['l2aps'] = {'l2ap': l2aps, 'total': len(networkObject.overlay_l2aps)}
         return network
         
     def getNetworks(self, dbSession):
@@ -1182,19 +1183,19 @@ class OverlayRestRoutes():
         l2port['id'] = l2portObject.id
         l2port['name'] = l2portObject.name
         l2port['description'] = l2portObject.description
-        l2port['interface'] = l2portObject.interface
         l2port['uri'] = '%s/l2ports/%s' % (self._getUriPrefix(), l2portObject.id)
-        if l2portObject.overlay_ae:
-            l2port['ae'] = '%s/aes/%s' % (self._getUriPrefix(), l2portObject.overlay_ae.id)
-        l2port['networks'] = []
+        networks = []
         for network in l2portObject.overlay_networks:
-            l2port['networks'].append('%s/networks/%s' % (self._getUriPrefix(), network.id))
+            networks.append({'uri': '%s/networks/%s' % (self._getUriPrefix(), network.id)})
+        l2port['networks'] = {'network': networks, 'total': len(l2portObject.overlay_networks)}
+        l2port['interface'] = l2portObject.interface
         l2port['device'] = '%s/devices/%s' % (self._getUriPrefix(), l2portObject.overlay_device.id)
         return l2port
         
     def getL2ports(self, dbSession):
             
         l2portObjects = self.__dao.getAll(dbSession, OverlayL2port)
+        
         l2ports = []
         for l2portObject in l2portObjects:
             l2ports.append(self._populateL2port(l2portObject))
@@ -1248,16 +1249,6 @@ class OverlayRestRoutes():
             name = l2portDict['name']
             description = l2portDict.get('description')
             interface = l2portDict['interface']
-            aeUri = l2portDict.get('ae')
-            aeObject = None
-            if aeUri is not None:
-                aeId = self.getIdFromUri(l2portDict['ae'])
-                try:
-                    aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
-                except (exc.NoResultFound) as ex:
-                    logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
-                    raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
-                
             networkObjects = self.getNetworkObjects(dbSession, l2portDict['networks'])                
             deviceId = self.getIdFromUri(l2portDict['device'])
             try:
@@ -1266,7 +1257,7 @@ class OverlayRestRoutes():
                 logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
                 raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
                 
-            l2portObject = self._overlay.createL2port(dbSession, name, description, interface, networkObjects, deviceObject, aeObject)
+            l2portObject = self._overlay.createL2port(dbSession, name, description, networkObjects, interface, deviceObject)
             logger.info("OverlayL2port[id='%s', name='%s']: created", l2portObject.id, l2portObject.name)
 
             l2port = {'l2port': self._populateL2port(l2portObject)}
@@ -1295,17 +1286,7 @@ class OverlayRestRoutes():
             name = l2portDict['name']
             description = l2portDict.get('description')
             interface = l2portDict['interface']
-            aeUri = l2portDict.get('ae')
             l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
-            aeObject = None
-            if aeUri is not None:
-                aeId = self.getIdFromUri(l2portDict['ae'])
-                try:
-                    aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
-                except (exc.NoResultFound) as ex:
-                    logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
-                    raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
-                
             networkObjects = self.getNetworkObjects(dbSession, l2portDict['networks'])                
             deviceId = self.getIdFromUri(l2portDict['device'])
             try:
@@ -1315,7 +1296,7 @@ class OverlayRestRoutes():
                 raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
             
             l2portObject.clearNetworks()
-            l2portObject.update(name, description, interface, networkObjects, deviceObject, aeObject)
+            l2portObject.update(name, description, networkObjects, interface, deviceObject)
             logger.info("OverlayL2port[id='%s', name='%s']: modified", l2portObject.id, l2portObject.name)
 
             l2port = {'l2port': self._populateL2port(l2portObject)}
@@ -1347,122 +1328,154 @@ class OverlayRestRoutes():
 
         return bottle.HTTPResponse(status=204)
         
-    def _populateAe(self, aeObject):
-        ae = {}      
-        ae['id'] = aeObject.id
-        ae['name'] = aeObject.name
-        ae['description'] = aeObject.description
-        ae['esi'] = aeObject.esi
-        ae['lacp'] = aeObject.lacp
-        ae['uri'] = '%s/aes/%s' % (self._getUriPrefix(), aeObject.id)
+    def _populateAggregatedL2port(self, aggregatedL2portObject):
+        aggregatedL2port = {}      
+        aggregatedL2port['id'] = aggregatedL2portObject.id
+        aggregatedL2port['name'] = aggregatedL2portObject.name
+        aggregatedL2port['description'] = aggregatedL2portObject.description
+        aggregatedL2port['esi'] = aggregatedL2portObject.esi
+        aggregatedL2port['lacp'] = aggregatedL2portObject.lacp
+        aggregatedL2port['uri'] = '%s/aggregatedL2ports/%s' % (self._getUriPrefix(), aggregatedL2portObject.id)
+        networks = []
+        for network in aggregatedL2portObject.overlay_networks:
+            networks.append({'uri': '%s/networks/%s' % (self._getUriPrefix(), network.id)})
+        aggregatedL2port['networks'] = {'network': networks, 'total': len(aggregatedL2portObject.overlay_networks)}
         members = []
-        for member in aeObject.overlay_members:
-            members.append({'uri': '%s/l2ports/%s' % (self._getUriPrefix(), member.id)})
-        ae['members'] = {'member': members, 'total': len(aeObject.overlay_members)}
-        return ae
+        for member in aggregatedL2portObject.members:
+            members.append({'device': '%s/devices/%s' % (self._getUriPrefix(), member.overlay_device_id), 'interface': member.interface})
+        aggregatedL2port['members'] = {'member': members, 'total': len(aggregatedL2portObject.members)}
+        return aggregatedL2port
         
-    def getAes(self, dbSession):
+    def getAggregatedL2ports(self, dbSession):
             
-        aeObjects = self.__dao.getAll(dbSession, OverlayAe)
-        aes = []
-        for aeObject in aeObjects:
-            aes.append(self._populateAe(aeObject))
+        aggregatedL2portObjects = self.__dao.getAll(dbSession, OverlayAggregatedL2port)
+        aggregatedL2ports = []
+        for aggregatedL2portObject in aggregatedL2portObjects:
+            aggregatedL2ports.append(self._populateAggregatedL2port(aggregatedL2portObject))
         
-        logger.debug("getAes: count %d", len(aes))
+        logger.debug("getAggregatedL2ports: count %d", len(aggregatedL2ports))
         
         outputDict = {}
-        outputDict['ae'] = aes
-        outputDict['total'] = len(aes)
-        outputDict['uri'] = '%s/aes' % (self._getUriPrefix())
-        return {'aes': outputDict}
+        outputDict['aggregatedL2port'] = aggregatedL2ports
+        outputDict['total'] = len(aggregatedL2ports)
+        outputDict['uri'] = '%s/aggregatedL2ports' % (self._getUriPrefix())
+        return {'aggregatedL2ports': outputDict}
 
-    def getAe(self, dbSession, aeId):
+    def getAggregatedL2port(self, dbSession, aggregatedL2portId):
             
         try:
-            aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
-            logger.debug('getAe: %s', aeId)
+            aggregatedL2portObject = self.__dao.getObjectById(dbSession, OverlayAggregatedL2port, aggregatedL2portId)
+            logger.debug('getAggregatedL2port: %s', aggregatedL2portId)
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
-            raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
+            logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayAggregatedL2portNotFound(aggregatedL2portId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(500, exception=PlatformError(ex.message))
         
-        return {'ae': self._populateAe(aeObject)}
-        
-    def createAe(self, dbSession):  
+        return {'aggregatedL2port': self._populateAggregatedL2port(aggregatedL2portObject)}
+
+    def _getAggregatedL2portMembers(self, dbSession, dictMembers):
+        members = []
+        for dictMember in dictMembers:
+            id = self.getIdFromUri(dictMember['device'])
+            try:
+                members.append({'device': self.__dao.getObjectById(dbSession, OverlayDevice, id), 'interface': dictMember['interface']})
+            except (exc.NoResultFound) as ex:
+                logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", id, ex.message)
+                raise OverlayDeviceNotFound(deviceId)
+        return members
+                
+    def createAggregatedL2port(self, dbSession):  
             
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
-            aeDict = bottle.request.json.get('ae')
-            if aeDict is None:
+            aggregatedL2portDict = bottle.request.json.get('aggregatedL2port')
+            if aggregatedL2portDict is None:
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         try:
-            name = aeDict['name']
-            description = aeDict.get('description')
-            esi = aeDict.get('esi')
-            lacp = aeDict.get('lacp')
+            name = aggregatedL2portDict['name']
+            description = aggregatedL2portDict.get('description')
+            esi = aggregatedL2portDict.get('esi')
+            lacp = aggregatedL2portDict.get('lacp')
+            networkObjects = self.getNetworkObjects(dbSession, aggregatedL2portDict['networks'])      
             
-            aeObject = self._overlay.createAe(dbSession, name, description, esi, lacp)
-            logger.info("OverlayAe[id='%s', name='%s']: created", aeObject.id, aeObject.name)
+            aggregatedL2portObject = self._overlay.createAggregatedL2port(dbSession, name, description, networkObjects, esi, lacp)
+            logger.info("OverlayAggregatedL2port[id='%s', name='%s']: created", aggregatedL2portObject.id, aggregatedL2portObject.name)
 
-            ae = {'ae': self._populateAe(aeObject)}
+            # add members
+            for member in self._getAggregatedL2portMembers(dbSession, aggregatedL2portDict['members']):
+                self._overlay.createAggregatedL2portMember(dbSession, member['interface'], member['device'], aggregatedL2portObject)
+            
+            aggregatedL2port = {'aggregatedL2port': self._populateAggregatedL2port(aggregatedL2portObject)}
             
         except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except OverlayDeviceNotFound as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(500, exception=PlatformError(ex.message))
-        bottle.response.set_header('Location', self.baseUrl + '/aes/' + aeObject.id)
+        bottle.response.set_header('Location', self.baseUrl + '/aggregatedL2ports/' + aggregatedL2portObject.id)
         bottle.response.status = 201
 
-        return ae
+        return aggregatedL2port
         
-    def modifyAe(self, dbSession, aeId):
+    def modifyAggregatedL2port(self, dbSession, aggregatedL2portId):
             
         if bottle.request.json is None:
             raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
         else:
-            aeDict = bottle.request.json.get('ae')
-            if aeDict is None:
+            aggregatedL2portDict = bottle.request.json.get('aggregatedL2port')
+            if aggregatedL2portDict is None:
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         try:
-            name = aeDict['name']
-            description = aeDict.get('description')
-            esi = aeDict.get('esi')
-            lacp = aeDict.get('lacp')
+            name = aggregatedL2portDict['name']
+            description = aggregatedL2portDict.get('description')
+            esi = aggregatedL2portDict.get('esi')
+            lacp = aggregatedL2portDict.get('lacp')
+            aggregatedL2portObject = self.__dao.getObjectById(dbSession, OverlayAggregatedL2port, aggregatedL2portId)
+            networkObjects = self.getNetworkObjects(dbSession, aggregatedL2portDict['networks'])      
+            aggregatedL2portObject.clearNetworks()
+            aggregatedL2portObject.clearMembers()
+            aggregatedL2portObject.update(name, description, networkObjects, esi, lacp)
+            logger.info("OverlayAggregatedL2port[id='%s', name='%s']: modified", aggregatedL2portObject.id, aggregatedL2portObject.name)
             
-            aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
-            aeObject.update(name, description, esi, lacp)
-            logger.info("OverlayAe[id='%s', name='%s']: modified", aeObject.id, aeObject.name)
+            # add members
+            for member in self._getAggregatedL2portMembers(dbSession, aggregatedL2portDict['members']):
+                self._overlay.createAggregatedL2portMember(dbSession, member['interface'], member['device'], aggregatedL2portObject)
             
-            ae = {'ae': self._populateAe(aeObject)}
+            aggregatedL2port = {'aggregatedL2port': self._populateAggregatedL2port(aggregatedL2portObject)}
             
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
-            raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
+            logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayAggregatedL2portNotFound(aggregatedL2portId))
         except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except OverlayDeviceNotFound as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(500, exception=PlatformError(ex.message))
 
-        return ae
+        return aggregatedL2port
         
-    def deleteAe(self, dbSession, aeId):
+    def deleteAggregatedL2port(self, dbSession, aggregatedL2portId):
             
         try:
-            aeObject = self.__dao.getObjectById(dbSession, OverlayAe, aeId)
-            self.__dao.deleteObject(dbSession, aeObject)
-            logger.info("OverlayAe[id='%s', name='%s']: deleted", aeObject.id, aeObject.name)
+            aggregatedL2portObject = self.__dao.getObjectById(dbSession, OverlayAggregatedL2port, aggregatedL2portId)
+            self.__dao.deleteObject(dbSession, aggregatedL2portObject)
+            logger.info("OverlayAggregatedL2port[id='%s', name='%s']: deleted", aggregatedL2portObject.id, aggregatedL2portObject.name)
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Ae found with Id: '%s', exc.NoResultFound: %s", aeId, ex.message)
-            raise bottle.HTTPError(404, exception=OverlayAeNotFound(aeId))
+            logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, ex.message)
+            raise bottle.HTTPError(404, exception=OverlayAggregatedL2portNotFound(aggregatedL2portId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(500, exception=PlatformError(ex.message))
