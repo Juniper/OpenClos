@@ -43,8 +43,8 @@ registry = set([
     'GET /openclos/v1/overlay/l3ports/<l3portId>',
     'GET /openclos/v1/overlay/l2ports',
     'GET /openclos/v1/overlay/l2ports/<l2portId>',
-    'GET /openclos/v1/overlay/aes',
-    'GET /openclos/v1/overlay/aes/<aeId>',
+    'GET /openclos/v1/overlay/aggregatedL2ports',
+    'GET /openclos/v1/overlay/aggregatedL2ports/<aggregatedL2portId>',
     'POST /openclos/v1/overlay/fabrics',
     'POST /openclos/v1/overlay/tenants',
     'POST /openclos/v1/overlay/vrfs',
@@ -53,7 +53,7 @@ registry = set([
     'POST /openclos/v1/overlay/subnets',
     'POST /openclos/v1/overlay/l3ports',
     'POST /openclos/v1/overlay/l2ports',
-    'POST /openclos/v1/overlay/aes',
+    'POST /openclos/v1/overlay/aggregatedL2ports',
     'PUT /openclos/v1/overlay/fabrics/<fabricId>',
     'PUT /openclos/v1/overlay/tenants/<tenantId>',
     'PUT /openclos/v1/overlay/vrfs/<vrfId>',
@@ -62,7 +62,7 @@ registry = set([
     'PUT /openclos/v1/overlay/subnets/<subnetId>',
     'PUT /openclos/v1/overlay/l3ports/<l3portId>',
     'PUT /openclos/v1/overlay/l2ports/<l2portId>',
-    'PUT /openclos/v1/overlay/aes/<aeId>',
+    'PUT /openclos/v1/overlay/aggregatedL2ports/<aggregatedL2portId>',
     'DELETE /openclos/v1/overlay/fabrics/<fabricId>',
     'DELETE /openclos/v1/overlay/tenants/<tenantId>',
     'DELETE /openclos/v1/overlay/vrfs/<vrfId>',
@@ -71,7 +71,7 @@ registry = set([
     'DELETE /openclos/v1/overlay/subnets/<subnetId>',
     'DELETE /openclos/v1/overlay/l3ports/<l3portId>',
     'DELETE /openclos/v1/overlay/l2ports/<l2portId>',
-    'DELETE /openclos/v1/overlay/aes/<aeId>',
+    'DELETE /openclos/v1/overlay/aggregatedL2ports/<aggregatedL2portId>',
 ])    
     
 class TestOverlayRestRoutes(unittest.TestCase):
@@ -835,7 +835,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         response = self.restServerTestApp.get('/openclos/v1/overlay/l2ports/' + l2portId)
         self.assertEqual(200, response.status_int) 
         self.assertEqual(l2portName, response.json['l2port']['name'])
-        self.assertIsNotNone(response.json['l2port']['networks'][0])
+        self.assertIsNotNone(response.json['l2port']['networks']['network'][0])
         self.assertTrue("/openclos/v1/overlay/l2ports/" + l2portId in response.json['l2port']['uri'])
         
     def testGetL2portNotFound(self):
@@ -920,98 +920,109 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('404 Not Found' in e.exception.message)
         self.assertTrue('1112' in e.exception.message)
         
-    def testGetAes(self):
+    def testGetAggregatedL2ports(self):
         with self._dao.getReadWriteSession() as session:        
-            aeObject = self.helper._createAe(session)
-            aeId = aeObject.id
+            aggregatedL2portObject = self.helper._createAggregatedL2port(session)
+            aggregatedL2portId = aggregatedL2portObject.id
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/aes')
+        response = self.restServerTestApp.get('/openclos/v1/overlay/aggregatedL2ports')
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(1, len(response.json['aes']['ae']))
-        self.assertTrue("/openclos/v1/overlay/aes/" + aeId in response.json['aes']['ae'][0]['uri'])
+        self.assertEqual(1, len(response.json['aggregatedL2ports']['aggregatedL2port']))
+        self.assertTrue("/openclos/v1/overlay/aggregatedL2ports/" + aggregatedL2portId in response.json['aggregatedL2ports']['aggregatedL2port'][0]['uri'])
         
-    def testGetAe(self):
+    def testGetAggregatedL2port(self):
         with self._dao.getReadWriteSession() as session:        
-            aeObject = self.helper._createAe(session)
-            aeId = aeObject.id
-            aeName = aeObject.name
+            aggregatedL2portObject = self.helper._createAggregatedL2port(session)
+            aggregatedL2portId = aggregatedL2portObject.id
+            aggregatedL2portName = aggregatedL2portObject.name
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/aes/' + aeId)
+        response = self.restServerTestApp.get('/openclos/v1/overlay/aggregatedL2ports/' + aggregatedL2portId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual(aeName, response.json['ae']['name'])
-        self.assertTrue("/openclos/v1/overlay/aes/" + aeId in response.json['ae']['uri'])
+        self.assertEqual(aggregatedL2portName, response.json['aggregatedL2port']['name'])
+        self.assertTrue("/openclos/v1/overlay/aggregatedL2ports/" + aggregatedL2portId in response.json['aggregatedL2port']['uri'])
         
-    def testGetAeNotFound(self):
+    def testGetAggregatedL2portNotFound(self):
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.get('/openclos/v1/overlay/aes/12345')
+            self.restServerTestApp.get('/openclos/v1/overlay/aggregatedL2ports/12345')
         self.assertTrue('404 Not Found' in e.exception.message)
         self.assertTrue('1113' in e.exception.message)
         
-    def testCreateAe(self):
-        aeDict = {
-            "ae": {
-                "name": "ae1",
-                "description": "description for ae1",
+    def testCreateAggregatedL2port(self):
+        with self._dao.getReadWriteSession() as session:
+            networkObject = self.helper._createNetwork(session)
+            networkId = networkObject.id
+            deviceId = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0].id
+        aggregatedL2portDict = {
+            "aggregatedL2port": {
+                "name": "aggregatedL2port1",
+                "description": "description for aggregatedL2port1",
                 "esi": "00:01:01:01:01:01:01:01:01:01",
                 "lacp": "00:00:00:01:01:01"
             }
         }
-        response = self.restServerTestApp.post('/openclos/v1/overlay/aes', 
+        aggregatedL2portDict['aggregatedL2port']['networks'] = [networkId]
+        aggregatedL2portDict['aggregatedL2port']['members'] = [{'device': deviceId, 'interface': 'xe-0/0/11'}]
+        response = self.restServerTestApp.post('/openclos/v1/overlay/aggregatedL2ports', 
                                                headers = {'Content-Type':'application/json'}, 
-                                               params=json.dumps(aeDict))
+                                               params=json.dumps(aggregatedL2portDict))
         self.assertEqual(201, response.status_int)
-        response = self.restServerTestApp.get('/openclos/v1/overlay/aes/' + response.json['ae']['id'])
+        response = self.restServerTestApp.get('/openclos/v1/overlay/aggregatedL2ports/' + response.json['aggregatedL2port']['id'])
         self.assertEqual(200, response.status_int) 
 
-    def testModifyAe(self):
+    def testModifyAggregatedL2port(self):
         with self._dao.getReadWriteSession() as session:        
-            aeObject = self.helper._createAe(session)
-            aeId = aeObject.id
-        aeDict = {
-            "ae": {
-                "name": "ae1",
+            aggregatedL2portObject = self.helper._createAggregatedL2port(session)
+            aggregatedL2portId = aggregatedL2portObject.id
+            networkId = aggregatedL2portObject.overlay_networks[0].id
+            deviceId = aggregatedL2portObject.overlay_networks[0].overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0].id
+        aggregatedL2portDict = {
+            "aggregatedL2port": {
+                "name": "aggregatedL2port1",
                 "description": "changed",
                 "esi": "11:01:01:01:01:01:01:01:01:01",
                 "lacp": "11:00:00:01:01:01"
             }
         }
-        aeDict['ae']['id'] = aeId
-        response = self.restServerTestApp.put('/openclos/v1/overlay/aes/' + aeId, 
+        aggregatedL2portDict['aggregatedL2port']['id'] = aggregatedL2portId
+        aggregatedL2portDict['aggregatedL2port']['networks'] = [networkId]
+        aggregatedL2portDict['aggregatedL2port']['members'] = [{'device': deviceId, 'interface': 'xe-0/0/12'}]
+        response = self.restServerTestApp.put('/openclos/v1/overlay/aggregatedL2ports/' + aggregatedL2portId, 
                                                headers = {'Content-Type':'application/json'}, 
-                                               params=json.dumps(aeDict))
+                                               params=json.dumps(aggregatedL2portDict))
         self.assertEqual(200, response.status_int)
-        self.assertEqual('changed', response.json['ae']['description'])
-        self.assertEqual('11:01:01:01:01:01:01:01:01:01', response.json['ae']['esi'])
-        self.assertEqual('11:00:00:01:01:01', response.json['ae']['lacp'])
+        self.assertEqual('changed', response.json['aggregatedL2port']['description'])
+        self.assertEqual('11:01:01:01:01:01:01:01:01:01', response.json['aggregatedL2port']['esi'])
+        self.assertEqual('11:00:00:01:01:01', response.json['aggregatedL2port']['lacp'])
+        self.assertEqual('xe-0/0/12', response.json['aggregatedL2port']['members']['member'][0]['interface'])
         
-    def testModifyAeNotFound(self):
-        aeDict = {
-            "ae": {
+    def testModifyAggregatedL2portNotFound(self):
+        aggregatedL2portDict = {
+            "aggregatedL2port": {
                 "id": '12345',
-                "name": "ae1",
+                "name": "aggregatedL2port1",
                 "description": "changed",
                 "esi": "11:01:01:01:01:01:01:01:01:01",
                 "lacp": "11:00:00:01:01:01"
             }
         }
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.put('/openclos/v1/overlay/aes/12345',
+            self.restServerTestApp.put('/openclos/v1/overlay/aggregatedL2ports/12345',
                                        headers = {'Content-Type':'application/json'}, 
-                                       params=json.dumps(aeDict))
+                                       params=json.dumps(aggregatedL2portDict))
         self.assertTrue('404 Not Found' in e.exception.message)
         self.assertTrue('1113' in e.exception.message)
         
-    def testDeleteAe(self):
+    def testDeleteAggregatedL2port(self):
         with self._dao.getReadWriteSession() as session:        
-            aeObject = self.helper._createAe(session)
-            aeId = aeObject.id
+            aggregatedL2portObject = self.helper._createAggregatedL2port(session)
+            aggregatedL2portId = aggregatedL2portObject.id
                     
-        response = self.restServerTestApp.delete('/openclos/v1/overlay/aes/' + aeId)
+        response = self.restServerTestApp.delete('/openclos/v1/overlay/aggregatedL2ports/' + aggregatedL2portId)
         self.assertEqual(204, response.status_int) 
         
-    def testDeleteAeNotFound(self):
+    def testDeleteAggregatedL2portNotFound(self):
         with self.assertRaises(AppError) as e:
-            self.restServerTestApp.delete('/openclos/v1/overlay/aes/12345')
+            self.restServerTestApp.delete('/openclos/v1/overlay/aggregatedL2ports/12345')
         self.assertTrue('404 Not Found' in e.exception.message)
         self.assertTrue('1113' in e.exception.message)
         

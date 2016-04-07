@@ -282,13 +282,13 @@ class OverlayL2portNotFound(BaseError):
             error.getErrorMessage(error.EC_OVERLAY_L2PORT_NOT_FOUND) % (reason), 
             cause)
 
-class OverlayAeNotFound(BaseError):
+class OverlayAggregatedL2portNotFound(BaseError):
     '''
     Description of the error
     '''
     def __init__(self, reason, cause=None):
-        super(OverlayAeNotFound, self).__init__(error.EC_OVERLAY_AE_NOT_FOUND,
-            error.getErrorMessage(error.EC_OVERLAY_AE_NOT_FOUND) % (reason), 
+        super(OverlayAggregatedL2portNotFound, self).__init__(error.EC_OVERLAY_AGGREGATED_L2PORT_NOT_FOUND,
+            error.getErrorMessage(error.EC_OVERLAY_AGGREGATED_L2PORT_NOT_FOUND) % (reason), 
             cause)
 
 class CreatePodFailed(BaseError):
@@ -442,13 +442,13 @@ class CreateOverlayL2portFailed(BaseError):
             error.getErrorMessage(error.EC_CREATE_OVERLAY_L2PORT_FAILED) % (reason), 
             cause)
 
-class CreateOverlayAeFailed(BaseError):
+class CreateOverlayAggregatedL2portFailed(BaseError):
     '''
     Description of the error
     '''
     def __init__(self, reason, cause=None):
-        super(CreateOverlayAeFailed, self).__init__(error.EC_CREATE_OVERLAY_AE_FAILED,
-            error.getErrorMessage(error.EC_CREATE_OVERLAY_AE_FAILED) % (reason), 
+        super(CreateOverlayAggregatedL2portFailed, self).__init__(error.EC_CREATE_OVERLAY_AGGREGATED_L2PORT_FAILED,
+            error.getErrorMessage(error.EC_CREATE_OVERLAY_AGGREGATED_L2PORT_FAILED) % (reason), 
             cause)
             
 class PlatformError(BaseError):
