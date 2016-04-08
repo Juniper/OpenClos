@@ -1,0 +1,6 @@
+routing-instances {
+    VRF_{{vrfName}} {
+        delete:
+        interface irb.{{vlanId}};        
+    }
+}

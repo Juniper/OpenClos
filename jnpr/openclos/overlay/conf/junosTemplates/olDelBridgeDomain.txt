@@ -1,4 +1,4 @@
 vlans {
     delete:
-    {{bdName}};
+    bd{{vxlanId}};
 }
