@@ -922,8 +922,8 @@ class OverlayRestRoutes():
             
         try:
             networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
-            self.__dao.deleteObject(dbSession, networkObject)
             logger.info("OverlayNetwork[id='%s', name='%s']: deleted", networkObject.id, networkObject.name)
+            self._overlay.deleteNetwork(dbSession, networkObject)
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
@@ -1048,8 +1048,8 @@ class OverlayRestRoutes():
             
         try:
             subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
-            self.__dao.deleteObject(dbSession, subnetObject)
-            logger.info("OverlaySubnet[id='%s', name='%s']: deleted", subnetObject.id, subnetObject.name)
+            logger.info("OverlaySubnet[id='%s', cidr='%s']: delete request is submitted", subnetObject.id, subnetObject.cidr)
+            self._overlay.deleteSubnet(dbSession, subnetObject)
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
             raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))

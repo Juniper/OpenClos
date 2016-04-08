@@ -135,9 +135,28 @@ class Overlay():
         '''
         Delete L2port from device, if success then from DB
         '''
-        self._configEngine.deleteL2port(dbSession, l2Port)
-        #self._dao.deleteObject(dbSession, l2Port)
         logger.info("OverlayL2port[id: '%s', name: '%s']: delete request submitted", l2Port.id, l2Port.name)
+        self._configEngine.deleteL2port(dbSession, l2Port)
+
+    def deleteSubnet(self, dbSession, subnet):
+        '''
+        Delete subnet and network from device, also delete all l2Ports attached to the network
+        '''
+        logger.info("Subnet[id: '%s', cidr: '%s']: delete request submitted", subnet.id, subnet.name)
+        # TODO: should we allow delete subnet or force user to delete network and re-create?
+
+    def deleteNetwork(self, dbSession, network):
+        '''
+        Delete network from device, also delete all l2Ports attached to the network
+        '''
+        logger.info("NEtwork[id: '%s', name: '%s']: delete request submitted", network.id, network.name)
+        for port in network.overlay_l2aps:
+            if type(port) is OverlayL2port:
+                self._configEngine.deleteL2port(dbSession, port)
+            elif type(port) is OverlayAggregatedL2port:
+                # TODO: delete LAG
+                pass
+        self._configEngine.deleteNetwork(dbSession, network)
 
 class ConfigEngine():
     def __init__(self, conf, dao, commitQueue=None):
@@ -301,7 +320,7 @@ class ConfigEngine():
         
     def configureEvpn(self, vni=None, asn=None):
         template = self._templateLoader.getTemplate('olAddProtocolEvpn.txt')
-        return template.render(vni=vni, asn=asn)
+        return template.render(vxlanId=vni, asn=asn)
         
             
     def getSubnetIps(self, subnetBlock):
@@ -343,6 +362,40 @@ class ConfigEngine():
         self._commitQueue.addJobs(deployments)
 
         
+    def deleteNetwork(self, dbSession, network):
+        '''
+        Delete IRB, BD, update VRF, update evpn, update policy
+        '''
+        deployments = []
+        vrf = network.overlay_vrf
+        asn = vrf.overlay_tenant.overlay_fabric.overlayAS
+
+        irbTemplate = self._templateLoader.getTemplate("olDelIrb.txt")
+        vrfTemplate = self._templateLoader.getTemplate("olDelIrbFromVrf.txt")
+        bdTemplate = self._templateLoader.getTemplate("olDelBridgeDomain.txt")
+        evpnTemplate = self._templateLoader.getTemplate('olDelProtocolEvpn.txt')
+        policyTemplate = self._templateLoader.getTemplate('olDelNetworkPolicyOptions.txt')
+        
+        for spine in vrf.getSpines():
+            config = ""
+            config += irbTemplate.render(vlanId=network.vlanid)
+            config += vrfTemplate.render(vrfName=vrf.name, vlanId=network.vlanid)
+            config += bdTemplate.render(vxlanId=network.vnid)
+            config += evpnTemplate.render(vxlanId=network.vnid)
+            config += policyTemplate.render(vxlanId=network.vnid, asn=asn)
+            deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", spine, vrf))
+        
+        for leaf in vrf.getLeafs():
+            config = ""
+            config += bdTemplate.render(vxlanId=network.vnid)
+            config += evpnTemplate.render(vxlanId=network.vnid)
+            config += policyTemplate.render(vxlanId=network.vnid, asn=asn)
+            deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", leaf, vrf))
+
+        self._dao.createObjects(dbSession, deployments)
+        logger.info("deleteNetwork [id: '%s', name: '%s']: configured", network.id, network.name)
+        self._commitQueue.addJobs(deployments)
+
         
 # def main():        
     # conf = {}

@@ -150,13 +150,14 @@ class TestOverlayHelper:
         subnetObject = self._createSubnet(dbSession)
         return self.overlay.createL3port(dbSession, l3portDict['name'], l3portDict.get('description'), subnetObject)
         
-    def _createL2port(self, dbSession):
+    def _createL2port(self, dbSession, networkObject=None):
         l2portDict = {
             "name": "l2port1",
             "description": "description for l2port1",
             "interface": "xe-0/0/1"
         }
-        networkObject = self._createNetwork(dbSession)
+        if not networkObject:
+            networkObject = self._createNetwork(dbSession)
         deviceObject = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0]
         return self.overlay.createL2port(dbSession, l2portDict['name'], l2portDict['description'], [networkObject], l2portDict['interface'], deviceObject)
 
@@ -688,6 +689,61 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEquals(4, deployments[-1].configlet.count("delete:"))
             self.assertTrue("interface xe-0/0/3.101" in deployments[-1].configlet)
             self.assertTrue("interface xe-0/0/3.102" in deployments[-1].configlet)
+
+    def testDeleteNetwork(self):
+        import re
+        with self._dao.getReadWriteSession() as session:
+            subnet = self.helper._createSubnetOn2By3Fabric(session)
+            configEngine = self.helper.overlay._configEngine
+            configEngine.deleteNetwork(session, subnet.overlay_network)
+
+            # 11 deployments 5 fabric, 2 vrf and 5 subnet add and 5 subnet del            
+            deployments = session.query(OverlayDeployStatus).all()
+            spine1 = deployments[-5].configlet
+            print "spine1:\n" + spine1
+            self.assertIsNotNone(re.compile(r".*irb.*?delete:.*?unit\s101.*", re.DOTALL).match(spine1))
+            self.assertIsNotNone(re.compile(r".*VRF_v1.*?delete:.*?interface\sirb.101.*", re.DOTALL).match(spine1))
+            self.assertIsNotNone(re.compile(r".*vlans.*?delete:.*?bd1001.*", re.DOTALL).match(spine1))
+            self.assertIsNotNone(re.compile(r".*vni-options.*?delete:.*?vni\s1001.*", re.DOTALL).match(spine1))
+            self.assertIsNotNone(re.compile(r".*policy-statement\sLEAF-IN.*?delete:.*?term\sa1001.*", re.DOTALL).match(spine1))
+
+            spine2 = deployments[-4].configlet
+            print "spine2:\n" + spine2
+            self.assertIsNotNone(re.compile(r".*irb.*?delete:.*?unit\s101.*", re.DOTALL).match(spine2))
+            self.assertIsNotNone(re.compile(r".*VRF_v1.*?delete:.*?interface\sirb.101.*", re.DOTALL).match(spine2))
+            self.assertIsNotNone(re.compile(r".*vlans.*?delete:.*?bd1001.*", re.DOTALL).match(spine2))
+            self.assertIsNotNone(re.compile(r".*vni-options.*?delete:.*?vni\s1001.*", re.DOTALL).match(spine2))
+            self.assertIsNotNone(re.compile(r".*policy-statement\sLEAF-IN.*?delete:.*?term\sa1001.*", re.DOTALL).match(spine1))
+
+            leaf1 = deployments[-3].configlet
+            print "leaf1:\n" + leaf1
+            self.assertIsNotNone(re.compile(r".*vlans.*?delete:.*?bd1001.*", re.DOTALL).match(leaf1))
+            self.assertIsNotNone(re.compile(r".*vni-options.*?delete:.*?vni\s1001.*", re.DOTALL).match(leaf1))
+            self.assertIsNotNone(re.compile(r".*policy-statement\sLEAF-IN.*?delete:.*?term\sa1001.*", re.DOTALL).match(spine1))
+
+    def testDeleteNetworkAndPort(self):
+        import re
+        with self._dao.getReadWriteSession() as session:
+            subnet = self.helper._createSubnetOn2By3Fabric(session)
+            port = self.helper._createL2port(session, subnet.overlay_network)
+            self.helper.overlay.deleteNetwork(session, subnet.overlay_network)
+
+            # 11 deployments 5 fabric, 2 vrf and 5 subnet, 1 port add and 1 port del, 5 subnet del            
+            deployments = session.query(OverlayDeployStatus).all()
+            print "deployment count: %s" % len(deployments)
+            port1 = deployments[-6].configlet
+            print "port1:\n" + port1
+            self.assertIsNotNone(re.compile(r".*xe-0/0/1.*?delete:.*?unit\s101.*", re.DOTALL).match(port1))
+            self.assertIsNotNone(re.compile(r".*bd1001.*?delete:.*?interface\sxe-0/0/1.101.*", re.DOTALL).match(port1))
+
+            config = deployments[-5].configlet
+            print "spine1:\n" + config
+
+            config = deployments[-4].configlet
+            print "spine2:\n" + config
+
+            config = deployments[-3].configlet
+            print "leaf1:\n" + config
 
 if __name__ == '__main__':
     unittest.main()
