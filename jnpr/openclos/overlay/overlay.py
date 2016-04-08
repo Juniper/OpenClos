@@ -136,7 +136,7 @@ class Overlay():
         Delete L2port from device, if success then from DB
         '''
         logger.info("OverlayL2port[id: '%s', name: '%s']: delete request submitted", l2Port.id, l2Port.name)
-        self._configEngine.deleteL2Port(dbSession, l2Port)
+        self._configEngine.deleteL2port(dbSession, l2Port)
 
     def deleteSubnet(self, dbSession, subnet):
         '''
@@ -150,8 +150,12 @@ class Overlay():
         Delete network from device, also delete all l2Ports attached to the network
         '''
         logger.info("NEtwork[id: '%s', name: '%s']: delete request submitted", network.id, network.name)
-        for port in network.overlay_l2ports:
-            self._configEngine.deleteL2Port(dbSession, port)
+        for port in network.overlay_l2aps:
+            if type(port) is OverlayL2port:
+                self._configEngine.deleteL2port(dbSession, port)
+            elif type(port) is OverlayAggregatedL2port:
+                # TODO: delete LAG
+                pass
         self._configEngine.deleteNetwork(dbSession, network)
 
 class ConfigEngine():
