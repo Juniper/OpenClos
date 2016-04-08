@@ -8,7 +8,7 @@ import sys
 sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../../..')) #trick to make it run from CLI
 
 import unittest
-from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAe, OverlayDeployStatus
+from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAggregatedL2port, OverlayDeployStatus
 from jnpr.openclos.tests.unit.test_dao import InMemoryDao
 from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue
 from jnpr.openclos.overlay.overlay import ConfigEngine
@@ -27,10 +27,12 @@ class TestOverlayHelper:
             "role": role,
             "address": "1.2.3." + offset,
             "routerId": "1.1.1." + offset,
-            "podName": podName
+            "podName": podName,
+            "username": "root",
+            "password": "testing123"
         }
         return self.overlay.createDevice(dbSession, deviceDict['name'], deviceDict.get('description'), 
-                                         deviceDict['role'], deviceDict['address'], deviceDict['routerId'], deviceDict['podName'])
+                                         deviceDict['role'], deviceDict['address'], deviceDict['routerId'], deviceDict['podName'], deviceDict['username'], deviceDict['password'])
         
     def _createFabric(self, dbSession, offset="1"):
         fabricDict = {
@@ -157,27 +159,31 @@ class TestOverlayHelper:
         if not networkObject:
             networkObject = self._createNetwork(dbSession)
         deviceObject = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0]
-        return self.overlay.createL2port(dbSession, l2portDict['name'], l2portDict['description'], l2portDict['interface'], [networkObject], deviceObject)
+        return self.overlay.createL2port(dbSession, l2portDict['name'], l2portDict['description'], [networkObject], l2portDict['interface'], deviceObject)
 
     def _create2Network4L2port(self, dbSession):
         networkObject1 = self._createNetwork(dbSession, offset="1")
         networkObject2 = self._createNetwork(dbSession, offset="2", vrfObject=networkObject1.overlay_vrf)
         deviceObject = networkObject1.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0]
         
-        port1 = self.overlay.createL2port(dbSession, "l2port1", "description for l2port1", "xe-0/0/1", [networkObject1], deviceObject)
-        port2 = self.overlay.createL2port(dbSession, "l2port2", "description for l2port2", "xe-0/0/2", [networkObject2], deviceObject)
-        port3 = self.overlay.createL2port(dbSession, "l2port3", "description for l2port3", "xe-0/0/3", [networkObject1, networkObject2], deviceObject)
-        port4 = self.overlay.createL2port(dbSession, "l2port4", "description for l2port4", "xe-0/0/4", [networkObject1], deviceObject)
+        port1 = self.overlay.createL2port(dbSession, "l2port1", "description for l2port1", [networkObject1], "xe-0/0/1", deviceObject)
+        port2 = self.overlay.createL2port(dbSession, "l2port2", "description for l2port2", [networkObject2], "xe-0/0/2", deviceObject)
+        port3 = self.overlay.createL2port(dbSession, "l2port3", "description for l2port3", [networkObject1, networkObject2], "xe-0/0/3", deviceObject)
+        port4 = self.overlay.createL2port(dbSession, "l2port4", "description for l2port4", [networkObject1], "xe-0/0/4", deviceObject)
         return [port1, port2, port3, port4]
 
-    def _createAe(self, dbSession):
-        aeDict = {
-            "name": "ae1",
-            "description": "description for ae1",
+    def _createAggregatedL2port(self, dbSession):
+        aggregatedL2portDict = {
+            "name": "aggregatedL2port1",
+            "description": "description for aggregatedL2port1",
             "esi": "00:01:01:01:01:01:01:01:01:01",
             "lacp": "00:00:00:01:01:01"
         }
-        return self.overlay.createAe(dbSession, aeDict['name'], aeDict.get('description'), aeDict.get('esi'), aeDict.get('lacp'))
+        networkObject = self._createNetwork(dbSession)
+        aggregatedL2portObject = self.overlay.createAggregatedL2port(dbSession, aggregatedL2portDict['name'], aggregatedL2portDict.get('description'), [networkObject], aggregatedL2portDict.get('esi'), aggregatedL2portDict.get('lacp'))
+        deviceObject = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0]
+        self.overlay.createAggregatedL2portMember(dbSession, 'xe-0/0/11', deviceObject, aggregatedL2portObject)
+        return aggregatedL2portObject
         
     def _createDeployStatus(self, dbSession, deviceObject, vrfObject):
         deployStatusDict = {
@@ -205,7 +211,18 @@ class TestOverlay(unittest.TestCase):
     def testCreateDevice(self):
         with self._dao.getReadWriteSession() as session:
             self.helper._createDevice(session)
+            
+        with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayDevice).count())
+            deviceObjectFromDb = session.query(OverlayDevice).one()
+            self.assertEqual('d1', deviceObjectFromDb.name)
+            self.assertEqual('description for d1', deviceObjectFromDb.description)
+            self.assertEqual('spine', deviceObjectFromDb.role)
+            self.assertEqual('1.2.3.1', deviceObjectFromDb.address)
+            self.assertEqual('1.1.1.1', deviceObjectFromDb.routerId)
+            self.assertEqual('pod1', deviceObjectFromDb.podName)
+            self.assertEqual('root', deviceObjectFromDb.username)
+            self.assertEqual('testing123', deviceObjectFromDb.getCleartextPassword())
             
     def testUpdateDevice(self):        
         with self._dao.getReadWriteSession() as session:        
@@ -364,15 +381,15 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual(4, len(ports))
             self.assertEqual(1, len(ports[0].overlay_networks))
             self.assertEqual(2, len(ports[2].overlay_networks))
-            self.assertEqual(3, len(ports[0].overlay_networks[0].overlay_l2ports))
-            self.assertEqual(2, len(ports[1].overlay_networks[0].overlay_l2ports))
+            self.assertEqual(3, len(ports[0].overlay_networks[0].overlay_l2aps))
+            self.assertEqual(2, len(ports[1].overlay_networks[0].overlay_l2aps))
 
     def testUpdateL2port(self):        
         with self._dao.getReadWriteSession() as session:        
             self.helper._create2Network4L2port(session)
             ports = session.query(OverlayL2port).all()
             ports[0].clearNetworks()
-            ports[0].update('l2port.changed', 'description changed', 'xe-1/0/0', ports[2].overlay_networks, ports[0].overlay_device, ports[0].overlay_ae)
+            ports[0].update('l2port.changed', 'description changed', ports[2].overlay_networks, 'xe-1/0/0', ports[0].overlay_device)
             self._dao.updateObjects(session, ports)
             
         with self._dao.getReadSession() as session:
@@ -382,24 +399,28 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('xe-1/0/0', ports[0].interface)
             self.assertEqual(2, len(ports[0].overlay_networks))
             
-    def testCreateAe(self):
+    def testCreateAggregatedL2port(self):
         with self._dao.getReadWriteSession() as session:
-            self.helper._createAe(session)
-            self.assertEqual(1, session.query(OverlayAe).count())
+            self.helper._createAggregatedL2port(session)
+            self.assertEqual(1, session.query(OverlayAggregatedL2port).count())
             
-    def testUpdateAe(self):
+    def testUpdateAggregatedL2port(self):
         with self._dao.getReadWriteSession() as session:        
-            aeObject = self.helper._createAe(session)
-            aeObject.update('ae2', 'description for ae2', '11:01:01:01:01:01:01:01:01:01', '11:00:00:01:01:01')
-            self._dao.updateObjects(session, [aeObject])
+            aggregatedL2portObject = self.helper._createAggregatedL2port(session)
+            aggregatedL2ports = session.query(OverlayAggregatedL2port).all()
+            networkObjects = session.query(OverlayNetwork).all()
+            aggregatedL2ports[0].clearNetworks()
+            aggregatedL2ports[0].clearMembers()
+            aggregatedL2ports[0].update('aggregatedL2port2', 'description for aggregatedL2port2', networkObjects, '11:01:01:01:01:01:01:01:01:01', '11:00:00:01:01:01')
+            self._dao.updateObjects(session, aggregatedL2ports)
             
         with self._dao.getReadSession() as session:
-            self.assertEqual(1, session.query(OverlayAe).count())
-            aeObjectFromDb = session.query(OverlayAe).one()
-            self.assertEqual('ae2', aeObjectFromDb.name)
-            self.assertEqual('description for ae2', aeObjectFromDb.description)
-            self.assertEqual('11:01:01:01:01:01:01:01:01:01', aeObjectFromDb.esi)
-            self.assertEqual('11:00:00:01:01:01', aeObjectFromDb.lacp)
+            self.assertEqual(1, session.query(OverlayAggregatedL2port).count())
+            aggregatedL2portObjectFromDb = session.query(OverlayAggregatedL2port).one()
+            self.assertEqual('aggregatedL2port2', aggregatedL2portObjectFromDb.name)
+            self.assertEqual('description for aggregatedL2port2', aggregatedL2portObjectFromDb.description)
+            self.assertEqual('11:01:01:01:01:01:01:01:01:01', aggregatedL2portObjectFromDb.esi)
+            self.assertEqual('11:00:00:01:01:01', aggregatedL2portObjectFromDb.lacp)
        
     def testCreateDeployStatus(self):
         with self._dao.getReadWriteSession() as session:
@@ -646,7 +667,7 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             port = self.helper._createL2port(session)
             configEngine = self.helper.overlay._configEngine
-            configEngine.deleteL2Port(session, port)
+            configEngine.deleteL2port(session, port)
             # 4 deployments 1 fabric, 1 vrf and 1 port add, 1 port delete            
             deployments = session.query(OverlayDeployStatus).all()
             print deployments[-1].configlet
@@ -659,7 +680,7 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             ports = self.helper._create2Network4L2port(session)
             configEngine = self.helper.overlay._configEngine
-            configEngine.deleteL2Port(session, ports[2])
+            configEngine.deleteL2port(session, ports[2])
             # 4 deployments 1 fabric, 1 vrf and 1 port add, 1 port delete            
             deployments = session.query(OverlayDeployStatus).all()
             print deployments[-1].configlet
