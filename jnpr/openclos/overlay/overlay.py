@@ -77,6 +77,7 @@ class Overlay():
 
         self._dao.createObjects(dbSession, [network])
         logger.info("OverlayNetwork[id: '%s', name: '%s']: created", network.id, network.name)
+        self._configEngine.configureNetwork(dbSession, network)
         return network
 
     def createSubnet(self, dbSession, name, description, overlay_network, cidr):
@@ -140,14 +141,14 @@ class Overlay():
 
     def deleteSubnet(self, dbSession, subnet):
         '''
-        Delete subnet and network from device, also delete all l2Ports attached to the network
+        Delete subnet from device
         '''
         logger.info("Subnet[id: '%s', cidr: '%s']: delete request submitted", subnet.id, subnet.name)
-        # TODO: should we allow delete subnet or force user to delete network and re-create?
+        self._configEngine.deleteSubnet(dbSession, subnet)
 
     def deleteNetwork(self, dbSession, network):
         '''
-        Delete network from device, also delete all l2Ports attached to the network
+        Delete network from device, also delete subnet and all l2Ports attached to the network
         '''
         logger.info("NEtwork[id: '%s', name: '%s']: delete request submitted", network.id, network.name)
         for port in network.overlay_l2aps:
@@ -156,6 +157,8 @@ class Overlay():
             elif type(port) is OverlayAggregatedL2port:
                 # TODO: delete LAG
                 pass
+        for subnet in network.overlay_subnets:
+            self._configEngine.deleteSubnet(dbSession, subnet)
         self._configEngine.deleteNetwork(dbSession, network)
 
 class ConfigEngine():
@@ -267,37 +270,21 @@ class ConfigEngine():
         return template.render(loopbackUnit=loopbackUnit, loopbackAddress=loopbackIp)
 
 
-    def configureNetwork(self, dbSession):
-        '''
-        IRB needs address, so do not configure network till subnet is added
-        '''
-        pass
-    
-    def configureSubnet(self, dbSession, subnet):
+    def configureNetwork(self, dbSession, network):
         '''
         Create IRB, BD, update VRF, update evpn, update policy
         '''
         deployments = []        
-        network = subnet.overlay_network
         vrf = network.overlay_vrf
-        spines = vrf.getSpines()
         asn = vrf.overlay_tenant.overlay_fabric.overlayAS
-
-        irbIps = self.getSubnetIps(subnet.cidr)
-        irbVirtualGateway = irbIps.pop(0).split("/")[0]
-        
-        if len(irbIps) < len(spines):
-            logger.error("configureSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
-                         vrf.id, network.id, len(irbIps), len(spines))
 
         irbTemplate = self._templateLoader.getTemplate("olAddIrb.txt")
         vrfTemplate = self._templateLoader.getTemplate("olAddVrf.txt")
         bdTemplate = self._templateLoader.getTemplate("olAddBridgeDomain.txt")
         
-        for spine, irbIp in itertools.izip(spines, irbIps):            
+        for spine in vrf.getSpines():            
             
-            config = irbTemplate.render(firstIpFromSubnet=irbVirtualGateway, secondOrThirdIpFromSubnet=irbIp, 
-                vlanId=network.vlanid)
+            config = irbTemplate.render(vlanId=network.vlanid)
             
             config += vrfTemplate.render(vrfName=vrf.overlay_tenant.name, irbName="irb." + str(network.vlanid))
             config += self.configureEvpn(network.vnid, asn)
@@ -315,7 +302,34 @@ class ConfigEngine():
             deployments.append(OverlayDeployStatus(config, network.getUrl(), "create", leaf, vrf))    
 
         self._dao.createObjects(dbSession, deployments)
-        logger.info("configureSubnet [network id: '%s', network name: '%s']: configured", network.id, network.name)
+        logger.info("configureNetwork [network id: '%s', network name: '%s']: configured", network.id, network.name)
+        self._commitQueue.addJobs(deployments)
+    
+    def configureSubnet(self, dbSession, subnet):
+        '''
+        Add subnet address to IRB
+        '''
+        deployments = []        
+        network = subnet.overlay_network
+        vrf = network.overlay_vrf
+        spines = vrf.getSpines()
+
+        irbIps = self.getSubnetIps(subnet.cidr)
+        irbVirtualGateway = irbIps.pop(0).split("/")[0]
+        
+        if len(irbIps) < len(spines):
+            logger.error("configureSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
+                         vrf.id, network.id, len(irbIps), len(spines))
+
+        irbTemplate = self._templateLoader.getTemplate("olAddIrb.txt")
+        
+        for spine, irbIp in itertools.izip(spines, irbIps):            
+            config = irbTemplate.render(firstIpFromSubnet=irbVirtualGateway, secondOrThirdIpFromSubnet=irbIp, 
+                vlanId=network.vlanid)
+            deployments.append(OverlayDeployStatus(config, subnet.getUrl(), "create", spine, vrf))    
+
+        self._dao.createObjects(dbSession, deployments)
+        logger.info("configureSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
         self._commitQueue.addJobs(deployments)
         
     def configureEvpn(self, vni=None, asn=None):
@@ -362,6 +376,29 @@ class ConfigEngine():
         self._commitQueue.addJobs(deployments)
 
         
+    def deleteSubnet(self, dbSession, subnet):
+        deployments = []        
+        network = subnet.overlay_network
+        vrf = network.overlay_vrf
+        spines = vrf.getSpines()
+
+        irbIps = self.getSubnetIps(subnet.cidr)
+        irbVirtualGateway = irbIps.pop(0).split("/")[0]
+        
+        if len(irbIps) < len(spines):
+            logger.error("deleteSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
+                         vrf.id, network.id, len(irbIps), len(spines))
+
+        irbTemplate = self._templateLoader.getTemplate("olDelSubnetFromIrb.txt")
+        
+        for spine, irbIp in itertools.izip(spines, irbIps):            
+            config = irbTemplate.render(secondOrThirdIpFromSubnet=irbIp, vlanId=network.vlanid)
+            deployments.append(OverlayDeployStatus(config, subnet.getUrl(), "create", spine, vrf))    
+
+        self._dao.createObjects(dbSession, deployments)
+        logger.info("deleteSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
+        self._commitQueue.addJobs(deployments)
+
     def deleteNetwork(self, dbSession, network):
         '''
         Delete IRB, BD, update VRF, update evpn, update policy

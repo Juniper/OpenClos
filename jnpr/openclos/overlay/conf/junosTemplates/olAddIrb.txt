@@ -2,11 +2,11 @@ interfaces {
     irb {
         replace:
         unit {{vlanId}} {
-            family inet {
+            {% if firstIpFromSubnet %}family inet {
                 address {{secondOrThirdIpFromSubnet}} {
                     virtual-gateway-address {{firstIpFromSubnet}};
                 }
-            }
+            }{% else %}family inet;{% endif %}
         }
     }
 }
