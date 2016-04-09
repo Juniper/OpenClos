@@ -1,0 +1,10 @@
+interfaces {
+    irb {
+        unit {{vlanId}} {
+            family inet {
+                delete:
+                address {{secondOrThirdIpFromSubnet}};
+            }
+        }
+    }
+}

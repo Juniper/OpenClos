@@ -126,11 +126,14 @@ class TestOverlayHelper:
             networkObject = self._createNetwork(dbSession, offset)
         return self.overlay.createSubnet(dbSession, subnetDict['name'], subnetDict.get('description'), networkObject, subnetDict['cidr'])
         
-    def _createSubnetOn2By3Fabric(self, dbSession):
+    def _createNetworkOn2By3Fabric(self, dbSession):
         fabric = self._createFabric2Spine3Leaf(dbSession)
         tenant = self._createTenant(dbSession, fabricObject=fabric)
         vrf = self._createVrf(dbSession, tenantObject=tenant)
-        network = self._createNetwork(dbSession, vrfObject=vrf)
+        return self._createNetwork(dbSession, vrfObject=vrf)
+        
+    def _createSubnetOn2By3Fabric(self, dbSession):
+        network = self._createNetworkOn2By3Fabric(dbSession)
         return self._createSubnet(dbSession, networkObject=network)
         
     def _create2NetworkOn2By3Fabric(self, dbSession):
@@ -572,21 +575,18 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("instance-type vrf;", config)
             self.assertIn("route-distinguisher", config)
 
-    def testConfigureSubnet(self):
+    def testConfigureNetwork(self):
         with self._dao.getReadWriteSession() as session:
-            subnet = self.helper._createSubnetOn2By3Fabric(session)
-            # overlay.createXYZ would also call required configure
-            #self.configEngine.configureSubnet(session, subnet)
+            network = self.helper._createNetworkOn2By3Fabric(session)
 
-            # 11 deployments 5 fabric, 2 vrf and 5 subnet            
+            # 12 deployments 5 fabric, 2 vrf and 5 network            
             self.assertEqual(12, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
 
             config = deployments[7].configlet
             print "spine1:\n" + config
             self.assertIn("irb {", config)
-            self.assertIn("address 1.2.3.2/24 {", config)
-            self.assertIn("virtual-gateway-address 1.2.3.1", config)
+            self.assertNotIn("address ", config)
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
@@ -596,8 +596,7 @@ class TestConfigEngine(unittest.TestCase):
             config = deployments[8].configlet
             print "spine2:\n" + config
             self.assertIn("irb {", config)
-            self.assertIn("address 1.2.3.3/24 {", config)
-            self.assertIn("virtual-gateway-address 1.2.3.1", config)
+            self.assertNotIn("address ", config)
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
@@ -611,66 +610,94 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("bd1001", config)
             self.assertNotIn("l3-interface irb.", config)
 
+    def testConfigureSubnet(self):
+        with self._dao.getReadWriteSession() as session:
+            subnet = self.helper._createSubnetOn2By3Fabric(session)
+
+            # 14 deployments 5 fabric, 2 vrf, 5 network and 2 subnet            
+            self.assertEqual(14, session.query(OverlayDeployStatus).count())
+            deployments = session.query(OverlayDeployStatus).all()
+
+            config = deployments[-2].configlet
+            print "spine1:\n" + config
+            self.assertIn("irb {", config)
+            self.assertIn("address 1.2.3.2/24 {", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1", config)
+                        
+            config = deployments[-1].configlet
+            print "spine2:\n" + config
+            self.assertIn("irb {", config)
+            self.assertIn("address 1.2.3.3/24 {", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1", config)
+
     def testConfigure2Subnet(self):
         with self._dao.getReadWriteSession() as session:
             subnets = self.helper._create2NetworkOn2By3Fabric(session)
-            # overlay.createXYZ would also call required configure
-            #self.configEngine.configureSubnet(session, subnets[0])
-            #self.configEngine.configureSubnet(session, subnets[1])
             
-            # 11 deployments 5 fabric, 2 vrf and 5+5 subnet            
-            self.assertEqual(17, session.query(OverlayDeployStatus).count())
+            # 21 deployments 5 fabric, 2 vrf and 5+5 network, 2+2 subnet            
+            self.assertEqual(21, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
 
             config = deployments[7].configlet
             print "spine1 net1:\n" + config
-            self.assertIn("address 1.2.3.2/24 {", config)
-            self.assertIn("virtual-gateway-address 1.2.3.1", config)
             self.assertIn("vlan-id 101", config)
             self.assertIn("vni 1001", config)
+            config = deployments[-4].configlet
+            print "\n" + config
+            self.assertIn("address 1.2.3.2/24 {", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1", config)
                         
             config = deployments[8].configlet
             print "spine2 net1:\n" + config
-            self.assertIn("address 1.2.3.3/24 {", config)
-            self.assertIn("virtual-gateway-address 1.2.3.1", config)
             self.assertIn("vlan-id 101", config)
             self.assertIn("vni 1001", config)
+            config = deployments[-3].configlet
+            print "\n" + config
+            self.assertIn("address 1.2.3.3/24 {", config)
+            self.assertIn("virtual-gateway-address 1.2.3.1", config)
 
             config = deployments[12].configlet
             print "spine1 net2:\n" + config
-            self.assertIn("address 2.2.3.2/24 {", config)
-            self.assertIn("virtual-gateway-address 2.2.3.1", config)
             self.assertIn("vlan-id 102", config)
             self.assertIn("vni 1002", config)
+            config = deployments[-2].configlet
+            print "\n" + config
+            self.assertIn("address 2.2.3.2/24 {", config)
+            self.assertIn("virtual-gateway-address 2.2.3.1", config)
                         
             config = deployments[13].configlet
             print "spine2 net2:\n" + config
-            self.assertIn("address 2.2.3.3/24 {", config)
-            self.assertIn("virtual-gateway-address 2.2.3.1", config)
             self.assertIn("vlan-id 102", config)
             self.assertIn("vni 1002", config)
+            config = deployments[-1].configlet
+            print "\n" + config
+            self.assertIn("address 2.2.3.3/24 {", config)
+            self.assertIn("virtual-gateway-address 2.2.3.1", config)
 
     def testConfigureL2Port(self):
         with self._dao.getReadWriteSession() as session:
             ports = self.helper._create2Network4L2port(session)
             
-            # 6 deployments 1 fabric, 1 vrf and 4 ports. As there is no subnet, network was not deployed            
+            # 8 deployments 1 fabric, 1 vrf, 2 network and 4 ports            
             deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(6, len(deployments))
+            self.assertEqual(8, len(deployments))
             
-            print deployments[2].configlet
             print deployments[4].configlet
-            self.assertEquals(1, deployments[2].configlet.count("interface "))
-            self.assertEquals(2, deployments[4].configlet.count("interface "))
+            print deployments[6].configlet
+            self.assertEquals(1, deployments[4].configlet.count("interface "))
+            self.assertEquals(2, deployments[6].configlet.count("interface "))
 
     def testDeleteL2Port(self):
         with self._dao.getReadWriteSession() as session:
             port = self.helper._createL2port(session)
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteL2port(session, port)
-            # 4 deployments 1 fabric, 1 vrf and 1 port add, 1 port delete            
+
+            # 4 deployments 1 fabric, 1 vrf, 1 network and 1 port add, 1 port delete            
             deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(5, len(deployments))
             print deployments[-1].configlet
+            
             self.assertEquals(1, deployments[-1].configlet.count("interfaces "))
             self.assertEquals(1, deployments[-1].configlet.count("vlans "))
             self.assertEquals(2, deployments[-1].configlet.count("delete:"))
@@ -681,14 +708,36 @@ class TestConfigEngine(unittest.TestCase):
             ports = self.helper._create2Network4L2port(session)
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteL2port(session, ports[2])
-            # 4 deployments 1 fabric, 1 vrf and 1 port add, 1 port delete            
+            
+            # 4 deployments 1 fabric, 1 vrf, 2 network and 4 port add, 1 port delete            
             deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(9, len(deployments))
             print deployments[-1].configlet
+            
             self.assertEquals(1, deployments[-1].configlet.count("interfaces "))
             self.assertEquals(1, deployments[-1].configlet.count("vlans "))
             self.assertEquals(4, deployments[-1].configlet.count("delete:"))
             self.assertTrue("interface xe-0/0/3.101" in deployments[-1].configlet)
             self.assertTrue("interface xe-0/0/3.102" in deployments[-1].configlet)
+
+    def testDeleteSubnet(self):
+        import re
+        with self._dao.getReadWriteSession() as session:
+            subnet = self.helper._createSubnetOn2By3Fabric(session)
+            configEngine = self.helper.overlay._configEngine
+            configEngine.deleteSubnet(session, subnet)
+
+            # 16 deployments 5 fabric, 2 vrf and 5 network, 2 subnet add and 2 subnet del            
+            deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(16, len(deployments))
+            
+            spine1 = deployments[-2].configlet
+            print "spine1:\n" + spine1
+            self.assertIsNotNone(re.compile(r".*unit\s101.*?family\sinet.*?delete:.*?address\s.*", re.DOTALL).match(spine1))
+
+            spine2 = deployments[-1].configlet
+            print "spine2:\n" + spine2
+            self.assertIsNotNone(re.compile(r".*unit\s101.*?family\sinet.*?delete:.*?address\s.*", re.DOTALL).match(spine2))
 
     def testDeleteNetwork(self):
         import re
@@ -697,8 +746,10 @@ class TestConfigEngine(unittest.TestCase):
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteNetwork(session, subnet.overlay_network)
 
-            # 11 deployments 5 fabric, 2 vrf and 5 subnet add and 5 subnet del            
+            # 19 deployments 5 fabric, 2 vrf, 5 network, 2 subnet add and 5 network del            
             deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(19, len(deployments))
+            
             spine1 = deployments[-5].configlet
             print "spine1:\n" + spine1
             self.assertIsNotNone(re.compile(r".*irb.*?delete:.*?unit\s101.*", re.DOTALL).match(spine1))
@@ -721,29 +772,36 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIsNotNone(re.compile(r".*vni-options.*?delete:.*?vni\s1001.*", re.DOTALL).match(leaf1))
             self.assertIsNotNone(re.compile(r".*policy-statement\sLEAF-IN.*?delete:.*?term\sa1001.*", re.DOTALL).match(spine1))
 
-    def testDeleteNetworkAndPort(self):
+    def testDeleteNetworkRecursive(self):
         import re
         with self._dao.getReadWriteSession() as session:
             subnet = self.helper._createSubnetOn2By3Fabric(session)
             port = self.helper._createL2port(session, subnet.overlay_network)
             self.helper.overlay.deleteNetwork(session, subnet.overlay_network)
 
-            # 11 deployments 5 fabric, 2 vrf and 5 subnet, 1 port add and 1 port del, 5 subnet del            
+            # 23 deployments 5 fabric, 2 vrf and 5 network, 2 subnet, 1 port add and 1 port del, 2 subnet del, 5 network del
             deployments = session.query(OverlayDeployStatus).all()
-            print "deployment count: %s" % len(deployments)
-            port1 = deployments[-6].configlet
+            self.assertEqual(23, len(deployments))
+            
+            port1 = deployments[-8].configlet
             print "port1:\n" + port1
             self.assertIsNotNone(re.compile(r".*xe-0/0/1.*?delete:.*?unit\s101.*", re.DOTALL).match(port1))
             self.assertIsNotNone(re.compile(r".*bd1001.*?delete:.*?interface\sxe-0/0/1.101.*", re.DOTALL).match(port1))
 
-            config = deployments[-5].configlet
-            print "spine1:\n" + config
+            spine1 = deployments[-7].configlet
+            print "spine1:\n" + spine1
+            self.assertIsNotNone(re.compile(r".*unit\s101.*?family\sinet.*?delete:.*?address\s.*", re.DOTALL).match(spine1))
+            spine1 = deployments[-5].configlet
+            print "\n" + spine1
 
-            config = deployments[-4].configlet
-            print "spine2:\n" + config
+            spine2 = deployments[-6].configlet
+            print "spine2:\n" + spine2
+            self.assertIsNotNone(re.compile(r".*unit\s101.*?family\sinet.*?delete:.*?address\s.*", re.DOTALL).match(spine2))
+            spine2 = deployments[-4].configlet
+            print "\n" + spine2
 
-            config = deployments[-3].configlet
-            print "leaf1:\n" + config
+            leaf1 = deployments[-3].configlet
+            print "leaf1:\n" + leaf1
 
 if __name__ == '__main__':
     unittest.main()

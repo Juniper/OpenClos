@@ -296,6 +296,9 @@ class OverlaySubnet(ManagedElement, Base):
         self.overlay_network = overlay_network
         self.cidr = cidr
         
+    def getUrl(self):
+        return "/subnets/" + self.id
+
     def update(self, name, description, cidr):
         '''
         Updates subnet object.
@@ -514,5 +517,7 @@ class OverlayDeployStatus(ManagedElement, Base):
             return(OverlayVrf, objectUrlSplit[2])
         elif objectUrlSplit[1] == "networks":
             return(OverlayNetwork, objectUrlSplit[2])
+        elif objectUrlSplit[1] == "subnets":
+            return(OverlaySubnet, objectUrlSplit[2])
         elif objectUrlSplit[1] == "l2ports":
             return(OverlayL2port, objectUrlSplit[2])
