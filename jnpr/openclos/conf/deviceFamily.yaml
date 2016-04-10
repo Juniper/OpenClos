@@ -63,9 +63,9 @@ deviceFamily:
         spine:
             uplinkPorts: 
             downlinkPorts: 
-        #leaf:
-            #uplinkPorts: ['et-0/0/[18-35]', 'et-1/0/[18-35]', 'et-2/0/[18-35]', 'et-3/0/[18-35]', 'et-4/0/[18-35]', 'et-5/0/[18-35]', 'et-6/0/[18-3#5]', 'et-7/0/[18-35]']
-            #downlinkPorts: ['et-0/0/[0-17]', 'et-1/0/[0-17]', 'et-2/0/[0-17]', 'et-3/0/[0-17]', 'et-4/0/[0-17]', 'et-5/0/[0-17]', 'et-6/0/[0-17]', #'et-7/0/[0-17]']          
+        leaf:
+            uplinkPorts: ['et-0/0/[18-35]', 'et-1/0/[18-35]', 'et-2/0/[18-35]', 'et-3/0/[18-35]', 'et-4/0/[18-35]', 'et-5/0/[18-35]', 'et-6/0/[18-35]', 'et-7/0/[18-35]']
+            downlinkPorts: ['et-0/0/[0-17]', 'et-1/0/[0-17]', 'et-2/0/[0-17]', 'et-3/0/[0-17]', 'et-4/0/[0-17]', 'et-5/0/[0-17]', 'et-6/0/[0-17]','et-7/0/[0-17]']          
     #qfx10016:
         #fabric:
             #uplinkPorts:
@@ -174,14 +174,14 @@ deviceFamily:
         
 lineCard:
     ULC-30Q28:
-        uplinkPorts: 
-        downlinkPorts: 'et-0/0/[0-29]'
+        uplinkPorts:   'et-0/0/[16-29]'
+        downlinkPorts: 'et-0/0/[0-15]'
     ULC-36Q-12Q28:
-        uplinkPorts:
-        downlinkPorts: 'et-0/0/[0-35]'
+        uplinkPorts:   'et-0/0/[18-35]'
+        downlinkPorts: 'et-0/0/[0-17]'
     ULC-60S-6Q:
         uplinkPorts: 'et-0/0/[0-59]'
         downlinkPorts: 'et-0/0/[60-65]'
     ULC-30Q28-M:
-        uplinkPorts:
-        downlinkPorts: 'et-0/0/[0-29]' 
+        uplinkPorts:   'et-0/0/[16-29]'
+        downlinkPorts: 'et-0/0/[0-15]' 
