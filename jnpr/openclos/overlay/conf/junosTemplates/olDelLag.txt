@@ -1,3 +1,11 @@
+chassis {
+    aggregated-devices {
+        ethernet {
+            device-count {{lagCount}};
+        }
+    }
+}
+
 interfaces {
     delete:
     {{interfaceName}};

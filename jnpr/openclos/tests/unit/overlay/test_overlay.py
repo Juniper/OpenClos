@@ -183,11 +183,24 @@ class TestOverlayHelper:
             "lacp": "00:00:00:01:01:01"
         }
         networkObject = self._createNetwork(dbSession)
-        aggregatedL2portObject = self.overlay.createAggregatedL2port(dbSession, aggregatedL2portDict['name'], aggregatedL2portDict.get('description'), [networkObject], aggregatedL2portDict.get('esi'), aggregatedL2portDict.get('lacp'))
         deviceObject = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0]
-        self.overlay.createAggregatedL2portMember(dbSession, 'xe-0/0/11', deviceObject, aggregatedL2portObject)
+        aggregatedL2portMembers = [{ "interface": "xe-0/0/11", "device": deviceObject }]
+        aggregatedL2portObject = self.overlay.createAggregatedL2port(dbSession, aggregatedL2portDict['name'], aggregatedL2portDict.get('description'), [networkObject], aggregatedL2portMembers, aggregatedL2portDict.get('esi'), aggregatedL2portDict.get('lacp'))
         return aggregatedL2portObject
         
+    def _create2Network3AggregatedL2port(self, dbSession):
+        networkObject1 = self._createNetwork(dbSession, offset="1")
+        networkObject2 = self._createNetwork(dbSession, offset="2", vrfObject=networkObject1.overlay_vrf)
+        deviceObject = networkObject1.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0]
+        
+        members1 = [{ "interface": "xe-0/0/11", "device": deviceObject }]
+        port1 = self.overlay.createAggregatedL2port(dbSession, "aggregatedL2port1", "description for aggregatedL2port1", [networkObject1], members1, "00:01:01:01:01:01:01:01:01:01", "00:00:00:01:01:01")
+        members2 = [{ "interface": "xe-0/0/12", "device": deviceObject }]
+        port2 = self.overlay.createAggregatedL2port(dbSession, "aggregatedL2port2", "description for aggregatedL2port2", [networkObject2], members2, "00:01:01:01:01:01:01:01:01:02", "00:00:00:01:01:02")
+        members3 = [{ "interface": "xe-0/0/13", "device": deviceObject }]
+        port3 = self.overlay.createAggregatedL2port(dbSession, "aggregatedL2port3", "description for aggregatedL2port3", [networkObject1, networkObject2], members3, "00:01:01:01:01:01:01:01:01:03", "00:00:00:01:01:03")
+        return [port1, port2, port3]
+
     def _createDeployStatus(self, dbSession, deviceObject, vrfObject):
         deployStatusDict = {
             "configlet": "v1_config",
@@ -414,7 +427,7 @@ class TestOverlay(unittest.TestCase):
             networkObjects = session.query(OverlayNetwork).all()
             aggregatedL2ports[0].clearNetworks()
             aggregatedL2ports[0].clearMembers()
-            aggregatedL2ports[0].update('aggregatedL2port2', 'description for aggregatedL2port2', networkObjects, '11:01:01:01:01:01:01:01:01:01', '11:00:00:01:01:01')
+            self.helper.overlay.modifyAggregatedL2port(session, aggregatedL2ports[0], 'aggregatedL2port2', 'description for aggregatedL2port2', networkObjects, [], '11:01:01:01:01:01:01:01:01:01', '11:00:00:01:01:01')
             self._dao.updateObjects(session, aggregatedL2ports)
             
         with self._dao.getReadSession() as session:
@@ -803,5 +816,39 @@ class TestConfigEngine(unittest.TestCase):
             leaf1 = deployments[-3].configlet
             print "leaf1:\n" + leaf1
 
+    def testConfigureAggregatedL2Port(self):
+        with self._dao.getReadWriteSession() as session:
+            ports = self.helper._create2Network3AggregatedL2port(session)
+            
+            # 7 deployments 1 fabric, 1 vrf, 2 network and 3 aggregateL2port          
+            deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(7, len(deployments))
+            
+            print deployments[4].configlet
+            print deployments[5].configlet
+            print deployments[6].configlet
+            self.assertTrue('device-count 1;' in deployments[4].configlet)
+            self.assertTrue('device-count 2;' in deployments[5].configlet)
+            self.assertTrue('device-count 3;' in deployments[6].configlet)
+            self.assertEquals(1, deployments[4].configlet.count("vlan-id "))
+            self.assertEquals(1, deployments[5].configlet.count("vlan-id "))
+            self.assertEquals(2, deployments[6].configlet.count("vlan-id "))
+
+    def testDeleteAggregatedL2Port(self):
+        with self._dao.getReadWriteSession() as session:
+            ports = self.helper._create2Network3AggregatedL2port(session)
+            configEngine = self.helper.overlay._configEngine
+            configEngine.deleteAggregatedL2port(session, ports[2])
+
+            # 8 deployments 1 fabric, 1 vrf, 2 network and 3 aggregateL2port add and 1 aggregateL2port delete
+            deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(8, len(deployments))
+            print deployments[-1].configlet
+            
+            self.assertTrue('device-count 2;' in deployments[-1].configlet)
+            self.assertTrue("xe-0/0/13" in deployments[-1].configlet)
+            self.assertTrue("aggregatedL2port3" in deployments[-1].configlet)
+            
+            
 if __name__ == '__main__':
     unittest.main()
