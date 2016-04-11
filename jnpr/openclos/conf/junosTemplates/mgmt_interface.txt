@@ -1,5 +1,5 @@
     replace:
-    vme {
+    {{mgmt_interface}} {
         unit 0 {
             family inet {
                 address {{mgmt_address}};
