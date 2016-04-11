@@ -112,7 +112,7 @@ class Overlay():
         self._configEngine.configureL2port(dbSession, l2port)
         return l2port
 
-    def createAggregatedL2port(self, dbSession, name, description, overlay_networks, esi, lacp):
+    def createAggregatedL2port(self, dbSession, name, description, overlay_networks, members, esi, lacp):
         '''
         Create a new AggregatedL2port
         '''
@@ -120,17 +120,35 @@ class Overlay():
 
         self._dao.createObjects(dbSession, [aggregatedL2port])
         logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: created", aggregatedL2port.id, aggregatedL2port.name)
+        
+        # add members
+        memberObjects = []
+        for memberDict in members:
+            memberObject = OverlayAggregatedL2portMember(memberDict['interface'], memberDict['device'], aggregatedL2port)
+            logger.info("OverlayAggregatedL2portMember[id: '%s', device: '%s', interface: '%s']: created", memberObject.id, memberObject.overlay_device.name, memberObject.interface)
+            memberObjects.append(memberObject)
+
+        self._dao.createObjects(dbSession, memberObjects)
+        self._configEngine.configureAggregatedL2port(dbSession, aggregatedL2port)
+        
         return aggregatedL2port
-
-    def createAggregatedL2portMember(self, dbSession, interface, overlay_device, overlay_aggregatedL2port):
+        
+    def modifyAggregatedL2port(self, dbSession, aggregatedL2port, name, description, overlay_networks, members, esi, lacp):
         '''
-        Create a new AggregatedL2port member
+        Modify a new AggregatedL2port
         '''
-        member = OverlayAggregatedL2portMember(interface, overlay_device, overlay_aggregatedL2port)
+        aggregatedL2port.update(name, description, overlay_networks, esi, lacp)
 
-        self._dao.createObjects(dbSession, [member])
-        logger.info("OverlayAggregatedL2portMember[id: '%s', device: '%s', interface: '%s']: created", member.id, member.overlay_device.name, member.interface)
-        return member
+        # add members
+        memberObjects = []
+        for memberDict in members:
+            memberObject = OverlayAggregatedL2portMember(memberDict['interface'], memberDict['device'], aggregatedL2port)
+            logger.info("OverlayAggregatedL2portMember[id: '%s', device: '%s', interface: '%s']: created", memberObject.id, memberObject.overlay_device.name, memberObject.interface)
+            memberObjects.append(memberObject)
+
+        self._dao.createObjects(dbSession, memberObjects)
+        
+        return aggregatedL2port
         
     def deleteL2port(self, dbSession, l2Port):
         '''
@@ -155,11 +173,17 @@ class Overlay():
             if type(port) is OverlayL2port:
                 self._configEngine.deleteL2port(dbSession, port)
             elif type(port) is OverlayAggregatedL2port:
-                # TODO: delete LAG
-                pass
+                self._configEngine.deleteAggregatedL2port(dbSession, port)
         for subnet in network.overlay_subnets:
             self._configEngine.deleteSubnet(dbSession, subnet)
         self._configEngine.deleteNetwork(dbSession, network)
+
+    def deleteAggregatedL2port(self, dbSession, aggregatedL2port):
+        '''
+        Delete Aggregated L2 port from device, if success then from DB
+        '''
+        logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: delete request submitted", aggregatedL2port.id, aggregatedL2port.name)
+        self._configEngine.deleteAggregatedL2port(dbSession, aggregatedL2port)
 
 class ConfigEngine():
     def __init__(self, conf, dao, commitQueue=None):
@@ -360,6 +384,23 @@ class ConfigEngine():
         logger.info("configureL2port [l2Port id: '%s', l2Port name: '%s']: configured", l2Port.id, l2Port.interface)
         self._commitQueue.addJobs(deployments)
 
+    def configureAggregatedL2port(self, dbSession, aggregatedL2port):
+        '''
+        Create Aggregated L2 Port
+        '''
+        deployments = []
+        networks = [(net.vlanid, net.vnid) for net in aggregatedL2port.overlay_networks]
+        vrf = aggregatedL2port.overlay_networks[0].overlay_vrf
+        template = self._templateLoader.getTemplate('olAddLag.txt')
+        for member in aggregatedL2port.members:
+            lagCount = len(member.overlay_device.aggregatedL2port_members)
+            config = template.render(interfaceName=member.interface, networks=networks, lagName=aggregatedL2port.name, ethernetSegmentId=aggregatedL2port.esi, systemId=aggregatedL2port.lacp, lagCount=lagCount)
+            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "create", member.overlay_device, vrf))
+            
+        self._dao.createObjects(dbSession, deployments)
+        logger.info("configureAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
+        self._commitQueue.addJobs(deployments)
+
     def deleteL2port(self, dbSession, l2Port):
         '''
         Delete L2port from device
@@ -433,6 +474,22 @@ class ConfigEngine():
         logger.info("deleteNetwork [id: '%s', name: '%s']: configured", network.id, network.name)
         self._commitQueue.addJobs(deployments)
 
+    def deleteAggregatedL2port(self, dbSession, aggregatedL2port):
+        '''
+        Delete Aggregated L2 Port from device
+        '''
+        deployments = []
+        vrf = aggregatedL2port.overlay_networks[0].overlay_vrf
+        template = self._templateLoader.getTemplate('olDelLag.txt')
+        for member in aggregatedL2port.members:
+            lagCount = len(member.overlay_device.aggregatedL2port_members) - 1
+            if lagCount < 0:
+                raise ValueError("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: lagCount can't be negative" % (aggregatedL2port.id, aggregatedL2port.name))
+            config = template.render(interfaceName=member.interface, lagName=aggregatedL2port.name, lagCount=lagCount)
+            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "delete", member.overlay_device, vrf))
+        self._dao.createObjects(dbSession, deployments)
+        logger.info("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
+        self._commitQueue.addJobs(deployments)
         
 # def main():        
     # conf = {}
@@ -444,8 +501,10 @@ class ConfigEngine():
     # with dao.getReadWriteSession() as session:
         # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '1.2.3.4', '1.1.1.1', 'pod1', 'test', 'foobar')
         # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '1.2.3.5', '1.1.1.2', 'pod1', 'test', 'foobar')
+        # d3 = overlay.createDevice(session, 'd3', 'description for d3', 'spine', '1.2.3.6', '1.1.1.2', 'pod1', 'test', 'foobar')
         # d1_id = d1.id
         # d2_id = d2.id
+        # d3_id = d3.id
         # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2])
         # f1_id = f1.id
         # f2 = overlay.createFabric(session, 'f2', '', 65002, '3.3.3.3', [d1, d2])
@@ -470,10 +529,12 @@ class ConfigEngine():
         # l2port1_id = l2port1.id
         # l2port2 = overlay.createL2port(session, 'l2port2', '', [n1, n2], 'xe-0/0/1', d2)
         # l2port2_id = l2port2.id
-        # aggregatedL2port1 = overlay.createAggregatedL2port(session, 'aggregatedL2port1', '', [n1, n2], '00:11', '11:00')
+        # members = [ {'interface': 'xe-0/0/11', 'device': d1}, {'interface': 'xe-0/0/11', 'device': d2} ]
+        # aggregatedL2port1 = overlay.createAggregatedL2port(session, 'aggregatedL2port1', '', [n1, n2], members, '00:11', '11:00')
         # aggregatedL2port1_id = aggregatedL2port1.id
-        # overlay.createAggregatedL2portMember(session, 'xe-0/0/11', d1, aggregatedL2port1)
-        # overlay.createAggregatedL2portMember(session, 'xe-0/0/11', d2, aggregatedL2port1)
+        # members = [ {'interface': 'xe-0/0/12', 'device': d1}, {'interface': 'xe-0/0/12', 'device': d3} ]
+        # aggregatedL2port2 = overlay.createAggregatedL2port(session, 'aggregatedL2port2', '', [n1, n2], members, '00:22', '22:00')
+        # aggregatedL2port2_id = aggregatedL2port2.id
         
     # with dao.getReadSession() as session:
         # devices = session.query(OverlayDevice).all()

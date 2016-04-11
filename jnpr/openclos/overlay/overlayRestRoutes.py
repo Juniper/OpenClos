@@ -214,6 +214,7 @@ class OverlayRestRoutes():
             
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             deviceObject.update(name, description, role, address, routerId, podName, username, password)
+            self.__dao.updateObjects(dbSession, [deviceObject])
             logger.info("OverlayDevice[id='%s', name='%s']: modified", deviceObject.id, deviceObject.name)
             
             device = {'device': self._populateDevice(deviceObject)}
@@ -365,8 +366,8 @@ class OverlayRestRoutes():
                     raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
 
             fabricObject.clearDevices()
-            self.__dao.updateObjects(dbSession, [fabricObject])
             fabricObject.update(name, description, overlayAsn, routeReflectorAddress, deviceObjects)
+            self.__dao.updateObjects(dbSession, [fabricObject])
             logger.info("OverlayFabric[id='%s', name='%s']: modified", fabricObject.id, fabricObject.name)
 
             fabric = {'fabric': self._populateFabric(fabricObject)}
@@ -491,6 +492,7 @@ class OverlayRestRoutes():
             
             tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
             tenantObject.update(name, description)
+            self.__dao.updateObjects(dbSession, [tenantObject])
             logger.info("OverlayTenant[id='%s', name='%s']: modified", tenantObject.id, tenantObject.name)
 
             tenant = {'tenant': self._populateTenant(tenantObject)}
@@ -766,6 +768,7 @@ class OverlayRestRoutes():
             
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
             vrfObject.update(name, description, routedVnid, loopbackAddress)
+            self.__dao.updateObjects(dbSession, [vrfObject])
             logger.info("OverlayVrf[id='%s', name='%s']: modified", vrfObject.id, vrfObject.name)
             
             vrf = {'vrf': self._populateVrf(vrfObject)}
@@ -902,6 +905,7 @@ class OverlayRestRoutes():
             
             networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
             networkObject.update(name, description, vlanid, vnid, pureL3Int)
+            self.__dao.updateObjects(dbSession, [networkObject])
             logger.info("OverlayNetwork[id='%s', name='%s']: modified", networkObject.id, networkObject.name)
             
             network = {'network': self._populateNetwork(networkObject)}
@@ -1028,6 +1032,7 @@ class OverlayRestRoutes():
             
             subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
             subnetObject.update(name, description, cidr)
+            self.__dao.updateObjects(dbSession, [subnetObject])
             logger.info("OverlaySubnet[id='%s', name='%s']: modified", subnetObject.id, subnetObject.name)
             
             subnet = {'subnet': self._populateSubnet(subnetObject)}
@@ -1147,6 +1152,7 @@ class OverlayRestRoutes():
             
             l3portObject = self.__dao.getObjectById(dbSession, OverlayL3port, l3portId)
             l3portObject.update(name, description)
+            self.__dao.updateObjects(dbSession, [l3portObject])
             logger.info("OverlayL3port[id='%s', name='%s']: modified", l3portObject.id, l3portObject.name)
             
             l3port = {'l3port': self._populateL3port(l3portObject)}
@@ -1297,6 +1303,7 @@ class OverlayRestRoutes():
             
             l2portObject.clearNetworks()
             l2portObject.update(name, description, networkObjects, interface, deviceObject)
+            self.__dao.updateObjects(dbSession, [l2portObject])
             logger.info("OverlayL2port[id='%s', name='%s']: modified", l2portObject.id, l2portObject.name)
 
             l2port = {'l2port': self._populateL2port(l2portObject)}
@@ -1401,14 +1408,11 @@ class OverlayRestRoutes():
             esi = aggregatedL2portDict.get('esi')
             lacp = aggregatedL2portDict.get('lacp')
             networkObjects = self.getNetworkObjects(dbSession, aggregatedL2portDict['networks'])      
+            members = self._getAggregatedL2portMembers(dbSession, aggregatedL2portDict['members'])
             
-            aggregatedL2portObject = self._overlay.createAggregatedL2port(dbSession, name, description, networkObjects, esi, lacp)
+            aggregatedL2portObject = self._overlay.createAggregatedL2port(dbSession, name, description, networkObjects, members, esi, lacp)
             logger.info("OverlayAggregatedL2port[id='%s', name='%s']: created", aggregatedL2portObject.id, aggregatedL2portObject.name)
 
-            # add members
-            for member in self._getAggregatedL2portMembers(dbSession, aggregatedL2portDict['members']):
-                self._overlay.createAggregatedL2portMember(dbSession, member['interface'], member['device'], aggregatedL2portObject)
-            
             aggregatedL2port = {'aggregatedL2port': self._populateAggregatedL2port(aggregatedL2portObject)}
             
         except KeyError as ex:
@@ -1441,14 +1445,14 @@ class OverlayRestRoutes():
             lacp = aggregatedL2portDict.get('lacp')
             aggregatedL2portObject = self.__dao.getObjectById(dbSession, OverlayAggregatedL2port, aggregatedL2portId)
             networkObjects = self.getNetworkObjects(dbSession, aggregatedL2portDict['networks'])      
+            members = self._getAggregatedL2portMembers(dbSession, aggregatedL2portDict['members'])
+
             aggregatedL2portObject.clearNetworks()
             aggregatedL2portObject.clearMembers()
-            aggregatedL2portObject.update(name, description, networkObjects, esi, lacp)
+            self._overlay.modifyAggregatedL2port(dbSession, aggregatedL2portObject, name, description, networkObjects, members, esi, lacp)
+
+            self.__dao.updateObjects(dbSession, [aggregatedL2portObject])
             logger.info("OverlayAggregatedL2port[id='%s', name='%s']: modified", aggregatedL2portObject.id, aggregatedL2portObject.name)
-            
-            # add members
-            for member in self._getAggregatedL2portMembers(dbSession, aggregatedL2portDict['members']):
-                self._overlay.createAggregatedL2portMember(dbSession, member['interface'], member['device'], aggregatedL2portObject)
             
             aggregatedL2port = {'aggregatedL2port': self._populateAggregatedL2port(aggregatedL2portObject)}
             
@@ -1471,8 +1475,8 @@ class OverlayRestRoutes():
             
         try:
             aggregatedL2portObject = self.__dao.getObjectById(dbSession, OverlayAggregatedL2port, aggregatedL2portId)
-            self.__dao.deleteObject(dbSession, aggregatedL2portObject)
-            logger.info("OverlayAggregatedL2port[id='%s', name='%s']: deleted", aggregatedL2portObject.id, aggregatedL2portObject.name)
+            self._overlay.deleteAggregatedL2port(dbSession, aggregatedL2portObject)
+            logger.info("OverlayAggregatedL2port[id='%s', name='%s']: delete request is submitted", OverlayAggregatedL2port.id, OverlayAggregatedL2port.name)
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayAggregatedL2portNotFound(aggregatedL2portId))

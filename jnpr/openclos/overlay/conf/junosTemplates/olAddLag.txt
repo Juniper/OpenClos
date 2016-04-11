@@ -1,5 +1,4 @@
 chassis {
-    merge:
     aggregated-devices {
         ethernet {
             device-count {{lagCount}};
@@ -19,15 +18,11 @@ interfaces {
             {{ethernetSegmentId}};
             all-active;
         }
-        unit 0 {
-            family ethernet-switching {
-                interface-mode trunk;
-                vlan {
-                    replace:
-                    members [ {% for vlan in vlans %}{{vlan}} {% endfor %} ];
-                }
-            }
+        flexible-vlan-tagging;
+        {% for network in networks %}unit {{network[0]}} {
+            vlan-id {{network[0]}};
         }
+        {% endfor %}
         aggregated-ether-options {
             lacp {
                 active;
