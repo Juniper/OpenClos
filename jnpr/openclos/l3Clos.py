@@ -728,12 +728,11 @@ class L3ClosMediation():
 
     def _createInterfaces(self, session, device): 
         lo0Stanza = self._templateLoader.getTemplate('lo0_stanza.txt')
-        mgmtStanza = self._templateLoader.getTemplate('mgmt_interface.txt')
         rviStanza = self._templateLoader.getTemplate('rvi_stanza.txt')
             
         config = "interfaces {" + "\n" 
         # management interface
-        config += mgmtStanza.render(mgmt_address=device.managementIp)
+        config += self._createManagementInterfaces(session, device)
                 
         #loopback interface
         loopbackIfl = session.query(InterfaceLogical).join(Device).filter(Device.id == device.id).filter(InterfaceLogical.name == 'lo0.0').one()
@@ -747,6 +746,16 @@ class L3ClosMediation():
                 
         config += self._createInterconnectInterfaces(session, device)
         config += "}\n"
+        return config
+
+    def _createManagementInterfaces(self, session, device): 
+        mgmtStanza = self._templateLoader.getTemplate('mgmt_interface.txt')
+        
+        if device.family.startswith("qfx5100") or device.family.startswith("qfx5200") \
+            or device.family.startswith("ex4300"):
+            config = mgmtStanza.render(mgmt_address=device.managementIp, mgmt_interface="vme")
+        else:
+            config = mgmtStanza.render(mgmt_address=device.managementIp, mgmt_interface="em0")
         return config
 
     def _createInterconnectInterfaces(self, session, device): 
