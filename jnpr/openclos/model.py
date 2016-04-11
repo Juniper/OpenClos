@@ -114,10 +114,10 @@ class Pod(ManagedElement, Base):
             self.spineJunosImage = spineSettings[0].get('junosImage')
             self.spineUplinkRegex = spineSettings[0].get('uplinkPorts')
             if self.spineUplinkRegex:
-                self.spineUplinkRegex = ''.join(self.spineUplinkRegex)
+                self.spineUplinkRegex = ','.join(self.spineUplinkRegex)
             self.spineDownlinkRegex = spineSettings[0].get('downlinkPorts')
             if self.spineDownlinkRegex:
-                self.spineDownlinkRegex = ''.join(self.spineDownlinkRegex)
+                self.spineDownlinkRegex = ','.join(self.spineDownlinkRegex)
         self.leafCount = podDict.get('leafCount')
         leafSettings = podDict.get('leafSettings')
         if leafSettings is not None:
@@ -125,10 +125,10 @@ class Pod(ManagedElement, Base):
             for leafSetting in leafSettings:
                 uplinkRegex = leafSetting.get('uplinkPorts')
                 if uplinkRegex:
-                    uplinkRegex = ''.join(uplinkRegex)
+                    uplinkRegex = ','.join(uplinkRegex)
                 downlinkRegex = leafSetting.get('downlinkPorts')
                 if downlinkRegex:
-                    downlinkRegex = ''.join(downlinkRegex)
+                    downlinkRegex = ','.join(downlinkRegex)
                 self.leafSettings.append(LeafSetting(leafSetting['deviceType'], self.id, 
                     uplinkRegex=uplinkRegex, downlinkRegex=downlinkRegex, junosImage=leafSetting.get('junosImage')))
         
