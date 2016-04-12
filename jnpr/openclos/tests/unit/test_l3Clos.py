@@ -71,9 +71,9 @@ class TestL3Clos(unittest.TestCase):
 
     def testUpdatePodWithCustomizedSku(self):
         podDict = {"devicePassword": "abcd1234", "leafCount": 3, "leafAS": 200, 
-            "leafSettings": [{"deviceType":"qfx5100-24q-2p", "uplinkPorts": "et-0/0/[16-31]", "downlinkPorts": "et-0/0/[0-15]"}], 
+            "leafSettings": [{"deviceType":"qfx5100-24q-2p", "uplinkPorts": ["et-0/0/[16-31]"], "downlinkPorts": ["et-0/0/[0-15]"]}], 
             "spineAS": 100, "spineCount": 2, 
-            "spineSettings": [{"deviceType":"qfx5100-24q-2p", "uplinkPorts": "et-0/0/[24-31]", "downlinkPorts": "et-0/0/[0-23]"}], 
+            "spineSettings": [{"deviceType":"qfx5100-24q-2p", "uplinkPorts": ["et-0/0/[24-31]"], "downlinkPorts": ["et-0/0/[0-23]"]}], 
             "interConnectPrefix": "192.168.0.0/24", "vlanPrefix": "172.16.0.0/22", "topologyType": "threeStage", "loopbackPrefix": "10.0.0.0/24",  
             "managementPrefix": "192.168.48.216/24", "hostOrVmCountPerLeaf": 254, "inventory" : "inventoryUnitTest.json"}
         
