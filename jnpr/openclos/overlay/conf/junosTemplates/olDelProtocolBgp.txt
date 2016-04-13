@@ -1,6 +1,8 @@
 protocols {
     bgp {
         delete:
-        group overlay;
+        group overlay-evpn;
+        {% if role == "spine" %}delete:
+        group overlay-evpn-rr;{% endif %}
     }
 }

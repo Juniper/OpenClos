@@ -388,8 +388,8 @@ class OverlayRestRoutes():
             
         try:
             fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
-            self.__dao.deleteObject(dbSession, fabricObject)
-            logger.info("OverlayFabric[id='%s', name='%s']: deleted", fabricObject.id, fabricObject.name)
+            logger.info("OverlayFabric[id='%s', name='%s']: delete request is submitted", fabricObject.id, fabricObject.name)
+            self._overlay.deleteFabric(dbSession, fabricObject)
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
@@ -789,8 +789,8 @@ class OverlayRestRoutes():
             
         try:
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
-            self.__dao.deleteObject(dbSession, vrfObject)
-            logger.info("OverlayVrf[id='%s', name='%s']: deleted", vrfObject.id, vrfObject.name)
+            logger.info("OverlayVrf[id='%s', name='%s']: delete request is submitted", vrfObject.id, vrfObject.name)
+            self._overlay.deleteVrf(dbSession, vrfObject)
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
@@ -926,7 +926,7 @@ class OverlayRestRoutes():
             
         try:
             networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
-            logger.info("OverlayNetwork[id='%s', name='%s']: deleted", networkObject.id, networkObject.name)
+            logger.info("OverlayNetwork[id='%s', name='%s']: delete request is submitted", networkObject.id, networkObject.name)
             self._overlay.deleteNetwork(dbSession, networkObject)
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)

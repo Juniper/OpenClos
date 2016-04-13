@@ -4,5 +4,5 @@ policy-options {
         term a{{vxlanId}};
     }
     delete:
-    community com{{vxlanId}} members target:{{asn}}:{{vxlanId}};
+    community com{{vxlanId}};
 }    

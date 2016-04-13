@@ -5,6 +5,7 @@ Created on Nov 23, 2015
 '''
 import os
 import sys
+import re
 sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../../..')) #trick to make it run from CLI
 
 import unittest
@@ -518,7 +519,6 @@ class TestConfigEngine(unittest.TestCase):
             self.assertNotIn("policy-statement OVERLAY-IN", leaf1Config)
 
     def testConfigureFabric2Pods(self):
-        import re
         regex = re.compile(".*(group\soverlay-evpn\s\{.*?}).*(group\soverlay-evpn-rr\s\{.*?}).*", re.DOTALL)
         with self._dao.getReadWriteSession() as session:
             fabric= self.helper._createFabric2Pods(session)
@@ -734,7 +734,6 @@ class TestConfigEngine(unittest.TestCase):
             self.assertTrue("interface xe-0/0/3.102" in deployments[-1].configlet)
 
     def testDeleteSubnet(self):
-        import re
         with self._dao.getReadWriteSession() as session:
             subnet = self.helper._createSubnetOn2By3Fabric(session)
             configEngine = self.helper.overlay._configEngine
@@ -753,7 +752,6 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIsNotNone(re.compile(r".*unit\s101.*?family\sinet.*?delete:.*?address\s.*", re.DOTALL).match(spine2))
 
     def testDeleteNetwork(self):
-        import re
         with self._dao.getReadWriteSession() as session:
             subnet = self.helper._createSubnetOn2By3Fabric(session)
             configEngine = self.helper.overlay._configEngine
@@ -786,7 +784,6 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIsNotNone(re.compile(r".*policy-statement\sLEAF-IN.*?delete:.*?term\sa1001.*", re.DOTALL).match(spine1))
 
     def testDeleteNetworkRecursive(self):
-        import re
         with self._dao.getReadWriteSession() as session:
             subnet = self.helper._createSubnetOn2By3Fabric(session)
             port = self.helper._createL2port(session, subnet.overlay_network)
@@ -848,7 +845,78 @@ class TestConfigEngine(unittest.TestCase):
             self.assertTrue('device-count 2;' in deployments[-1].configlet)
             self.assertTrue("xe-0/0/13" in deployments[-1].configlet)
             self.assertTrue("aggregatedL2port3" in deployments[-1].configlet)
+
+    def testDeleteVrf(self):
+        with self._dao.getReadWriteSession() as session:
+            vrf = self.helper._createVrf(session)
+            self.helper.overlay._configEngine.deleteVrf(session, vrf)
             
+            # 3 deployments fabric and vrf add, vrf delete
+            deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(3, len(deployments))
+            spine1 = deployments[-1].configlet
+            print spine1
+
+            self.assertIsNotNone(re.compile(r".*lo0.*?delete:.*?unit\s1.*", re.DOTALL).match(spine1))
+            self.assertIsNotNone(re.compile(r".*routing-instances.*?delete:.*?VRF_v1.*", re.DOTALL).match(spine1))
+
+    def testDeleteVrfRecursive(self):
+        with self._dao.getReadWriteSession() as session:
+            network = self.helper._createNetworkOn2By3Fabric(session)
+            self.helper.overlay.deleteVrf(session, network.overlay_vrf)
+
+            # 19 deployments 5 fabric, 2 vrf and 5 network add and 5 network del, 2 vrf del
+            deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(19, len(deployments))
             
+            spine1 = deployments[-7].configlet
+            print "spine1:\n" + spine1
+            spine1 = deployments[-2].configlet
+            print spine1
+            self.assertIsNotNone(re.compile(r".*routing-instances.*?delete:.*?VRF_v1.*", re.DOTALL).match(spine1))
+
+            spine2 = deployments[-6].configlet
+            print "spine2:\n" + spine2
+            spine2 = deployments[-1].configlet
+            print spine2
+            self.assertIsNotNone(re.compile(r".*routing-instances.*?delete:.*?VRF_v1.*", re.DOTALL).match(spine2))
+
+            leaf1 = deployments[-5].configlet
+            print "leaf1:\n" + leaf1
+
+    def testDeleteFabric2Spine3Leaf(self):
+        with self._dao.getReadWriteSession() as session:
+            fabric= self.helper._createFabric2Spine3Leaf(session)
+            self.helper.overlay._configEngine.deleteFabric(session, fabric)
+            
+            # 10 deployments 5 fabric add and 5 fabric del
+            deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(10, len(deployments))
+            
+            spine1 = deployments[-5].configlet
+            print "spine:\n" + spine1
+
+            leaf1 = deployments[-3].configlet
+            print "leaf:\n" + leaf1
+
+    def testDeleteFabric2Pods(self):
+        with self._dao.getReadWriteSession() as session:
+            fabric= self.helper._createFabric2Pods(session)
+            self.helper.overlay._configEngine.deleteFabric(session, fabric)
+
+            # 18 deployments 9 fabric add and 9 fabric del
+            deployments = session.query(OverlayDeployStatus).all()
+            self.assertEqual(18, len(deployments))
+
+            spine1Pod1 = deployments[-9].configlet
+            print "spine1Pod1:\n" + spine1Pod1
+            leaf1Pod1 = deployments[-7].configlet
+            print "leaf:\n" + leaf1Pod1
+
+            spine1Pod2 = deployments[-4].configlet
+            print "spine1Pod2:\n" + spine1Pod2
+            leaf1Pod2 = deployments[-2].configlet
+            print "leaf1Pod2:\n" + leaf1Pod2
+
 if __name__ == '__main__':
     unittest.main()
