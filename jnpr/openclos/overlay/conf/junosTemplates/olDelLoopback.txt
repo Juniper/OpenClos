@@ -1,0 +1,6 @@
+interfaces {
+    lo0 {
+        delete:
+        unit {{loopbackUnit}};
+    }
+}

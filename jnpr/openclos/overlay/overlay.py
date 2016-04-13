@@ -157,6 +157,13 @@ class Overlay():
         logger.info("OverlayL2port[id: '%s', name: '%s']: delete request submitted", l2Port.id, l2Port.name)
         self._configEngine.deleteL2port(dbSession, l2Port)
 
+    def deleteAggregatedL2port(self, dbSession, aggregatedL2port):
+        '''
+        Delete Aggregated L2 port from device, if success then from DB
+        '''
+        logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: delete request submitted", aggregatedL2port.id, aggregatedL2port.name)
+        self._configEngine.deleteAggregatedL2port(dbSession, aggregatedL2port)
+
     def deleteSubnet(self, dbSession, subnet):
         '''
         Delete subnet from device
@@ -168,7 +175,7 @@ class Overlay():
         '''
         Delete network from device, also delete subnet and all l2Ports attached to the network
         '''
-        logger.info("NEtwork[id: '%s', name: '%s']: delete request submitted", network.id, network.name)
+        logger.info("Network[id: '%s', name: '%s']: delete request submitted", network.id, network.name)
         for port in network.overlay_l2aps:
             if type(port) is OverlayL2port:
                 self._configEngine.deleteL2port(dbSession, port)
@@ -178,12 +185,24 @@ class Overlay():
             self._configEngine.deleteSubnet(dbSession, subnet)
         self._configEngine.deleteNetwork(dbSession, network)
 
-    def deleteAggregatedL2port(self, dbSession, aggregatedL2port):
+    def deleteVrf(self, dbSession, vrf):
         '''
-        Delete Aggregated L2 port from device, if success then from DB
+        Delete vrf rom device, also delete network, subnet ports etc.
         '''
-        logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: delete request submitted", aggregatedL2port.id, aggregatedL2port.name)
-        self._configEngine.deleteAggregatedL2port(dbSession, aggregatedL2port)
+        logger.info("vrf[id: '%s', name: '%s']: delete request submitted", vrf.id, vrf.name)
+        for network in vrf.overlay_networks:
+            self._configEngine.deleteNetwork(dbSession, network)
+        self._configEngine.deleteVrf(dbSession, vrf)
+
+    def deleteFabric(self, dbSession, fabric):
+        '''
+        Delete fabric from device, also vrf, delete network, subnet ports etc.
+        '''
+        logger.info("fabric[id: '%s', name: '%s']: delete request submitted", fabric.id, fabric.name)
+        for tenant in fabric.overlay_tenants:
+            for vrf in tenant.overlay_vrfs:
+                self._configEngine.deleteVrf(dbSession, vrf)
+        self._configEngine.deleteFabric(dbSession, fabric)
 
 class ConfigEngine():
     def __init__(self, conf, dao, commitQueue=None):
@@ -268,7 +287,7 @@ class ConfigEngine():
         for spine, loopback in itertools.izip(spines, loopbackIps):
             config = self.configureLoopback(loopback, vrf.vrfCounter)
             
-            config += template.render(vrfName=vrf.overlay_tenant.name,  vrfCounter=vrf.vrfCounter,
+            config += template.render(vrfName=vrf.name,  vrfCounter=vrf.vrfCounter,
                 routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS)
             deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "create", spine, vrf))    
 
@@ -310,7 +329,7 @@ class ConfigEngine():
             
             config = irbTemplate.render(vlanId=network.vlanid)
             
-            config += vrfTemplate.render(vrfName=vrf.overlay_tenant.name, irbName="irb." + str(network.vlanid))
+            config += vrfTemplate.render(vrfName=vrf.name, irbName="irb." + str(network.vlanid))
             config += self.configureEvpn(network.vnid, asn)
             config += self.configureNetworkPolicyOptions(network.vnid, asn)
             config += bdTemplate.render(vlanId=network.vlanid, vxlanId=network.vnid, role="spine")
@@ -434,7 +453,7 @@ class ConfigEngine():
         
         for spine, irbIp in itertools.izip(spines, irbIps):            
             config = irbTemplate.render(secondOrThirdIpFromSubnet=irbIp, vlanId=network.vlanid)
-            deployments.append(OverlayDeployStatus(config, subnet.getUrl(), "create", spine, vrf))    
+            deployments.append(OverlayDeployStatus(config, subnet.getUrl(), "delete", spine, vrf))    
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
@@ -451,7 +470,7 @@ class ConfigEngine():
         irbTemplate = self._templateLoader.getTemplate("olDelIrb.txt")
         vrfTemplate = self._templateLoader.getTemplate("olDelIrbFromVrf.txt")
         bdTemplate = self._templateLoader.getTemplate("olDelBridgeDomain.txt")
-        evpnTemplate = self._templateLoader.getTemplate('olDelProtocolEvpn.txt')
+        evpnTemplate = self._templateLoader.getTemplate('olDelNetworkFromEvpn.txt')
         policyTemplate = self._templateLoader.getTemplate('olDelNetworkPolicyOptions.txt')
         
         for spine in vrf.getSpines():
@@ -462,6 +481,7 @@ class ConfigEngine():
             config += evpnTemplate.render(vxlanId=network.vnid)
             config += policyTemplate.render(vxlanId=network.vnid, asn=asn)
             deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", spine, vrf))
+            logger.debug("deleteNetwork: device: %s, object: %s, config: %s", spine.address, network.getUrl(), config)
         
         for leaf in vrf.getLeafs():
             config = ""
@@ -469,6 +489,7 @@ class ConfigEngine():
             config += evpnTemplate.render(vxlanId=network.vnid)
             config += policyTemplate.render(vxlanId=network.vnid, asn=asn)
             deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", leaf, vrf))
+            logger.debug("deleteNetwork: device: %s, object: %s, config: %s", leaf.address, network.getUrl(), config)
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteNetwork [id: '%s', name: '%s']: configured", network.id, network.name)
@@ -490,7 +511,54 @@ class ConfigEngine():
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
         self._commitQueue.addJobs(deployments)
+
+    def deleteVrf(self, dbSession, vrf):
+        '''
+        Delete VRF and vrf-loopback interface        
+        '''
+        deployments = []
+
+        vrfTemplate = self._templateLoader.getTemplate("olDelVrf.txt")
+        loopbackTemplate = self._templateLoader.getTemplate("olDelLoopback.txt")
         
+        for spine in vrf.getSpines():
+            config = loopbackTemplate.render(loopbackUnit=vrf.vrfCounter)
+            config += vrfTemplate.render(vrfName=vrf.name)
+            deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "delete", spine, vrf))
+
+        self._dao.createObjects(dbSession, deployments)
+        logger.info("deleteVrf [id: '%s', name: '%s']: configured", vrf.id, vrf.name)
+        self._commitQueue.addJobs(deployments)
+        
+    def deleteFabric(self, dbSession, fabric):
+        '''
+        Delete Fabric, iBGP         
+        '''
+        deployments = []
+
+        switchTemplate = self._templateLoader.getTemplate('olDelSwitchOptions.txt')
+        bgpTemplate = self._templateLoader.getTemplate('olDelProtocolBgp.txt')
+        policyTemplate = self._templateLoader.getTemplate('olDelPolicyOptions.txt')
+        evpnTemplate = self._templateLoader.getTemplate('olDelProtocolEvpn.txt')
+
+        for device in fabric.overlay_devices:
+            config = switchTemplate.render()
+
+            if device.role == 'spine':
+                config += bgpTemplate.render(role="spine")
+                config += policyTemplate.render()
+            elif device.role == 'leaf':
+                config += bgpTemplate.render(role="leaf")
+                config += policyTemplate.render(remoteGateways=self.getRemoteGateways(fabric, device.podName))
+            config += evpnTemplate.render()
+            
+            deployments.append(OverlayDeployStatus(config, fabric.getUrl(), "delete", device))
+
+        self._dao.createObjects(dbSession, deployments)
+        logger.info("deleteFabric [id: '%s', name: '%s']: configured", fabric.id, fabric.name)
+        self._commitQueue.addJobs(deployments)
+
+
 # def main():        
     # conf = {}
     # conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
