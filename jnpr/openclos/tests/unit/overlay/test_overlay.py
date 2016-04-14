@@ -241,6 +241,13 @@ class TestOverlay(unittest.TestCase):
             self.assertEqual('root', deviceObjectFromDb.username)
             self.assertEqual('testing123', deviceObjectFromDb.getCleartextPassword())
             
+    def testCreateDuplicateDevice(self):
+        with self.assertRaises(Exception) as e:
+            with self._dao.getReadWriteSession() as session:
+                self.helper._createDevice(session)
+                self.helper._createDevice(session)
+        self.assertTrue('UNIQUE constraint failed' in e.exception.message)
+            
     def testUpdateDevice(self):        
         with self._dao.getReadWriteSession() as session:        
             deviceObject = self.helper._createDevice(session)
@@ -264,6 +271,13 @@ class TestOverlay(unittest.TestCase):
             self.helper._createFabric(session)
             self.assertEqual(1, session.query(OverlayFabric).count())
 
+    def testCreateDuplicateFabric(self):
+        with self.assertRaises(Exception) as e:
+            with self._dao.getReadWriteSession() as session:
+                self.helper._createFabric(session)
+                self.helper._createFabric(session)
+        self.assertTrue('UNIQUE constraint failed' in e.exception.message)
+            
     def testUpdateFabric(self):
         with self._dao.getReadWriteSession() as session:   
             fabricObject = self.helper._createFabric(session)
@@ -305,11 +319,11 @@ class TestOverlay(unittest.TestCase):
 
     def testCreateVrfLoopbackCounter(self):
         with self._dao.getReadWriteSession() as session:
-            self.helper._createVrf(session, "1")
-            self.helper._createVrf(session, "2")
-            self.helper._createVrf(session, "3")
-            self.helper._createVrf(session, "4")
-            self.helper._createVrf(session, "5")
+            vrf1 = self.helper._createVrf(session, "1")
+            self.helper._createVrf(session, "2", tenantObject=vrf1.overlay_tenant)
+            self.helper._createVrf(session, "3", tenantObject=vrf1.overlay_tenant)
+            self.helper._createVrf(session, "4", tenantObject=vrf1.overlay_tenant)
+            self.helper._createVrf(session, "5", tenantObject=vrf1.overlay_tenant)
             vrfs = session.query(OverlayVrf).all()
             self.assertEquals(5, len(vrfs))
             self.assertEquals(1, vrfs[0].vrfCounter)
