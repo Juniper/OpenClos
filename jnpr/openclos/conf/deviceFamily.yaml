@@ -122,6 +122,10 @@ deviceFamily:
         leaf:
             uplinkPorts: 'et-0/1/[0-3]'
             downlinkPorts: 'ge-0/0/[0-47]'
+    ex4300-48mp:
+        leaf:
+            uplinkPorts:   ['et-0/2/[0-1]','xe-0/2/[0-4]']
+            downlinkPorts: ['ge-0/0/[0-23]','mge-0/0/[23-47]']
     ex4300-48t:
         leaf:
             uplinkPorts: 'et-0/1/[0-3]'
