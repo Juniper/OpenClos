@@ -22,8 +22,8 @@ class OverlayDevice(ManagedElement, Base):
     name = Column(String(255), nullable=False)
     description = Column(String(256))
     role = Column(Enum('spine', 'leaf'))
-    address = Column(String(60))
-    routerId = Column(String(60))
+    address = Column(String(60), unique=True)
+    routerId = Column(String(60), unique=True)
     podName = Column(String(60))
     username = Column(String(100))
     encryptedPassword = Column(String(100)) # 2-way encrypted
@@ -31,9 +31,6 @@ class OverlayDevice(ManagedElement, Base):
     overlay_fabrics = relationship(
         'OverlayFabric',
         secondary='overlayFabricOverlayDeviceLink'
-    )
-    __table_args__ = (
-        Index('podName_id_uindex', 'podName', 'id', unique=True),
     )
 
     def __init__(self, name, description, role, address, routerId, podName, username, password):
@@ -97,8 +94,8 @@ class OverlayFabric(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     name = Column(String(255), index=True, nullable=False)
     description = Column(String(256))
-    overlayAS = Column(BigInteger)
-    routeReflectorAddress = Column(String(60))
+    overlayAS = Column(BigInteger, unique=True)
+    routeReflectorAddress = Column(String(60), unique=True)
 
     overlay_devices = relationship(
         'OverlayDevice',
@@ -151,6 +148,9 @@ class OverlayFabricOverlayDeviceLink(ManagedElement, Base):
     __tablename__ = 'overlayFabricOverlayDeviceLink'
     overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'), primary_key=True)
     overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), primary_key=True)
+    __table_args__ = (
+        Index('overlay_fabric_id_overlay_device_id_uindex', 'overlay_fabric_id', 'overlay_device_id', unique=True),
+    )
 
 class OverlayTenant(ManagedElement, Base):
     __tablename__ = 'overlayTenant'
@@ -229,10 +229,13 @@ class OverlayVrf(ManagedElement, Base):
     def getLeafs(self):
         return self.getDevices("leaf")
 
-overlayNetworkOverlayL2apTable = Table('overlayNetworkOverlayL2apLink', Base.metadata,
-    Column('overlay_network_id', String(60), ForeignKey('overlayNetwork.id'), nullable=False),
-    Column('overlay_l2ap_id', String(60), ForeignKey('overlayL2ap.id'), nullable=False)
-)
+class OverlayNetworkOverlayL2apTable(ManagedElement, Base):
+    __tablename__ = 'overlayNetworkOverlayL2apTable'
+    overlay_network_id = Column(String(60), ForeignKey('overlayNetwork.id'), primary_key=True)
+    overlay_l2ap_id = Column(String(60), ForeignKey('overlayL2ap.id'), primary_key=True)
+    __table_args__ = (
+        Index('overlay_network_id_overlay_l2ap_id_uindex', 'overlay_network_id', 'overlay_l2ap_id', unique=True),
+    )
 
 class OverlayNetwork(ManagedElement, Base):
     __tablename__ = 'overlayNetwork'
@@ -244,7 +247,7 @@ class OverlayNetwork(ManagedElement, Base):
     pureL3Int = Column(Boolean)
     overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'), nullable=False)
     overlay_vrf = relationship("OverlayVrf", backref=backref('overlay_networks', order_by=name, cascade='all, delete, delete-orphan'))
-    overlay_l2aps = relationship("OverlayL2ap", secondary=overlayNetworkOverlayL2apTable, back_populates="overlay_networks")
+    overlay_l2aps = relationship("OverlayL2ap", secondary='overlayNetworkOverlayL2apTable', back_populates="overlay_networks")
     __table_args__ = (
         Index('overlay_vrf_id_overlay_network_name_uindex', 'overlay_vrf_id', 'name', unique=True),
     )
@@ -284,6 +287,7 @@ class OverlaySubnet(ManagedElement, Base):
     overlay_network = relationship("OverlayNetwork", backref=backref('overlay_subnets', order_by=name, cascade='all, delete, delete-orphan'))
     __table_args__ = (
         Index('overlay_network_id_overlay_subnet_name_uindex', 'overlay_network_id', 'name', unique=True),
+        Index('overlay_network_id_overlay_subnet_cidr_uindex', 'overlay_network_id', 'cidr', unique=True),
     )
 
     def __init__(self, name, description, overlay_network, cidr):
@@ -339,7 +343,7 @@ class OverlayL2ap(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     name = Column(String(255), nullable=False)
     description = Column(String(256))
-    overlay_networks = relationship("OverlayNetwork", secondary=overlayNetworkOverlayL2apTable, back_populates="overlay_l2aps")
+    overlay_networks = relationship("OverlayNetwork", secondary='overlayNetworkOverlayL2apTable', back_populates="overlay_l2aps")
     type = Column(String(20), nullable=False) # l2ap/l2port/aggregatedL2port
     
     __mapper_args__ = {
