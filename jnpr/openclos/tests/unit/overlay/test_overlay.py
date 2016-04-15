@@ -246,7 +246,8 @@ class TestOverlay(unittest.TestCase):
             with self._dao.getReadWriteSession() as session:
                 self.helper._createDevice(session)
                 self.helper._createDevice(session)
-        self.assertTrue('UNIQUE constraint failed' in e.exception.message)
+        import sqlalchemy
+        self.assertTrue(type(e.exception) is sqlalchemy.exc.IntegrityError)
             
     def testUpdateDevice(self):        
         with self._dao.getReadWriteSession() as session:        
@@ -276,7 +277,8 @@ class TestOverlay(unittest.TestCase):
             with self._dao.getReadWriteSession() as session:
                 self.helper._createFabric(session)
                 self.helper._createFabric(session)
-        self.assertTrue('UNIQUE constraint failed' in e.exception.message)
+        import sqlalchemy
+        self.assertTrue(type(e.exception) is sqlalchemy.exc.IntegrityError)
             
     def testUpdateFabric(self):
         with self._dao.getReadWriteSession() as session:   
