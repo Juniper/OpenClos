@@ -200,7 +200,7 @@ class L3ClosMediation():
         lo0Block = IPNetwork(podDict['loopbackPrefix'])
         lo0Ips = list(lo0Block.iter_hosts())
         availableIps = len(lo0Ips)
-        cidr = 32 - int(math.ceil(math.log(inventoryDeviceCount, 2)))
+        cidr = 32 - int(math.ceil(math.log(inventoryDeviceCount + 2, 2))) # +2 for network and broadcast
         if availableIps < inventoryDeviceCount:
             raise InsufficientLoopbackIp("Pod[id='%s', name='%s']: loopbackPrefix minimum required: %s/%d" % (pod.id, pod.name, lo0Block.ip, cidr))
 
