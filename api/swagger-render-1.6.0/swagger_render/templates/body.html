@@ -1,0 +1,151 @@
+<body data-spy="scroll" data-target="#side-nav">
+
+    <div class="container-fluid">
+        <br>
+        <div class="row">
+            <div class="col-md-3" id="side-nav">
+                <input id="search" type="text" class="form-control" placeholder="Search">
+                <ul class="nav nav-list">
+                    {% for tag in _tags %}
+                    <span class="list-group">
+                        <a href="#tag_{{tag}}"
+                           class="group_link">{{ tag }}</a>
+                        <ul class="nav">
+                            {% for path_name, method_name, method in (paths, tag, _group_by_tags) | filter %}
+                            <li class="nav-item {{method_name |lower}}">
+                                <a class="nav-link" href="#{{(method_name, path_name) |sane}}">
+                                    <strong>{{method_name | upper}}</strong>
+                                    {{path_name}}
+                                </a>
+                            </li>
+
+                            {% endfor %}
+                        </ul>
+                    </span>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="col-md-9">
+
+                <div id="info" class="jumbotron">
+                    <h1>{{ info.title }} {{ info.version }}</h1>
+
+                    {% if info.description %}
+                    {{ info.description |md }}
+                    {% endif %}
+                </div>
+
+                <hr>
+
+                {% for tag in _tags -%}
+                <div class="group">
+                    <h1 id="tag_{{tag}}">{{tag }}</h1>
+                    {% for path_name, method_name, method in (paths, tag, _group_by_tags) | filter -%}
+                    <div class="card method {{method_name}}">
+                        <div class="card-header {{method_name}}"
+                             id="{{(method_name, path_name) | sane}}">
+                            <a name="{{(method_name, path_name) | sane}}">
+                                <h3>
+                                    <strong>{{ method_name | upper }}</strong>
+                                    {{ path_name }}
+                                    <span class="pull-right">
+                                        {{ method.summary }}
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="{{(method_name, path_name, 'd') | sane}}">
+                            {% if method.description %}
+                            <h3>Description</h3>
+                            {{ method.description | md }}
+                            {% endif %}
+
+                            {% if method.tags and not _group_by_tags %}
+                            <h3>Tags</h3>
+                            <ul>
+                                {% for tag in method.tags %}
+                                <li>{{tag}}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+
+                            {% if method.parameters %}
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for parameter in method.parameters %}
+                                    <tr>
+                                        <td>{{ parameter.name }}</td>
+                                        <td>{{ parameter.in }}</td>
+                                        <td>{{ parameter.description}}</td>
+                                        <td>{{ parameter.required }}</td>
+                                        <td>{{ parameter | schema | render}}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% endif %}
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for code, response in method.responses.items() %}
+                                    <tr>
+                                        <td>{{ code }}</td>
+                                        <td>{{ response.description }}</td>
+                                        <td>{{ response | schema | render}}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                <footer class="footer">
+                    Generated by
+                    <a href="https://github.com/JuhaniImberg/swagger-render">
+                        Swagger-Render
+                    </a> {{__version__}}<br>
+                    {{__time__}}
+                </footer>
+            </div>
+        </div>
+
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha/js/bootstrap.min.js"></script>
+    <script src="https://cdn.rawgit.com/joshaven/string_score/3b51216ccaa15a795df27502df5e8fbca554c0ab/string_score.min.js"></script>
+    <script>
+     $("#search").on("input", function(e) {
+         var text = e.target.value;
+         $(".nav-item").map(function(i, el) {
+             var cmp = $(el).children()[0].innerText;
+             if(cmp.score(text) > 0 || text.length == 0) {
+                 $(el).show();
+             } else {
+                 $(el).hide();
+             }
+         });
+     });
+    </script>
+</body>
