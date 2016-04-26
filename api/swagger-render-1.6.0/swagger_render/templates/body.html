@@ -15,7 +15,7 @@
                             <li class="nav-item {{method_name |lower}}">
                                 <a class="nav-link" href="#{{(method_name, path_name) |sane}}">
                                     <strong>{{method_name | upper}}</strong>
-                                    {{path_name}}
+                                    {{ basePath }}{{path_name}}
                                 </a>
                             </li>
 
@@ -47,7 +47,7 @@
                             <a name="{{(method_name, path_name) | sane}}">
                                 <h3>
                                     <strong>{{ method_name | upper }}</strong>
-                                    {{ path_name }}
+                                    {{ basePath }}{{ path_name }}
                                     <span class="pull-right">
                                         {{ method.summary }}
                                     </span>

@@ -36,7 +36,7 @@ def resolve(base, val):
                             raise InvalidReferenceError(f_value, where_to)
                 data.update(resolve(base, resolve(base, pos)))
             if key == "allOf":
-                return all_of(*value, root=base)
+                return all_of(base, *value)
             else:
                 data[key] = resolve(base, value)
         return data
@@ -46,7 +46,7 @@ def resolve(base, val):
         return val
 
 
-def all_of(*items, root=None):
+def all_of(root=None, *items):
     """
     Merges the given items recursively
 
@@ -77,7 +77,7 @@ def all_of(*items, root=None):
     for item in items:
         for key, value in item.items():
             if key in data:
-                data[key] = all_of(data[key], value, root=root)
+                data[key] = all_of(root, data[key], value)
             else:
                 data[key] = value
 
@@ -101,7 +101,7 @@ def merge_parameters(params1, params2):
 
     data = {}
     for param in params1 + params2:
-        data[param["name"] + "_" + param["in"]] = all_of(param, {})
+        data[param["name"] + "_" + param["in"]] = all_of({}, param)
     return sorted(list(data.values()), key=lambda x: x["name"] + x["in"])
 
 
@@ -158,7 +158,7 @@ def render(env, yaml_path, out):
 
 
 def render_watch_notify(env, yaml_path, out):
-    print("File changed, rendering", file=sys.stderr)
+    print("File changed, rendering")
     try:
         render(env, yaml_path, out)
     except Exception:
