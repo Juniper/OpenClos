@@ -505,7 +505,7 @@ class ConfigEngine():
         for member in aggregatedL2port.members:
             lagCount = len(member.overlay_device.aggregatedL2port_members) - 1
             if lagCount < 0:
-                raise ValueError("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: lagCount can't be negative" % (aggregatedL2port.id, aggregatedL2port.name))
+                raise ValueError("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: lagCount is already 0. It cannot be decreased." % (aggregatedL2port.id, aggregatedL2port.name))
             config = template.render(interfaceName=member.interface, lagName=aggregatedL2port.name, lagCount=lagCount)
             deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "delete", member.overlay_device, vrf))
         self._dao.createObjects(dbSession, deployments)
