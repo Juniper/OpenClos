@@ -1,0 +1,2069 @@
+<!DOCTYPE HTML>
+<html>
+    
+    
+
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>OpenClos Underlay API</title>
+
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+     body {
+         font-size: 14px;
+         position: relative;
+     }
+
+     * {
+         box-sizing: border-box;
+     }
+
+     #side-nav {
+         top: 0;
+         position: fixed;
+         right: 0;
+         height: 100vh;
+         overflow-y: auto;
+         overflow-x: hidden;
+         padding-top: 1rem;
+         padding-bottom: 1rem;
+     }
+
+     .col-md-9 {
+         padding-left: 2rem;
+     }
+
+     .nav ul {
+         list-style: none;
+         padding-left: 2rem;
+     }
+
+     .nav ul li a {
+         padding: 5px 10px;
+         color: inherit;
+     }
+
+     .nav li {
+         transition: border 0.25s;
+         word-break: break-word;
+     }
+
+     .nav-item {
+         margin-bottom: 2px;
+     }
+
+     .nav-link.active {
+         text-decoration: underline;
+     }
+
+     .group_link {
+         color: #333;
+         font-weight: bold;
+     }
+
+     a h3 {
+         margin: 0;
+     }
+
+     .card, .jumbotron, .form-control {
+         border-radius: 0;
+     }
+
+     .card-header>a {
+         color: inherit;
+     }
+
+     .schema>.schema, .enum {
+         padding-left: 1rem;
+     }
+
+     .schema>.sKey {
+         font-weight: bold;
+     }
+
+     .schema>.sOptional {
+         font-style: italic;
+     }
+
+     .schema>.sType {
+         color: #5555aa;
+     }
+
+     .sDescription>p {
+         padding: 0;
+         margin: 0;
+         padding-left: 1rem;
+     }
+
+     .footer {
+         text-align: right;
+     }
+
+     
+     li.put {
+         background-color: #F9F2E9;
+         border: thin solid #D7C7B1;
+         color: #71614B;
+     }
+     .card-header.put {
+         background-color: #F9F2E9;
+         color: #71614B;
+         border-bottom-color: #D7C7B1;
+     }
+     .card.put {
+         border-color: #D7C7B1;
+     }
+     
+     li.patch {
+         background-color: #FCE9E3;
+         border: thin solid #DCBCAA;
+         color: #765644;
+     }
+     .card-header.patch {
+         background-color: #FCE9E3;
+         color: #765644;
+         border-bottom-color: #DCBCAA;
+     }
+     .card.patch {
+         border-color: #DCBCAA;
+     }
+     
+     li.post {
+         background-color: #E7F6EC;
+         border: thin solid #AACFB8;
+         color: #446952;
+     }
+     .card-header.post {
+         background-color: #E7F6EC;
+         color: #446952;
+         border-bottom-color: #AACFB8;
+     }
+     .card.post {
+         border-color: #AACFB8;
+     }
+     
+     li.delete {
+         background-color: #F5E8E8;
+         border: thin solid #CFADAE;
+         color: #694748;
+     }
+     .card-header.delete {
+         background-color: #F5E8E8;
+         color: #694748;
+         border-bottom-color: #CFADAE;
+     }
+     .card.delete {
+         border-color: #CFADAE;
+     }
+     
+     li.get {
+         background-color: #E7F0F7;
+         border: thin solid #AAC0D3;
+         color: #445A6D;
+     }
+     .card-header.get {
+         background-color: #E7F0F7;
+         color: #445A6D;
+         border-bottom-color: #AAC0D3;
+     }
+     .card.get {
+         border-color: #AAC0D3;
+     }
+     
+
+    </style>
+</head>
+    <body data-spy="scroll" data-target="#side-nav">
+
+    <div class="container-fluid">
+        <br>
+        <div class="row">
+            <div class="col-md-3" id="side-nav">
+                <input id="search" type="text" class="form-control" placeholder="Search">
+                <ul class="nav nav-list">
+                    
+                    <span class="list-group">
+                        <a href="#tag_"
+                           class="group_link"></a>
+                        <ul class="nav">
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__conf">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/conf
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item put">
+                                <a class="nav-link" href="#put__conf">
+                                    <strong>PUT</strong>
+                                    /openclos/v1/underlay/conf
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__images__junosImageName_">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/images/{junosImageName}
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item post">
+                                <a class="nav-link" href="#post__pods">
+                                    <strong>POST</strong>
+                                    /openclos/v1/underlay/pods
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item delete">
+                                <a class="nav-link" href="#delete__pods__podId_">
+                                    <strong>DELETE</strong>
+                                    /openclos/v1/underlay/pods/{podId}
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods__podId_">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item put">
+                                <a class="nav-link" href="#put__pods__podId_">
+                                    <strong>PUT</strong>
+                                    /openclos/v1/underlay/pods/{podId}
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods__podId__cabling-plan">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/cabling-plan
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item put">
+                                <a class="nav-link" href="#put__pods__podId__cabling-plan">
+                                    <strong>PUT</strong>
+                                    /openclos/v1/underlay/pods/{podId}/cabling-plan
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods__podId__device-configuration">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/device-configuration
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item put">
+                                <a class="nav-link" href="#put__pods__podId__device-configuration">
+                                    <strong>PUT</strong>
+                                    /openclos/v1/underlay/pods/{podId}/device-configuration
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods__podId__devices">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/devices
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods__podId__devices__deviceId_">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/devices/{deviceId}
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods__podId__devices__deviceId__config">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/devices/{deviceId}/config
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods__podId__l2-report">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/l2-report
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods__podId__l3-report">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/l3-report
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods__podId__leaf-generic-configurations__deviceModel_">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/leaf-generic-configurations/{deviceModel}
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
+                                <a class="nav-link" href="#get__pods__podId__ztp-configuration">
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/ztp-configuration
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item put">
+                                <a class="nav-link" href="#put__pods__podId__ztp-configuration">
+                                    <strong>PUT</strong>
+                                    /openclos/v1/underlay/pods/{podId}/ztp-configuration
+                                </a>
+                            </li>
+
+                            
+                        </ul>
+                    </span>
+                    
+                </ul>
+            </div>
+            <div class="col-md-9">
+
+                <div id="info" class="jumbotron">
+                    <h1>OpenClos Underlay API 1.0.0</h1>
+
+                    
+                    <p>REST API to configure and deploy Underlay on IP Fabric</p>
+                    
+                </div>
+
+                <hr>
+
+                <div class="group">
+                    <h1 id="tag_"></h1>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__conf">
+                            <a name="get__conf">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/conf
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__conf_d">
+                            
+                            <h3>Description</h3>
+                            <p>Returns OpenClos configuration parameters.</p>
+                            
+
+                            
+
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td><div class="schema"><span class="sKey">dbUrl</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>URL of sqlite DB (sqlite only).</p></span></div><div class="schema"><span class="sKey">dotColors</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Color configuration for DOT file.</p></span></div><div class="schema"><span class="sKey">httpServer</span> (<span class="sType">object</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>REST server configuration (http only).</p></span><div class="schema"><span class="sKey">ipAddr</span> (<span class="sType">string</span>): <span class="sDescription"><p>REST server IP address.</p></span></div><div class="schema"><span class="sKey">port</span> (<span class="sType">integer</span>): <span class="sDescription"><p>REST server port.</p></span></div></div><div class="schema"><span class="sKey">restServer</span> (<span class="sType">object</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>REST server configuration (http and https).</p></span><div class="schema"><span class="sKey">certificate</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Full path of REST server certificate file (in https mode).</p></span></div><div class="schema"><span class="sKey">ipAddr</span> (<span class="sType">string</span>): <span class="sDescription"><p>REST server IP address.</p></span></div><div class="schema"><span class="sKey">password</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>REST server password in 2-way encrypted format (in https mode).</p></span></div><div class="schema"><span class="sKey">port</span> (<span class="sType">integer</span>): <span class="sDescription"><p>REST server port.</p></span></div><div class="schema"><span class="sKey">protocol</span> (<span class="sType">string</span>): <span class="sDescription"><p>REST server protocol.</p></span><span class="enum">[http | https]</span></div><div class="schema"><span class="sKey">username</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>REST server user name (in https mode).</p></span></div><div class="schema"><span class="sKey">version</span> (<span class="sType">integer</span>): <span class="sDescription"><p>REST server version.</p></span></div></div><div class="schema"><span class="sKey">snmpTrap</span> (<span class="sType">object</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>SNMP trap configuration.</p></span><div class="schema"><span class="sKey">openclos_trap_group</span> (<span class="sType">object</span>): <span class="sDescription"><p>SNMP trap group configuration.</p></span><div class="schema"><span class="sKey">port</span> (<span class="sType">integer</span>): <span class="sDescription"><p>SNMP trap port.</p></span></div><div class="schema"><span class="sKey">target</span> (<span class="sType">string</span>): <span class="sDescription"><p>SNMP trap target IP address.</p></span></div></div><div class="schema"><span class="sKey">threadCount</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Number of thread in SNMP trap daemon thread pool.</p></span></div></div><div class="schema"><span class="sKey">supportedDevices</span> (<span class="sType">array[object]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Supported device configuration.</p></span><div class="schema">[<div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Downlink specification for the device.</p></span></div><div class="schema"><span class="sKey">downlinkPortsCount</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Number of downlinks for the device.</p></span></div><div class="schema"><span class="sKey">family</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">role</span> (<span class="sType">string</span>): <span class="sDescription"><p>Role of the device.</p></span><span class="enum">[spine | leaf]</span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Uplink specification for the device.</p></span></div><div class="schema"><span class="sKey">uplinkPortsCount</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Number of uplinks for the device.</p></span></div>]</div></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method put">
+                        <div class="card-header put"
+                             id="put__conf">
+                            <a name="put__conf">
+                                <h3>
+                                    <strong>PUT</strong>
+                                    /openclos/v1/underlay/conf
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="put__conf_d">
+                            
+                            <h3>Description</h3>
+                            <p>Sets OpenClos configuration parameters.</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>conf</td>
+                                        <td>body</td>
+                                        <td>OpenClos configuration parameters to set</td>
+                                        <td>True</td>
+                                        <td><div class="schema"><span class="sKey">dbUrl</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>URL of sqlite DB (sqlite only).</p></span></div><div class="schema"><span class="sKey">dotColors</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Color configuration for DOT file.</p></span></div><div class="schema"><span class="sKey">httpServer</span> (<span class="sType">object</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>REST server configuration (http only).</p></span><div class="schema"><span class="sKey">ipAddr</span> (<span class="sType">string</span>): <span class="sDescription"><p>REST server IP address.</p></span></div><div class="schema"><span class="sKey">port</span> (<span class="sType">integer</span>): <span class="sDescription"><p>REST server port.</p></span></div></div><div class="schema"><span class="sKey">restServer</span> (<span class="sType">object</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>REST server configuration (http and https).</p></span><div class="schema"><span class="sKey">certificate</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Full path of REST server certificate file (in https mode).</p></span></div><div class="schema"><span class="sKey">ipAddr</span> (<span class="sType">string</span>): <span class="sDescription"><p>REST server IP address.</p></span></div><div class="schema"><span class="sKey">password</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>REST server password in 2-way encrypted format (in https mode).</p></span></div><div class="schema"><span class="sKey">port</span> (<span class="sType">integer</span>): <span class="sDescription"><p>REST server port.</p></span></div><div class="schema"><span class="sKey">protocol</span> (<span class="sType">string</span>): <span class="sDescription"><p>REST server protocol.</p></span><span class="enum">[http | https]</span></div><div class="schema"><span class="sKey">username</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>REST server user name (in https mode).</p></span></div><div class="schema"><span class="sKey">version</span> (<span class="sType">integer</span>): <span class="sDescription"><p>REST server version.</p></span></div></div><div class="schema"><span class="sKey">snmpTrap</span> (<span class="sType">object</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>SNMP trap configuration.</p></span><div class="schema"><span class="sKey">openclos_trap_group</span> (<span class="sType">object</span>): <span class="sDescription"><p>SNMP trap group configuration.</p></span><div class="schema"><span class="sKey">port</span> (<span class="sType">integer</span>): <span class="sDescription"><p>SNMP trap port.</p></span></div><div class="schema"><span class="sKey">target</span> (<span class="sType">string</span>): <span class="sDescription"><p>SNMP trap target IP address.</p></span></div></div><div class="schema"><span class="sKey">threadCount</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Number of thread in SNMP trap daemon thread pool.</p></span></div></div><div class="schema"><span class="sKey">supportedDevices</span> (<span class="sType">array[object]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Supported device configuration.</p></span><div class="schema">[<div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Downlink specification for the device.</p></span></div><div class="schema"><span class="sKey">downlinkPortsCount</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Number of downlinks for the device.</p></span></div><div class="schema"><span class="sKey">family</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">role</span> (<span class="sType">string</span>): <span class="sDescription"><p>Role of the device.</p></span><span class="enum">[spine | leaf]</span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Uplink specification for the device.</p></span></div><div class="schema"><span class="sKey">uplinkPortsCount</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Number of uplinks for the device.</p></span></div>]</div></div></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>OpenClos configuration parameters set</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__images__junosImageName_">
+                            <a name="get__images__junosImageName_">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/images/{junosImageName}
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__images__junosImageName__d">
+                            
+                            <h3>Description</h3>
+                            <p>Gets JUNOS image.</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>junosImageName</td>
+                                        <td>path</td>
+                                        <td>Name of JUNOS image</td>
+                                        <td>True</td>
+                                        <td>string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods">
+                            <a name="get__pods">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods_d">
+                            
+                            <h3>Description</h3>
+                            <p>Gets list of pods.</p>
+                            
+
+                            
+
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td><div class="schema"><span class="sKey">pod</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>List of pods.</p></span><div class="schema">[<div class="schema"><span class="sKey">devicePassword</span> (<span class="sType">string</span>): <span class="sDescription"><p>cleartext password of device.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID of the pod.</p></span></div><div class="schema"><span class="sKey">leafCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of leaves.</p></span></div><div class="schema"><span class="sKey">leafSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for leaves.</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of pod.</p></span></div><div class="schema"><span class="sKey">spineCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of spines.</p></span></div><div class="schema"><span class="sKey">spineDeviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the spines.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the pod.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of pods.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for list of pods.</p></span></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method post">
+                        <div class="card-header post"
+                             id="post__pods">
+                            <a name="post__pods">
+                                <h3>
+                                    <strong>POST</strong>
+                                    /openclos/v1/underlay/pods
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="post__pods_d">
+                            
+                            <h3>Description</h3>
+                            <p>Creates a new pod.</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>pod</td>
+                                        <td>body</td>
+                                        <td>pod to add</td>
+                                        <td>True</td>
+                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of pod.</p></span></div><div class="schema"><span class="sKey">devicePassword</span> (<span class="sType">string</span>): <span class="sDescription"><p>cleartext password of device.</p></span></div><div class="schema"><span class="sKey">devices</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>New device to be added</p></span><div class="schema">[<div class="schema"><span class="sKey">deployStatus</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Deploy status of the device.</p></span><span class="enum">[deploy | provision]</span></div><div class="schema"><span class="sKey">family</span> (<span class="sType">string</span>): <span class="sDescription"><p>Device family of the device.</p></span></div><div class="schema"><span class="sKey">macAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>MAC address of the device.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of the device.</p></span></div><div class="schema"><span class="sKey">password</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>cleartext password of the device.</p></span></div><div class="schema"><span class="sKey">role</span> (<span class="sType">string</span>): <span class="sDescription"><p>Role of the device.</p></span><span class="enum">[spine | leaf]</span></div><div class="schema"><span class="sKey">serialNumber</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Serial number of the device.</p></span></div><div class="schema"><span class="sKey">username</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Username of the device.</p></span></div>]</div></div><div class="schema"><span class="sKey">hostOrVmCountPerLeaf</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Maximum number of hosts allowed on a leaf.</p></span></div><div class="schema"><span class="sKey">interConnectPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of IPs connecting spines and leaves in CIDR format.</p></span></div><div class="schema"><span class="sKey">leafAS</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Starting ASN for the leaves.</p></span></div><div class="schema"><span class="sKey">leafCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of leaves.</p></span></div><div class="schema"><span class="sKey">leafSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for leaves.</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">leafUplinkcountMustBeUp</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Minimum number of uplinks on a leaf that have to be in up state.</p></span></div><div class="schema"><span class="sKey">loopbackPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of loopback IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">managementPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of management IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of pod.</p></span></div><div class="schema"><span class="sKey">outOfBandAddressList</span> (<span class="sType">string</span>): <span class="sDescription"><p>Out of band address list.</p></span></div><div class="schema"><span class="sKey">outOfBandGateway</span> (<span class="sType">string</span>): <span class="sDescription"><p>Out of band gateway address.</p></span></div><div class="schema"><span class="sKey">spineAS</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Starting ASN for the spines.</p></span></div><div class="schema"><span class="sKey">spineCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of spines.</p></span></div><div class="schema"><span class="sKey">spineSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for spines</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">topologyType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Type of the topology. (threeStage or fiveStage)</p></span></div><div class="schema"><span class="sKey">vlanPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of VLAN routing IPs in CIDR format.</p></span></div></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>201</td>
+                                        <td>pod added</td>
+                                        <td><div class="schema"><span class="sKey">cablingPlan</span> (<span class="sType">object</span>): <span class="sDescription"><p>Cabling plan for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of cabling plan for the pod.</p></span></div></div><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of pod.</p></span></div><div class="schema"><span class="sKey">deviceConfiguration</span> (<span class="sType">object</span>): <span class="sDescription"><p>Device configurations for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of device configurations for the pod.</p></span></div></div><div class="schema"><span class="sKey">devicePassword</span> (<span class="sType">string</span>): <span class="sDescription"><p>cleartext password of device.</p></span></div><div class="schema"><span class="sKey">devices</span> (<span class="sType">object</span>): <span class="sDescription"><p>Devices for the pod.</p></span><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of devices for the pod.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of all devices for the pod.</p></span></div></div><div class="schema"><span class="sKey">hostOrVmCountPerLeaf</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Maximum number of hosts allowed on a leaf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID of the pod.</p></span></div><div class="schema"><span class="sKey">interConnectPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of IPs connecting spines and leaves in CIDR format.</p></span></div><div class="schema"><span class="sKey">l2Report</span> (<span class="sType">object</span>): <span class="sDescription"><p>L2 report for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of L2 report for the pod.</p></span></div></div><div class="schema"><span class="sKey">l3Report</span> (<span class="sType">object</span>): <span class="sDescription"><p>L3 report for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of L3 report for the pod.</p></span></div></div><div class="schema"><span class="sKey">leafAS</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Starting ASN for the leaves.</p></span></div><div class="schema"><span class="sKey">leafCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of leaves.</p></span></div><div class="schema"><span class="sKey">leafSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for leaves.</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">leafUplinkcountMustBeUp</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Minimum number of uplinks on a leaf that have to be in up state.</p></span></div><div class="schema"><span class="sKey">loopbackPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of loopback IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">managementPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of management IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of pod.</p></span></div><div class="schema"><span class="sKey">outOfBandAddressList</span> (<span class="sType">string</span>): <span class="sDescription"><p>Out of band address list.</p></span></div><div class="schema"><span class="sKey">outOfBandGateway</span> (<span class="sType">string</span>): <span class="sDescription"><p>Out of band gateway address.</p></span></div><div class="schema"><span class="sKey">spineAS</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Starting ASN for the spines.</p></span></div><div class="schema"><span class="sKey">spineCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of spines.</p></span></div><div class="schema"><span class="sKey">spineSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for spines</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">topologyType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Type of the topology. (threeStage or fiveStage)</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the pod.</p></span></div><div class="schema"><span class="sKey">vlanPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of VLAN routing IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">ztpConfiguration</span> (<span class="sType">object</span>): <span class="sDescription"><p>Ztp configurations for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of ztp configurations for the pod.</p></span></div></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>400</td>
+                                        <td>Bad request</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method delete">
+                        <div class="card-header delete"
+                             id="delete__pods__podId_">
+                            <a name="delete__pods__podId_">
+                                <h3>
+                                    <strong>DELETE</strong>
+                                    /openclos/v1/underlay/pods/{podId}
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="delete__pods__podId__d">
+                            
+                            <h3>Description</h3>
+                            <p>Deletes a pod based on UUID</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>204</td>
+                                        <td>pod deleted</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods__podId_">
+                            <a name="get__pods__podId_">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods__podId__d">
+                            
+                            <h3>Description</h3>
+                            <p>Returns a pod based on UUID</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td><div class="schema"><span class="sKey">cablingPlan</span> (<span class="sType">object</span>): <span class="sDescription"><p>Cabling plan for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of cabling plan for the pod.</p></span></div></div><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of pod.</p></span></div><div class="schema"><span class="sKey">deviceConfiguration</span> (<span class="sType">object</span>): <span class="sDescription"><p>Device configurations for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of device configurations for the pod.</p></span></div></div><div class="schema"><span class="sKey">devicePassword</span> (<span class="sType">string</span>): <span class="sDescription"><p>cleartext password of device.</p></span></div><div class="schema"><span class="sKey">devices</span> (<span class="sType">object</span>): <span class="sDescription"><p>Devices for the pod.</p></span><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of devices for the pod.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of all devices for the pod.</p></span></div></div><div class="schema"><span class="sKey">hostOrVmCountPerLeaf</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Maximum number of hosts allowed on a leaf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID of the pod.</p></span></div><div class="schema"><span class="sKey">interConnectPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of IPs connecting spines and leaves in CIDR format.</p></span></div><div class="schema"><span class="sKey">l2Report</span> (<span class="sType">object</span>): <span class="sDescription"><p>L2 report for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of L2 report for the pod.</p></span></div></div><div class="schema"><span class="sKey">l3Report</span> (<span class="sType">object</span>): <span class="sDescription"><p>L3 report for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of L3 report for the pod.</p></span></div></div><div class="schema"><span class="sKey">leafAS</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Starting ASN for the leaves.</p></span></div><div class="schema"><span class="sKey">leafCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of leaves.</p></span></div><div class="schema"><span class="sKey">leafSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for leaves.</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">leafUplinkcountMustBeUp</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Minimum number of uplinks on a leaf that have to be in up state.</p></span></div><div class="schema"><span class="sKey">loopbackPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of loopback IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">managementPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of management IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of pod.</p></span></div><div class="schema"><span class="sKey">outOfBandAddressList</span> (<span class="sType">string</span>): <span class="sDescription"><p>Out of band address list.</p></span></div><div class="schema"><span class="sKey">outOfBandGateway</span> (<span class="sType">string</span>): <span class="sDescription"><p>Out of band gateway address.</p></span></div><div class="schema"><span class="sKey">spineAS</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Starting ASN for the spines.</p></span></div><div class="schema"><span class="sKey">spineCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of spines.</p></span></div><div class="schema"><span class="sKey">spineSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for spines</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">topologyType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Type of the topology. (threeStage or fiveStage)</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the pod.</p></span></div><div class="schema"><span class="sKey">vlanPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of VLAN routing IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">ztpConfiguration</span> (<span class="sType">object</span>): <span class="sDescription"><p>Ztp configurations for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of ztp configurations for the pod.</p></span></div></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method put">
+                        <div class="card-header put"
+                             id="put__pods__podId_">
+                            <a name="put__pods__podId_">
+                                <h3>
+                                    <strong>PUT</strong>
+                                    /openclos/v1/underlay/pods/{podId}
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="put__pods__podId__d">
+                            
+                            <h3>Description</h3>
+                            <p>Modifies a pod based on UUID</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>pod</td>
+                                        <td>body</td>
+                                        <td>pod to modify</td>
+                                        <td>True</td>
+                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of pod.</p></span></div><div class="schema"><span class="sKey">devicePassword</span> (<span class="sType">string</span>): <span class="sDescription"><p>cleartext password of device.</p></span></div><div class="schema"><span class="sKey">devices</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>New device to be added</p></span><div class="schema">[<div class="schema"><span class="sKey">deployStatus</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Deploy status of the device.</p></span><span class="enum">[deploy | provision]</span></div><div class="schema"><span class="sKey">family</span> (<span class="sType">string</span>): <span class="sDescription"><p>Device family of the device.</p></span></div><div class="schema"><span class="sKey">macAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>MAC address of the device.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of the device.</p></span></div><div class="schema"><span class="sKey">password</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>cleartext password of the device.</p></span></div><div class="schema"><span class="sKey">role</span> (<span class="sType">string</span>): <span class="sDescription"><p>Role of the device.</p></span><span class="enum">[spine | leaf]</span></div><div class="schema"><span class="sKey">serialNumber</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Serial number of the device.</p></span></div><div class="schema"><span class="sKey">username</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Username of the device.</p></span></div>]</div></div><div class="schema"><span class="sKey">hostOrVmCountPerLeaf</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Maximum number of hosts allowed on a leaf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID of the pod.</p></span></div><div class="schema"><span class="sKey">interConnectPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of IPs connecting spines and leaves in CIDR format.</p></span></div><div class="schema"><span class="sKey">leafAS</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Starting ASN for the leaves.</p></span></div><div class="schema"><span class="sKey">leafCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of leaves.</p></span></div><div class="schema"><span class="sKey">leafSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for leaves.</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">leafUplinkcountMustBeUp</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Minimum number of uplinks on a leaf that have to be in up state.</p></span></div><div class="schema"><span class="sKey">loopbackPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of loopback IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">managementPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of management IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of pod.</p></span></div><div class="schema"><span class="sKey">outOfBandAddressList</span> (<span class="sType">string</span>): <span class="sDescription"><p>Out of band address list.</p></span></div><div class="schema"><span class="sKey">outOfBandGateway</span> (<span class="sType">string</span>): <span class="sDescription"><p>Out of band gateway address.</p></span></div><div class="schema"><span class="sKey">spineAS</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Starting ASN for the spines.</p></span></div><div class="schema"><span class="sKey">spineCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of spines.</p></span></div><div class="schema"><span class="sKey">spineSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for spines</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">topologyType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Type of the topology. (threeStage or fiveStage)</p></span></div><div class="schema"><span class="sKey">vlanPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of VLAN routing IPs in CIDR format.</p></span></div></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>pod modified</td>
+                                        <td><div class="schema"><span class="sKey">cablingPlan</span> (<span class="sType">object</span>): <span class="sDescription"><p>Cabling plan for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of cabling plan for the pod.</p></span></div></div><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of pod.</p></span></div><div class="schema"><span class="sKey">deviceConfiguration</span> (<span class="sType">object</span>): <span class="sDescription"><p>Device configurations for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of device configurations for the pod.</p></span></div></div><div class="schema"><span class="sKey">devicePassword</span> (<span class="sType">string</span>): <span class="sDescription"><p>cleartext password of device.</p></span></div><div class="schema"><span class="sKey">devices</span> (<span class="sType">object</span>): <span class="sDescription"><p>Devices for the pod.</p></span><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of devices for the pod.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of all devices for the pod.</p></span></div></div><div class="schema"><span class="sKey">hostOrVmCountPerLeaf</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Maximum number of hosts allowed on a leaf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID of the pod.</p></span></div><div class="schema"><span class="sKey">interConnectPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of IPs connecting spines and leaves in CIDR format.</p></span></div><div class="schema"><span class="sKey">l2Report</span> (<span class="sType">object</span>): <span class="sDescription"><p>L2 report for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of L2 report for the pod.</p></span></div></div><div class="schema"><span class="sKey">l3Report</span> (<span class="sType">object</span>): <span class="sDescription"><p>L3 report for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of L3 report for the pod.</p></span></div></div><div class="schema"><span class="sKey">leafAS</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Starting ASN for the leaves.</p></span></div><div class="schema"><span class="sKey">leafCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of leaves.</p></span></div><div class="schema"><span class="sKey">leafSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for leaves.</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">leafUplinkcountMustBeUp</span> (<span class="sType">integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Minimum number of uplinks on a leaf that have to be in up state.</p></span></div><div class="schema"><span class="sKey">loopbackPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of loopback IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">managementPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of management IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of pod.</p></span></div><div class="schema"><span class="sKey">outOfBandAddressList</span> (<span class="sType">string</span>): <span class="sDescription"><p>Out of band address list.</p></span></div><div class="schema"><span class="sKey">outOfBandGateway</span> (<span class="sType">string</span>): <span class="sDescription"><p>Out of band gateway address.</p></span></div><div class="schema"><span class="sKey">spineAS</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Starting ASN for the spines.</p></span></div><div class="schema"><span class="sKey">spineCount</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of spines.</p></span></div><div class="schema"><span class="sKey">spineSettings</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Settings for spines</p></span><div class="schema">[<div class="schema"><span class="sKey">deviceType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Make model of the device.</p></span></div><div class="schema"><span class="sKey">downlinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for downlink ports in regular expression format.</p></span></div><div class="schema"><span class="sKey">junosImage</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>JUNOS image of the device.</p></span></div><div class="schema"><span class="sKey">uplinkPorts</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Spec for uplink ports in regular expression format.</p></span></div>]</div></div><div class="schema"><span class="sKey">topologyType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Type of the topology. (threeStage or fiveStage)</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the pod.</p></span></div><div class="schema"><span class="sKey">vlanPrefix</span> (<span class="sType">string</span>): <span class="sDescription"><p>Block of VLAN routing IPs in CIDR format.</p></span></div><div class="schema"><span class="sKey">ztpConfiguration</span> (<span class="sType">object</span>): <span class="sDescription"><p>Ztp configurations for the pod.</p></span><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of ztp configurations for the pod.</p></span></div></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>400</td>
+                                        <td>Bad request</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods__podId__cabling-plan">
+                            <a name="get__pods__podId__cabling-plan">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/cabling-plan
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods__podId__cabling-plan_d">
+                            
+                            <h3>Description</h3>
+                            <p>Returns cabling plan for a pod based on UUID</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td><div class="schema"><span class="sKey">devices</span> (<span class="sType">array[object]</span>)<div class="schema">[<div class="schema"><span class="sKey">family</span> (<span class="sType">string</span>): <span class="sDescription"><p>Device family of the device.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID of the device.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of the device.</p></span></div><div class="schema"><span class="sKey">role</span> (<span class="sType">string</span>): <span class="sDescription"><p>Role of the device.</p></span><span class="enum">[spine | leaf]</span></div>]</div></div><div class="schema"><span class="sKey">links</span> (<span class="sType">array[object]</span>)<div class="schema">[<div class="schema"><span class="sKey">device1</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of device1.</p></span></div><div class="schema"><span class="sKey">device2</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of device2.</p></span></div><div class="schema"><span class="sKey">ip1</span> (<span class="sType">string</span>): <span class="sDescription"><p>Link IP on device1.</p></span></div><div class="schema"><span class="sKey">ip2</span> (<span class="sType">string</span>): <span class="sDescription"><p>Link IP on device2.</p></span></div><div class="schema"><span class="sKey">linkType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Type of the link.</p></span></div><div class="schema"><span class="sKey">port1</span> (<span class="sType">string</span>): <span class="sDescription"><p>Port on device1.</p></span></div><div class="schema"><span class="sKey">port2</span> (<span class="sType">string</span>): <span class="sDescription"><p>Port on device2.</p></span></div>]</div></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method put">
+                        <div class="card-header put"
+                             id="put__pods__podId__cabling-plan">
+                            <a name="put__pods__podId__cabling-plan">
+                                <h3>
+                                    <strong>PUT</strong>
+                                    /openclos/v1/underlay/pods/{podId}/cabling-plan
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="put__pods__podId__cabling-plan_d">
+                            
+                            <h3>Description</h3>
+                            <p>Create cabling plan for a pod based on UUID</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>cabling plan created</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods__podId__device-configuration">
+                            <a name="get__pods__podId__device-configuration">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/device-configuration
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods__podId__device-configuration_d">
+                            
+                            <h3>Description</h3>
+                            <p>Returns device configurations for a pod based on UUID</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method put">
+                        <div class="card-header put"
+                             id="put__pods__podId__device-configuration">
+                            <a name="put__pods__podId__device-configuration">
+                                <h3>
+                                    <strong>PUT</strong>
+                                    /openclos/v1/underlay/pods/{podId}/device-configuration
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="put__pods__podId__device-configuration_d">
+                            
+                            <h3>Description</h3>
+                            <p>Create device configurations for a pod based on UUID</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>device configurations created</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods__podId__devices">
+                            <a name="get__pods__podId__devices">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/devices
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods__podId__devices_d">
+                            
+                            <h3>Description</h3>
+                            <p>Gets list of devices for a pod based on UUID.</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td><div class="schema"><span class="sKey">device</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>List of devices.</p></span><div class="schema">[<div class="schema"><span class="sKey">deployStatus</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the device.</p></span><span class="enum">[deploy | provision]</span></div><div class="schema"><span class="sKey">family</span> (<span class="sType">string</span>): <span class="sDescription"><p>Device family of the device.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID of the device.</p></span></div><div class="schema"><span class="sKey">macAddress</span> (<span class="sType">string</span>): <span class="sDescription"><p>MAC address of the device.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of the device.</p></span></div><div class="schema"><span class="sKey">password</span> (<span class="sType">string</span>): <span class="sDescription"><p>cleartext password of the device.</p></span></div><div class="schema"><span class="sKey">role</span> (<span class="sType">string</span>): <span class="sDescription"><p>Role of the device.</p></span><span class="enum">[spine | leaf]</span></div><div class="schema"><span class="sKey">serialNumber</span> (<span class="sType">string</span>): <span class="sDescription"><p>Serial number of the device.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the device.</p></span></div><div class="schema"><span class="sKey">username</span> (<span class="sType">string</span>): <span class="sDescription"><p>Username of the device.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of devices.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for list of devices.</p></span></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods__podId__devices__deviceId_">
+                            <a name="get__pods__podId__devices__deviceId_">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/devices/{deviceId}
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods__podId__devices__deviceId__d">
+                            
+                            <h3>Description</h3>
+                            <p>Returns a device based on UUID for a pod based on UUID.</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>deviceId</td>
+                                        <td>path</td>
+                                        <td>UUID of device</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td><div class="schema"><span class="sKey">deployStatus</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the device.</p></span><span class="enum">[deploy | provision]</span></div><div class="schema"><span class="sKey">family</span> (<span class="sType">string</span>): <span class="sDescription"><p>Device family of the device.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID of the device.</p></span></div><div class="schema"><span class="sKey">macAddress</span> (<span class="sType">string</span>): <span class="sDescription"><p>MAC address of the device.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of the device.</p></span></div><div class="schema"><span class="sKey">password</span> (<span class="sType">string</span>): <span class="sDescription"><p>cleartext password of the device.</p></span></div><div class="schema"><span class="sKey">role</span> (<span class="sType">string</span>): <span class="sDescription"><p>Role of the device.</p></span><span class="enum">[spine | leaf]</span></div><div class="schema"><span class="sKey">serialNumber</span> (<span class="sType">string</span>): <span class="sDescription"><p>Serial number of the device.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the device.</p></span></div><div class="schema"><span class="sKey">username</span> (<span class="sType">string</span>): <span class="sDescription"><p>Username of the device.</p></span></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods__podId__devices__deviceId__config">
+                            <a name="get__pods__podId__devices__deviceId__config">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/devices/{deviceId}/config
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods__podId__devices__deviceId__config_d">
+                            
+                            <h3>Description</h3>
+                            <p>Returns device configuration for a device based on UUID for a pod based on UUID.</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>deviceId</td>
+                                        <td>path</td>
+                                        <td>UUID of device</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods__podId__l2-report">
+                            <a name="get__pods__podId__l2-report">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/l2-report
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods__podId__l2-report_d">
+                            
+                            <h3>Description</h3>
+                            <p>Gets layer 2 report for a pod based on UUID.</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td><div class="schema"><span class="sKey">devices</span> (<span class="sType">array[object]</span>)<div class="schema">[<div class="schema"><span class="sKey">deployStatus</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the device.</p></span><span class="enum">[deploy | provision]</span></div><div class="schema"><span class="sKey">family</span> (<span class="sType">string</span>): <span class="sDescription"><p>Device family of the device.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID of the device.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of the device.</p></span></div><div class="schema"><span class="sKey">role</span> (<span class="sType">string</span>): <span class="sDescription"><p>Role of the device.</p></span><span class="enum">[spine | leaf]</span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Status of the device.</p></span></div><div class="schema"><span class="sKey">statusReason</span> (<span class="sType">string</span>): <span class="sDescription"><p>Status reason of the device.</p></span></div>]</div></div><div class="schema"><span class="sKey">links</span> (<span class="sType">array[object]</span>)<div class="schema">[<div class="schema"><span class="sKey">device1</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of device1.</p></span></div><div class="schema"><span class="sKey">device2</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of device2.</p></span></div><div class="schema"><span class="sKey">ip1</span> (<span class="sType">string</span>): <span class="sDescription"><p>Link IP on device1.</p></span></div><div class="schema"><span class="sKey">ip2</span> (<span class="sType">string</span>): <span class="sDescription"><p>Link IP on device2.</p></span></div><div class="schema"><span class="sKey">linkType</span> (<span class="sType">string</span>): <span class="sDescription"><p>Type of the link.</p></span></div><div class="schema"><span class="sKey">port1</span> (<span class="sType">string</span>): <span class="sDescription"><p>Port on device1.</p></span></div><div class="schema"><span class="sKey">port2</span> (<span class="sType">string</span>): <span class="sDescription"><p>Port on device2.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Status of the link.</p></span></div>]</div></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods__podId__l3-report">
+                            <a name="get__pods__podId__l3-report">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/l3-report
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods__podId__l3-report_d">
+                            
+                            <h3>Description</h3>
+                            <p>Gets layer 3 report for a pod based on UUID.</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td><div class="schema"><span class="sKey">devices</span> (<span class="sType">array[object]</span>)<div class="schema">[<div class="schema"><span class="sKey">deployStatus</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the device.</p></span><span class="enum">[deploy | provision]</span></div><div class="schema"><span class="sKey">family</span> (<span class="sType">string</span>): <span class="sDescription"><p>Device family of the device.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID of the device.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of the device.</p></span></div><div class="schema"><span class="sKey">role</span> (<span class="sType">string</span>): <span class="sDescription"><p>Role of the device.</p></span><span class="enum">[spine | leaf]</span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Status of the device.</p></span></div><div class="schema"><span class="sKey">statusReason</span> (<span class="sType">string</span>): <span class="sDescription"><p>Status reason of the device.</p></span></div>]</div></div><div class="schema"><span class="sKey">peers</span> (<span class="sType">array[object]</span>)<div class="schema">[<div class="schema"><span class="sKey">asn1</span> (<span class="sType">string</span>): <span class="sDescription"><p>ASN on device1.</p></span></div><div class="schema"><span class="sKey">asn2</span> (<span class="sType">string</span>): <span class="sDescription"><p>ASN on device2.</p></span></div><div class="schema"><span class="sKey">device1</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of device1.</p></span></div><div class="schema"><span class="sKey">device2</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of device2.</p></span></div><div class="schema"><span class="sKey">inPacket</span> (<span class="sType">integer</span>): <span class="sDescription"><p>InPacket statistics of the link.</p></span></div><div class="schema"><span class="sKey">ip1</span> (<span class="sType">string</span>): <span class="sDescription"><p>Link IP on device1.</p></span></div><div class="schema"><span class="sKey">ip2</span> (<span class="sType">string</span>): <span class="sDescription"><p>Link IP on device2.</p></span></div><div class="schema"><span class="sKey">lastFlap</span> (<span class="sType">integer</span>): <span class="sDescription"><p>LastFlap statistics of the link.</p></span></div><div class="schema"><span class="sKey">outPacket</span> (<span class="sType">integer</span>): <span class="sDescription"><p>OutPacket statistics of the link.</p></span></div><div class="schema"><span class="sKey">outQueue</span> (<span class="sType">integer</span>): <span class="sDescription"><p>OutQueue statistics of the link.</p></span></div><div class="schema"><span class="sKey">routes</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Routes statistics of the link.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Status of the link.</p></span></div>]</div></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods__podId__leaf-generic-configurations__deviceModel_">
+                            <a name="get__pods__podId__leaf-generic-configurations__deviceModel_">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/leaf-generic-configurations/{deviceModel}
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods__podId__leaf-generic-configurations__deviceModel__d">
+                            
+                            <h3>Description</h3>
+                            <p>Returns generic leaf configurations for a deviceModel for a pod based on UUID</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>deviceModel</td>
+                                        <td>path</td>
+                                        <td>device model</td>
+                                        <td>True</td>
+                                        <td>string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__pods__podId__ztp-configuration">
+                            <a name="get__pods__podId__ztp-configuration">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/underlay/pods/{podId}/ztp-configuration
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__pods__podId__ztp-configuration_d">
+                            
+                            <h3>Description</h3>
+                            <p>Returns ztp configuration for a pod based on UUID</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method put">
+                        <div class="card-header put"
+                             id="put__pods__podId__ztp-configuration">
+                            <a name="put__pods__podId__ztp-configuration">
+                                <h3>
+                                    <strong>PUT</strong>
+                                    /openclos/v1/underlay/pods/{podId}/ztp-configuration
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="put__pods__podId__ztp-configuration_d">
+                            
+                            <h3>Description</h3>
+                            <p>Create ztp configuration for a pod based on UUID</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>podId</td>
+                                        <td>path</td>
+                                        <td>UUID of pod</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>ztp configuration created</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>404</td>
+                                        <td>Not found</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                </div>
+                
+
+                <footer class="footer">
+                    Generated by
+                    <a href="https://github.com/JuhaniImberg/swagger-render">
+                        Swagger-Render
+                    </a> 1.6.0<br>
+                    2016-04-28 00:32:40.245263
+                </footer>
+            </div>
+        </div>
+
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha/js/bootstrap.min.js"></script>
+    <script src="https://cdn.rawgit.com/joshaven/string_score/3b51216ccaa15a795df27502df5e8fbca554c0ab/string_score.min.js"></script>
+    <script>
+     $("#search").on("input", function(e) {
+         var text = e.target.value;
+         $(".nav-item").map(function(i, el) {
+             var cmp = $(el).children()[0].innerText;
+             if(cmp.score(text) > 0 || text.length == 0) {
+                 $(el).show();
+             } else {
+                 $(el).hide();
+             }
+         });
+     });
+    </script>
+</body>
+</html>
