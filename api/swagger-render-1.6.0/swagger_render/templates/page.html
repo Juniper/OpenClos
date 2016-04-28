@@ -1,0 +1,8 @@
+<!DOCTYPE HTML>
+<html>
+    {% set _group_by_tags = info["x-swagger-render-group-by-tags"] | default(True) %}
+    {% set _tags = _tags if _group_by_tags else ["API Routes"] %}
+
+    {% include 'head.html' %}
+    {% include 'body.html' %}
+</html>

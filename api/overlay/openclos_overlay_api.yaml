@@ -1,0 +1,2027 @@
+swagger: '2.0'
+info:
+    version: 1.0.0
+    title: 'OpenClos Overlay API'
+    description: 'REST API to configure and deploy EVPN VXLAN Overlay on IP Fabric'
+host: openclos.juniper.net
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+basePath: /openclos/v1/overlay
+paths:
+    '/devices':
+        get:
+            description: |
+                Gets list of devices.
+            operationId: getDevices
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/devices'
+                '401':
+                    description: Unauthorized
+        post:
+            description: |
+                Creates a new device.
+            operationId: addDevice
+            parameters:
+            -   name: device
+                in: body
+                description: device to add
+                required: true
+                schema:
+                    $ref: '#/definitions/newDevice'
+            responses:
+                '201':
+                    description: device added
+                    schema:
+                        $ref: '#/definitions/device'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/devices/{deviceId}':
+        get:
+            description: |
+                Returns a device based on UUID
+            operationId: getDevice
+            parameters:
+            -   name: deviceId
+                in: path
+                description: UUID of device
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/device'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        put:
+            description: |
+                Modifies a device based on UUID
+            operationId: putDevice
+            parameters:
+            -   name: deviceId
+                in: path
+                description: UUID of device
+                required: true
+                type: string
+                format: uuid
+            -   name: device
+                in: body
+                description: device to modify
+                required: true
+                schema:
+                    $ref: '#/definitions/device'
+            responses:
+                '200':
+                    description: device modified
+                    schema:
+                        $ref: '#/definitions/device'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        delete:
+            description: |
+                Deletes a device based on UUID
+            operationId: deleteDevice
+            parameters:
+            -   name: deviceId
+                in: path
+                description: UUID of device
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '204':
+                    description: device deleted
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/fabrics':
+        get:
+            description: |
+                Gets list of fabrics.
+            operationId: getFabrics
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/fabrics'
+                '401':
+                    description: Unauthorized
+        post:
+            description: |
+                Creates a new fabric.
+            operationId: addFabric
+            parameters:
+            -   name: fabric
+                in: body
+                description: Fabric to add
+                required: true
+                schema:
+                    $ref: '#/definitions/newFabric'
+            responses:
+                '201':
+                    description: Fabric added
+                    schema:
+                        $ref: '#/definitions/fabric'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/fabrics/{fabricId}':
+        get:
+            description: |
+                Returns a fabric based on UUID
+            operationId: getFabric
+            parameters:
+            -   name: fabricId
+                in: path
+                description: UUID of fabric
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/fabric'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        put:
+            description: |
+                Modify a fabric based on UUID
+            operationId: putFabric
+            parameters:
+            -   name: fabricId
+                in: path
+                description: UUID of fabric
+                required: true
+                type: string
+                format: uuid
+            -   name: fabric
+                in: body
+                description: Fabric to modify
+                required: true
+                schema:
+                    $ref: '#/definitions/fabric'
+            responses:
+                '200':
+                    description: Fabric modified
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        delete:
+            description: |
+                Deletes a fabric based on UUID
+            operationId: deleteFabric
+            parameters:
+            -   name: fabricId
+                in: path
+                description: UUID of fabric
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '204':
+                    description: Fabric deleted
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/tenants':
+        get:
+            description: |
+                Gets list of tenants.
+            operationId: getTenants
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/tenants'
+                '401':
+                    description: Unauthorized
+        post:
+            description: |
+                Creates a new tenant.
+            operationId: addTenant
+            parameters:
+            -   name: tenant
+                in: body
+                description: Tenant to add
+                required: true
+                schema:
+                    $ref: '#/definitions/newTenant'
+            responses:
+                '201':
+                    description: Tenant added
+                    schema:
+                        $ref: '#/definitions/tenant'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/tenants/{tenantId}':
+        get:
+            description: |
+                Returns a tenant based on UUID
+            operationId: getTenant
+            parameters:
+            -   name: tenantId
+                in: path
+                description: UUID of tenant
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/tenant'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        put:
+            description: |
+                Modifies a tenant based on UUID
+            operationId: putTenant
+            parameters:
+            -   name: tenantId
+                in: path
+                description: UUID of tenant
+                required: true
+                type: string
+                format: uuid
+            -   name: tenant
+                in: body
+                description: Tenant to modify
+                required: true
+                schema:
+                    $ref: '#/definitions/tenant'
+            responses:
+                '200':
+                    description: Tenant modified
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        delete:
+            description: |
+                Deletes a tenant based on UUID
+            operationId: deleteTenant
+            parameters:
+            -   name: tenantId
+                in: path
+                description: UUID of tenant
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '204':
+                    description: Tenant deleted
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/vrfs':
+        get:
+            description: |
+                Gets list of VRFs.
+            operationId: getVrfs
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/vrfs'
+                '401':
+                    description: Unauthorized
+        post:
+            description: |
+                Creates a new VRF.
+            operationId: addVrf
+            parameters:
+            -   name: vrf
+                in: body
+                description: VRF to add
+                required: true
+                schema:
+                    $ref: '#/definitions/newVrf'
+            responses:
+                '201':
+                    description: VRF added
+                    schema:
+                        $ref: '#/definitions/vrf'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/vrfs/{vrfId}':
+        get:
+            description: |
+                Returns a VRF based on UUID
+            operationId: getVrf
+            parameters:
+            -   name: vrfId
+                in: path
+                description: UUID of VRF
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/vrf'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        put:
+            description: |
+                Modifies a VRF based on UUID
+            operationId: putVrf
+            parameters:
+            -   name: vrfId
+                in: path
+                description: UUID of VRF
+                required: true
+                type: string
+                format: uuid
+            -   name: vrf
+                in: body
+                description: VRF to modify
+                required: true
+                schema:
+                    $ref: '#/definitions/vrf'
+            responses:
+                '200':
+                    description: VRF modified
+                    schema:
+                        $ref: '#/definitions/vrf'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        delete:
+            description: |
+                Deletes a VRF based on UUID
+            operationId: deleteVrf
+            parameters:
+            -   name: vrfId
+                in: path
+                description: UUID of VRF
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '204':
+                    description: VRF deleted
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/vrfs/{vrfId}/status?mode=brief':
+         get:
+            description: |
+                Gets brief deploy status of a VRF and its child objects.
+            operationId: getVrfStatusBrief
+            parameters:
+            -   name: vrfId
+                in: path
+                description: UUID of VRF
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/statusBrief'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/vrfs/{vrfId}/status?mode=detail':
+         get:
+            description: |
+                Gets detail deploy status of a VRF and its child objects.
+            operationId: getVrfStatusDetail
+            parameters:
+            -   name: vrfId
+                in: path
+                description: UUID of VRF
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/statusDetail'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/networks':
+        get:
+            description: |
+                Gets list of networks.
+            operationId: getNetworks
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/networks'
+        post:
+            description: |
+                Creates a new network.
+            operationId: addNetwork
+            parameters:
+            -   name: network
+                in: body
+                description: network to add
+                required: true
+                schema:
+                    $ref: '#/definitions/newNetwork'
+            responses:
+                '201':
+                    description: network added
+                    schema:
+                        $ref: '#/definitions/network'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/networks/{networkId}':
+        get:
+            description: |
+                Returns a network based on UUID
+            operationId: getNetwork
+            parameters:
+            -   name: networkId
+                in: path
+                description: UUID of network
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/network'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        put:
+            description: |
+                Modifies a network based on UUID
+            operationId: putNetwork
+            parameters:
+            -   name: networkId
+                in: path
+                description: UUID of network
+                required: true
+                type: string
+                format: uuid
+            -   name: network
+                in: body
+                description: network to modify
+                required: true
+                schema:
+                    $ref: '#/definitions/network'
+            responses:
+                '200':
+                    description: network modified
+                    schema:
+                        $ref: '#/definitions/network'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        delete:
+            description: |
+                Deletes a network based on UUID
+            operationId: deleteNetwork
+            parameters:
+            -   name: networkId
+                in: path
+                description: UUID of network
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '204':
+                    description: network deleted
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/subnets':
+        get:
+            description: |
+                Gets list of subnets.
+            operationId: getSubnets
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/subnets'
+                '401':
+                    description: Unauthorized
+        post:
+            description: |
+                Creates a new subnet.
+            operationId: addSubnet
+            parameters:
+            -   name: subnet
+                in: body
+                description: subnet to add
+                required: true
+                schema:
+                    $ref: '#/definitions/newSubnet'
+            responses:
+                '201':
+                    description: subnet added
+                    schema:
+                        $ref: '#/definitions/subnet'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/subnets/{subnetId}':
+        get:
+            description: |
+                Returns a subnet based on UUID
+            operationId: getSubnet
+            parameters:
+            -   name: subnetId
+                in: path
+                description: UUID of subnet
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/subnet'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        put:
+            description: |
+                Modifies a subnet based on UUID
+            operationId: putSubnet
+            parameters:
+            -   name: subnetId
+                in: path
+                description: UUID of subnet
+                required: true
+                type: string
+                format: uuid
+            -   name: subnet
+                in: body
+                description: subnet to modify
+                required: true
+                schema:
+                    $ref: '#/definitions/subnet'
+            responses:
+                '200':
+                    description: subnet modified
+                    schema:
+                        $ref: '#/definitions/subnet'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        delete:
+            description: |
+                Deletes a subnet based on UUID
+            operationId: deleteSubnet
+            parameters:
+            -   name: subnetId
+                in: path
+                description: UUID of subnet
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '204':
+                    description: subnet deleted
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/l3ports':
+        get:
+            description: |
+                Gets list of L3 ports.
+            operationId: getL3ports
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/l3ports'
+                '401':
+                    description: Unauthorized
+        post:
+            description: |
+                Creates a new L3 port.
+            operationId: addL3port
+            parameters:
+            -   name: l3port
+                in: body
+                description: L3 port to add
+                required: true
+                schema:
+                    $ref: '#/definitions/newL3port'
+            responses:
+                '201':
+                    description: L3 port added
+                    schema:
+                        $ref: '#/definitions/l3port'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/l3ports/{l3portId}':
+        get:
+            description: |
+                Returns a L3 port based on UUID
+            operationId: getL3port
+            parameters:
+            -   name: l3portId
+                in: path
+                description: UUID of L3 port
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/l3port'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        put:
+            description: |
+                Modifies a L3 port based on UUID
+            operationId: putL3port
+            parameters:
+            -   name: l3portId
+                in: path
+                description: UUID of L3 port
+                required: true
+                type: string
+                format: uuid
+            -   name: l3port
+                in: body
+                description: L3 port to modify
+                required: true
+                schema:
+                    $ref: '#/definitions/l3port'
+            responses:
+                '200':
+                    description: L3 port modified
+                    schema:
+                        $ref: '#/definitions/l3port'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        delete:
+            description: |
+                Deletes a L3 port based on UUID
+            operationId: deleteL3port
+            parameters:
+            -   name: l3portId
+                in: path
+                description: UUID of L3 port
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '204':
+                    description: L3 port deleted
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/l2ports':
+        get:
+            description: |
+                Gets list of L2 ports.
+            operationId: getL2ports
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/l2ports'
+                '401':
+                    description: Unauthorized
+        post:
+            description: |
+                Creates a new L2 port.
+            operationId: addL2port
+            parameters:
+            -   name: l2port
+                in: body
+                description: L2 port to add
+                required: true
+                schema:
+                    $ref: '#/definitions/newL2port'
+            responses:
+                '201':
+                    description: L2 port added
+                    schema:
+                        $ref: '#/definitions/l2port'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/l2ports/{l2portId}':
+        get:
+            description: |
+                Returns a L2 port based on UUID
+            operationId: getL2port
+            parameters:
+            -   name: l2portId
+                in: path
+                description: UUID of L2 port
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/l2port'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        put:
+            description: |
+                Modifies a L2 port based on UUID
+            operationId: putL2port
+            parameters:
+            -   name: l2portId
+                in: path
+                description: UUID of L2 port
+                required: true
+                type: string
+                format: uuid
+            -   name: l2port
+                in: body
+                description: L2 port to modify
+                required: true
+                schema:
+                    $ref: '#/definitions/l2port'
+            responses:
+                '200':
+                    description: L2 port modified
+                    schema:
+                        $ref: '#/definitions/l2port'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        delete:
+            description: |
+                Deletes a L2 port based on UUID
+            operationId: deleteL2port
+            parameters:
+            -   name: l2portId
+                in: path
+                description: UUID of L2 port
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '204':
+                    description: L2 port deleted
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/aggregatedL2ports':
+        get:
+            description: |
+                Gets list of aggregated L2 ports.
+            operationId: getAggregatedL2ports
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/aggregatedL2ports'
+                '401':
+                    description: Unauthorized
+        post:
+            description: |
+                Creates a new aggregated L2 port.
+            operationId: addAggregatedL2port
+            parameters:
+            -   name: aggregatedL2port
+                in: body
+                description: aggregated L2 port to add
+                required: true
+                schema:
+                    $ref: '#/definitions/newAggregatedL2port'
+            responses:
+                '201':
+                    description: aggregated L2 port added
+                    schema:
+                        $ref: '#/definitions/aggregatedL2port'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/aggregatedL2ports/{aggregatedL2portId}':
+        get:
+            description: |
+                Returns a aggregated L2 port based on UUID
+            operationId: getAggregatedL2port
+            parameters:
+            -   name: aggregatedL2portId
+                in: path
+                description: UUID of aggregated L2 port
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/aggregatedL2port'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        put:
+            description: |
+                Modifies a aggregated L2 port based on UUID
+            operationId: putAggregatedL2port
+            parameters:
+            -   name: aggregatedL2portId
+                in: path
+                description: UUID of aggregated L2 port
+                required: true
+                type: string
+                format: uuid
+            -   name: aggregatedL2port
+                in: body
+                description: aggregated L2 port to modify
+                required: true
+                schema:
+                    $ref: '#/definitions/aggregatedL2port'
+            responses:
+                '200':
+                    description: aggregated L2 port modified
+                    schema:
+                        $ref: '#/definitions/aggregatedL2port'
+                '400':
+                    description: Bad request
+                    schema:
+                        $ref: '#/definitions/restError'
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+        delete:
+            description: |
+                Deletes a aggregated L2 port based on UUID
+            operationId: deleteAggregatedL2port
+            parameters:
+            -   name: aggregatedL2portId
+                in: path
+                description: UUID of aggregated L2 port
+                required: true
+                type: string
+                format: uuid
+            responses:
+                '204':
+                    description: aggregated L2 port deleted
+                '401':
+                    description: Unauthorized
+                '404':
+                    description: Not found
+                    schema:
+                        $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+definitions:
+    restError:
+        type: object
+        required:
+        -   errorCode
+        -   errorMessage
+        properties:
+            errorCode:
+                type: integer
+                format: int32
+            errorMessage:
+                type: string
+    newDevice:
+        type: object
+        required:
+        -   name
+        -   role
+        -   address
+        -   routerId
+        -   podName
+        -   username
+        -   password
+        properties:
+            name:
+                type: string
+                description: Name of device.
+            role:
+                type: string
+                description: Role of device.
+            address:
+                type: string
+                description: IP address of device.
+            description:
+                type: string
+                description: Description of device.
+            routerId:
+                type: string
+                description: Router ID. Typically IP address of Loopback interface.
+            podName:
+                type: string
+                description: Name of the underlay POD where this device belongs to.
+            username:
+                type: string
+                description: Username of device.
+            password:
+                type: string
+                description: cleartext password of device.
+    device:
+        type: object
+        required:
+        -   id
+        -   name
+        -   address
+        -   routerId
+        -   podName
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific device.'
+            name:
+                type: string
+                description: Name of device.
+            role:
+                type: string
+                description: Role of device.
+            address:
+                type: string
+                description: IP address of device.
+            description:
+                type: string
+                description: Description of device.
+            routerId:
+                type: string
+                description: Router ID. Typically IP address of Loopback interface.
+            podName:
+                type: string
+                description: Name of the underlay POD where this device belongs to.
+            fabrics:
+                type: array
+                items:
+                    type: string
+                description: List of fabric URIs where this device is part of.
+            l2ports:
+                type: array
+                items:
+                    type: string
+                description: List of L2 port URIs.
+    devices:
+        type: object
+        required:
+        -   device
+        -   total
+        -   uri
+        properties:
+            device:
+                type: array
+                items:
+                    $ref: '#/definitions/device'                        
+                description: 'list of devices.'
+            total:
+                type: integer
+                description: Number of device.
+            uri:
+                type: string
+                description: URI for list of devices.
+    newFabric:
+        type: object
+        required:
+        -   name
+        -   overlayAsn
+        -   routeReflectorAddress
+        -   devices
+        properties:
+            name:
+                type: string
+                description: Name of fabric.
+            description:
+                type: string
+                description: Description of fabric.
+            overlayAsn:
+                type: integer
+                format: int32
+                description: Overlay ASN of fabric.
+            routeReflectorAddress:
+                type: string
+                description: IP address of Route Reflector.
+            devices:
+                type: array
+                items:
+                    type: string
+                description: List of device URIs.
+    fabric:
+        type: object
+        required:
+        -   id
+        -   name
+        -   overlayAsn
+        -   routeReflectorAddress
+        -   devices
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific fabric.'
+            name:
+                type: string
+                description: Name of fabric.
+            description:
+                type: string
+                description: Description of fabric.
+            overlayAsn:
+                type: integer
+                format: int32
+                description: Overlay ASN of fabric.
+            routeReflectorAddress:
+                type: string
+                description: IP address of Route Reflector.
+            devices:
+                type: array
+                items:
+                    type: string
+                description: List of device URIs.
+            tenants:
+                type: array
+                items:
+                    type: string
+                description: List of tenant URIs.
+    fabrics:
+        type: object
+        required:
+        -   fabric
+        -   total
+        -   uri
+        properties:
+            fabric:
+                type: array
+                items:
+                    $ref: '#/definitions/fabric'                        
+                description: 'list of fabrics.'
+            total:
+                type: integer
+                description: Number of fabrics.
+            uri:
+                type: string
+                description: URI for list of fabrics.
+    newTenant:
+        type: object
+        required:
+        -   name
+        -   fabric 
+        properties:
+            name:
+                type: string
+                description: Name of tenant.
+            fabric:
+                type: string
+                description: URI of the fabric this tenant belongs to.
+            description:
+                type: string
+                description: Description of tenant.
+    tenant:
+        type: object
+        required:
+        -   id
+        -   name
+        -   fabric
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific tenant.'
+            name:
+                type: string
+                description: Name of tenant.
+            fabric:
+                type: string
+                description: URI of the fabric this tenant belongs to.
+            description:
+                type: string
+                description: Description of tenant.
+            vrfs:
+                type: array
+                items:
+                    type: string
+                description: List of VRF URIs.
+    tenants:
+        type: object
+        required:
+        -   tenant
+        -   total
+        -   uri
+        properties:
+            tenant:
+                type: array
+                items:
+                    $ref: '#/definitions/tenant'                        
+                description: 'list of tenants.'
+            total:
+                type: integer
+                description: Number of tenants.
+            uri:
+                type: string
+                description: URI for list of tenants.
+    newVrf:
+        type: object
+        required:
+        -   name
+        -   tenant
+        properties:
+            name:
+                type: string
+                description: Name of vrf.
+            tenant:
+                type: string
+                description: URI of the tenant this vrf belongs to.
+            description:
+                type: string
+                description: Description of vrf.
+            routedVnid:
+                type: integer
+                format: int32
+                description: Routed VNID.
+            loopbackAddress:
+                type: string
+                description: IP address of loopback interface.
+    vrf:
+        type: object
+        required:
+        -   id
+        -   name
+        -   tenant
+        -   status
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific vrf.'
+            name:
+                type: string
+                description: Name of vrf.
+            tenant:
+                type: string
+                description: URI of the tenant this vrf belongs to.
+            description:
+                type: string
+                description: Description of vrf.
+            routedVnid:
+                type: integer
+                format: int32
+                description: Routed VNID.
+            loopbackAddress:
+                type: string
+                description: IP address of loopback interface.
+            networks:
+                type: array
+                items:
+                    type: string
+                description: List of network URIs.
+            status:
+                type: object
+                required:
+                -   brief
+                -   detail
+                properties:
+                    brief:
+                        type: string
+                        description: URI of the brief deploy status of this vrf.
+                    detail:
+                        type: string
+                        description: URI of the detail deploy status of this vrf.
+    vrfs:
+        type: object
+        required:
+        -   vrf
+        -   total
+        -   uri
+        properties:
+            vrf:
+                type: array
+                items:
+                    $ref: '#/definitions/vrf'                        
+                description: 'list of VRFs.'
+            total:
+                type: integer
+                description: Number of VRFs.
+            uri:
+                type: string
+                description: URI for list of VRFs.
+    newNetwork:
+        type: object
+        required:
+        -   name
+        -   vrf
+        properties:
+            name:
+                type: string
+                description: Name of network.
+            vrf:
+                type: string
+                description: URI of the vrf this network belongs to.
+            description:
+                type: string
+                description: Description of network.
+            vlanid:
+                type: integer
+                format: int32
+                description: VLAN ID.
+            vnid:
+                type: integer
+                format: int32
+                description: VNID.
+            pureL3Int:
+                type: boolean
+                description: flag to indicate this network is for L3 only
+    l2ap:
+        type: object
+        required:
+        -   type
+        -   uri
+        properties:
+            type:
+                type: string
+                description: type of L2 attachment point. (l2ap/l2port/aggregatedL2port)
+            uri:
+                type: string
+                description: URI for L2 attachment point.
+    network:
+        type: object
+        required:
+        -   id
+        -   name
+        -   vrf
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific network.'
+            name:
+                type: string
+                description: Name of network.
+            vrf:
+                type: string
+                description: URI of the vrf this network belongs to.
+            description:
+                type: string
+                description: Description of network.
+            vlanid:
+                type: integer
+                format: int32
+                description: VLAN ID.
+            vnid:
+                type: integer
+                format: int32
+                description: VNID.
+            pureL3Int:
+                type: boolean
+                description: flag to indicate this network is for L3 only
+            subnets:
+                type: array
+                items:
+                    type: string
+                description: List of subnet URIs.
+            l2aps:
+                type: object
+                description: List of L2 attchment point URIs (including L2 port and aggregated L2 port).
+                required:
+                -   l2ap
+                -   total
+                properties:
+                    l2ap:
+                        type: array
+                        items:
+                            $ref: '#/definitions/l2ap'                        
+                        description: 'list of L2 attachment points.'
+                    total:
+                        type: integer
+                        description: Number of L2 attachment points.
+    networks:
+        type: object
+        required:
+        -   network
+        -   total
+        -   uri
+        properties:
+            network:
+                type: array
+                items:
+                    $ref: '#/definitions/network'                        
+                description: 'list of networks.'
+            total:
+                type: integer
+                description: Number of networks.
+            uri:
+                type: string
+                description: URI for list of networks.
+    newSubnet:
+        type: object
+        required:
+        -   name
+        -   cidr
+        -   network
+        properties:
+            name:
+                type: string
+                description: Name of subnet.
+            cidr:
+                type: string
+                description: CIDR block of subnet.
+            network:
+                type: string
+                description: URI of the network this subnet belongs to.
+            description:
+                type: string
+                description: Description of subnet.
+    subnet:
+        type: object
+        required:
+        -   id
+        -   name
+        -   cidr
+        -   network 
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific subnet.'
+            name:
+                type: string
+                description: Name of subnet.
+            cidr:
+                type: string
+                description: CIDR block of subnet.
+            network:
+                type: string
+                description: URI of the network this subnet belongs to.
+            description:
+                type: string
+                description: Description of subnet.
+            l3ports:
+                type: array
+                items:
+                    type: string
+                description: List of L3 port URIs.
+    subnets:
+        type: object
+        required:
+        -   subnet
+        -   total
+        -   uri
+        properties:
+            subnet:
+                type: array
+                items:
+                    $ref: '#/definitions/subnet'                        
+                description: 'list of subnets.'
+            total:
+                type: integer
+                description: Number of subnets.
+            uri:
+                type: string
+                description: URI for list of subnets.
+    newL3port:
+        type: object
+        required:
+        -   name
+        -   subnet 
+        properties:
+            name:
+                type: string
+                description: Name of L3 port.
+            subnet:
+                type: string
+                description: URI of the subnet this L3 port belongs to.
+            description:
+                type: string
+                description: Description of L3 port.
+    l3port:
+        type: object
+        required:
+        -   id
+        -   name
+        -   subnet
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific L3 port.'
+            name:
+                type: string
+                description: Name of L3 port.
+            subnet:
+                type: string
+                description: URI of the subnet this L3 port belongs to.
+            description:
+                type: string
+                description: Description of L3 port.
+    l3ports:
+        type: object
+        required:
+        -   l3port
+        -   total
+        -   uri
+        properties:
+            l3port:
+                type: array
+                items:
+                    $ref: '#/definitions/l3port'                        
+                description: 'list of L3 ports.'
+            total:
+                type: integer
+                description: Number of L3 ports.
+            uri:
+                type: string
+                description: URI for list of L3 ports.
+    newL2port:
+        type: object
+        required:
+        -   name
+        -   networks
+        -   interface
+        -   device 
+        properties:
+            name:
+                type: string
+                description: Name of L2 port.
+            interface:
+                type: string
+                description: Interface name of L2 port.
+            networks:
+                type: array
+                items:
+                    type: string
+                description: List of network URIs.
+            device:
+                type: string
+                description: URI of the device this L2 port belongs to.
+            description:
+                type: string
+                description: Description of L2 port.
+    l2port:
+        type: object
+        required:
+        -   id
+        -   name
+        -   networks
+        -   interface
+        -   device 
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific L2 port.'
+            name:
+                type: string
+                description: Name of L2 port.
+            interface:
+                type: string
+                description: Interface name of L2 port.
+            networks:
+                type: array
+                items:
+                    type: string
+                description: List of network URIs.
+            device:
+                type: string
+                description: URI of the device this L2 port belongs to.
+            description:
+                type: string
+                description: Description of L2 port.
+    l2ports:
+        type: object
+        required:
+        -   l2port
+        -   total
+        -   uri
+        properties:
+            l2port:
+                type: array
+                items:
+                    $ref: '#/definitions/l2port'                        
+                description: 'list of L2 ports.'
+            total:
+                type: integer
+                description: Number of L2 ports.
+            uri:
+                type: string
+                description: URI for list of L2 ports.
+    aggregatedL2portMember:
+        type: object
+        required:
+        -   device
+        -   interface
+        properties:
+            device:
+                type: string
+                description: URI of the device to which the configlet is pushed.
+            interface:
+                type: string
+                description: Interface name.
+    newAggregatedL2port:
+        type: object
+        required:
+        -   name
+        -   networks
+        -   members
+        properties:
+            name:
+                type: string
+                description: Name of aggregated L2 port.
+            esi:
+                type: string
+                description: ESI.
+            lacp:
+                type: string
+                description: LACP.
+            description:
+                type: string
+                description: Description of aggregated L2 port.
+            networks:
+                type: array
+                items:
+                    type: string
+                description: List of network URIs.
+            members:
+                type: array
+                items:
+                    $ref: '#/definitions/aggregatedL2portMember'                        
+                description: List of members.
+    aggregatedL2port:
+        type: object
+        required:
+        -   id
+        -   name
+        -   networks
+        -   members
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific aggregated L2 port.'
+            name:
+                type: string
+                description: Name of aggregated L2 port.
+            esi:
+                type: string
+                description: ESI.
+            lacp:
+                type: string
+                description: LACP.
+            description:
+                type: string
+                description: Description of aggregated L2 port.
+            networks:
+                type: array
+                items:
+                    type: string
+                description: List of network URIs.
+            members:
+                type: array
+                items:
+                    $ref: '#/definitions/aggregatedL2portMember'                        
+                description: List of members.
+    aggregatedL2ports:
+        type: object
+        required:
+        -   aggregatedL2port
+        -   total
+        -   uri
+        properties:
+            aggregatedL2port:
+                type: array
+                items:
+                    $ref: '#/definitions/aggregatedL2port'                        
+                description: 'list of aggregated L2 ports.'
+            total:
+                type: integer
+                description: Number of aggregated L2 ports.
+            uri:
+                type: string
+                description: URI for list of aggregated L2 ports.
+    statusBrief:
+        type: object
+        required:
+        -   status
+        -   uri
+        properties:
+            status:
+                type: string
+                enum: 
+                -   'unknown'
+                -   'success'
+                -   'failure'
+                -   'progress'
+                description: Aggregated deploy status of the VRF and its child objects
+            uri:
+                type: string
+                description: URI for the brief status.
+    configletOnDevice:
+        type: object
+        required:
+        -   device
+        -   configlet
+        properties:
+            device:
+                type: string
+                description: URI of the device to which the configlet is pushed.
+            configlet:
+                type: string
+                description: Configlet of the object.
+            reason:
+                type: string
+                description: Detailed reason for the status.
+    objectDetail:
+        type: object
+        required:
+        -   uri
+        -   total
+        -   configs
+        properties:
+            uri:
+                type: string
+                description: URI for the object.
+            total:
+                type: integer
+                description: Number of configs.
+            configs:
+                type: array
+                items:
+                    $ref: '#/definitions/configletOnDevice'                        
+                description: 'list of configlets pushed to each device.'
+    statusDetail:
+        type: object
+        required:
+        -   status
+        -   uri
+        -   unknown
+        -   success
+        -   failure
+        -   progress
+        properties:
+            status:
+                type: string
+                enum: 
+                -   'unknown'
+                -   'success'
+                -   'failure'
+                -   'progress'
+                description: Aggregated deploy status of the VRF and its child objects
+            uri:
+                type: string
+                description: URI for the detail status.
+            unknown:
+                type: object
+                required:
+                -   objects
+                -   total
+                properties:
+                    objects:
+                        type: array
+                        items:
+                            $ref: '#/definitions/objectDetail'                        
+                        description: 'list of objects whose deploy status is unknown.'
+                    total:
+                        type: integer
+                        description: Number of whose deploy status is unknown.
+            success:
+                type: object
+                required:
+                -   objects
+                -   total
+                properties:
+                    objects:
+                        type: array
+                        items:
+                            $ref: '#/definitions/objectDetail'                        
+                        description: 'list of objects whose deploy status is success.'
+                    total:
+                        type: integer
+                        description: Number of objects whose deploy status is success.
+            failure:
+                type: object
+                required:
+                -   objects
+                -   total
+                properties:
+                    objects:
+                        type: array
+                        items:
+                            $ref: '#/definitions/objectDetail'                        
+                        description: 'list of objects whose deploy status is failure.'
+                    total:
+                        type: integer
+                        description: Number of objects whose deploy status is failure.
+            progress:
+                type: object
+                required:
+                -   objects
+                -   total
+                properties:
+                    objects:
+                        type: array
+                        items:
+                            $ref: '#/definitions/objectDetail'                        
+                        description: 'list of objects whose deploy status is progress.'
+                    total:
+                        type: integer
+                        description: Number of objects whose deploy status is progress.

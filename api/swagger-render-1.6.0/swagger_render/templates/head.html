@@ -1,0 +1,118 @@
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{{ info.title }}</title>
+
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+     body {
+         font-size: 14px;
+         position: relative;
+     }
+
+     * {
+         box-sizing: border-box;
+     }
+
+     #side-nav {
+         top: 0;
+         position: fixed;
+         right: 0;
+         height: 100vh;
+         overflow-y: auto;
+         overflow-x: hidden;
+         padding-top: 1rem;
+         padding-bottom: 1rem;
+     }
+
+     .col-md-9 {
+         padding-left: 2rem;
+     }
+
+     .nav ul {
+         list-style: none;
+         padding-left: 2rem;
+     }
+
+     .nav ul li a {
+         padding: 5px 10px;
+         color: inherit;
+     }
+
+     .nav li {
+         transition: border 0.25s;
+         word-break: break-word;
+     }
+
+     .nav-item {
+         margin-bottom: 2px;
+     }
+
+     .nav-link.active {
+         text-decoration: underline;
+     }
+
+     .group_link {
+         color: #333;
+         font-weight: bold;
+     }
+
+     a h3 {
+         margin: 0;
+     }
+
+     .card, .jumbotron, .form-control {
+         border-radius: 0;
+     }
+
+     .card-header>a {
+         color: inherit;
+     }
+
+     .schema>.schema, .enum {
+         padding-left: 1rem;
+     }
+
+     .schema>.sKey {
+         font-weight: bold;
+     }
+
+     .schema>.sOptional {
+         font-style: italic;
+     }
+
+     .schema>.sType {
+         color: #5555aa;
+     }
+
+     .sDescription>p {
+         padding: 0;
+         margin: 0;
+         padding-left: 1rem;
+     }
+
+     .footer {
+         text-align: right;
+     }
+
+     {% for name, colors in _colors.items() %}
+     li.{{name}} {
+         background-color: #{{colors.background}};
+         border: thin solid #{{colors.border}};
+         color: #{{colors.text}};
+     }
+     .card-header.{{name}} {
+         background-color: #{{colors.background}};
+         color: #{{colors.text}};
+         border-bottom-color: #{{colors.border}};
+     }
+     .card.{{name}} {
+         border-color: #{{colors.border}};
+     }
+     {% endfor %}
+
+    </style>
+</head>

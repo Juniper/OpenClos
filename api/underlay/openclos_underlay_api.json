@@ -1,0 +1,1925 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "OpenClos Underlay API",
+        "description": "REST API to configure and deploy Underlay on IP Fabric"
+    },
+    "host": "openclos.juniper.net",
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "basePath": "/openclos/v1/underlay",
+    "paths": {
+        "/pods": {
+            "get": {
+                "description": "Gets list of pods.\n",
+                "operationId": "getPods",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/pods"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a new pod.\n",
+                "operationId": "createPod",
+                "parameters": [
+                    {
+                        "name": "pod",
+                        "in": "body",
+                        "description": "pod to add",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/newPod"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "pod added",
+                        "schema": {
+                            "$ref": "#/definitions/podDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            }
+        },
+        "/pods/{podId}": {
+            "get": {
+                "description": "Returns a pod based on UUID\n",
+                "operationId": "getPod",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/podDetail"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Modifies a pod based on UUID\n",
+                "operationId": "reconfigPod",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "name": "pod",
+                        "in": "body",
+                        "description": "pod to modify",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modifyPod"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "pod modified",
+                        "schema": {
+                            "$ref": "#/definitions/podDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a pod based on UUID\n",
+                "operationId": "deletePod",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "pod deleted"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            }
+        },
+        "/pods/{podId}/cabling-plan": {
+            "get": {
+                "description": "Returns cabling plan for a pod based on UUID\n",
+                "operationId": "getCablingPlan",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/cablingPlan"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Create cabling plan for a pod based on UUID\n",
+                "operationId": "createCablingPlan",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "cabling plan created"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            }
+        },
+        "/pods/{podId}/ztp-configuration": {
+            "get": {
+                "description": "Returns ztp configuration for a pod based on UUID\n",
+                "operationId": "getZtpConfig",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Create ztp configuration for a pod based on UUID\n",
+                "operationId": "createZtpConfiguration",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ztp configuration created"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            }
+        },
+        "/pods/{podId}/device-configuration": {
+            "get": {
+                "description": "Returns device configurations for a pod based on UUID\n",
+                "operationId": "getDeviceConfigsInZip",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "produces": [
+                    "application/zip"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Create device configurations for a pod based on UUID\n",
+                "operationId": "createDeviceConfiguration",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "device configurations created"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            }
+        },
+        "/pods/{podId}/leaf-generic-configurations/{deviceModel}": {
+            "get": {
+                "description": "Returns generic leaf configurations for a deviceModel for a pod based on UUID\n",
+                "operationId": "getLeafGenericConfiguration",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "name": "deviceModel",
+                        "in": "path",
+                        "description": "device model",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "produces": [
+                    "application/zip"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            }
+        },
+        "/pods/{podId}/devices": {
+            "get": {
+                "description": "Gets list of devices for a pod based on UUID.\n",
+                "operationId": "getDevices",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/devices"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
+        "/pods/{podId}/devices/{deviceId}": {
+            "get": {
+                "description": "Returns a device based on UUID for a pod based on UUID.\n",
+                "operationId": "getDevice",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "name": "deviceId",
+                        "in": "path",
+                        "description": "UUID of device",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/device"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            }
+        },
+        "/pods/{podId}/devices/{deviceId}/config": {
+            "get": {
+                "description": "Returns device configuration for a device based on UUID for a pod based on UUID.\n",
+                "operationId": "getDeviceConfig",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "name": "deviceId",
+                        "in": "path",
+                        "description": "UUID of device",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            }
+        },
+        "/pods/{podId}/l2-report": {
+            "get": {
+                "description": "Gets layer 2 report for a pod based on UUID.\n",
+                "operationId": "getL2Report",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/l2report"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
+        "/pods/{podId}/l3-report": {
+            "get": {
+                "description": "Gets layer 3 report for a pod based on UUID.\n",
+                "operationId": "getL3Report",
+                "parameters": [
+                    {
+                        "name": "podId",
+                        "in": "path",
+                        "description": "UUID of pod",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/l3report"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
+        "/images/{junosImageName}": {
+            "get": {
+                "description": "Gets JUNOS image.\n",
+                "operationId": "getJunosImage",
+                "parameters": [
+                    {
+                        "name": "junosImageName",
+                        "in": "path",
+                        "description": "Name of JUNOS image",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "produces": [
+                    "application/zip"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            }
+        },
+        "/conf": {
+            "get": {
+                "description": "Returns OpenClos configuration parameters.\n",
+                "operationId": "getOpenClosConfigParams",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/OpenClosConf"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Sets OpenClos configuration parameters.\n",
+                "operationId": "setOpenClosConfigParams",
+                "parameters": [
+                    {
+                        "name": "conf",
+                        "in": "body",
+                        "description": "OpenClos configuration parameters to set",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/OpenClosConf"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OpenClos configuration parameters set"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/restError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "restError": {
+            "type": "object",
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ],
+            "properties": {
+                "errorCode": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "errorMessage": {
+                    "type": "string"
+                }
+            }
+        },
+        "newPod": {
+            "type": "object",
+            "required": [
+                "name",
+                "spineSettings",
+                "spineCount",
+                "spineAS",
+                "leafSettings",
+                "leafCount",
+                "leafAS",
+                "topologyType",
+                "loopbackPrefix",
+                "vlanPrefix",
+                "interConnectPrefix",
+                "outOfBandAddressList",
+                "managementPrefix",
+                "hostOrVmCountPerLeaf",
+                "devicePassword",
+                "outOfBandGateway",
+                "devices"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of pod."
+                },
+                "spineSettings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/deviceSetting"
+                    },
+                    "description": "Settings for spines"
+                },
+                "spineCount": {
+                    "type": "integer",
+                    "description": "Number of spines."
+                },
+                "spineAS": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Starting ASN for the spines."
+                },
+                "leafSettings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/deviceSetting"
+                    },
+                    "description": "Settings for leaves."
+                },
+                "leafCount": {
+                    "type": "integer",
+                    "description": "Number of leaves."
+                },
+                "leafAS": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Starting ASN for the leaves."
+                },
+                "topologyType": {
+                    "type": "string",
+                    "description": "Type of the topology. (threeStage or fiveStage)"
+                },
+                "loopbackPrefix": {
+                    "type": "string",
+                    "description": "Block of loopback IPs in CIDR format."
+                },
+                "vlanPrefix": {
+                    "type": "string",
+                    "description": "Block of VLAN routing IPs in CIDR format."
+                },
+                "interConnectPrefix": {
+                    "type": "string",
+                    "description": "Block of IPs connecting spines and leaves in CIDR format."
+                },
+                "outOfBandAddressList": {
+                    "type": "string",
+                    "description": "Out of band address list."
+                },
+                "managementPrefix": {
+                    "type": "string",
+                    "description": "Block of management IPs in CIDR format."
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Description of pod."
+                },
+                "hostOrVmCountPerLeaf": {
+                    "type": "integer",
+                    "description": "Maximum number of hosts allowed on a leaf."
+                },
+                "devicePassword": {
+                    "type": "string",
+                    "description": "cleartext password of device."
+                },
+                "outOfBandGateway": {
+                    "type": "string",
+                    "description": "Out of band gateway address."
+                },
+                "leafUplinkcountMustBeUp": {
+                    "type": "integer",
+                    "description": "Minimum number of uplinks on a leaf that have to be in up state."
+                },
+                "devices": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/newDevice"
+                    },
+                    "description": "New device to be added"
+                }
+            }
+        },
+        "modifyPod": {
+            "type": "object",
+            "required": [
+                "id",
+                "name",
+                "spineSettings",
+                "spineCount",
+                "spineAS",
+                "leafSettings",
+                "leafCount",
+                "leafAS",
+                "topologyType",
+                "loopbackPrefix",
+                "vlanPrefix",
+                "interConnectPrefix",
+                "outOfBandAddressList",
+                "managementPrefix",
+                "hostOrVmCountPerLeaf",
+                "devicePassword",
+                "outOfBandGateway",
+                "devices"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID of the pod."
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name of pod."
+                },
+                "spineSettings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/deviceSetting"
+                    },
+                    "description": "Settings for spines"
+                },
+                "spineCount": {
+                    "type": "integer",
+                    "description": "Number of spines."
+                },
+                "spineAS": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Starting ASN for the spines."
+                },
+                "leafSettings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/deviceSetting"
+                    },
+                    "description": "Settings for leaves."
+                },
+                "leafCount": {
+                    "type": "integer",
+                    "description": "Number of leaves."
+                },
+                "leafAS": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Starting ASN for the leaves."
+                },
+                "topologyType": {
+                    "type": "string",
+                    "description": "Type of the topology. (threeStage or fiveStage)"
+                },
+                "loopbackPrefix": {
+                    "type": "string",
+                    "description": "Block of loopback IPs in CIDR format."
+                },
+                "vlanPrefix": {
+                    "type": "string",
+                    "description": "Block of VLAN routing IPs in CIDR format."
+                },
+                "interConnectPrefix": {
+                    "type": "string",
+                    "description": "Block of IPs connecting spines and leaves in CIDR format."
+                },
+                "outOfBandAddressList": {
+                    "type": "string",
+                    "description": "Out of band address list."
+                },
+                "managementPrefix": {
+                    "type": "string",
+                    "description": "Block of management IPs in CIDR format."
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Description of pod."
+                },
+                "hostOrVmCountPerLeaf": {
+                    "type": "integer",
+                    "description": "Maximum number of hosts allowed on a leaf."
+                },
+                "devicePassword": {
+                    "type": "string",
+                    "description": "cleartext password of device."
+                },
+                "outOfBandGateway": {
+                    "type": "string",
+                    "description": "Out of band gateway address."
+                },
+                "leafUplinkcountMustBeUp": {
+                    "type": "integer",
+                    "description": "Minimum number of uplinks on a leaf that have to be in up state."
+                },
+                "devices": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/newDevice"
+                    },
+                    "description": "New device to be added"
+                }
+            }
+        },
+        "podDetail": {
+            "type": "object",
+            "required": [
+                "id",
+                "name",
+                "spineSettings",
+                "spineCount",
+                "spineAS",
+                "leafSettings",
+                "leafCount",
+                "leafAS",
+                "topologyType",
+                "loopbackPrefix",
+                "vlanPrefix",
+                "interConnectPrefix",
+                "outOfBandAddressList",
+                "managementPrefix",
+                "hostOrVmCountPerLeaf",
+                "devicePassword",
+                "outOfBandGateway",
+                "devices",
+                "uri",
+                "cablingPlan",
+                "deviceConfiguration",
+                "ztpConfiguration",
+                "l2Report",
+                "l3Report"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID of the pod."
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name of pod."
+                },
+                "spineSettings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/deviceSetting"
+                    },
+                    "description": "Settings for spines"
+                },
+                "spineCount": {
+                    "type": "integer",
+                    "description": "Number of spines."
+                },
+                "spineAS": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Starting ASN for the spines."
+                },
+                "leafSettings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/deviceSetting"
+                    },
+                    "description": "Settings for leaves."
+                },
+                "leafCount": {
+                    "type": "integer",
+                    "description": "Number of leaves."
+                },
+                "leafAS": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Starting ASN for the leaves."
+                },
+                "topologyType": {
+                    "type": "string",
+                    "description": "Type of the topology. (threeStage or fiveStage)"
+                },
+                "loopbackPrefix": {
+                    "type": "string",
+                    "description": "Block of loopback IPs in CIDR format."
+                },
+                "vlanPrefix": {
+                    "type": "string",
+                    "description": "Block of VLAN routing IPs in CIDR format."
+                },
+                "interConnectPrefix": {
+                    "type": "string",
+                    "description": "Block of IPs connecting spines and leaves in CIDR format."
+                },
+                "outOfBandAddressList": {
+                    "type": "string",
+                    "description": "Out of band address list."
+                },
+                "managementPrefix": {
+                    "type": "string",
+                    "description": "Block of management IPs in CIDR format."
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Description of pod."
+                },
+                "hostOrVmCountPerLeaf": {
+                    "type": "integer",
+                    "description": "Maximum number of hosts allowed on a leaf."
+                },
+                "devicePassword": {
+                    "type": "string",
+                    "description": "cleartext password of device."
+                },
+                "outOfBandGateway": {
+                    "type": "string",
+                    "description": "Out of band gateway address."
+                },
+                "leafUplinkcountMustBeUp": {
+                    "type": "integer",
+                    "description": "Minimum number of uplinks on a leaf that have to be in up state."
+                },
+                "devices": {
+                    "type": "object",
+                    "required": [
+                        "uri",
+                        "total"
+                    ],
+                    "properties": {
+                        "uri": {
+                            "type": "string",
+                            "description": "URI of all devices for the pod."
+                        },
+                        "total": {
+                            "type": "integer",
+                            "description": "Number of devices for the pod."
+                        }
+                    },
+                    "description": "Devices for the pod."
+                },
+                "uri": {
+                    "type": "string",
+                    "description": "URI for the pod."
+                },
+                "cablingPlan": {
+                    "type": "object",
+                    "required": [
+                        "uri"
+                    ],
+                    "properties": {
+                        "uri": {
+                            "type": "string",
+                            "description": "URI of cabling plan for the pod."
+                        }
+                    },
+                    "description": "Cabling plan for the pod."
+                },
+                "deviceConfiguration": {
+                    "type": "object",
+                    "required": [
+                        "uri"
+                    ],
+                    "properties": {
+                        "uri": {
+                            "type": "string",
+                            "description": "URI of device configurations for the pod."
+                        }
+                    },
+                    "description": "Device configurations for the pod."
+                },
+                "ztpConfiguration": {
+                    "type": "object",
+                    "required": [
+                        "uri"
+                    ],
+                    "properties": {
+                        "uri": {
+                            "type": "string",
+                            "description": "URI of ztp configurations for the pod."
+                        }
+                    },
+                    "description": "Ztp configurations for the pod."
+                },
+                "l2Report": {
+                    "type": "object",
+                    "required": [
+                        "uri"
+                    ],
+                    "properties": {
+                        "uri": {
+                            "type": "string",
+                            "description": "URI of L2 report for the pod."
+                        }
+                    },
+                    "description": "L2 report for the pod."
+                },
+                "l3Report": {
+                    "type": "object",
+                    "required": [
+                        "uri"
+                    ],
+                    "properties": {
+                        "uri": {
+                            "type": "string",
+                            "description": "URI of L3 report for the pod."
+                        }
+                    },
+                    "description": "L3 report for the pod."
+                }
+            }
+        },
+        "deviceSetting": {
+            "type": "object",
+            "required": [
+                "deviceType"
+            ],
+            "properties": {
+                "deviceType": {
+                    "type": "string",
+                    "description": "Make model of the device."
+                },
+                "junosImage": {
+                    "type": "string",
+                    "description": "JUNOS image of the device."
+                },
+                "uplinkPorts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Spec for uplink ports in regular expression format."
+                },
+                "downlinkPorts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Spec for downlink ports in regular expression format."
+                }
+            }
+        },
+        "newDevice": {
+            "type": "object",
+            "required": [
+                "name",
+                "role",
+                "family"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the device."
+                },
+                "macAddress": {
+                    "type": "string",
+                    "description": "MAC address of the device."
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "spine",
+                        "leaf"
+                    ],
+                    "description": "Role of the device."
+                },
+                "username": {
+                    "type": "string",
+                    "description": "Username of the device."
+                },
+                "password": {
+                    "type": "string",
+                    "description": "cleartext password of the device."
+                },
+                "family": {
+                    "type": "string",
+                    "description": "Device family of the device."
+                },
+                "serialNumber": {
+                    "type": "string",
+                    "description": "Serial number of the device."
+                },
+                "deployStatus": {
+                    "type": "string",
+                    "enum": [
+                        "deploy",
+                        "provision"
+                    ],
+                    "description": "Deploy status of the device."
+                }
+            }
+        },
+        "device": {
+            "type": "object",
+            "required": [
+                "id",
+                "name",
+                "macAddress",
+                "role",
+                "username",
+                "password",
+                "family",
+                "serialNumber",
+                "deployStatus",
+                "uri"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID of the device."
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name of the device."
+                },
+                "macAddress": {
+                    "type": "string",
+                    "description": "MAC address of the device."
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "spine",
+                        "leaf"
+                    ],
+                    "description": "Role of the device."
+                },
+                "username": {
+                    "type": "string",
+                    "description": "Username of the device."
+                },
+                "password": {
+                    "type": "string",
+                    "description": "cleartext password of the device."
+                },
+                "family": {
+                    "type": "string",
+                    "description": "Device family of the device."
+                },
+                "serialNumber": {
+                    "type": "string",
+                    "description": "Serial number of the device."
+                },
+                "deployStatus": {
+                    "type": "string",
+                    "enum": [
+                        "deploy",
+                        "provision"
+                    ],
+                    "description": "Deploy status of the device."
+                },
+                "uri": {
+                    "type": "string",
+                    "description": "URI for the device."
+                }
+            }
+        },
+        "podBrief": {
+            "type": "object",
+            "required": [
+                "id",
+                "name",
+                "spineDeviceType",
+                "spineCount",
+                "leafSettings",
+                "leafCount",
+                "devicePassword",
+                "uri"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID of the pod."
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name of pod."
+                },
+                "spineDeviceType": {
+                    "type": "string",
+                    "description": "Make model of the spines."
+                },
+                "spineCount": {
+                    "type": "integer",
+                    "description": "Number of spines."
+                },
+                "leafSettings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/deviceSetting"
+                    },
+                    "description": "Settings for leaves."
+                },
+                "leafCount": {
+                    "type": "integer",
+                    "description": "Number of leaves."
+                },
+                "devicePassword": {
+                    "type": "string",
+                    "description": "cleartext password of device."
+                },
+                "uri": {
+                    "type": "string",
+                    "description": "URI for the pod."
+                }
+            }
+        },
+        "pods": {
+            "type": "object",
+            "required": [
+                "pod",
+                "total",
+                "uri"
+            ],
+            "properties": {
+                "pod": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/podBrief"
+                    },
+                    "description": "List of pods."
+                },
+                "total": {
+                    "type": "integer",
+                    "description": "Number of pods."
+                },
+                "uri": {
+                    "type": "string",
+                    "description": "URI for list of pods."
+                }
+            }
+        },
+        "devices": {
+            "type": "object",
+            "required": [
+                "device",
+                "total",
+                "uri"
+            ],
+            "properties": {
+                "device": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/device"
+                    },
+                    "description": "List of devices."
+                },
+                "total": {
+                    "type": "integer",
+                    "description": "Number of devices."
+                },
+                "uri": {
+                    "type": "string",
+                    "description": "URI for list of devices."
+                }
+            }
+        },
+        "cablingPlan": {
+            "type": "object",
+            "required": [
+                "devices",
+                "links"
+            ],
+            "properties": {
+                "devices": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "id",
+                            "name",
+                            "role",
+                            "family"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "description": "UUID of the device."
+                            },
+                            "name": {
+                                "type": "string",
+                                "description": "Name of the device."
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "spine",
+                                    "leaf"
+                                ],
+                                "description": "Role of the device."
+                            },
+                            "family": {
+                                "type": "string",
+                                "description": "Device family of the device."
+                            }
+                        }
+                    }
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "linkType",
+                            "device1",
+                            "port1",
+                            "ip1",
+                            "device2",
+                            "port2",
+                            "ip2"
+                        ],
+                        "properties": {
+                            "linkType": {
+                                "type": "string",
+                                "description": "Type of the link."
+                            },
+                            "device1": {
+                                "type": "string",
+                                "description": "Name of device1."
+                            },
+                            "port1": {
+                                "type": "string",
+                                "description": "Port on device1."
+                            },
+                            "ip1": {
+                                "type": "string",
+                                "description": "Link IP on device1."
+                            },
+                            "device2": {
+                                "type": "string",
+                                "description": "Name of device2."
+                            },
+                            "port2": {
+                                "type": "string",
+                                "description": "Port on device2."
+                            },
+                            "ip2": {
+                                "type": "string",
+                                "description": "Link IP on device2."
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "l2report": {
+            "type": "object",
+            "required": [
+                "devices",
+                "links"
+            ],
+            "properties": {
+                "devices": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "id",
+                            "name",
+                            "role",
+                            "family",
+                            "status",
+                            "statusReason",
+                            "deployStatus"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "description": "UUID of the device."
+                            },
+                            "name": {
+                                "type": "string",
+                                "description": "Name of the device."
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "spine",
+                                    "leaf"
+                                ],
+                                "description": "Role of the device."
+                            },
+                            "family": {
+                                "type": "string",
+                                "description": "Device family of the device."
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "Status of the device."
+                            },
+                            "statusReason": {
+                                "type": "string",
+                                "description": "Status reason of the device."
+                            },
+                            "deployStatus": {
+                                "type": "string",
+                                "enum": [
+                                    "deploy",
+                                    "provision"
+                                ],
+                                "description": "Deploy status of the device."
+                            }
+                        }
+                    }
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "linkType",
+                            "device1",
+                            "port1",
+                            "ip1",
+                            "device2",
+                            "port2",
+                            "ip2",
+                            "status"
+                        ],
+                        "properties": {
+                            "linkType": {
+                                "type": "string",
+                                "description": "Type of the link."
+                            },
+                            "device1": {
+                                "type": "string",
+                                "description": "Name of device1."
+                            },
+                            "port1": {
+                                "type": "string",
+                                "description": "Port on device1."
+                            },
+                            "ip1": {
+                                "type": "string",
+                                "description": "Link IP on device1."
+                            },
+                            "device2": {
+                                "type": "string",
+                                "description": "Name of device2."
+                            },
+                            "port2": {
+                                "type": "string",
+                                "description": "Port on device2."
+                            },
+                            "ip2": {
+                                "type": "string",
+                                "description": "Link IP on device2."
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "Status of the link."
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "l3report": {
+            "type": "object",
+            "required": [
+                "devices",
+                "peers"
+            ],
+            "properties": {
+                "devices": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "id",
+                            "name",
+                            "role",
+                            "family",
+                            "status",
+                            "statusReason",
+                            "deployStatus"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "description": "UUID of the device."
+                            },
+                            "name": {
+                                "type": "string",
+                                "description": "Name of the device."
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "spine",
+                                    "leaf"
+                                ],
+                                "description": "Role of the device."
+                            },
+                            "family": {
+                                "type": "string",
+                                "description": "Device family of the device."
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "Status of the device."
+                            },
+                            "statusReason": {
+                                "type": "string",
+                                "description": "Status reason of the device."
+                            },
+                            "deployStatus": {
+                                "type": "string",
+                                "enum": [
+                                    "deploy",
+                                    "provision"
+                                ],
+                                "description": "Deploy status of the device."
+                            }
+                        }
+                    }
+                },
+                "peers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "device1",
+                            "asn1",
+                            "ip1",
+                            "device2",
+                            "asn2",
+                            "ip2",
+                            "status",
+                            "inPacket",
+                            "outPacket",
+                            "lastFlap",
+                            "routes",
+                            "outQueue"
+                        ],
+                        "properties": {
+                            "device1": {
+                                "type": "string",
+                                "description": "Name of device1."
+                            },
+                            "asn1": {
+                                "type": "string",
+                                "description": "ASN on device1."
+                            },
+                            "ip1": {
+                                "type": "string",
+                                "description": "Link IP on device1."
+                            },
+                            "device2": {
+                                "type": "string",
+                                "description": "Name of device2."
+                            },
+                            "asn2": {
+                                "type": "string",
+                                "description": "ASN on device2."
+                            },
+                            "ip2": {
+                                "type": "string",
+                                "description": "Link IP on device2."
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "Status of the link."
+                            },
+                            "inPacket": {
+                                "type": "integer",
+                                "description": "InPacket statistics of the link."
+                            },
+                            "outPacket": {
+                                "type": "integer",
+                                "description": "OutPacket statistics of the link."
+                            },
+                            "lastFlap": {
+                                "type": "integer",
+                                "description": "LastFlap statistics of the link."
+                            },
+                            "routes": {
+                                "type": "integer",
+                                "description": "Routes statistics of the link."
+                            },
+                            "outQueue": {
+                                "type": "integer",
+                                "description": "OutQueue statistics of the link."
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "OpenClosConf": {
+            "type": "object",
+            "description": "OpenClos configuration parameters.",
+            "properties": {
+                "snmpTrap": {
+                    "type": "object",
+                    "description": "SNMP trap configuration.",
+                    "required": [
+                        "openclos_trap_group"
+                    ],
+                    "properties": {
+                        "openclos_trap_group": {
+                            "type": "object",
+                            "description": "SNMP trap group configuration.",
+                            "required": [
+                                "target",
+                                "port"
+                            ],
+                            "properties": {
+                                "target": {
+                                    "type": "string",
+                                    "description": "SNMP trap target IP address."
+                                },
+                                "port": {
+                                    "type": "integer",
+                                    "description": "SNMP trap port."
+                                }
+                            }
+                        },
+                        "threadCount": {
+                            "type": "integer",
+                            "description": "Number of thread in SNMP trap daemon thread pool."
+                        }
+                    }
+                },
+                "httpServer": {
+                    "type": "object",
+                    "description": "REST server configuration (http only).",
+                    "required": [
+                        "ipAddr",
+                        "port"
+                    ],
+                    "properties": {
+                        "ipAddr": {
+                            "type": "string",
+                            "description": "REST server IP address."
+                        },
+                        "port": {
+                            "type": "integer",
+                            "description": "REST server port."
+                        }
+                    }
+                },
+                "restServer": {
+                    "type": "object",
+                    "description": "REST server configuration (http and https).",
+                    "required": [
+                        "protocol",
+                        "version",
+                        "ipAddr",
+                        "port"
+                    ],
+                    "properties": {
+                        "protocol": {
+                            "type": "string",
+                            "enum": [
+                                "http",
+                                "https"
+                            ],
+                            "description": "REST server protocol."
+                        },
+                        "version": {
+                            "type": "integer",
+                            "description": "REST server version."
+                        },
+                        "ipAddr": {
+                            "type": "string",
+                            "description": "REST server IP address."
+                        },
+                        "port": {
+                            "type": "integer",
+                            "description": "REST server port."
+                        },
+                        "username": {
+                            "type": "string",
+                            "description": "REST server user name (in https mode)."
+                        },
+                        "password": {
+                            "type": "string",
+                            "description": "REST server password in 2-way encrypted format (in https mode)."
+                        },
+                        "certificate": {
+                            "type": "string",
+                            "description": "Full path of REST server certificate file (in https mode)."
+                        }
+                    }
+                },
+                "dbUrl": {
+                    "type": "string",
+                    "description": "URL of sqlite DB (sqlite only)."
+                },
+                "dotColors": {
+                    "type": "array",
+                    "description": "Color configuration for DOT file.",
+                    "items": {
+                        "type": "string",
+                        "description": "Name of color."
+                    }
+                },
+                "supportedDevices": {
+                    "type": "array",
+                    "description": "Supported device configuration.",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "family",
+                            "role"
+                        ],
+                        "properties": {
+                            "family": {
+                                "type": "string",
+                                "description": "Make model of the device."
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "spine",
+                                    "leaf"
+                                ],
+                                "description": "Role of the device."
+                            },
+                            "uplinkPortsCount": {
+                                "type": "integer",
+                                "description": "Number of uplinks for the device."
+                            },
+                            "downlinkPortsCount": {
+                                "type": "integer",
+                                "description": "Number of downlinks for the device."
+                            },
+                            "uplinkPorts": {
+                                "type": "array",
+                                "description": "Uplink specification for the device.",
+                                "items": {
+                                    "type": "string",
+                                    "description": "In regular expression format."
+                                }
+                            },
+                            "downlinkPorts": {
+                                "type": "array",
+                                "description": "Downlink specification for the device.",
+                                "items": {
+                                    "type": "string",
+                                    "description": "In regular expression format."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
