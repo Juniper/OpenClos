@@ -559,7 +559,7 @@ class ConfigEngine():
         self._commitQueue.addJobs(deployments)
 
 
-# def main():        
+# def main():
     # conf = {}
     # conf['outputDir'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
     # conf['plugin'] = [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]
