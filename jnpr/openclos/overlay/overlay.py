@@ -569,7 +569,7 @@ class ConfigEngine():
     # with dao.getReadWriteSession() as session:
         # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '1.2.3.4', '1.1.1.1', 'pod1', 'test', 'foobar')
         # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '1.2.3.5', '1.1.1.2', 'pod1', 'test', 'foobar')
-        # d3 = overlay.createDevice(session, 'd3', 'description for d3', 'spine', '1.2.3.6', '1.1.1.2', 'pod1', 'test', 'foobar')
+        # d3 = overlay.createDevice(session, 'd3', 'description for d3', 'spine', '1.2.3.6', '1.1.1.3', 'pod1', 'test', 'foobar')
         # d1_id = d1.id
         # d2_id = d2.id
         # d3_id = d3.id

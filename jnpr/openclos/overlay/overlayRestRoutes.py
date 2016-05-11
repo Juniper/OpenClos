@@ -10,7 +10,7 @@ import traceback
 import json
 
 from jnpr.openclos.exception import InvalidRequest, OverlayFabricNotFound, OverlayTenantNotFound, OverlayVrfNotFound, OverlayDeviceNotFound, OverlayNetworkNotFound, OverlaySubnetNotFound, OverlayL3portNotFound, OverlayL2portNotFound, OverlayAggregatedL2portNotFound, PlatformError
-from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayDevice, OverlayNetwork, OverlaySubnet, OverlayL3port, OverlayL2port, OverlayAggregatedL2port, OverlayDeployStatus
+from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayDevice, OverlayNetwork, OverlaySubnet, OverlayL3port, OverlayL2port, OverlayAggregatedL2port, OverlayAggregatedL2portMember, OverlayDeployStatus
 from jnpr.openclos.overlay.overlay import Overlay
 from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue
 
@@ -234,9 +234,21 @@ class OverlayRestRoutes():
 
         return device
 
+    def _checkDeviceDependency(self, dbSession, deviceId):
+        if dbSession.query(OverlayL2port).filter(OverlayL2port.overlay_device_id == deviceId).count() > 0:
+            raise ValueError('Device %s has L2 port active on it. Please delete L2 port explicitly first' % deviceId)
+    
+        if dbSession.query(OverlayAggregatedL2portMember).filter(OverlayAggregatedL2portMember.overlay_device_id == deviceId).count() > 0:
+            raise ValueError('Device %s has aggregated L2 port active on it. Please delete aggregated L2 port explicitly first' % deviceId)
+            
     def deleteDevice(self, dbSession, deviceId):
             
         try:
+            # Validate if there is l2port or aggregatedL2port active on this device.
+            # If there is, this request will fail with 500. User needs to delete l2port/aggregatedL2port explicitly 
+            # and then try to delete device again.
+            self._checkDeviceDependency(dbSession, deviceId)
+            
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             self.__dao.deleteObject(dbSession, deviceObject)
             logger.info("OverlayDevice[id='%s', name='%s']: deleted", deviceObject.id, deviceObject.name)
