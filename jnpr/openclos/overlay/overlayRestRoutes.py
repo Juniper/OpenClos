@@ -775,7 +775,7 @@ class OverlayRestRoutes():
         try:
             name = vrfDict['name']
             description = vrfDict.get('description')
-            routedVnid = vrfDict['routedVnid']
+            routedVnid = vrfDict.get('routedVnid')
             loopbackAddress = vrfDict.get('loopbackAddress')
             
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
