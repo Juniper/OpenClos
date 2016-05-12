@@ -90,11 +90,19 @@ class TestDeviceSku(unittest.TestCase):
     def testExpandPortNameBadRegex3(self):
         with self.assertRaises(InvalidConfiguration) as ve:
             self.deviceSku.portRegexToList('-0/0/[1-10]')
+    def testExpandPortNameBadRegex4(self):
+        with self.assertRaises(InvalidConfiguration) as ve:
+            self.deviceSku.portRegexToList('xe-0/0/[10-1]')
     def testExpandPortNameEmpty(self):
         portNames = self.deviceSku.portRegexToList('')
         self.assertEqual(0, len(portNames))
         portNames = self.deviceSku.portRegexToList(None)
         self.assertEqual(0, len(portNames))
+
+    def testExpandPortNameSinglePort(self):
+        portNames = self.deviceSku.portRegexToList('xe-0/0/[1-1]')
+        self.assertEqual(1, len(portNames))
+        self.assertEqual('xe-0/0/1', portNames[0])
 
     def testExpandPortName(self):
         portNames = self.deviceSku.portRegexToList('xe-0/0/[1-10]')

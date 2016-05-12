@@ -373,6 +373,9 @@ class DeviceSku(PropertyLoader):
         startNum = int(match.group(2))
         endNum = int(match.group(3))
         
+        if endNum < startNum:
+            raise InvalidConfiguration("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (portRegex))
+            
         for id in range(startNum, endNum + 1):
             portNames.append(preRegx[:-1] + str(id) + postRegx[1:])
             
