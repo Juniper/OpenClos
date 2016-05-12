@@ -242,8 +242,8 @@ class OverlayNetwork(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     name = Column(String(255), nullable=False)
     description = Column(String(256))
-    vlanid = Column(Integer)
-    vnid = Column(Integer)
+    vlanid = Column(Integer, unique=True) # for current release, vlanid has to be globally unique
+    vnid = Column(Integer, unique=True) # for current release, vnid has to be globally unique
     pureL3Int = Column(Boolean)
     overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'), nullable=False)
     overlay_vrf = relationship("OverlayVrf", backref=backref('overlay_networks', order_by=name, cascade='all, delete, delete-orphan'))
