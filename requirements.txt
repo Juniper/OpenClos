@@ -1,5 +1,6 @@
 --index-url https://pypi.python.org/simple/
 
+paramiko==1.17.0
 netaddr
 sqlalchemy>=0.9.6
 pyyaml
