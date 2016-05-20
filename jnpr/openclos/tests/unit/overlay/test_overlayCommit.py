@@ -98,7 +98,7 @@ class TestOverlayCommitJob(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             port = self.helper._createL2port(session)
             portUrl = port.getUrl()
-            deployment = OverlayDeployStatus("", portUrl, "delete", port.overlay_device, port.overlay_networks[0].overlay_vrf)
+            deployment = OverlayDeployStatus("", portUrl, "delete", port.overlay_device, port.overlay_networks[0].overlay_vrf.overlay_tenant.overlay_fabric)
             self._dao.createObjects(session, [deployment])
             session.commit()
             commitJob = OverlayCommitJob(self, deployment)
@@ -110,7 +110,7 @@ class TestOverlayCommitJob(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             port = self.helper._createL2port(session)
             portUrl = port.getUrl()
-            deployment = OverlayDeployStatus("", portUrl, "delete", port.overlay_device, port.overlay_networks[0].overlay_vrf)
+            deployment = OverlayDeployStatus("", portUrl, "delete", port.overlay_device, port.overlay_networks[0].overlay_vrf.overlay_tenant.overlay_fabric)
             self._dao.createObjects(session, [deployment])
             session.commit()
             commitJob = OverlayCommitJob(self, deployment)
@@ -122,7 +122,7 @@ class TestOverlayCommitJob(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             port = self.helper._createL2port(session)
             portUrl = port.getUrl()
-            deployment = OverlayDeployStatus("", portUrl, "delete", port.overlay_device, port.overlay_networks[0].overlay_vrf)
+            deployment = OverlayDeployStatus("", portUrl, "delete", port.overlay_device, port.overlay_networks[0].overlay_vrf.overlay_tenant.overlay_fabric)
             self._dao.createObjects(session, [deployment])
             session.commit()
             commitJob = OverlayCommitJob(self, deployment)

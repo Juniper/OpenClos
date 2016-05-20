@@ -51,6 +51,7 @@ class OverlayRestRoutes():
         context['restServer'].addIndexLink(self.baseUrl + '/l3ports')
         context['restServer'].addIndexLink(self.baseUrl + '/l2ports')
         context['restServer'].addIndexLink(self.baseUrl + '/aggregatedL2ports')
+        context['restServer'].addIndexLink(self.baseUrl + '/deployStatus')
         
         # GET APIs
         self.app.route(self.baseUrl + '/devices', 'GET', self.getDevices)
@@ -61,7 +62,6 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/tenants/<tenantId>', 'GET', self.getTenant)
         self.app.route(self.baseUrl + '/vrfs', 'GET', self.getVrfs)
         self.app.route(self.baseUrl + '/vrfs/<vrfId>', 'GET', self.getVrf)
-        self.app.route(self.baseUrl + '/vrfs/<vrfId>/status', 'GET', self.getVrfStatus)
         self.app.route(self.baseUrl + '/networks', 'GET', self.getNetworks)
         self.app.route(self.baseUrl + '/networks/<networkId>', 'GET', self.getNetwork)
         self.app.route(self.baseUrl + '/subnets', 'GET', self.getSubnets)
@@ -72,6 +72,7 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/l2ports/<l2portId>', 'GET', self.getL2port)
         self.app.route(self.baseUrl + '/aggregatedL2ports', 'GET', self.getAggregatedL2ports)
         self.app.route(self.baseUrl + '/aggregatedL2ports/<aggregatedL2portId>', 'GET', self.getAggregatedL2port)
+        self.app.route(self.baseUrl + '/deployStatus', 'GET', self.getDeployStatus)
 
         # POST/PUT APIs
         self.app.route(self.baseUrl + '/devices', 'POST', self.createDevice)
@@ -124,8 +125,8 @@ class OverlayRestRoutes():
         device['uri'] = '%s/devices/%s' % (self._getUriPrefix(), deviceObject.id)
         fabrics = []
         for fabric in deviceObject.overlay_fabrics:
-            fabrics.append({'uri': '%s/fabrics/%s' % (self._getUriPrefix(), fabric.id)})
-        device['fabrics'] = {'fabric': fabrics, 'total': len(deviceObject.overlay_fabrics)}
+            fabrics.append('%s/fabrics/%s' % (self._getUriPrefix(), fabric.id))
+        device['fabrics'] = fabrics
         return device
     
     def getDevices(self, dbSession):
@@ -271,12 +272,12 @@ class OverlayRestRoutes():
         fabric['uri'] = '%s/fabrics/%s' % (self._getUriPrefix(), fabricObject.id)
         devices = []
         for device in fabricObject.overlay_devices:
-            devices.append({'uri': '%s/devices/%s' % (self._getUriPrefix(), device.id)})
-        fabric['devices'] = {'device': devices, 'total': len(fabricObject.overlay_devices)}
+            devices.append('%s/devices/%s' % (self._getUriPrefix(), device.id))
+        fabric['devices'] = devices
         tenants = []
         for tenant in fabricObject.overlay_tenants:
-            tenants.append({'uri': '%s/tenants/%s' % (self._getUriPrefix(), tenant.id)})
-        fabric['tenants'] = {'tenant': tenants, 'total': len(fabricObject.overlay_tenants)}
+            tenants.append('%s/tenants/%s' % (self._getUriPrefix(), tenant.id))
+        fabric['tenants'] = tenants
         return fabric
     
     def getFabrics(self, dbSession):
@@ -420,8 +421,8 @@ class OverlayRestRoutes():
         tenant['fabric'] = '%s/fabrics/%s' % (self._getUriPrefix(), tenantObject.overlay_fabric.id)
         vrfs = []
         for vrf in tenantObject.overlay_vrfs:
-            vrfs.append({'uri': '%s/vrfs/%s' % (self._getUriPrefix(), vrf.id)})
-        tenant['vrfs'] = {'vrf': vrfs, 'total': len(tenantObject.overlay_vrfs)}
+            vrfs.append('%s/vrfs/%s' % (self._getUriPrefix(), vrf.id))
+        tenant['vrfs'] = vrfs
         return tenant
     
     def getTenants(self, dbSession):
@@ -547,11 +548,8 @@ class OverlayRestRoutes():
         vrf['tenant'] = '%s/tenants/%s' % (self._getUriPrefix(), vrfObject.overlay_tenant.id)
         networks = []
         for network in vrfObject.overlay_networks:
-            networks.append({'uri': '%s/networks/%s' % (self._getUriPrefix(), network.id)})
-        vrf['networks'] = {'network': networks, 'total': len(vrfObject.overlay_networks)}
-        vrf['status'] = {}
-        vrf['status']['brief'] = '%s/vrfs/%s/status?mode=brief' % (self._getUriPrefix(), vrfObject.id)
-        vrf['status']['detail'] = '%s/vrfs/%s/status?mode=detail' % (self._getUriPrefix(), vrfObject.id)
+            networks.append('%s/networks/%s' % (self._getUriPrefix(), network.id))
+        vrf['networks'] = networks
         return vrf
     
     def getVrfs(self, dbSession):
@@ -583,150 +581,6 @@ class OverlayRestRoutes():
         
         return {'vrf': self._populateVrf(vrfObject)}
         
-    def _getVrfStatusBrief(self, dbSession, vrfId):
-        try:
-            # get all object status under this VRF
-            # XXX when inserting into OverlayDeployStatus table, make sure to insert a row for OverlayFabric too
-            # so the same OverlayFabric configlet would be inserted NxM times if we have <N> devices and <M> VRFs under
-            # this OverlayFabric
-            # a little trade-off between normalization and simple schema for OverlayDeployStatus table
-            statusAll = dbSession.query(OverlayDeployStatus).filter(OverlayDeployStatus.overlay_vrf_id == vrfId).all()
-        except Exception as ex:
-            logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
-        
-        logger.debug("getVrfStatusBrief: count %d", len(statusAll))
-        
-        unknownObjects = 0
-        successObjects = 0
-        failureObjects = 0
-        progressObjects = 0
-        for status in statusAll:
-            if status.status == 'unknown':
-                unknownObjects += 1
-            elif status.status == 'success':
-                successObjects += 1
-            elif status.status == 'failure':
-                failureObjects += 1
-            elif status.status == 'progress':
-                progressObjects += 1
-                
-        # aggregated status will be progress only if there is no failure
-        if failureObjects > 0:
-            aggregatedStatus = 'failure'
-        elif progressObjects > 0:
-            aggregatedStatus = 'progress'
-        elif unknownObjects > 0:
-            aggregatedStatus = 'unknown'
-        else:
-            aggregatedStatus = 'success'
-        
-        outputDict = {}
-        outputDict['status'] = aggregatedStatus
-        outputDict['uri'] = '%s/vrfs/%s/status?mode=brief' % (self._getUriPrefix(), vrfId)
-        return {'statusBrief': outputDict}
-        
-    def _populateObjectDetail(self, objectUrl, objectDevices):
-        objectDetail = {}
-        configletOnDevice = []
-        
-        for status in objectDevices:
-            configletOnDevice.append({'device': status.overlay_device.name, 'configlet': status.configlet, 'reason': status.statusReason})
-        
-        objectDetail['uri'] = objectUrl
-        objectDetail['configs'] = configletOnDevice
-        objectDetail['total'] = len(configletOnDevice)
-        
-        return objectDetail
-        
-    def _getVrfStatusDetail(self, dbSession, vrfId):
-        try:
-            # get all object status under this VRF
-            # XXX when caller wants to insert an object into OverlayDeployStatus table, caller should also manually 
-            # insert a row to represent the owner OverlayFabric object as well.
-            # so the same OverlayFabric configlet would be inserted NxM times if we have <N> devices and <M> VRFs under
-            # this OverlayFabric.
-            # This is where we trade-off normalization for simple schema for OverlayDeployStatus table
-            statusAll = dbSession.query(OverlayDeployStatus, OverlayDevice).\
-                filter(OverlayDeployStatus.overlay_device_id == OverlayDevice.id).\
-                filter(OverlayDeployStatus.overlay_vrf_id == vrfId).\
-                order_by(OverlayDeployStatus.status, OverlayDeployStatus.object_url, OverlayDevice.name).all()
-        except Exception as ex:
-            logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
-        
-        logger.debug("getVrfStatusDetail: count %d", len(statusAll))
-        
-        unknownObjects = []
-        unknownObjectDict = {}
-        successObjects = []
-        successObjectDict = {}
-        failureObjects = []
-        failureObjectDict = {}
-        progressObjects = []
-        progressObjectDict = {}
-        
-        # Note following code relies on the fact that the query result is ordered by status first, then by object_url, 
-        # lastly by device name.
-        for status, device in statusAll:
-            if status.status == 'unknown':
-                if status.object_url not in unknownObjectDict:
-                    unknownObjectDict[status.object_url] = []
-                unknownObjectDevices = unknownObjectDict[status.object_url]
-                unknownObjectDevices.append(status)
-            elif status.status == 'success':
-                if status.object_url not in successObjectDict:
-                    successObjectDict[status.object_url] = []
-                successObjectDevices = successObjectDict[status.object_url]
-                successObjectDevices.append(status)
-            elif status.status == 'failure':
-                if status.object_url not in failureObjectDict:
-                    failureObjectDict[status.object_url] = []
-                failureObjectDevices = failureObjectDict[status.object_url]
-                failureObjectDevices.append(status)
-            elif status.status == 'progress':
-                if status.object_url not in progressObjectDict:
-                    progressObjectDict[status.object_url] = []
-                progressObjectDevices = progressObjectDict[status.object_url]
-                progressObjectDevices.append(status)
-                
-        for unknownObjectUrl, unknownObjectDevices in unknownObjectDict.iteritems():
-            unknownObjects.append(self._populateObjectDetail(unknownObjectUrl, unknownObjectDevices))
-        for successObjectUrl, successObjectDevices in successObjectDict.iteritems():
-            successObjects.append(self._populateObjectDetail(successObjectUrl, successObjectDevices))
-        for failureObjectUrl, failureObjectDevices in failureObjectDict.iteritems():
-            failureObjects.append(self._populateObjectDetail(failureObjectUrl, failureObjectDevices))
-        for progressObjectUrl, progressObjectDevices in progressObjectDict.iteritems():
-            progressObjects.append(self._populateObjectDetail(progressObjectUrl, progressObjectDevices))
-                
-        # aggregated status will be progress only if there is no failure
-        if len(failureObjects) > 0:
-            aggregatedStatus = 'failure'
-        elif len(progressObjects) > 0:
-            aggregatedStatus = 'progress'
-        elif len(unknownObjects) > 0:
-            aggregatedStatus = 'unknown'
-        else:
-            aggregatedStatus = 'success'
-        
-        outputDict = {}
-        outputDict['status'] = aggregatedStatus
-        outputDict['uri'] = '%s/vrfs/%s/status?mode=detail' % (self._getUriPrefix(), vrfId)
-        outputDict['unknown'] = {'objects': unknownObjects, 'total': len(unknownObjects)}
-        outputDict['success'] = {'objects': successObjects, 'total': len(successObjects)}
-        outputDict['failure'] = {'objects': failureObjects, 'total': len(failureObjects)}
-        outputDict['progress'] = {'objects': progressObjects, 'total': len(progressObjects)}
-        return {'statusDetail': outputDict}
-        
-    def getVrfStatus(self, dbSession, vrfId):
-            
-        if bottle.request.query.mode == 'brief':
-            return self._getVrfStatusBrief(dbSession, vrfId)
-        elif bottle.request.query.mode == 'detail':
-            return self._getVrfStatusDetail(dbSession, vrfId)
-        else:
-            raise bottle.HTTPError(400, exception=InvalidRequest("Invalid mode '%s'" % bottle.request.query.mode))
-    
     def createVrf(self, dbSession):  
             
         if bottle.request.json is None:
@@ -824,12 +678,17 @@ class OverlayRestRoutes():
         network['vrf'] = '%s/vrfs/%s' % (self._getUriPrefix(), networkObject.overlay_vrf.id)
         subnets = []
         for subnet in networkObject.overlay_subnets:
-            subnets.append({'uri': '%s/subnets/%s' % (self._getUriPrefix(), subnet.id)})
-        network['subnets'] = {'subnet': subnets, 'total': len(networkObject.overlay_subnets)}
-        l2aps = []
+            subnets.append('%s/subnets/%s' % (self._getUriPrefix(), subnet.id))
+        network['subnets'] = subnets
+        l2ports = []
+        aggregatedL2ports = []
         for l2ap in networkObject.overlay_l2aps:
-            l2aps.append({'uri': '%s%s' % (self._getUriPrefix(), l2ap.getUrl()), 'type': '%s' % (l2ap.type)})
-        network['l2aps'] = {'l2ap': l2aps, 'total': len(networkObject.overlay_l2aps)}
+            if l2ap.type == 'l2port':
+                l2ports.append('%s%s' % (self._getUriPrefix(), l2ap.getUrl()))
+            elif l2ap.type == 'aggregatedL2port':
+                aggregatedL2ports.append('%s%s' % (self._getUriPrefix(), l2ap.getUrl()))
+        network['l2ports'] = l2ports
+        network['aggregatedL2ports'] = aggregatedL2ports
         return network
         
     def getNetworks(self, dbSession):
@@ -959,8 +818,8 @@ class OverlayRestRoutes():
         subnet['network'] = '%s/networks/%s' % (self._getUriPrefix(), subnetObject.overlay_network.id)
         l3ports = []
         for l3port in subnetObject.overlay_l3ports:
-            l3ports.append({'uri': '%s/l3ports/%s' % (self._getUriPrefix(), l3port.id)})
-        subnet['l3ports'] = {'l3port': l3ports, 'total': len(subnetObject.overlay_l3ports)}
+            l3ports.append('%s/l3ports/%s' % (self._getUriPrefix(), l3port.id))
+        subnet['l3ports'] = l3ports
         return subnet
         
     def getSubnets(self, dbSession):
@@ -1204,8 +1063,8 @@ class OverlayRestRoutes():
         l2port['uri'] = '%s/l2ports/%s' % (self._getUriPrefix(), l2portObject.id)
         networks = []
         for network in l2portObject.overlay_networks:
-            networks.append({'uri': '%s/networks/%s' % (self._getUriPrefix(), network.id)})
-        l2port['networks'] = {'network': networks, 'total': len(l2portObject.overlay_networks)}
+            networks.append('%s/networks/%s' % (self._getUriPrefix(), network.id))
+        l2port['networks'] = networks
         l2port['interface'] = l2portObject.interface
         l2port['device'] = '%s/devices/%s' % (self._getUriPrefix(), l2portObject.overlay_device.id)
         return l2port
@@ -1357,12 +1216,12 @@ class OverlayRestRoutes():
         aggregatedL2port['uri'] = '%s/aggregatedL2ports/%s' % (self._getUriPrefix(), aggregatedL2portObject.id)
         networks = []
         for network in aggregatedL2portObject.overlay_networks:
-            networks.append({'uri': '%s/networks/%s' % (self._getUriPrefix(), network.id)})
-        aggregatedL2port['networks'] = {'network': networks, 'total': len(aggregatedL2portObject.overlay_networks)}
+            networks.append('%s/networks/%s' % (self._getUriPrefix(), network.id))
+        aggregatedL2port['networks'] = networks
         members = []
         for member in aggregatedL2portObject.members:
             members.append({'device': '%s/devices/%s' % (self._getUriPrefix(), member.overlay_device_id), 'interface': member.interface})
-        aggregatedL2port['members'] = {'member': members, 'total': len(aggregatedL2portObject.members)}
+        aggregatedL2port['members'] = members
         return aggregatedL2port
         
     def getAggregatedL2ports(self, dbSession):
@@ -1497,3 +1356,257 @@ class OverlayRestRoutes():
             raise bottle.HTTPError(500, exception=PlatformError(ex.message))
 
         return bottle.HTTPResponse(status=204)
+
+    def getDeployStatus(self, dbSession):
+        (object, objectType, id, scope) = self._validateDeployStatusParameters(dbSession)
+        
+        # This tree will hold hierachy from top to 
+        # 1. the object (scope == self)
+        # or
+        # 2. the bottom (scope == all)
+        root = DeployObjectTreeNode()
+        if scope == 'self':
+            # Build the hierachy tree from top to the object
+            self._buildParentsTree(dbSession, object, objectType, id, root)
+        elif scope == 'all':
+            # Build the hierachy tree from top to the object
+            self._buildParentsTree(dbSession, object, objectType, id, root)
+            # Append children hierachy.
+            # Note in order to append children hierachy, we need to find all appearance of this object.
+            # Normally there would be just one such appearance. But for a l2port that is in multiple networks,
+            # there could be more than one appearances. In this case we need to append the children hierachy 
+            # at multiple places.
+            for appendPoint in self._getAllLeafNodesInTree(root):
+                self._buildChildrenTree(dbSession, object, objectType, id, appendPoint)
+                
+        root.dump()
+        # Render the tree from top down
+        outputDict = {}
+        self._populateDeployStatus(dbSession, root, outputDict)
+        return {'deployStatus': outputDict}
+    
+    def _validateDeployStatusParameters(self, dbSession):
+        objectType = bottle.request.query.object
+        id = bottle.request.query.id
+        scope = bottle.request.query.scope
+        
+        if id is None or id == '':
+            raise bottle.HTTPError(400, exception=InvalidRequest("Invalid id '%s'" % id))
+        
+        # default scope is 'all'
+        if scope is None or scope == '':
+            scope = 'all'
+        elif scope != 'all' and scope != 'self':
+            raise bottle.HTTPError(400, exception=InvalidRequest("Invalid scope '%s'" % scope))
+        
+        if objectType == 'fabric':
+            object = dbSession.query(OverlayFabric).filter(OverlayFabric.id == id).one()
+        elif objectType == 'tenant':
+            object = dbSession.query(OverlayTenant).filter(OverlayTenant.id == id).one()
+        elif objectType == 'vrf':
+            object = dbSession.query(OverlayVrf).filter(OverlayVrf.id == id).one()
+        elif objectType == 'network':
+            object = dbSession.query(OverlayNetwork).filter(OverlayNetwork.id == id).one()
+        elif objectType == 'subnet':
+            object = dbSession.query(OverlaySubnet).filter(OverlaySubnet.id == id).one()
+        elif objectType == 'l3port':
+            object = dbSession.query(OverlayL3port).filter(OverlayL3port.id == id).one()
+        elif objectType == 'l2port':
+            object = dbSession.query(OverlayL2port).filter(OverlayL2port.id == id).one()
+        elif objectType == 'aggregatedL2port':
+            object = dbSession.query(OverlayAggregatedL2port).filter(OverlayAggregatedL2port.id == id).one()
+        else:
+            raise bottle.HTTPError(400, exception=InvalidRequest("Invalid object '%s'" % objectType))
+
+        return (object, objectType, id, scope)
+    
+    # Recursively build hierachy tree from top to object.
+    def _buildParentsTree(self, dbSession, object, objectType, id, tree):
+        #
+        # Example:
+        #
+        # type=root, id=None
+        #   type=fabric, id=670ed478-de00-4f04-89be-b57b3deb3ec4
+        #     type=tenant, id=b350ba51-7912-4a03-984d-aa6fa9929d8c
+        #       type=vrf, id=12f65bf4-8059-445b-b809-e492cc9e6946
+        #         type=network, id=f57b7547-99a9-43d3-9a58-3b9015d3d5f7
+        #           type=l2port, id=353acbd8-96c4-4e5c-8800-f908c515d40f
+        #         type=network, id=f06972b7-122c-4a36-9444-46ab3222e259
+        #           type=l2port, id=353acbd8-96c4-4e5c-8800-f908c515d40f
+        #     type=tenant, id=47616495-bec5-411f-b122-55de485a6278
+        #       type=vrf, id=2aede3bd-f751-4045-be5e-4dba1d318245
+        #         type=network, id=0c40c4df-e618-4917-9bb1-2ed834853f1f
+        #           type=l2port, id=353acbd8-96c4-4e5c-8800-f908c515d40f
+        #
+        # NOTE we use addOrGet instead of addChild because of following scenario:
+        # If an object has multiple parents, parent #1 should "add" me and rest of the parents should just "get" me.
+        if objectType == 'fabric':
+            me = tree.addOrGet(objectType, id)
+        elif objectType == 'tenant':
+            parent = self._buildParentsTree(dbSession, object.overlay_fabric, 'fabric', object.overlay_fabric.id, tree)
+            me = parent.addOrGet(objectType, id)
+        elif objectType == 'vrf':
+            parent = self._buildParentsTree(dbSession, object.overlay_tenant, 'tenant', object.overlay_tenant.id, tree)
+            me = parent.addOrGet(objectType, id)
+        elif objectType == 'network':
+            parent = self._buildParentsTree(dbSession, object.overlay_vrf, 'vrf', object.overlay_vrf.id, tree)
+            me = parent.addOrGet(objectType, id)
+        elif objectType == 'subnet':
+            parent = self._buildParentsTree(dbSession, object.overlay_network, 'network', object.overlay_network.id, tree)
+            me = parent.addOrGet(objectType, id)
+        elif objectType == 'l3port':
+            parent = self._buildParentsTree(dbSession, object.overlay_subnet, 'subnet', object.overlay_subnet.id, tree)
+            me = parent.addOrGet(objectType, id)
+        elif objectType == 'l2port' or objectType == 'aggregatedL2port':
+            for network in object.overlay_networks:
+                parent = self._buildParentsTree(dbSession, network, 'network', network.id, tree)
+                me = parent.addOrGet(objectType, id)
+        else:
+            raise ValueError('invalid objectType %s' % objectType)
+
+        return me
+
+    def _getAllLeafNodesInTree(self, tree):
+        result = []
+        currentNodes = [tree]
+        while 1:
+            newNodes = []
+            if len(currentNodes) == 0:
+                break;
+            for currentNode in currentNodes:
+                if not currentNode.childrenByType:
+                    result.append(currentNode)
+                else:
+                    for type, children in currentNode.childrenByType.iteritems():
+                        for id, child in children.iteritems():
+                            newNodes.append(child)
+            currentNodes = newNodes
+                
+        return result
+        
+    # Recursively build hierachy tree from the object to bottom
+    def _buildChildrenTree(self, dbSession, object, objectType, id, appendPoint):
+        if objectType == 'fabric':
+            for tenant in object.overlay_tenants:
+                me = appendPoint.addChild(DeployObjectTreeNode('tenant', tenant.id))
+                self._buildChildrenTree(dbSession, tenant, 'tenant', tenant.id, me)
+        elif objectType == 'tenant':
+            for vrf in object.overlay_vrfs:
+                me = appendPoint.addChild(DeployObjectTreeNode('vrf', vrf.id))
+                self._buildChildrenTree(dbSession, vrf, 'vrf', vrf.id, me)
+        elif objectType == 'vrf':
+            for network in object.overlay_networks:
+                me = appendPoint.addChild(DeployObjectTreeNode('network', network.id))
+                self._buildChildrenTree(dbSession, network, 'network', network.id, me)
+        elif objectType == 'network':
+            for l2ap in object.overlay_l2aps:
+                me = appendPoint.addChild(DeployObjectTreeNode(l2ap.type, l2ap.id))
+                self._buildChildrenTree(dbSession, l2ap, l2ap.type, l2ap.id, me)
+            for subnet in object.overlay_subnets:
+                me = appendPoint.addChild(DeployObjectTreeNode('subnet', subnet.id))
+                self._buildChildrenTree(dbSession, subnet, 'subnet', subnet.id, me)
+        elif objectType == 'subnet':
+            for l3port in object.overlay_l3ports:
+                me = appendPoint.addChild(DeployObjectTreeNode('l3port', l3port.id))
+                self._buildChildrenTree(dbSession, l3port, 'l3port', l3port.id, me)
+        elif objectType == 'l3port' or objectType == 'l2port' or objectType == 'aggregatedL2port':
+            pass
+        else:
+            raise ValueError('invalid objectType %s' % objectType)
+
+    # Recursively build REST response for all objects in the hierachy tree
+    def _populateDeployStatus(self, dbSession, tree, outputDict):
+        if tree.id is None:
+            # Handle root case: parameter outputDict is a dictionary 
+            # recursively go after children
+            for type, children in tree.childrenByType.iteritems():
+                for id, node in children.iteritems():
+                    childrenList = outputDict.get(type+"s")
+                    if childrenList is None:
+                        outputDict[type+"s"] = []
+                    self._populateDeployStatus(dbSession, node, outputDict[type+"s"])
+        else:
+            # Handle non root case: parameter outputDict is a list
+            currentDict = {}
+            # get status on all devices for this object
+            partialObjectUrl = '/%ss/%s' % (tree.type, tree.id)
+            fullObjectUrl = '%s%s' % (self._getUriPrefix(), partialObjectUrl)
+            currentDict['uri'] = fullObjectUrl
+            currentDict['deployDetail'] = self._populateDeployDetail(dbSession, partialObjectUrl)
+            
+            outputDict.append(currentDict)
+            # recursively go after children
+            for type, children in tree.childrenByType.iteritems():
+                for id, node in children.iteritems():
+                    childrenList = outputDict[-1].get(type+"s")
+                    if childrenList is None:
+                        outputDict[-1][type+"s"] = []
+                    self._populateDeployStatus(dbSession, node, outputDict[-1][type+"s"])
+    
+    # Build deploy detail for a given object on all devices
+    def _populateDeployDetail(self, dbSession, objectUrl):
+        deployDetail = []
+        
+        for status in self._getObjectStatus(dbSession, objectUrl):
+            deployDetail.append({'device': status.overlay_device.name, 'configlet': status.configlet, 'status': status.status, 'reason': status.statusReason})
+        
+        return deployDetail
+    
+    # Return OverlayDeployStatus for a given object on all devices  
+    def _getObjectStatus(self, dbSession, objectUrl):
+        try:
+            statusAll = dbSession.query(OverlayDeployStatus).\
+                filter(OverlayDeployStatus.object_url == objectUrl).\
+                order_by(OverlayDeployStatus.overlay_device_id).all()
+            
+            if statusAll is not None:
+                return statusAll
+            else:
+                return []
+        except Exception as ex:
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            #raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            return []
+        
+# This class represents an object and all its children.
+# The children are sorted first by type and then by id
+class DeployObjectTreeNode(object):
+    def __init__(self, type='root', id=None):
+        #logger.debug("DeployObjectTreeNode: __init__: type=%s, id=%s", type, id)
+        
+        self.type = type
+        self.id = id
+        self.level = 0
+        self.childrenByType = {}
+        
+    def addChild(self, node):
+        #logger.debug('DeployObjectTreeNode: addChild: type=%s, id=%s', node.type, node.id)
+        
+        assert isinstance(node, DeployObjectTreeNode)
+        node.level = self.level + 1
+        if node.type not in self.childrenByType:
+            self.childrenByType[node.type] = {}
+        self.childrenByType[node.type][node.id] = node
+        return node
+        
+    def dump(self):
+        logger.debug('%stype=%s, id=%s', '  ' * self.level, self.type, self.id)
+        for type, children in self.childrenByType.iteritems():
+            for id, node in children.iteritems():
+                node.dump()
+                
+    def addOrGet(self, type, id):
+        # We only need to search immediate children
+        #logger.debug('DeployObjectTreeNode: addOrGet: type=%s, id=%s', type, id)
+        
+        children = self.childrenByType.get(type)
+        if children is not None:
+            node = children.get(id)
+            if node is not None:
+                #logger.debug('DeployObjectTreeNode: found existing node')
+                return node
+                
+        # If not found, add a new node
+        node = DeployObjectTreeNode(type, id)
+        self.addChild(node)
+        return node

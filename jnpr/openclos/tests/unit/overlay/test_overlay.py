@@ -211,7 +211,7 @@ class TestOverlayHelper:
             "operation": "create"
         }
         status = OverlayDeployStatus(deployStatusDict['configlet'], deployStatusDict['object_url'], 
-            deployStatusDict['operation'], deviceObject, vrfObject, deployStatusDict['status'], deployStatusDict['statusReason'])
+            deployStatusDict['operation'], deviceObject, vrfObject.overlay_tenant.overlay_fabric, deployStatusDict['status'], deployStatusDict['statusReason'])
         dbSession.add_all([status])
         dbSession.commit()
         return status
@@ -592,12 +592,13 @@ class TestConfigEngine(unittest.TestCase):
     def testConfigureVrf(self):
         with self._dao.getReadWriteSession() as session:
             vrf = self.helper._createVrf(session)
+            vrfObjectUrl = '/vrfs/%s' % (vrf.id)
             # overlay.createXYZ would also call required configure
             #self.configEngine.configureVrf(session, vrf)
             
             # 2 deployments fabric and vrf
             self.assertEqual(2, session.query(OverlayDeployStatus).count())
-            config = session.query(OverlayDeployStatus).filter_by(overlay_vrf_id=vrf.id).one().configlet
+            config = session.query(OverlayDeployStatus).filter_by(object_url=vrfObjectUrl).one().configlet
             print "spine1:\n" + config
             self.assertIn("lo0 {", config)
             self.assertIn("routing-instances {", config)

@@ -32,7 +32,6 @@ registry = set([
     'GET /openclos/v1/overlay/tenants/<tenantId>',
     'GET /openclos/v1/overlay/vrfs',
     'GET /openclos/v1/overlay/vrfs/<vrfId>',
-    'GET /openclos/v1/overlay/vrfs/<vrfId>/status',
     'GET /openclos/v1/overlay/devices',
     'GET /openclos/v1/overlay/devices/<deviceId>',
     'GET /openclos/v1/overlay/networks',
@@ -45,6 +44,7 @@ registry = set([
     'GET /openclos/v1/overlay/l2ports/<l2portId>',
     'GET /openclos/v1/overlay/aggregatedL2ports',
     'GET /openclos/v1/overlay/aggregatedL2ports/<aggregatedL2portId>',
+    'GET /openclos/v1/overlay/deployStatus',
     'POST /openclos/v1/overlay/fabrics',
     'POST /openclos/v1/overlay/tenants',
     'POST /openclos/v1/overlay/vrfs',
@@ -835,7 +835,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         response = self.restServerTestApp.get('/openclos/v1/overlay/l2ports/' + l2portId)
         self.assertEqual(200, response.status_int) 
         self.assertEqual(l2portName, response.json['l2port']['name'])
-        self.assertIsNotNone(response.json['l2port']['networks']['network'][0])
+        self.assertIsNotNone(response.json['l2port']['networks'][0])
         self.assertTrue("/openclos/v1/overlay/l2ports/" + l2portId in response.json['l2port']['uri'])
         
     def testGetL2portNotFound(self):
@@ -993,7 +993,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertEqual('changed', response.json['aggregatedL2port']['description'])
         self.assertEqual('11:01:01:01:01:01:01:01:01:01', response.json['aggregatedL2port']['esi'])
         self.assertEqual('11:00:00:01:01:01', response.json['aggregatedL2port']['lacp'])
-        self.assertEqual('xe-0/0/12', response.json['aggregatedL2port']['members']['member'][0]['interface'])
+        self.assertEqual('xe-0/0/12', response.json['aggregatedL2port']['members'][0]['interface'])
         
     def testModifyAggregatedL2portNotFound(self):
         aggregatedL2portDict = {
@@ -1026,36 +1026,60 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('404 Not Found' in e.exception.message)
         self.assertTrue('1113' in e.exception.message)
         
-    def testGetDeployStatusBrief(self):
+    def testGetDeployStatusDefaultScope(self):
         with self._dao.getReadWriteSession() as session:        
-            vrfObject = self.helper._createVrf(session)
-            vrfId = vrfObject.id
-            deviceObject = vrfObject.overlay_tenant.overlay_fabric.overlay_devices[0]
-            deployStatusObject = self.helper._createDeployStatus(session, deviceObject, vrfObject)
+            networkObject = self.helper._createNetwork(session)
+            networkId = networkObject.id
+            vrfId = networkObject.overlay_vrf.id
+            fabricId = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.id
+            deviceName = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0].name
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/vrfs/' + vrfId + '/status?mode=brief')
+        response = self.restServerTestApp.get('/openclos/v1/overlay/deployStatus?object=vrf&id=' + vrfId)
         self.assertEqual(200, response.status_int) 
-        self.assertEqual('failure', response.json['statusBrief']['status'])
-        self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId + '/status?mode=brief' in response.json['statusBrief']['uri'])
+        self.assertTrue('/openclos/v1/overlay/fabrics/' + fabricId in response.json['deployStatus']['fabrics'][0]['uri'])
+        self.assertTrue('local-as 65001' in response.json['deployStatus']['fabrics'][0]['deployDetail'][0]['configlet'])
+        self.assertEqual(deviceName, response.json['deployStatus']['fabrics'][0]['deployDetail'][0]['device'])
+        self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['uri'])
+        self.assertTrue('VRF_v1' in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['deployDetail'][0]['configlet'])
+        self.assertEqual(deviceName, response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['deployDetail'][0]['device'])
         
-    def testGetDeployStatusDetail(self):
+    def testGetDeployStatusScopeSelf(self):
         with self._dao.getReadWriteSession() as session:        
-            vrfObject = self.helper._createVrf(session)
-            vrfId = vrfObject.id
-            deviceObject = vrfObject.overlay_tenant.overlay_fabric.overlay_devices[0]
-            deviceName = deviceObject.name
-            deployStatusObject = self.helper._createDeployStatus(session, deviceObject, vrfObject)
+            networkObject = self.helper._createNetwork(session)
+            networkId = networkObject.id
+            vrfId = networkObject.overlay_vrf.id
+            fabricId = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.id
+            deviceName = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0].name
                     
-        response = self.restServerTestApp.get('/openclos/v1/overlay/vrfs/' + vrfId + '/status?mode=detail')
+        response = self.restServerTestApp.get('/openclos/v1/overlay/deployStatus?object=vrf&id=' + vrfId + '&scope=self')
         self.assertEqual(200, response.status_int) 
-        self.assertEqual('failure', response.json['statusDetail']['status'])
-        self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId + '/status?mode=detail' in response.json['statusDetail']['uri'])
-        self.assertEqual(1, response.json['statusDetail']['failure']['total'])
-        self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId in response.json['statusDetail']['failure']['objects'][0]['uri'])
-        self.assertEqual(1, response.json['statusDetail']['failure']['objects'][0]['total'])
-        self.assertEqual('v1_config', response.json['statusDetail']['failure']['objects'][0]['configs'][0]['configlet'])
-        self.assertEqual('conflict', response.json['statusDetail']['failure']['objects'][0]['configs'][0]['reason'])
-        self.assertEqual(deviceName, response.json['statusDetail']['failure']['objects'][0]['configs'][0]['device'])
+        self.assertTrue('/openclos/v1/overlay/fabrics/' + fabricId in response.json['deployStatus']['fabrics'][0]['uri'])
+        self.assertTrue('local-as 65001' in response.json['deployStatus']['fabrics'][0]['deployDetail'][0]['configlet'])
+        self.assertEqual(deviceName, response.json['deployStatus']['fabrics'][0]['deployDetail'][0]['device'])
+        self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['uri'])
+        self.assertTrue('VRF_v1' in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['deployDetail'][0]['configlet'])
+        self.assertEqual(deviceName, response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['deployDetail'][0]['device'])
+        
+    def testGetDeployStatusScopeAll(self):
+        with self._dao.getReadWriteSession() as session:        
+            networkObject = self.helper._createNetwork(session)
+            networkId = networkObject.id
+            vrfId = networkObject.overlay_vrf.id
+            fabricId = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.id
+            deviceName = networkObject.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0].name
+                    
+        response = self.restServerTestApp.get('/openclos/v1/overlay/deployStatus?object=vrf&id=' + vrfId + '&scope=all')
+        self.assertEqual(200, response.status_int) 
+        self.assertTrue('/openclos/v1/overlay/fabrics/' + fabricId in response.json['deployStatus']['fabrics'][0]['uri'])
+        self.assertTrue('local-as 65001' in response.json['deployStatus']['fabrics'][0]['deployDetail'][0]['configlet'])
+        self.assertEqual(deviceName, response.json['deployStatus']['fabrics'][0]['deployDetail'][0]['device'])
+        self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['uri'])
+        self.assertTrue('VRF_v1' in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['deployDetail'][0]['configlet'])
+        self.assertEqual(deviceName, response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['deployDetail'][0]['device'])
+        self.assertTrue('/openclos/v1/overlay/networks/' + networkId in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['networks'][0]['uri'])
+        self.assertTrue('vni 1001' in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['networks'][0]['deployDetail'][0]['configlet'])
+        self.assertEqual(deviceName, response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['networks'][0]['deployDetail'][0]['device'])
+        
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
