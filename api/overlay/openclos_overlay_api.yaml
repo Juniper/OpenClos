@@ -508,52 +508,6 @@ paths:
                     description: Internal server error
                     schema:
                         $ref: '#/definitions/restError'
-    '/vrfs/{vrfId}/status?mode=brief':
-         get:
-            description: |
-                Gets brief deploy status of a VRF and its child objects.
-            operationId: getVrfStatusBrief
-            parameters:
-            -   name: vrfId
-                in: path
-                description: UUID of VRF
-                required: true
-                type: string
-                format: uuid
-            responses:
-                '200':
-                    description: Success
-                    schema:
-                        $ref: '#/definitions/statusBrief'
-                '401':
-                    description: Unauthorized
-                '500':
-                    description: Internal server error
-                    schema:
-                        $ref: '#/definitions/restError'
-    '/vrfs/{vrfId}/status?mode=detail':
-         get:
-            description: |
-                Gets detail deploy status of a VRF and its child objects.
-            operationId: getVrfStatusDetail
-            parameters:
-            -   name: vrfId
-                in: path
-                description: UUID of VRF
-                required: true
-                type: string
-                format: uuid
-            responses:
-                '200':
-                    description: Success
-                    schema:
-                        $ref: '#/definitions/statusDetail'
-                '401':
-                    description: Unauthorized
-                '500':
-                    description: Internal server error
-                    schema:
-                        $ref: '#/definitions/restError'
     '/networks':
         get:
             description: |
@@ -1173,6 +1127,55 @@ paths:
                     description: Not found
                     schema:
                         $ref: '#/definitions/restError'                        
+                '500':
+                    description: Internal server error
+                    schema:
+                        $ref: '#/definitions/restError'
+    '/deployStatus':
+         get:
+            description: |
+                Gets detail deploy status of an object and its child objects.
+            operationId: getStatus
+            parameters:
+            -   name: object
+                in: query
+                description: object type
+                required: true
+                type: string
+                enum: 
+                -   'fabric'
+                -   'tenant'
+                -   'vrf'
+                -   'network'
+                -   'subnet'
+                -   'l3port'
+                -   'l2port'
+                -   'aggregatedL2port'
+            -   name: id
+                in: query
+                description: UUID of object
+                required: true
+                type: string
+                format: uuid
+            -   name: scope
+                in: query
+                description: |
+                    Scope of the information to return. 
+                    all means entire hierachacy including all children and parents.
+                    self means including self and parents but not including children.
+                    Default to all. 
+                required: false
+                type: string
+                enum: 
+                -   'self'
+                -   'all'
+            responses:
+                '200':
+                    description: Success
+                    schema:
+                        $ref: '#/definitions/deployStatus'
+                '401':
+                    description: Unauthorized
                 '500':
                     description: Internal server error
                     schema:
@@ -1898,130 +1901,177 @@ definitions:
             uri:
                 type: string
                 description: URI for list of aggregated L2 ports.
-    statusBrief:
+    deployDetail:
+        type: array
+        description: List of configlets pushed to each device.
+        items:
+            type: object
+            required:
+            -   device
+            -   configlet
+            -   status
+            properties:
+                device:
+                    type: string
+                    description: URI of the device to which the configlet is pushed.
+                configlet:
+                    type: string
+                    description: Configlet of the object.
+                status:
+                    type: string
+                    enum: 
+                    -   'unknown'
+                    -   'success'
+                    -   'failure'
+                    -   'progress'
+                    description: Deploy status of the object.
+                reason:
+                    type: string
+                    description: Detailed reason for the status.
+                            
+    deployStatusL2port:
         type: object
-        required:
-        -   status
-        -   uri
-        properties:
-            status:
-                type: string
-                enum: 
-                -   'unknown'
-                -   'success'
-                -   'failure'
-                -   'progress'
-                description: Aggregated deploy status of the VRF and its child objects
-            uri:
-                type: string
-                description: URI for the brief status.
-    configletOnDevice:
-        type: object
-        required:
-        -   device
-        -   configlet
-        properties:
-            device:
-                type: string
-                description: URI of the device to which the configlet is pushed.
-            configlet:
-                type: string
-                description: Configlet of the object.
-            reason:
-                type: string
-                description: Detailed reason for the status.
-    objectDetail:
-        type: object
+        description: Deploy status of L2 port.
         required:
         -   uri
-        -   total
-        -   configs
+        -   deployDetail
         properties:
             uri:
                 type: string
                 description: URI for the object.
-            total:
-                type: integer
-                description: Number of configs.
-            configs:
-                type: array
-                items:
-                    $ref: '#/definitions/configletOnDevice'                        
-                description: 'list of configlets pushed to each device.'
-    statusDetail:
+            deployDetail:
+                $ref: '#/definitions/deployDetail'
+    deployStatusAggregatedL2port:
         type: object
+        description: Deploy status of aggregated L2 port.
         required:
-        -   status
         -   uri
-        -   unknown
-        -   success
-        -   failure
-        -   progress
+        -   deployDetail
         properties:
-            status:
-                type: string
-                enum: 
-                -   'unknown'
-                -   'success'
-                -   'failure'
-                -   'progress'
-                description: Aggregated deploy status of the VRF and its child objects
             uri:
                 type: string
-                description: URI for the detail status.
-            unknown:
-                type: object
-                required:
-                -   objects
-                -   total
-                properties:
-                    objects:
-                        type: array
-                        items:
-                            $ref: '#/definitions/objectDetail'                        
-                        description: 'list of objects whose deploy status is unknown.'
-                    total:
-                        type: integer
-                        description: Number of whose deploy status is unknown.
-            success:
-                type: object
-                required:
-                -   objects
-                -   total
-                properties:
-                    objects:
-                        type: array
-                        items:
-                            $ref: '#/definitions/objectDetail'                        
-                        description: 'list of objects whose deploy status is success.'
-                    total:
-                        type: integer
-                        description: Number of objects whose deploy status is success.
-            failure:
-                type: object
-                required:
-                -   objects
-                -   total
-                properties:
-                    objects:
-                        type: array
-                        items:
-                            $ref: '#/definitions/objectDetail'                        
-                        description: 'list of objects whose deploy status is failure.'
-                    total:
-                        type: integer
-                        description: Number of objects whose deploy status is failure.
-            progress:
-                type: object
-                required:
-                -   objects
-                -   total
-                properties:
-                    objects:
-                        type: array
-                        items:
-                            $ref: '#/definitions/objectDetail'                        
-                        description: 'list of objects whose deploy status is progress.'
-                    total:
-                        type: integer
-                        description: Number of objects whose deploy status is progress.
+                description: URI for the object.
+            deployDetail:
+                $ref: '#/definitions/deployDetail'
+    deployStatusL3port:
+        type: object
+        description: Deploy status of L3 port.
+        required:
+        -   uri
+        -   deployDetail
+        properties:
+            uri:
+                type: string
+                description: URI for the object.
+            deployDetail:
+                $ref: '#/definitions/deployDetail'                  
+    deployStatusSubnet:
+        type: object
+        description: Deploy status of subnet.
+        required:
+        -   uri
+        -   deployDetail
+        -   l3ports
+        properties:
+            uri:
+                type: string
+                description: URI for the object.
+            deployDetail:
+                $ref: '#/definitions/deployDetail'
+            l3ports:
+                type: array
+                description: 'Deploy status of L3 ports.'
+                items:
+                    $ref: '#/definitions/deployStatusL3port'                        
+    deployStatusNetwork:
+        type: object
+        description: Deploy status of network.
+        required:
+        -   uri
+        -   deployDetail
+        -   l2ports
+        -   aggregatedL2ports
+        -   subnets
+        properties:
+            uri:
+                type: string
+                description: URI for the object.
+            deployDetail:
+                $ref: '#/definitions/deployDetail'
+            l2ports:
+                type: array
+                description: 'Deploy status of L2 ports.'
+                items:
+                    $ref: '#/definitions/deployStatusL2port'                        
+            aggregatedL2ports:
+                type: array
+                description: 'Deploy status of aggregated L2 ports.'
+                items:
+                    $ref: '#/definitions/deployStatusAggregatedL2port'                        
+            subnets:
+                type: array
+                description: 'Deploy status of subnets.'
+                items:
+                    $ref: '#/definitions/deployStatusSubnet'                        
+    deployStatusVrf:
+        type: object
+        description: Deploy status of VRF.
+        required:
+        -   uri
+        -   deployDetail
+        -   networks
+        properties:
+            uri:
+                type: string
+                description: URI for the object.
+            deployDetail:
+                $ref: '#/definitions/deployDetail'
+            networks:
+                type: array
+                description: 'Deploy status of networks.'
+                items:
+                    $ref: '#/definitions/deployStatusNetwork'                        
+    deployStatusTenant:
+        type: object
+        description: Deploy status of tenant.
+        required:
+        -   uri
+        -   vrfs
+        properties:
+            uri:
+                type: string
+                description: URI for the object.
+            vrfs:
+                type: array
+                description: 'Deploy status of VRFs.'
+                items:
+                    $ref: '#/definitions/deployStatusVrf'                        
+    deployStatusFabric:
+        type: object
+        description: Deploy status of fabric.
+        required:
+        -   uri
+        -   deployDetail
+        -   tenants
+        properties:
+            uri:
+                type: string
+                description: URI for the object.
+            deployDetail:
+                $ref: '#/definitions/deployDetail'                        
+            tenants:
+                type: array
+                description: 'Deploy status of tenants.'
+                items:
+                    $ref: '#/definitions/deployStatusTenant'                        
+    deployStatus:
+        type: object
+        description: Deploy status of queried object.
+        required:
+        -   fabrics
+        properties:
+            fabrics:
+                type: array
+                description: Deploy status of fabric.
+                items:
+                    $ref: '#/definitions/deployStatusFabric'                        

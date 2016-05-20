@@ -479,8 +479,10 @@ class OverlayDeployStatus(ManagedElement, Base):
     operation = Column(Enum('create', 'update', 'delete'))
     overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
     overlay_device = relationship("OverlayDevice", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
-    overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'))
-    overlay_vrf = relationship("OverlayVrf", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
+    # overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'))
+    # overlay_vrf = relationship("OverlayVrf", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
+    overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'))
+    overlay_fabric = relationship("OverlayFabric", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
     status = Column(Enum('unknown', 'progress', 'success', 'failure'), default='unknown')
     statusReason = Column(String(1024))
     # REVISIT: This constraint seems wrong. If we configure 2 subnets under the same network, 2 rows will be created. 
@@ -489,7 +491,8 @@ class OverlayDeployStatus(ManagedElement, Base):
         # Index('object_url_overlay_device_id_uindex', 'object_url', 'overlay_device_id', unique=True),
     # )
     
-    def __init__(self, configlet, object_url, operation, overlay_device, overlay_vrf=None, status=None, statusReason=None):
+    # def __init__(self, configlet, object_url, operation, overlay_device, overlay_vrf=None, status=None, statusReason=None):
+    def __init__(self, configlet, object_url, operation, overlay_device, overlay_fabric, status=None, statusReason=None):
         '''
         Creates status object.
         '''
@@ -498,7 +501,8 @@ class OverlayDeployStatus(ManagedElement, Base):
         self.object_url = object_url
         self.operation = operation
         self.overlay_device = overlay_device
-        self.overlay_vrf = overlay_vrf
+        # self.overlay_vrf = overlay_vrf
+        self.overlay_fabric = overlay_fabric
         self.status = status
         self.statusReason = statusReason
         

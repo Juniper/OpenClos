@@ -232,6 +232,14 @@
 
                             
                             <li class="nav-item get">
+                                <a class="nav-link" href="#get__deployStatus">
+                                    <strong>GET</strong>
+                                    /openclos/v1/overlay/deployStatus
+                                </a>
+                            </li>
+
+                            
+                            <li class="nav-item get">
                                 <a class="nav-link" href="#get__devices">
                                     <strong>GET</strong>
                                     /openclos/v1/overlay/devices
@@ -547,22 +555,6 @@
                                 <a class="nav-link" href="#put__vrfs__vrfId_">
                                     <strong>PUT</strong>
                                     /openclos/v1/overlay/vrfs/{vrfId}
-                                </a>
-                            </li>
-
-                            
-                            <li class="nav-item get">
-                                <a class="nav-link" href="#get__vrfs__vrfId__status?mode=brief">
-                                    <strong>GET</strong>
-                                    /openclos/v1/overlay/vrfs/{vrfId}/status?mode=brief
-                                </a>
-                            </li>
-
-                            
-                            <li class="nav-item get">
-                                <a class="nav-link" href="#get__vrfs__vrfId__status?mode=detail">
-                                    <strong>GET</strong>
-                                    /openclos/v1/overlay/vrfs/{vrfId}/status?mode=detail
                                 </a>
                             </li>
 
@@ -993,6 +985,107 @@
                                         <td>400</td>
                                         <td>Bad request</td>
                                         <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card method get">
+                        <div class="card-header get"
+                             id="get__deployStatus">
+                            <a name="get__deployStatus">
+                                <h3>
+                                    <strong>GET</strong>
+                                    /openclos/v1/overlay/deployStatus
+                                    <span class="pull-right">
+                                        
+                                    </span>
+                                </h3>
+                            </a>
+                        </div>
+                        <div class="card-block"
+                             id="get__deployStatus_d">
+                            
+                            <h3>Description</h3>
+                            <p>Gets detail deploy status of an object and its child objects.</p>
+                            
+
+                            
+
+                            
+                            <h3>Parameters</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Located in</th>
+                                        <th>Description</th>
+                                        <th>Required</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>object</td>
+                                        <td>query</td>
+                                        <td>object type</td>
+                                        <td>True</td>
+                                        <td>string</td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>id</td>
+                                        <td>query</td>
+                                        <td>UUID of object</td>
+                                        <td>True</td>
+                                        <td>uuid string</td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>scope</td>
+                                        <td>query</td>
+                                        <td>Scope of the information to return. 
+all means entire hierachacy including all children and parents.
+self means including self and parents but not including children.
+Default to all. 
+</td>
+                                        <td>False</td>
+                                        <td>string</td>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                            
+
+                            <h3>Responses</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                    <tr>
+                                        <td>200</td>
+                                        <td>Success</td>
+                                        <td><div class="schema"><span class="sKey">fabrics</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Deploy status of fabric.</p></span><div class="schema">[<div class="schema"><span class="sKey">deployDetail</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>List of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the object.</p></span><span class="enum">[unknown | success | failure | progress]</span></div>]</div></div><div class="schema"><span class="sKey">tenants</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Deploy status of tenants.</p></span><div class="schema">[<div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div><div class="schema"><span class="sKey">vrfs</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Deploy status of VRFs.</p></span><div class="schema">[<div class="schema"><span class="sKey">deployDetail</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>List of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the object.</p></span><span class="enum">[unknown | success | failure | progress]</span></div>]</div></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Deploy status of networks.</p></span><div class="schema">[<div class="schema"><span class="sKey">aggregatedL2ports</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Deploy status of aggregated L2 ports.</p></span><div class="schema">[<div class="schema"><span class="sKey">deployDetail</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>List of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the object.</p></span><span class="enum">[unknown | success | failure | progress]</span></div>]</div></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div><div class="schema"><span class="sKey">deployDetail</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>List of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the object.</p></span><span class="enum">[unknown | success | failure | progress]</span></div>]</div></div><div class="schema"><span class="sKey">l2ports</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Deploy status of L2 ports.</p></span><div class="schema">[<div class="schema"><span class="sKey">deployDetail</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>List of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the object.</p></span><span class="enum">[unknown | success | failure | progress]</span></div>]</div></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div><div class="schema"><span class="sKey">subnets</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Deploy status of subnets.</p></span><div class="schema">[<div class="schema"><span class="sKey">deployDetail</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>List of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the object.</p></span><span class="enum">[unknown | success | failure | progress]</span></div>]</div></div><div class="schema"><span class="sKey">l3ports</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>Deploy status of L3 ports.</p></span><div class="schema">[<div class="schema"><span class="sKey">deployDetail</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>List of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Deploy status of the object.</p></span><span class="enum">[unknown | success | failure | progress]</span></div>]</div></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div>]</div></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>500</td>
+                                        <td>Internal server error</td>
+                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td>401</td>
+                                        <td>Unauthorized</td>
+                                        <td></td>
                                     </tr>
                                     
                                 </tbody>
@@ -4297,168 +4390,6 @@
                             </table>
                         </div>
                     </div>
-                    <div class="card method get">
-                        <div class="card-header get"
-                             id="get__vrfs__vrfId__status?mode=brief">
-                            <a name="get__vrfs__vrfId__status?mode=brief">
-                                <h3>
-                                    <strong>GET</strong>
-                                    /openclos/v1/overlay/vrfs/{vrfId}/status?mode=brief
-                                    <span class="pull-right">
-                                        
-                                    </span>
-                                </h3>
-                            </a>
-                        </div>
-                        <div class="card-block"
-                             id="get__vrfs__vrfId__status?mode=brief_d">
-                            
-                            <h3>Description</h3>
-                            <p>Gets brief deploy status of a VRF and its child objects.</p>
-                            
-
-                            
-
-                            
-                            <h3>Parameters</h3>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Located in</th>
-                                        <th>Description</th>
-                                        <th>Required</th>
-                                        <th>Schema</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    
-                                    <tr>
-                                        <td>vrfId</td>
-                                        <td>path</td>
-                                        <td>UUID of VRF</td>
-                                        <td>True</td>
-                                        <td>uuid string</td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
-                            
-
-                            <h3>Responses</h3>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Description</th>
-                                        <th>Schema</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    
-                                    <tr>
-                                        <td>200</td>
-                                        <td>Success</td>
-                                        <td><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Aggregated deploy status of the VRF and its child objects</p></span><span class="enum">[unknown | success | failure | progress]</span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the brief status.</p></span></div></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>500</td>
-                                        <td>Internal server error</td>
-                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>401</td>
-                                        <td>Unauthorized</td>
-                                        <td></td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="card method get">
-                        <div class="card-header get"
-                             id="get__vrfs__vrfId__status?mode=detail">
-                            <a name="get__vrfs__vrfId__status?mode=detail">
-                                <h3>
-                                    <strong>GET</strong>
-                                    /openclos/v1/overlay/vrfs/{vrfId}/status?mode=detail
-                                    <span class="pull-right">
-                                        
-                                    </span>
-                                </h3>
-                            </a>
-                        </div>
-                        <div class="card-block"
-                             id="get__vrfs__vrfId__status?mode=detail_d">
-                            
-                            <h3>Description</h3>
-                            <p>Gets detail deploy status of a VRF and its child objects.</p>
-                            
-
-                            
-
-                            
-                            <h3>Parameters</h3>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Located in</th>
-                                        <th>Description</th>
-                                        <th>Required</th>
-                                        <th>Schema</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    
-                                    <tr>
-                                        <td>vrfId</td>
-                                        <td>path</td>
-                                        <td>UUID of VRF</td>
-                                        <td>True</td>
-                                        <td>uuid string</td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
-                            
-
-                            <h3>Responses</h3>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Description</th>
-                                        <th>Schema</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    
-                                    <tr>
-                                        <td>200</td>
-                                        <td>Success</td>
-                                        <td><div class="schema"><span class="sKey">failure</span> (<span class="sType">object</span>)<div class="schema"><span class="sKey">objects</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of objects whose deploy status is failure.</p></span><div class="schema">[<div class="schema"><span class="sKey">configs</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of configs.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of objects whose deploy status is failure.</p></span></div></div><div class="schema"><span class="sKey">progress</span> (<span class="sType">object</span>)<div class="schema"><span class="sKey">objects</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of objects whose deploy status is progress.</p></span><div class="schema">[<div class="schema"><span class="sKey">configs</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of configs.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of objects whose deploy status is progress.</p></span></div></div><div class="schema"><span class="sKey">status</span> (<span class="sType">string</span>): <span class="sDescription"><p>Aggregated deploy status of the VRF and its child objects</p></span><span class="enum">[unknown | success | failure | progress]</span></div><div class="schema"><span class="sKey">success</span> (<span class="sType">object</span>)<div class="schema"><span class="sKey">objects</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of objects whose deploy status is success.</p></span><div class="schema">[<div class="schema"><span class="sKey">configs</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of configs.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of objects whose deploy status is success.</p></span></div></div><div class="schema"><span class="sKey">unknown</span> (<span class="sType">object</span>)<div class="schema"><span class="sKey">objects</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of objects whose deploy status is unknown.</p></span><div class="schema">[<div class="schema"><span class="sKey">configs</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of configlets pushed to each device.</p></span><div class="schema">[<div class="schema"><span class="sKey">configlet</span> (<span class="sType">string</span>): <span class="sDescription"><p>Configlet of the object.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">reason</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Detailed reason for the status.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of configs.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the object.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of whose deploy status is unknown.</p></span></div></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for the detail status.</p></span></div></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>500</td>
-                                        <td>Internal server error</td>
-                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>401</td>
-                                        <td>Unauthorized</td>
-                                        <td></td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                     
                 </div>
                 
@@ -4468,7 +4399,7 @@
                     <a href="https://github.com/JuhaniImberg/swagger-render">
                         Swagger-Render
                     </a> 1.6.0<br>
-                    2016-04-25 15:46:31.653491
+                    2016-05-20 01:18:47.820277
                 </footer>
             </div>
         </div>
