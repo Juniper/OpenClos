@@ -256,6 +256,11 @@ class OverlayNetwork(ManagedElement, Base):
         '''
         Creates network object.
         '''
+        if vlanid < 1 or vlanid > 4096:
+            raise ValueError("vlanid %s out of range (1-4096)" % vlanid)
+        if vnid < 1 or vnid > 4096:
+            raise ValueError("vnid %s out of range (1-4096)" % vnid)
+
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description

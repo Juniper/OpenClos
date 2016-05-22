@@ -180,6 +180,8 @@ class OverlayRestRoutes():
             deviceObject = self._overlay.createDevice(dbSession, name, description, role, address, routerId, podName, username, password)
             device = {'device': self._populateDevice(deviceObject)}
             
+        except bottle.HTTPError:
+            raise 
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
@@ -220,6 +222,8 @@ class OverlayRestRoutes():
             
             device = {'device': self._populateDevice(deviceObject)}
             
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
@@ -253,6 +257,8 @@ class OverlayRestRoutes():
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             self.__dao.deleteObject(dbSession, deviceObject)
             logger.info("OverlayDevice[id='%s', name='%s']: deleted", deviceObject.id, deviceObject.name)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
@@ -300,6 +306,8 @@ class OverlayRestRoutes():
         try:
             fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
             logger.debug('getFabric: %s', fabricId)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
@@ -340,6 +348,8 @@ class OverlayRestRoutes():
 
             fabric = {'fabric': self._populateFabric(fabricObject)}
             
+        except bottle.HTTPError:
+            raise 
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
@@ -385,6 +395,8 @@ class OverlayRestRoutes():
 
             fabric = {'fabric': self._populateFabric(fabricObject)}
 
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
@@ -403,6 +415,8 @@ class OverlayRestRoutes():
             fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
             logger.info("OverlayFabric[id='%s', name='%s']: delete request is submitted", fabricObject.id, fabricObject.name)
             self._overlay.deleteFabric(dbSession, fabricObject)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
@@ -445,6 +459,8 @@ class OverlayRestRoutes():
         try:
             tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
             logger.debug('getTenant: %s', tenantId)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
@@ -479,6 +495,8 @@ class OverlayRestRoutes():
 
             tenant = {'tenant': self._populateTenant(tenantObject)}
             
+        except bottle.HTTPError:
+            raise 
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
@@ -510,6 +528,8 @@ class OverlayRestRoutes():
 
             tenant = {'tenant': self._populateTenant(tenantObject)}
             
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
@@ -528,6 +548,8 @@ class OverlayRestRoutes():
             tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
             self.__dao.deleteObject(dbSession, tenantObject)
             logger.info("OverlayTenant[id='%s', name='%s']: deleted", tenantObject.id, tenantObject.name)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
@@ -572,6 +594,8 @@ class OverlayRestRoutes():
         try:
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
             logger.debug('getVrf: %s', vrfId)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
@@ -606,6 +630,8 @@ class OverlayRestRoutes():
             logger.info("OverlayVrf[id='%s', name='%s']: created", vrfObject.id, vrfObject.name)
             vrf = {'vrf': self._populateVrf(vrfObject)}
             
+        except bottle.HTTPError:
+            raise 
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
@@ -639,6 +665,8 @@ class OverlayRestRoutes():
             
             vrf = {'vrf': self._populateVrf(vrfObject)}
             
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
@@ -657,6 +685,8 @@ class OverlayRestRoutes():
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
             logger.info("OverlayVrf[id='%s', name='%s']: delete request is submitted", vrfObject.id, vrfObject.name)
             self._overlay.deleteVrf(dbSession, vrfObject)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
@@ -711,6 +741,8 @@ class OverlayRestRoutes():
         try:
             networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
             logger.debug('getNetwork: %s', networkId)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
@@ -732,8 +764,8 @@ class OverlayRestRoutes():
         try:
             name = networkDict['name']
             description = networkDict.get('description')
-            vlanid = networkDict.get('vlanid')
-            vnid = networkDict.get('vnid')
+            vlanid = int(networkDict['vlanid'])
+            vnid = int(networkDict['vnid'])
             pureL3Int = networkDict.get('pureL3Int', False)
             vrfId = networkDict['vrf'].split('/')[-1]
             try:
@@ -747,6 +779,10 @@ class OverlayRestRoutes():
 
             network = {'network': self._populateNetwork(networkObject)}
             
+        except bottle.HTTPError:
+            raise 
+        except bottle.HTTPError:
+            raise 
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
@@ -770,8 +806,8 @@ class OverlayRestRoutes():
         try:
             name = networkDict['name']
             description = networkDict.get('description')
-            vlanid = networkDict.get('vlanid')
-            vnid = networkDict.get('vnid')
+            vlanid = int(networkDict['vlanid'])
+            vnid = int(networkDict['vnid'])
             pureL3Int = networkDict.get('pureL3Int', False)
             
             networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
@@ -781,6 +817,8 @@ class OverlayRestRoutes():
             
             network = {'network': self._populateNetwork(networkObject)}
             
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
@@ -799,6 +837,8 @@ class OverlayRestRoutes():
             networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
             logger.info("OverlayNetwork[id='%s', name='%s']: delete request is submitted", networkObject.id, networkObject.name)
             self._overlay.deleteNetwork(dbSession, networkObject)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
@@ -842,6 +882,8 @@ class OverlayRestRoutes():
         try:
             subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
             logger.debug('getSubnet: %s', subnetId)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
             raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
@@ -876,6 +918,8 @@ class OverlayRestRoutes():
 
             subnet = {'subnet': self._populateSubnet(subnetObject)}
             
+        except bottle.HTTPError:
+            raise 
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
@@ -908,6 +952,8 @@ class OverlayRestRoutes():
             
             subnet = {'subnet': self._populateSubnet(subnetObject)}
             
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
             raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
@@ -926,6 +972,8 @@ class OverlayRestRoutes():
             subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
             logger.info("OverlaySubnet[id='%s', cidr='%s']: delete request is submitted", subnetObject.id, subnetObject.cidr)
             self._overlay.deleteSubnet(dbSession, subnetObject)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
             raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
@@ -964,6 +1012,8 @@ class OverlayRestRoutes():
         try:
             l3portObject = self.__dao.getObjectById(dbSession, OverlayL3port, l3portId)
             logger.debug('getL3port: %s', l3portId)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayL3portNotFound(l3portId))
@@ -997,6 +1047,8 @@ class OverlayRestRoutes():
 
             l3port = {'l3port': self._populateL3port(l3portObject)}
             
+        except bottle.HTTPError:
+            raise 
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
@@ -1028,6 +1080,8 @@ class OverlayRestRoutes():
             
             l3port = {'l3port': self._populateL3port(l3portObject)}
             
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayL3portNotFound(l3portId))
@@ -1046,6 +1100,8 @@ class OverlayRestRoutes():
             l3portObject = self.__dao.getObjectById(dbSession, OverlayL3port, l3portId)
             self.__dao.deleteObject(dbSession, l3portObject)
             logger.info("OverlayL3port[id='%s', name='%s']: deleted", l3portObject.id, l3portObject.name)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayL3portNotFound(l3portId))
@@ -1090,6 +1146,8 @@ class OverlayRestRoutes():
         try:
             l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
             logger.debug('getL2port: %s', l2portId)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayL2portNotFound(l2portId))
@@ -1139,6 +1197,8 @@ class OverlayRestRoutes():
 
             l2port = {'l2port': self._populateL2port(l2portObject)}
             
+        except bottle.HTTPError:
+            raise 
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
@@ -1179,6 +1239,8 @@ class OverlayRestRoutes():
 
             l2port = {'l2port': self._populateL2port(l2portObject)}
             
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayL2portNotFound(l2portId))
@@ -1197,6 +1259,8 @@ class OverlayRestRoutes():
             l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
             self._overlay.deleteL2port(dbSession, l2portObject)
             logger.info("OverlayL2port[id='%s', name='%s']: delete request is submitted", l2portObject.id, l2portObject.name)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayL2portNotFound(l2portId))
@@ -1244,6 +1308,8 @@ class OverlayRestRoutes():
         try:
             aggregatedL2portObject = self.__dao.getObjectById(dbSession, OverlayAggregatedL2port, aggregatedL2portId)
             logger.debug('getAggregatedL2port: %s', aggregatedL2portId)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayAggregatedL2portNotFound(aggregatedL2portId))
@@ -1286,6 +1352,8 @@ class OverlayRestRoutes():
 
             aggregatedL2port = {'aggregatedL2port': self._populateAggregatedL2port(aggregatedL2portObject)}
             
+        except bottle.HTTPError:
+            raise 
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
@@ -1327,6 +1395,8 @@ class OverlayRestRoutes():
             
             aggregatedL2port = {'aggregatedL2port': self._populateAggregatedL2port(aggregatedL2portObject)}
             
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayAggregatedL2portNotFound(aggregatedL2portId))
@@ -1348,6 +1418,8 @@ class OverlayRestRoutes():
             aggregatedL2portObject = self.__dao.getObjectById(dbSession, OverlayAggregatedL2port, aggregatedL2portId)
             self._overlay.deleteAggregatedL2port(dbSession, aggregatedL2portObject)
             logger.info("OverlayAggregatedL2port[id='%s', name='%s']: delete request is submitted", OverlayAggregatedL2port.id, OverlayAggregatedL2port.name)
+        except bottle.HTTPError:
+            raise 
         except (exc.NoResultFound) as ex:
             logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayAggregatedL2portNotFound(aggregatedL2portId))
