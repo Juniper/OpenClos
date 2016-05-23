@@ -245,38 +245,28 @@ class OverlayCommitQueue(SingletonBase):
     # dao = Dao.getInstance()
     # from jnpr.openclos.overlay.overlay import Overlay
     # overlay = Overlay(conf, Dao.getInstance())
-    # with dao.getReadWriteSession() as session:
-        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '192.168.48.201', '1.1.1.1', 'pod1', 'test', 'foobar')
-        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '192.168.48.202', '1.1.1.2', 'pod1', 'test', 'foobar')
-        # d1_id = d1.id
-        # d2_id = d2.id
-        # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2])
-        # f1_id = f1.id
-        # f2 = overlay.createFabric(session, 'f2', '', 65002, '3.3.3.3', [d1, d2])
-        # f2_id = f2.id
-        # t1 = overlay.createTenant(session, 't1', '', f1)
-        # t1_id = t1.id
-        # t2 = overlay.createTenant(session, 't2', '', f2)
-        # t2_id = t2.id
-        # v1 = overlay.createVrf(session, 'v1', '', 100, '1.1.1.1', t1)
-        # v1_id = v1.id
-        # v2 = overlay.createVrf(session, 'v2', '', 101, '1.1.1.2', t2)
-        # v2_id = v2.id
-        # n1 = overlay.createNetwork(session, 'n1', '', v1, 1000, 100, False)
-        # n1_id = n1.id
-        # n2 = overlay.createNetwork(session, 'n2', '', v1, 1001, 101, False)
-        # n2_id = n2.id
-        
+
+    # # Note jnpr.openclos.overlay.overlayCommit.OverlayCommitQueue is different than just OverlayCommitQueue.
+    # # If we don't do the import. python will treat those as 2 different classes so singleton behavior will fail.
+    # from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue
     # commitQueue = OverlayCommitQueue.getInstance()
     # commitQueue.dispatchInterval = 1
     # commitQueue.start()
     
     # with dao.getReadWriteSession() as session:
-        # status_db = session.query(OverlayDeployStatus).all()
-        # for s in status_db:
-            # commitQueue.addJob(s)
-            
-    # raw_input("Press any key to stop...")
+        # d1 = overlay.createDevice(session, 'd1', '', 'spine', '10.92.80.252', '10.92.80.252', 'pod1', 'root', 'Embe1mpls')
+        # d1_id = d1.id
+        # f1 = overlay.createFabric(session, 'f1', '', 65001, '10.92.80.1', [d1])
+        # f1_id = f1.id
+        # t1 = overlay.createTenant(session, 't1', '', f1)
+        # t1_id = t1.id
+        # v1 = overlay.createVrf(session, 'v1', '', 100, '1.1.1.1', t1)
+        # v1_id = v1.id
+        # n1 = overlay.createNetwork(session, 'n1', '', v1, 1000, 100, False)
+        # n1_id = n1.id
+    
+    # import time
+    # time.sleep(10)
     # commitQueue.stop()
 
 # if __name__ == '__main__':

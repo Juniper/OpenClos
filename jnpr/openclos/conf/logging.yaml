@@ -28,7 +28,7 @@ loggers:
         level: INFO
         handlers: [console, file] 
     overlay : 
-        level: INFO
+        level: DEBUG
         handlers: [console, file] 
     deviceConnector : 
         level: DEBUG
