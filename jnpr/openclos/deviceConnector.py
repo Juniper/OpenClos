@@ -317,9 +317,13 @@ class NetconfConnection(AbstractConnection):
             configurationUnit.commit()
             logger.info('%s Committed config', self._debugContext)
         except CommitError as exc:
-            logger.error('updateDeviceConfiguration failed for %s, CommitError: %s, %s, %s', self._debugContext, exc, exc.errs, exc.rpc_error)
+            logger.error('updateDeviceConfiguration failed for %s, CommitError: %s, %s', self._debugContext, exc.__repr__(), exc.rpc_error)
             configurationUnit.rollback() 
-            raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self._debugContext), exc)
+            raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self._debugContext), exc.__repr__())
+        except RpcError as exc:
+            logger.error('updateDeviceConfiguration failed for %s, RpcError: %s', self._debugContext, exc.__repr__())
+            configurationUnit.rollback() 
+            raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self._debugContext), exc.__repr__())
         except Exception as exc:
             logger.error('updateDeviceConfiguration failed for %s, %s', self._debugContext, exc)
             logger.debug('StackTrace: %s', traceback.format_exc())
