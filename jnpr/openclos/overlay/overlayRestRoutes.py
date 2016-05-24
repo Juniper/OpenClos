@@ -781,8 +781,6 @@ class OverlayRestRoutes():
             
         except bottle.HTTPError:
             raise 
-        except bottle.HTTPError:
-            raise 
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
