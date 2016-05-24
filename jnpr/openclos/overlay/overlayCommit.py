@@ -97,12 +97,12 @@ class OverlayCommitJob():
                 #logger.error("%s", exc)
                 #logger.error('StackTrace: %s', traceback.format_exc())
                 result = 'failure'
-                reason = exc.message
+                reason = exc.__repr__()
             except DeviceRpcFailed as exc:
                 #logger.error("%s", exc)
                 #logger.error('StackTrace: %s', traceback.format_exc())
                 result = 'failure'
-                reason = exc.message
+                reason = exc.__repr__()
             except Exception as exc:
                 #logger.error("%s", exc)
                 #logger.error('StackTrace: %s', traceback.format_exc())

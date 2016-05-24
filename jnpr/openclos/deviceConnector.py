@@ -301,8 +301,8 @@ class NetconfConnection(AbstractConnection):
             configurationUnit.lock()
             logger.debug('%s Locked config', self._debugContext)
         except LockError as exc:
-            logger.error('%s updateConfig failed, LockError: %s, %s, %s', self._debugContext, exc, exc.errs, exc.rpc_error)
-            raise DeviceRpcFailed('%s updateConfig failed' % (self._debugContext), exc)
+            logger.error('%s updateConfig failed, LockError: %s, %s', self._debugContext, exc.__repr__(), exc.rpc_error)
+            raise DeviceRpcFailed('%s updateConfig failed' % (self._debugContext), exc.__repr__())
 
         try:
             # make sure no changes are taken from CLI candidate config left over
