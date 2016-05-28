@@ -720,115 +720,94 @@ class TestConfigEngine(unittest.TestCase):
     def testDeleteL2Port(self):
         with self._dao.getReadWriteSession() as session:
             port = self.helper._createL2port(session)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(1, session.query(OverlayNetwork).count())
+            self.assertEqual(1, session.query(OverlayL2port).count())
+            # 4 deployments 1 fabric, 1 vrf, 1 network and 1 port add
+            self.assertEqual(4, session.query(OverlayDeployStatus).count())
+            
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteL2port(session, port)
-
-            # 4 deployments 1 fabric, 1 vrf, 1 network and 1 port add, 1 port delete            
-            deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(5, len(deployments))
-            print deployments[-1].configlet
-            
-            self.assertEquals(1, deployments[-1].configlet.count("interfaces "))
-            self.assertEquals(1, deployments[-1].configlet.count("vlans "))
-            self.assertEquals(2, deployments[-1].configlet.count("delete:"))
-            self.assertTrue("interface xe-0/0/1.101" in deployments[-1].configlet)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(1, session.query(OverlayNetwork).count())
+            self.assertEqual(0, session.query(OverlayL2port).count())
+            self.assertEqual(3, session.query(OverlayDeployStatus).count())
 
     def testDeleteL2PortWithTwoNetworks(self):
         with self._dao.getReadWriteSession() as session:
             ports = self.helper._create2Network4L2port(session)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(2, session.query(OverlayNetwork).count())
+            self.assertEqual(4, session.query(OverlayL2port).count())
+            # 4 deployments 1 fabric, 1 vrf, 2 network and 4 port add
+            self.assertEqual(8, session.query(OverlayDeployStatus).count())
+
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteL2port(session, ports[2])
-            
-            # 4 deployments 1 fabric, 1 vrf, 2 network and 4 port add, 1 port delete            
-            deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(9, len(deployments))
-            print deployments[-1].configlet
-            
-            self.assertEquals(1, deployments[-1].configlet.count("interfaces "))
-            self.assertEquals(1, deployments[-1].configlet.count("vlans "))
-            self.assertEquals(4, deployments[-1].configlet.count("delete:"))
-            self.assertTrue("interface xe-0/0/3.101" in deployments[-1].configlet)
-            self.assertTrue("interface xe-0/0/3.102" in deployments[-1].configlet)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(2, session.query(OverlayNetwork).count())
+            self.assertEqual(3, session.query(OverlayL2port).count())
+            self.assertEqual(7, session.query(OverlayDeployStatus).count())
 
     def testDeleteSubnet(self):
         with self._dao.getReadWriteSession() as session:
             subnet = self.helper._createSubnetOn2By3Fabric(session)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(1, session.query(OverlayNetwork).count())
+            self.assertEqual(1, session.query(OverlaySubnet).count())
+            # 14 deployments 5 fabric, 2 vrf, 5 network and 2 subnet add
+            self.assertEqual(14, session.query(OverlayDeployStatus).count())
+            
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteSubnet(session, subnet)
-
-            # 16 deployments 5 fabric, 2 vrf and 5 network, 2 subnet add and 2 subnet del            
-            deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(16, len(deployments))
-            
-            spine1 = deployments[-2].configlet
-            print "spine1:\n" + spine1
-            self.assertIsNotNone(re.compile(r".*unit\s101.*?family\sinet.*?delete:.*?address\s.*", re.DOTALL).match(spine1))
-
-            spine2 = deployments[-1].configlet
-            print "spine2:\n" + spine2
-            self.assertIsNotNone(re.compile(r".*unit\s101.*?family\sinet.*?delete:.*?address\s.*", re.DOTALL).match(spine2))
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(1, session.query(OverlayNetwork).count())
+            self.assertEqual(0, session.query(OverlaySubnet).count())
+            self.assertEqual(12, session.query(OverlayDeployStatus).count())
 
     def testDeleteNetwork(self):
         with self._dao.getReadWriteSession() as session:
             subnet = self.helper._createSubnetOn2By3Fabric(session)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(1, session.query(OverlayNetwork).count())
+            self.assertEqual(1, session.query(OverlaySubnet).count())
+            # 14 deployments 5 fabric, 2 vrf, 5 network and 2 subnet add
+            self.assertEqual(14, session.query(OverlayDeployStatus).count())
+            
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteNetwork(session, subnet.overlay_network)
-
-            # 19 deployments 5 fabric, 2 vrf, 5 network, 2 subnet add and 5 network del            
-            deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(19, len(deployments))
-            
-            spine1 = deployments[-5].configlet
-            print "spine1:\n" + spine1
-            self.assertIsNotNone(re.compile(r".*irb.*?delete:.*?unit\s101.*", re.DOTALL).match(spine1))
-            self.assertIsNotNone(re.compile(r".*VRF_v1.*?delete:.*?interface\sirb.101.*", re.DOTALL).match(spine1))
-            self.assertIsNotNone(re.compile(r".*vlans.*?delete:.*?bd1001.*", re.DOTALL).match(spine1))
-            self.assertIsNotNone(re.compile(r".*vni-options.*?delete:.*?vni\s1001.*", re.DOTALL).match(spine1))
-            self.assertIsNotNone(re.compile(r".*policy-statement\sLEAF-IN.*?delete:.*?term\sa1001.*", re.DOTALL).match(spine1))
-
-            spine2 = deployments[-4].configlet
-            print "spine2:\n" + spine2
-            self.assertIsNotNone(re.compile(r".*irb.*?delete:.*?unit\s101.*", re.DOTALL).match(spine2))
-            self.assertIsNotNone(re.compile(r".*VRF_v1.*?delete:.*?interface\sirb.101.*", re.DOTALL).match(spine2))
-            self.assertIsNotNone(re.compile(r".*vlans.*?delete:.*?bd1001.*", re.DOTALL).match(spine2))
-            self.assertIsNotNone(re.compile(r".*vni-options.*?delete:.*?vni\s1001.*", re.DOTALL).match(spine2))
-            self.assertIsNotNone(re.compile(r".*policy-statement\sLEAF-IN.*?delete:.*?term\sa1001.*", re.DOTALL).match(spine1))
-
-            leaf1 = deployments[-3].configlet
-            print "leaf1:\n" + leaf1
-            self.assertIsNotNone(re.compile(r".*vlans.*?delete:.*?bd1001.*", re.DOTALL).match(leaf1))
-            self.assertIsNotNone(re.compile(r".*vni-options.*?delete:.*?vni\s1001.*", re.DOTALL).match(leaf1))
-            self.assertIsNotNone(re.compile(r".*policy-statement\sLEAF-IN.*?delete:.*?term\sa1001.*", re.DOTALL).match(spine1))
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(0, session.query(OverlayNetwork).count())
+            self.assertEqual(0, session.query(OverlaySubnet).count())
+            self.assertEqual(9, session.query(OverlayDeployStatus).count())
 
     def testDeleteNetworkRecursive(self):
         with self._dao.getReadWriteSession() as session:
             subnet = self.helper._createSubnetOn2By3Fabric(session)
             port = self.helper._createL2port(session, subnet.overlay_network)
-            self.helper.overlay.deleteNetwork(session, subnet.overlay_network)
-
-            # 23 deployments 5 fabric, 2 vrf and 5 network, 2 subnet, 1 port add and 1 port del, 2 subnet del, 5 network del
-            deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(23, len(deployments))
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(1, session.query(OverlayNetwork).count())
+            self.assertEqual(1, session.query(OverlaySubnet).count())
+            self.assertEqual(1, session.query(OverlayL2port).count())
+            # 15 deployments 5 fabric, 2 vrf and 5 network, 2 subnet, 1 port add
+            self.assertEqual(15, session.query(OverlayDeployStatus).count())
             
-            port1 = deployments[-8].configlet
-            print "port1:\n" + port1
-            self.assertIsNotNone(re.compile(r".*xe-0/0/1.*?delete:.*?unit\s101.*", re.DOTALL).match(port1))
-            self.assertIsNotNone(re.compile(r".*bd1001.*?delete:.*?interface\sxe-0/0/1.101.*", re.DOTALL).match(port1))
-
-            spine1 = deployments[-7].configlet
-            print "spine1:\n" + spine1
-            self.assertIsNotNone(re.compile(r".*unit\s101.*?family\sinet.*?delete:.*?address\s.*", re.DOTALL).match(spine1))
-            spine1 = deployments[-5].configlet
-            print "\n" + spine1
-
-            spine2 = deployments[-6].configlet
-            print "spine2:\n" + spine2
-            self.assertIsNotNone(re.compile(r".*unit\s101.*?family\sinet.*?delete:.*?address\s.*", re.DOTALL).match(spine2))
-            spine2 = deployments[-4].configlet
-            print "\n" + spine2
-
-            leaf1 = deployments[-3].configlet
-            print "leaf1:\n" + leaf1
+            self.helper.overlay.deleteNetwork(session, subnet.overlay_network)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(0, session.query(OverlayNetwork).count())
+            self.assertEqual(0, session.query(OverlaySubnet).count())
+            self.assertEqual(0, session.query(OverlayL2port).count())
+            self.assertEqual(7, session.query(OverlayDeployStatus).count())
 
     def testConfigureAggregatedL2Port(self):
         with self._dao.getReadWriteSession() as session:
@@ -851,89 +830,70 @@ class TestConfigEngine(unittest.TestCase):
     def testDeleteAggregatedL2Port(self):
         with self._dao.getReadWriteSession() as session:
             ports = self.helper._create2Network3AggregatedL2port(session)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(2, session.query(OverlayNetwork).count())
+            self.assertEqual(3, session.query(OverlayAggregatedL2port).count())
+            # 7 deployments 1 fabric, 1 vrf, 2 network and 3 aggregateL2port add
+            self.assertEqual(7, session.query(OverlayDeployStatus).count())
+
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteAggregatedL2port(session, ports[2])
-
-            # 8 deployments 1 fabric, 1 vrf, 2 network and 3 aggregateL2port add and 1 aggregateL2port delete
-            deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(8, len(deployments))
-            print deployments[-1].configlet
-            
-            self.assertTrue('device-count 2;' in deployments[-1].configlet)
-            self.assertTrue("xe-0/0/13" in deployments[-1].configlet)
-            self.assertTrue("aggregatedL2port3" in deployments[-1].configlet)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(2, session.query(OverlayNetwork).count())
+            self.assertEqual(2, session.query(OverlayAggregatedL2port).count())
+            self.assertEqual(6, session.query(OverlayDeployStatus).count())
 
     def testDeleteVrf(self):
         with self._dao.getReadWriteSession() as session:
             vrf = self.helper._createVrf(session)
-            self.helper.overlay._configEngine.deleteVrf(session, vrf)
-            
-            # 3 deployments fabric and vrf add, vrf delete
-            deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(3, len(deployments))
-            spine1 = deployments[-1].configlet
-            print spine1
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            # 2 deployments 1 fabric, 1 vrf
+            self.assertEqual(2, session.query(OverlayDeployStatus).count())
 
-            self.assertIsNotNone(re.compile(r".*lo0.*?delete:.*?unit\s1.*", re.DOTALL).match(spine1))
-            self.assertIsNotNone(re.compile(r".*routing-instances.*?delete:.*?VRF_v1.*", re.DOTALL).match(spine1))
+            self.helper.overlay._configEngine.deleteVrf(session, vrf)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(0, session.query(OverlayVrf).count())
+            self.assertEqual(1, session.query(OverlayDeployStatus).count())
 
     def testDeleteVrfRecursive(self):
         with self._dao.getReadWriteSession() as session:
             network = self.helper._createNetworkOn2By3Fabric(session)
-            self.helper.overlay.deleteVrf(session, network.overlay_vrf)
-
-            # 19 deployments 5 fabric, 2 vrf and 5 network add and 5 network del, 2 vrf del
-            deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(19, len(deployments))
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayVrf).count())
+            self.assertEqual(1, session.query(OverlayNetwork).count())
+            # 12 deployments 5 fabric, 2 vrf and 5 network add
+            self.assertEqual(12, session.query(OverlayDeployStatus).count())
             
-            spine1 = deployments[-7].configlet
-            print "spine1:\n" + spine1
-            spine1 = deployments[-2].configlet
-            print spine1
-            self.assertIsNotNone(re.compile(r".*routing-instances.*?delete:.*?VRF_v1.*", re.DOTALL).match(spine1))
-
-            spine2 = deployments[-6].configlet
-            print "spine2:\n" + spine2
-            spine2 = deployments[-1].configlet
-            print spine2
-            self.assertIsNotNone(re.compile(r".*routing-instances.*?delete:.*?VRF_v1.*", re.DOTALL).match(spine2))
-
-            leaf1 = deployments[-5].configlet
-            print "leaf1:\n" + leaf1
+            self.helper.overlay.deleteVrf(session, network.overlay_vrf)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(0, session.query(OverlayVrf).count())
+            self.assertEqual(0, session.query(OverlayNetwork).count())
+            self.assertEqual(5, session.query(OverlayDeployStatus).count())
 
     def testDeleteFabric2Spine3Leaf(self):
         with self._dao.getReadWriteSession() as session:
             fabric= self.helper._createFabric2Spine3Leaf(session)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            # 12 deployments 5 fabric
+            self.assertEqual(5, session.query(OverlayDeployStatus).count())
+            
             self.helper.overlay._configEngine.deleteFabric(session, fabric)
-            
-            # 10 deployments 5 fabric add and 5 fabric del
-            deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(10, len(deployments))
-            
-            spine1 = deployments[-5].configlet
-            print "spine:\n" + spine1
-
-            leaf1 = deployments[-3].configlet
-            print "leaf:\n" + leaf1
+            self.assertEqual(0, session.query(OverlayFabric).count())
+            self.assertEqual(0, session.query(OverlayDeployStatus).count())
 
     def testDeleteFabric2Pods(self):
         with self._dao.getReadWriteSession() as session:
             fabric= self.helper._createFabric2Pods(session)
+            self.assertEqual(1, session.query(OverlayFabric).count())
+            # 12 deployments 9 fabric
+            self.assertEqual(9, session.query(OverlayDeployStatus).count())
+
             self.helper.overlay._configEngine.deleteFabric(session, fabric)
-
-            # 18 deployments 9 fabric add and 9 fabric del
-            deployments = session.query(OverlayDeployStatus).all()
-            self.assertEqual(18, len(deployments))
-
-            spine1Pod1 = deployments[-9].configlet
-            print "spine1Pod1:\n" + spine1Pod1
-            leaf1Pod1 = deployments[-7].configlet
-            print "leaf:\n" + leaf1Pod1
-
-            spine1Pod2 = deployments[-4].configlet
-            print "spine1Pod2:\n" + spine1Pod2
-            leaf1Pod2 = deployments[-2].configlet
-            print "leaf1Pod2:\n" + leaf1Pod2
+            self.assertEqual(0, session.query(OverlayFabric).count())
+            self.assertEqual(0, session.query(OverlayDeployStatus).count())
 
 if __name__ == '__main__':
     unittest.main()

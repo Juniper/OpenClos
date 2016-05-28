@@ -32,7 +32,8 @@ class OverlayDevice(ManagedElement, Base):
         'OverlayFabric',
         secondary='overlayFabricOverlayDeviceLink'
     )
-
+    enumRole = frozenset(['spine', 'leaf'])
+    
     def __init__(self, name, description, role, address, routerId, podName, username, password):
         '''
         Creates device object.
@@ -41,7 +42,12 @@ class OverlayDevice(ManagedElement, Base):
             raise ValueError("username cannot be None or empty")
         if password is None or len(password) == 0:
             raise ValueError("password cannot be None or empty")
-            
+
+        # Note in MySQL non-strict mode, inserting an invalid role will not throw error.
+        # So we will validate role ourselves.
+        if role not in self.enumRole:
+            raise ValueError("invalid role '%s'" % role)
+        
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
@@ -61,6 +67,11 @@ class OverlayDevice(ManagedElement, Base):
         if password is None or len(password) == 0:
             raise ValueError("password cannot be None or empty")
             
+        # Note in MySQL non-strict mode, inserting an invalid role will not throw error.
+        # So we will validate role ourselves.
+        if role not in self.enumRole:
+            raise ValueError("invalid role '%s'" % role)
+        
         self.name = name
         self.description = description
         self.role = role
@@ -182,7 +193,7 @@ class OverlayTenant(ManagedElement, Base):
 class OverlayVrf(ManagedElement, Base):
     __tablename__ = 'overlayVrf'
     id = Column(String(60), primary_key=True)
-    name = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=False, unique=True)
     description = Column(String(256))
     routedVnid = Column(Integer)
     loopbackAddress = Column(String(60))
@@ -418,9 +429,9 @@ class OverlayAggregatedL2portMember(ManagedElement, Base):
     overlay_aggregatedL2port_id = Column(String(60), ForeignKey('overlayAggregatedL2port.id'))
     overlay_device = relationship("OverlayDevice", backref=backref('aggregatedL2port_members', order_by=overlay_aggregatedL2port_id, cascade='all, delete, delete-orphan'))
     overlay_aggregatedL2port = relationship("OverlayAggregatedL2port", backref=backref('members', order_by=overlay_device_id, cascade='all, delete, delete-orphan'))
-    __table_args__ = (
-        Index('overlay_device_id_interface_uindex', 'overlay_device_id', 'interface', unique=True),
-    )
+    # __table_args__ = (
+        # Index('overlay_device_id_interface_uindex', 'overlay_device_id', 'interface', unique=True),
+    # )
     
     def __init__(self, interface, overlay_device, overlay_aggregatedL2port):
         '''
@@ -442,7 +453,7 @@ class OverlayAggregatedL2portMember(ManagedElement, Base):
 class OverlayAggregatedL2port(OverlayL2ap):
     __tablename__ = 'overlayAggregatedL2port'
     id = Column(String(60), ForeignKey('overlayL2ap.id'), primary_key=True)
-    esi = Column(String(60), nullable=True)
+    esi = Column(String(60), nullable=True, unique=True)
     lacp = Column(String(60), nullable=True)
     __mapper_args__ = {
         'polymorphic_identity': 'aggregatedL2port'
@@ -482,8 +493,6 @@ class OverlayDeployStatus(ManagedElement, Base):
     operation = Column(Enum('create', 'update', 'delete'))
     overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
     overlay_device = relationship("OverlayDevice", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
-    # overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'))
-    # overlay_vrf = relationship("OverlayVrf", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
     overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'))
     overlay_fabric = relationship("OverlayFabric", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
     status = Column(Enum('unknown', 'progress', 'success', 'failure'), default='unknown')
@@ -493,18 +502,28 @@ class OverlayDeployStatus(ManagedElement, Base):
     # __table_args__ = (
         # Index('object_url_overlay_device_id_uindex', 'object_url', 'overlay_device_id', unique=True),
     # )
+    enumStatus = frozenset(['unknown', 'progress', 'success', 'failure'])
+    enumOperation = frozenset(['create', 'update', 'delete'])
     
-    # def __init__(self, configlet, object_url, operation, overlay_device, overlay_vrf=None, status=None, statusReason=None):
     def __init__(self, configlet, object_url, operation, overlay_device, overlay_fabric, status=None, statusReason=None):
         '''
         Creates status object.
         '''
+        # Note in MySQL non-strict mode, inserting an invalid operation will not throw error.
+        # So we will validate operation ourselves.
+        if operation not in self.enumOperation:
+            raise ValueError("invalid operation '%s'" % operation)
+        
+        # Note in MySQL non-strict mode, inserting an invalid status will not throw error.
+        # So we will status operation ourselves.
+        if status is not None and status not in self.enumStatus: 
+            raise ValueError("invalid status '%s'" % status)
+            
         self.id = str(uuid.uuid4())
         self.configlet = configlet
         self.object_url = object_url
         self.operation = operation
         self.overlay_device = overlay_device
-        # self.overlay_vrf = overlay_vrf
         self.overlay_fabric = overlay_fabric
         self.status = status
         self.statusReason = statusReason
@@ -513,6 +532,11 @@ class OverlayDeployStatus(ManagedElement, Base):
         '''
         Update status object.
         '''
+        # Note in MySQL non-strict mode, inserting an invalid status will not throw error.
+        # So we will status operation ourselves.
+        if status is not None and status not in self.enumStatus: 
+            raise ValueError("invalid status '%s'" % status)
+            
         self.status = status
         self.statusReason = statusReason
         

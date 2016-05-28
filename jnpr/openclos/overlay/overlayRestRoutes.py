@@ -239,24 +239,12 @@ class OverlayRestRoutes():
 
         return device
 
-    def _checkDeviceDependency(self, dbSession, deviceId):
-        if dbSession.query(OverlayL2port).filter(OverlayL2port.overlay_device_id == deviceId).count() > 0:
-            raise ValueError('Device %s has L2 port active on it. Please delete L2 port explicitly first' % deviceId)
-    
-        if dbSession.query(OverlayAggregatedL2portMember).filter(OverlayAggregatedL2portMember.overlay_device_id == deviceId).count() > 0:
-            raise ValueError('Device %s has aggregated L2 port active on it. Please delete aggregated L2 port explicitly first' % deviceId)
-            
     def deleteDevice(self, dbSession, deviceId):
             
         try:
-            # Validate if there is l2port or aggregatedL2port active on this device.
-            # If there is, this request will fail with 500. User needs to delete l2port/aggregatedL2port explicitly 
-            # and then try to delete device again.
-            self._checkDeviceDependency(dbSession, deviceId)
-            
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
-            self.__dao.deleteObject(dbSession, deviceObject)
             logger.info("OverlayDevice[id='%s', name='%s']: deleted", deviceObject.id, deviceObject.name)
+            self._overlay.deleteDevice(dbSession, deviceObject)
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
