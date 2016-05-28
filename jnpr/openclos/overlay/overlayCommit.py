@@ -48,23 +48,40 @@ class OverlayCommitJob():
                 if statusObject.operation == "create":
                     statusObject.update(status, reason)
                 elif statusObject.operation == "delete":
-                    if status == "success":
-                        relatedStatusObjects = session.query(OverlayDeployStatus).filter(
-                                            OverlayDeployStatus.object_url == statusObject.object_url).filter(
-                                            OverlayDeployStatus.overlay_device_id == self.deviceId).all()
-                        self.parent._dao.deleteObjects(session, relatedStatusObjects)
+                    # There are 3 cases: (It does not make sense to have a case of creation failure, delete success)
+                    # 1. create success, delete success
+                    # 2. create success, delete failure
+                    # 3. create failure, delete failure
+                    # For 1 and 3, it is safe to delete the object itself and all its status.
+                    # For 2, we need to keep the object and its status in case someone fixes the OOB issue and 
+                    # send another delete again.
+                    #
+                    # Find all status for this object on this device. Typically there will be 2: one create and one delete.
+                    relatedStatusOnThisDevice = session.query(OverlayDeployStatus).filter(
+                        OverlayDeployStatus.object_url == statusObject.object_url).filter(
+                        OverlayDeployStatus.overlay_device_id == self.deviceId).all()
+                    if status == 'success':
+                        # case 1
+                        self.parent._dao.deleteObjects(session, relatedStatusOnThisDevice)
+                    elif status == 'failure':
+                        # case 2 or 3
+                        for rs in relatedStatusOnThisDevice:
+                            if rs.operation == 'create':
+                                if rs.status == 'failure':
+                                    # case 3
+                                    self.parent._dao.deleteObjects(session, relatedStatusOnThisDevice)
+                                elif rs.status == 'success':
+                                    # case 2
+                                    logger.debug("Object %s was created successfully but delete failed. Keep this status. There might be OOB changes on the device causing this failure", rs.object_url)
                         
-                        # If all devices are done, then delete the object
-                        deployStatusCount = session.query(OverlayDeployStatus).filter(
-                                            OverlayDeployStatus.object_url == statusObject.object_url).count()
-                        
-                        if deployStatusCount == 0:
-                            objectTypeId = statusObject.getObjectTypeAndId()
-                            obj = session.query(objectTypeId[0]).filter_by(id=objectTypeId[1]).one()
-                            if obj:
-                                session.delete(obj)
-                    else:
-                        statusObject.update(status, reason)
+                    # If all devices are done, then delete the object.
+                    notSuccessCount = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == statusObject.object_url).count()
+                    if notSuccessCount == 0:
+                        logger.debug("Config deleted on all devices. Object %s deleted", statusObject.object_url)
+                        objectTypeId = statusObject.getObjectTypeAndId()
+                        obj = session.query(objectTypeId[0]).filter_by(id=objectTypeId[1]).one()
+                        if obj:
+                            session.delete(obj)
                         
                 elif statusObject.operation == "update":
                     statusObject.update(status, reason)
@@ -241,6 +258,9 @@ class OverlayCommitQueue(SingletonBase):
             raise
 
 # def main():        
+    # from jnpr.openclos.overlay.overlayModel import OverlayDevice, OverlayFabric
+    # import time
+    
     # conf = OpenClosProperty().getProperties()
     # dao = Dao.getInstance()
     # from jnpr.openclos.overlay.overlay import Overlay
@@ -254,19 +274,31 @@ class OverlayCommitQueue(SingletonBase):
     # commitQueue.start()
     
     # with dao.getReadWriteSession() as session:
-        # d1 = overlay.createDevice(session, 'd1', '', 'spine', '10.92.80.252', '10.92.80.252', 'pod1', 'root', 'Embe1mpls')
+        # # d1 = overlay.createDevice(session, 'd1', '', 'spine', '10.92.80.252', '10.92.80.252', 'pod1', 'root', 'Embe1mpls')
+        # d1 = overlay.createDevice(session, 'd1', '', 'spine', '10.92.82.10', '10.92.82.10', 'pod1', 'root', 'Embe1mpls')
         # d1_id = d1.id
         # f1 = overlay.createFabric(session, 'f1', '', 65001, '10.92.80.1', [d1])
         # f1_id = f1.id
-        # t1 = overlay.createTenant(session, 't1', '', f1)
-        # t1_id = t1.id
-        # v1 = overlay.createVrf(session, 'v1', '', 100, '1.1.1.1', t1)
-        # v1_id = v1.id
-        # n1 = overlay.createNetwork(session, 'n1', '', v1, 1000, 100, False)
-        # n1_id = n1.id
-    
-    # import time
+        # # t1 = overlay.createTenant(session, 't1', '', f1)
+        # # t1_id = t1.id
+        # # v1 = overlay.createVrf(session, 'v1', '', 100, '1.1.1.1', t1)
+        # # v1_id = v1.id
+        # # n1 = overlay.createNetwork(session, 'n1', '', v1, 1000, 100, False)
+        # # n1_id = n1.id
+        
     # time.sleep(10)
+    
+    # # raw_input("press any key...")
+    # # with dao.getReadWriteSession() as session:
+        # # d1 = dao.getObjectById(session, OverlayDevice, d1_id)
+        # # overlay.deleteDevice(session, d1)
+    
+    # raw_input("press any key...")
+    # with dao.getReadWriteSession() as session:
+        # f1 = dao.getObjectById(session, OverlayFabric, f1_id)
+        # overlay.deleteFabric(session, f1)
+    
+    # raw_input("press any key...")
     # commitQueue.stop()
 
 # if __name__ == '__main__':
