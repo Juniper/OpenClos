@@ -556,3 +556,5 @@ class OverlayDeployStatus(ManagedElement, Base):
             return(OverlaySubnet, objectUrlSplit[2])
         elif objectUrlSplit[1] == "l2ports":
             return(OverlayL2port, objectUrlSplit[2])
+        elif objectUrlSplit[1] == "aggregatedL2ports":
+            return(OverlayAggregatedL2port, objectUrlSplit[2])
