@@ -79,7 +79,7 @@ class OverlayCommitJob():
                     if notSuccessCount == 0:
                         logger.debug("Config deleted on all devices. Object %s deleted", statusObject.object_url)
                         objectTypeId = statusObject.getObjectTypeAndId()
-                        obj = session.query(objectTypeId[0]).filter_by(id=objectTypeId[1]).one()
+                        obj = session.query(objectTypeId[0]).filter_by(id=objectTypeId[1]).first()
                         if obj:
                             session.delete(obj)
                         

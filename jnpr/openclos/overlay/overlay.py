@@ -209,11 +209,11 @@ class Overlay():
         logger.info("Network[id: '%s', name: '%s']: delete request submitted", network.id, network.name)
         for port in network.overlay_l2aps:
             if type(port) is OverlayL2port:
-                self._configEngine.deleteL2port(dbSession, port)
+                self.deleteL2port(dbSession, port)
             elif type(port) is OverlayAggregatedL2port:
-                self._configEngine.deleteAggregatedL2port(dbSession, port)
+                self.deleteAggregatedL2port(dbSession, port)
         for subnet in network.overlay_subnets:
-            self._configEngine.deleteSubnet(dbSession, subnet)
+            self.deleteSubnet(dbSession, subnet)
         self._configEngine.deleteNetwork(dbSession, network)
 
     def deleteVrf(self, dbSession, vrf):
@@ -222,9 +222,19 @@ class Overlay():
         '''
         logger.info("vrf[id: '%s', name: '%s']: delete request submitted", vrf.id, vrf.name)
         for network in vrf.overlay_networks:
-            self._configEngine.deleteNetwork(dbSession, network)
+            self.deleteNetwork(dbSession, network)
         self._configEngine.deleteVrf(dbSession, vrf)
 
+    def deleteTenant(self, dbSession, tenant):
+        '''
+        Delete tenant from device, also vrf, delete network, subnet ports etc.
+        '''
+        logger.info("tenant[id: '%s', name: '%s']: delete request submitted", tenant.id, tenant.name)
+        for vrf in tenant.overlay_vrfs:
+            self.deleteVrf(dbSession, vrf)
+        # Delete the tenant itself
+        self._dao.deleteObject(dbSession, tenant)
+        
     def deleteFabric(self, dbSession, fabric):
         '''
         Delete fabric from device, also vrf, delete network, subnet ports etc.
@@ -232,7 +242,7 @@ class Overlay():
         logger.info("fabric[id: '%s', name: '%s']: delete request submitted", fabric.id, fabric.name)
         for tenant in fabric.overlay_tenants:
             for vrf in tenant.overlay_vrfs:
-                self._configEngine.deleteVrf(dbSession, vrf)
+                self.deleteVrf(dbSession, vrf)
         self._configEngine.deleteFabric(dbSession, fabric)
 
     def _checkDeviceDependency(self, dbSession, deviceObject):
