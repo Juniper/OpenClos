@@ -534,8 +534,8 @@ class OverlayRestRoutes():
             
         try:
             tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
-            self.__dao.deleteObject(dbSession, tenantObject)
-            logger.info("OverlayTenant[id='%s', name='%s']: deleted", tenantObject.id, tenantObject.name)
+            logger.info("OverlayTenant[id='%s', name='%s']: delete request is submitted", tenantObject.id, tenantObject.name)
+            self._overlay.deleteTenant(dbSession, tenantObject)
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
