@@ -1,3 +1,4 @@
+{% if lagCount > 0 %}
 chassis {
     aggregated-devices {
         ethernet {
@@ -5,6 +6,12 @@ chassis {
         }
     }
 }
+{% else %}
+chassis {
+    delete:
+    aggregated-devices;
+}
+{% endif %}
 
 interfaces {
     delete:
