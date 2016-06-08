@@ -14,8 +14,10 @@ chassis {
 {% endif %}
 
 interfaces {
+    {% for memberInterface in memberInterfaces %}
     delete:
-    {{interfaceName}};
+    {{memberInterface}};
+    {% endfor %}
     delete:
     {{lagName}};
 }

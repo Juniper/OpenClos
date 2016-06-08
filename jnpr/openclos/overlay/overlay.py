@@ -478,10 +478,18 @@ class ConfigEngine():
         networks = [(net.vlanid, net.vnid) for net in aggregatedL2port.overlay_networks]
         vrf = aggregatedL2port.overlay_networks[0].overlay_vrf
         template = self._templateLoader.getTemplate('olAddLag.txt')
+        membersByDevice = {}
+        # Normalize members based on device ids 
+        # Note we need to do this so in Single-Homed use case, we only create one commit push
         for member in aggregatedL2port.members:
-            lagCount = len(member.overlay_device.aggregatedL2port_members)
-            config = template.render(interfaceName=member.interface, networks=networks, lagName=aggregatedL2port.name, ethernetSegmentId=aggregatedL2port.esi, systemId=aggregatedL2port.lacp, lagCount=lagCount)
-            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "create", member.overlay_device, vrf.overlay_tenant.overlay_fabric))
+            if member.overlay_device.id not in membersByDevice:
+                membersByDevice[member.overlay_device.id] = {'members': [], 'device': member.overlay_device}
+            membersByDevice[member.overlay_device.id]['members'].append(member.interface)
+                
+        for deviceId, deviceMembers in membersByDevice.iteritems():
+            lagCount = len(deviceMembers['device'].aggregatedL2port_members)
+            config = template.render(memberInterfaces=deviceMembers['members'], networks=networks, lagName=aggregatedL2port.name, ethernetSegmentId=aggregatedL2port.esi, systemId=aggregatedL2port.lacp, lagCount=lagCount)
+            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "create", deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
             
         self._dao.createObjects(dbSession, deployments)
         logger.info("configureAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
@@ -615,13 +623,21 @@ class ConfigEngine():
         deployments = []
         vrf = aggregatedL2port.overlay_networks[0].overlay_vrf
         template = self._templateLoader.getTemplate('olDelLag.txt')
+        membersByDevice = {}
+        # Normalize members based on device ids 
+        # Note we need to do this so in Single-Homed use case, we only create one commit push
         for member in aggregatedL2port.members:
             if member.overlay_device in deployedDevices:
-                lagCount = len(member.overlay_device.aggregatedL2port_members) - 1
-                if lagCount < 0:
-                    raise ValueError("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: lagCount is already 0. It cannot be decreased." % (aggregatedL2port.id, aggregatedL2port.name))
-                config = template.render(interfaceName=member.interface, lagName=aggregatedL2port.name, lagCount=lagCount)
-                deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "delete", member.overlay_device, vrf.overlay_tenant.overlay_fabric))
+                if member.overlay_device.id not in membersByDevice:
+                    membersByDevice[member.overlay_device.id] = {'members': [], 'device': member.overlay_device}
+                membersByDevice[member.overlay_device.id]['members'].append(member.interface)
+                
+        for deviceId, deviceMembers in membersByDevice.iteritems():
+            lagCount = len(deviceMembers['device'].aggregatedL2port_members) - len(deviceMembers['members'])
+            if lagCount < 0:
+                raise ValueError("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: lagCount is already 0. It cannot be decreased." % (aggregatedL2port.id, aggregatedL2port.name))
+            config = template.render(memberInterfaces=deviceMembers['members'], lagName=aggregatedL2port.name, lagCount=lagCount)
+            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "delete", deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
         self._commitQueue.addJobs(deployments)

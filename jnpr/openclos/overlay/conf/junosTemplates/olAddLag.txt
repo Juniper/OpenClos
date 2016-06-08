@@ -7,12 +7,15 @@ chassis {
 }
 
 interfaces {
+    {% for memberInterface in memberInterfaces %}
     replace:
-    {{interfaceName}} {
+    {{memberInterface}} {
         ether-options {
             802.3ad {{lagName}};
         }
     }
+    {% endfor %}
+    replace:
     {{lagName}} {
         esi {
             {{ethernetSegmentId}};

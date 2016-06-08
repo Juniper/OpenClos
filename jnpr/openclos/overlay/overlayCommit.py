@@ -257,8 +257,9 @@ class OverlayCommitQueue(SingletonBase):
             logger.error("Encounted error '%s' on OverlayCommitQueue", exc)
             raise
 
+            
 # def main():        
-    # from jnpr.openclos.overlay.overlayModel import OverlayDevice, OverlayFabric
+    # from jnpr.openclos.overlay.overlayModel import OverlayDevice, OverlayFabric, OverlayAggregatedL2port
     # import time
     
     # conf = OpenClosProperty().getProperties()
@@ -274,29 +275,35 @@ class OverlayCommitQueue(SingletonBase):
     # commitQueue.start()
     
     # with dao.getReadWriteSession() as session:
-        # # d1 = overlay.createDevice(session, 'd1', '', 'spine', '10.92.80.252', '10.92.80.252', 'pod1', 'root', 'Embe1mpls')
-        # d1 = overlay.createDevice(session, 'd1', '', 'spine', '10.92.82.10', '10.92.82.10', 'pod1', 'root', 'Embe1mpls')
+        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'leaf', '10.92.82.12', '10.92.82.12', 'pod1', 'root', 'Embe1mpls')
         # d1_id = d1.id
-        # f1 = overlay.createFabric(session, 'f1', '', 65001, '10.92.80.1', [d1])
+        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'leaf', '10.92.82.13', '10.92.82.13', 'pod1', 'root', 'Embe1mpls')
+        # d2_id = d2.id
+        # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2])
         # f1_id = f1.id
-        # # t1 = overlay.createTenant(session, 't1', '', f1)
-        # # t1_id = t1.id
-        # # v1 = overlay.createVrf(session, 'v1', '', 100, '1.1.1.1', t1)
-        # # v1_id = v1.id
-        # # n1 = overlay.createNetwork(session, 'n1', '', v1, 1000, 100, False)
-        # # n1_id = n1.id
+        # t1 = overlay.createTenant(session, 't1', '', f1)
+        # t1_id = t1.id
+        # v1 = overlay.createVrf(session, 'v1', '', 100, '1.1.1.1/30', t1)
+        # v1_id = v1.id
+        # n1 = overlay.createNetwork(session, 'n1', '', v1, 1000, 100, False)
+        # n1_id = n1.id
+        # s1 = overlay.createSubnet(session, 's1', '', n1, '1.2.3.4/24')
+        # s1_id = s1.id
+        # members = [ {'interface': 'xe-0/0/0', 'device': d1}, {'interface': 'xe-0/0/0', 'device': d2} ]
+        # aggregatedL2port1 = overlay.createAggregatedL2port(session, 'ae0', '', [n1], members, '00:01:01:01:01:01:01:01:01:01', '00:00:00:01:01:01')
+        # aggregatedL2port1_id = aggregatedL2port1.id 
         
-    # time.sleep(10)
-    
-    # # raw_input("press any key...")
-    # # with dao.getReadWriteSession() as session:
-        # # d1 = dao.getObjectById(session, OverlayDevice, d1_id)
-        # # overlay.deleteDevice(session, d1)
+    # time.sleep(20)
     
     # raw_input("press any key...")
     # with dao.getReadWriteSession() as session:
-        # f1 = dao.getObjectById(session, OverlayFabric, f1_id)
-        # overlay.deleteFabric(session, f1)
+        # aggregatedL2port1 = dao.getObjectById(session, OverlayAggregatedL2port, aggregatedL2port1_id)
+        # overlay.deleteAggregatedL2port(session, aggregatedL2port1)
+    
+    # # raw_input("press any key...")
+    # # with dao.getReadWriteSession() as session:
+        # # f1 = dao.getObjectById(session, OverlayFabric, f1_id)
+        # # overlay.deleteFabric(session, f1)
     
     # raw_input("press any key...")
     # commitQueue.stop()
