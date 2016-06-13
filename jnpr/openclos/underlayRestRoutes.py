@@ -133,13 +133,13 @@ class UnderlayRestRoutes():
             
             outputDict['spineSettings'] = []
             outputDict['spineSettings'].append({'deviceType': pod.spineDeviceType, 
-                    'uplinkPorts': pod.spineUplinkRegex, 'downlinkPorts': pod.spineDownlinkRegex, 
+                    'uplinkPorts': DeviceSku.portRegexCsvListToOrigList(pod.spineUplinkRegex), 'downlinkPorts': DeviceSku.portRegexCsvListToOrigList(pod.spineDownlinkRegex), 
                     'junosImage': pod.spineJunosImage})
 
             outputDict['leafSettings'] = []
             for leafSetting in pod.leafSettings:
                 outputDict['leafSettings'].append({'deviceType': leafSetting.deviceFamily, 
-                    'uplinkPorts': leafSetting.uplinkRegex, 'downlinkPorts': leafSetting.downlinkRegex, 
+                    'uplinkPorts': DeviceSku.portRegexCsvListToOrigList(leafSetting.uplinkRegex), 'downlinkPorts': DeviceSku.portRegexCsvListToOrigList(leafSetting.downlinkRegex), 
                     'junosImage': leafSetting.junosImage})
 
             outputDict['devicePassword'] = pod.getCleartextPassword()

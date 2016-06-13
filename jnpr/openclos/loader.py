@@ -419,6 +419,19 @@ class DeviceSku(PropertyLoader):
             
         return portNames
 
+    @staticmethod
+    def portRegexCsvListToOrigList(portRegexCsvList):
+        '''    
+        Cancatenate csv list of port regular expression back to the original list
+        :param string: 'xe-0/0/[0-10], et-0/0/[0-3]'
+        :returns list: ['xe-0/0/[0-10]', 'et-0/0/[0-3]']
+        '''
+
+        if portRegexCsvList:
+            return portRegexCsvList.split(',')
+        else:
+            return []
+        
 '''
 If you run OpenClos as integrated with ND, prior to calling loadLoggingConfig, you will call setFileHandlerFullPath 
 to have logs stored in a non-default location. 

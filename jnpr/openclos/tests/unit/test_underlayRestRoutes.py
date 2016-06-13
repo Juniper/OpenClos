@@ -12,6 +12,7 @@ from webtest import TestApp, AppError
 
 from jnpr.openclos.rest import RestServer
 from jnpr.openclos.underlayRestRoutes import webServerRoot, junosImageRoot
+from jnpr.openclos.loader import DeviceSku
 from test_dao import InMemoryDao 
 
 
@@ -211,8 +212,8 @@ class TestUnderlayRestRoutes(unittest.TestCase):
         self.assertEqual(pod1Id, response.json['pod']['id'])
         self.assertEqual(pod1Name, response.json['pod']['name'])
         self.assertEqual(pod1SpineDeviceType, response.json['pod']['spineSettings'][0]['deviceType'])
-        self.assertEqual(pod1SpineUplinkPorts, response.json['pod']['spineSettings'][0]['uplinkPorts'])
-        self.assertEqual(pod1LeafUplinkPorts, response.json['pod']['leafSettings'][0]['uplinkPorts'])
+        self.assertEqual(DeviceSku.portRegexCsvListToOrigList(pod1SpineUplinkPorts), response.json['pod']['spineSettings'][0]['uplinkPorts'])
+        self.assertEqual(DeviceSku.portRegexCsvListToOrigList(pod1LeafUplinkPorts), response.json['pod']['leafSettings'][0]['uplinkPorts'])
         self.assertTrue('/openclos/v1/underlay/pods/' + pod1Id + '/cabling-plan' in response.json['pod']['cablingPlan']['uri'])
         self.assertTrue('/openclos/v1/underlay/pods/' + pod1Id + '/devices' in response.json['pod']['devices']['uri'])
 

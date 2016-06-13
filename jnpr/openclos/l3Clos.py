@@ -323,18 +323,6 @@ class L3ClosMediation():
         else:
             logger.debug("Pod[id='%s', name='%s']: inventory not changed", pod.id, pod.name)
 
-    def _needToRebuild(self, pod, podDict):
-        if (pod.spineDeviceType != podDict.get('spineDeviceType') or
-            pod.spineCount != podDict.get('spineCount') or
-            pod.leafCount != podDict.get('leafCount') or
-            pod.interConnectPrefix != podDict.get('interConnectPrefix') or
-            pod.vlanPrefix != podDict.get('vlanPrefix') or
-            pod.loopbackPrefix != podDict.get('loopbackPrefix') or
-            pod.managementPrefix != podDict.get('managementPrefix')):
-            return True
-        else:
-            return False
-            
     def fixIfdIflName(self, ifd, name):
         if ifd is None:
             return []
@@ -396,7 +384,7 @@ class L3ClosMediation():
         
     def _updatePodData(self, session, pod, podDict, inventoryData):
         # if following data changed we need to reallocate resource
-        if self._needToRebuild(pod, podDict) == True:
+        if pod.needToRebuildInventory(podDict) == True:
             logger.debug("Pod[id='%s', name='%s']: rebuilding required", pod.id, pod.name)
             if len(pod.devices) > 0:
                 self._dao.deleteObjects(session, pod.devices)
