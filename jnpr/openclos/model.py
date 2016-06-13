@@ -90,6 +90,51 @@ class Pod(ManagedElement, Base):
         and get initialized
         '''
     
+    def needToRebuildInventory(self, podDict):
+        # Compare following simple properties
+        if (self.spineCount != podDict.get('spineCount') or
+            self.leafCount != podDict.get('leafCount') or
+            self.interConnectPrefix != podDict.get('interConnectPrefix') or
+            self.vlanPrefix != podDict.get('vlanPrefix') or
+            self.loopbackPrefix != podDict.get('loopbackPrefix') or
+            self.managementPrefix != podDict.get('managementPrefix')):
+            return True
+            
+        # Compare following complex properties
+        spineSettings = podDict.get('spineSettings')
+        if spineSettings:
+            spineDeviceType = spineSettings[0].get('deviceType')
+            spineUplinkRegex = spineSettings[0].get('uplinkPorts')
+            if spineUplinkRegex:
+                spineUplinkRegex = ','.join(spineUplinkRegex)
+            spineDownlinkRegex = spineSettings[0].get('downlinkPorts')
+            if spineDownlinkRegex:
+                spineDownlinkRegex = ','.join(spineDownlinkRegex)
+        if (self.spineDeviceType != spineDeviceType or 
+            self.spineUplinkRegex != spineUplinkRegex or 
+            self.spineDownlinkRegex != spineDownlinkRegex):
+            return True
+
+        # Compare following complex properties
+        otherLeafSettingSet = set()
+        leafSettings = podDict.get('leafSettings')
+        if leafSettings is not None:
+            for leafSetting in leafSettings:
+                uplinkRegex = leafSetting.get('uplinkPorts')
+                if uplinkRegex:
+                    uplinkRegex = ','.join(uplinkRegex)
+                downlinkRegex = leafSetting.get('downlinkPorts')
+                if downlinkRegex:
+                    downlinkRegex = ','.join(downlinkRegex)
+                otherLeafSettingSet.add(leafSetting['deviceType'] + ' ' + str(uplinkRegex) + ' ' + str(downlinkRegex))
+        selfLeafSettingSet = set()
+        for selfLeafSetting in self.leafSettings:
+            selfLeafSettingSet.add(selfLeafSetting.deviceFamily + ' ' + str(selfLeafSetting.uplinkRegex) + ' ' + str(selfLeafSetting.downlinkRegex))
+        if selfLeafSettingSet != otherLeafSettingSet:
+            return True
+            
+        return False
+            
     def update(self, id, name, podDict):
         '''
         Updates a Pod ORM object from dict
