@@ -38,9 +38,9 @@ class OverlayDevice(ManagedElement, Base):
         '''
         Creates device object.
         '''
-        if username is None or len(username) == 0:
+        if username is None or username == '':
             raise ValueError("username cannot be None or empty")
-        if password is None or len(password) == 0:
+        if password is None or password == '':
             raise ValueError("password cannot be None or empty")
 
         # Note in MySQL non-strict mode, inserting an invalid role will not throw error.
@@ -62,9 +62,9 @@ class OverlayDevice(ManagedElement, Base):
         '''
         Updates device object.
         '''
-        if username is None or len(username) == 0:
+        if username is None or username == '':
             raise ValueError("username cannot be None or empty")
-        if password is None or len(password) == 0:
+        if password is None or password == '':
             raise ValueError("password cannot be None or empty")
             
         # Note in MySQL non-strict mode, inserting an invalid role will not throw error.
@@ -105,8 +105,8 @@ class OverlayFabric(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     name = Column(String(255), index=True, nullable=False)
     description = Column(String(256))
-    overlayAS = Column(BigInteger, unique=True)
-    routeReflectorAddress = Column(String(60), unique=True)
+    overlayAS = Column(BigInteger, nullable=False, unique=True)
+    routeReflectorAddress = Column(String(60), nullable=False, unique=True)
 
     overlay_devices = relationship(
         'OverlayDevice',
@@ -117,10 +117,16 @@ class OverlayFabric(ManagedElement, Base):
         '''
         Creates Fabric object.
         '''
+        if overlayAS is None or overlayAS == '':
+            raise ValueError("overlayAS cannot be None or empty")
+            
+        if routeReflectorAddress is None or routeReflectorAddress == '':
+            raise ValueError("routeReflectorAddress cannot be None or empty")
+            
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
-        self.overlayAS = overlayAS
+        self.overlayAS = int(overlayAS)
         self.routeReflectorAddress = routeReflectorAddress
         for device in devices:
             self.overlay_devices.append(device)
@@ -135,7 +141,7 @@ class OverlayFabric(ManagedElement, Base):
         '''
         self.name = name
         self.description = description
-        self.overlayAS = overlayAS
+        self.overlayAS = int(overlayAS)
         self.routeReflectorAddress = routeReflectorAddress
         for device in devices:
             self.overlay_devices.append(device)
@@ -196,7 +202,7 @@ class OverlayVrf(ManagedElement, Base):
     name = Column(String(255), nullable=False, unique=True)
     description = Column(String(256))
     routedVnid = Column(Integer)
-    loopbackAddress = Column(String(60))
+    loopbackAddress = Column(String(60), nullable=False)
     vrfCounter = Column(Integer)
     overlay_tenant_id = Column(String(60), ForeignKey('overlayTenant.id'), nullable=False)
     overlay_tenant = relationship("OverlayTenant", backref=backref('overlay_vrfs', order_by=name, cascade='all, delete, delete-orphan'))
@@ -211,7 +217,7 @@ class OverlayVrf(ManagedElement, Base):
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
-        self.routedVnid = routedVnid
+        self.routedVnid = int(routedVnid)
         self.loopbackAddress = loopbackAddress
         self.overlay_tenant = overlay_tenant
         
@@ -224,7 +230,7 @@ class OverlayVrf(ManagedElement, Base):
         '''
         self.name = name
         self.description = description
-        self.routedVnid = routedVnid
+        self.routedVnid = int(routedVnid)
         self.loopbackAddress = loopbackAddress
         
     def getDevices(self, role=None):
@@ -253,8 +259,8 @@ class OverlayNetwork(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     name = Column(String(255), nullable=False)
     description = Column(String(256))
-    vlanid = Column(Integer, unique=True) # for current release, vlanid has to be globally unique
-    vnid = Column(Integer, unique=True) # for current release, vnid has to be globally unique
+    vlanid = Column(Integer, unique=True, nullable=False) # for current release, vlanid has to be globally unique
+    vnid = Column(Integer, unique=True, nullable=False) # for current release, vnid has to be globally unique
     pureL3Int = Column(Boolean)
     overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'), nullable=False)
     overlay_vrf = relationship("OverlayVrf", backref=backref('overlay_networks', order_by=name, cascade='all, delete, delete-orphan'))
@@ -274,8 +280,8 @@ class OverlayNetwork(ManagedElement, Base):
         self.name = name
         self.description = description
         self.overlay_vrf = overlay_vrf
-        self.vlanid = vlanid
-        self.vnid = vnid
+        self.vlanid = int(vlanid)
+        self.vnid = int(vnid)
         self.pureL3Int = pureL3Int
         
     def getUrl(self):
@@ -287,8 +293,8 @@ class OverlayNetwork(ManagedElement, Base):
         '''
         self.name = name
         self.description = description
-        self.vlanid = vlanid
-        self.vnid = vnid
+        self.vlanid = int(vlanid)
+        self.vnid = int(vnid)
         self.pureL3Int = pureL3Int
     
 class OverlaySubnet(ManagedElement, Base):
@@ -296,7 +302,7 @@ class OverlaySubnet(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     name = Column(String(255), nullable=False)
     description = Column(String(256))
-    cidr = Column(String(60))
+    cidr = Column(String(60), nullable=False)
     overlay_network_id = Column(String(60), ForeignKey('overlayNetwork.id'), nullable=False)
     overlay_network = relationship("OverlayNetwork", backref=backref('overlay_subnets', order_by=name, cascade='all, delete, delete-orphan'))
     __table_args__ = (
@@ -394,8 +400,8 @@ class OverlayL2ap(ManagedElement, Base):
 class OverlayL2port(OverlayL2ap):
     __tablename__ = 'overlayL2port'
     id = Column(String(60), ForeignKey('overlayL2ap.id'), primary_key=True)
-    interface = Column(String(100), nullable=True)
-    overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=True)
+    interface = Column(String(100), nullable=False)
+    overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
     overlay_device = relationship("OverlayDevice", backref=backref('overlay_l2ports', order_by='OverlayL2ap.name', cascade='all, delete, delete-orphan'))
     __mapper_args__ = {
         'polymorphic_identity': 'l2port'
@@ -424,8 +430,8 @@ class OverlayL2port(OverlayL2ap):
 class OverlayAggregatedL2portMember(ManagedElement, Base):
     __tablename__ = 'overlayAggregatedL2portMember'
     id = Column(String(60), primary_key=True)
-    interface = Column(String(100), nullable=True)
-    overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=True)
+    interface = Column(String(100), nullable=False)
+    overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
     overlay_aggregatedL2port_id = Column(String(60), ForeignKey('overlayAggregatedL2port.id'))
     overlay_device = relationship("OverlayDevice", backref=backref('aggregatedL2port_members', order_by=overlay_aggregatedL2port_id, cascade='all, delete, delete-orphan'))
     overlay_aggregatedL2port = relationship("OverlayAggregatedL2port", backref=backref('members', order_by=overlay_device_id, cascade='all, delete, delete-orphan'))
@@ -453,8 +459,8 @@ class OverlayAggregatedL2portMember(ManagedElement, Base):
 class OverlayAggregatedL2port(OverlayL2ap):
     __tablename__ = 'overlayAggregatedL2port'
     id = Column(String(60), ForeignKey('overlayL2ap.id'), primary_key=True)
-    esi = Column(String(60), nullable=True, unique=True)
-    lacp = Column(String(60), nullable=True)
+    esi = Column(String(60), nullable=False, unique=True)
+    lacp = Column(String(60), nullable=False)
     __mapper_args__ = {
         'polymorphic_identity': 'aggregatedL2port'
     }

@@ -7,7 +7,8 @@ Created on Nov 23, 2015
 import logging
 import os
 import itertools
-from netaddr import IPNetwork
+from netaddr import IPNetwork, valid_ipv4, valid_ipv6
+from netaddr.core import AddrFormatError, INET_PTON
 
 from jnpr.openclos.exception import OverlayDeviceNotFound
 from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayDevice, OverlayL3port, OverlayL2port, OverlayAggregatedL2port, OverlayAggregatedL2portMember, OverlayDeployStatus
@@ -26,6 +27,7 @@ class Overlay():
         self._conf = conf
         self._dao = dao
         self._configEngine = ConfigEngine(conf, dao, commitQueue)
+        
     def createDevice(self, dbSession, name, description, role, address, routerId, podName, username, password):
         '''
         Create a new Device
@@ -40,6 +42,9 @@ class Overlay():
         '''
         Create a new Fabric
         '''
+        if not Overlay.isValidIpAddress(routeReflectorAddress):
+            raise ValueError('Invalid routeReflectorAddress value %s' % routeReflectorAddress)
+        
         fabric = OverlayFabric(name, description, overlayAsn, routeReflectorAddress, devices)
 
         self._dao.createObjects(dbSession, [fabric])
@@ -61,6 +66,9 @@ class Overlay():
         '''
         Create a new Vrf
         '''
+        if not Overlay.isValidIpBlock(loopbackAddress):
+            raise ValueError('Invalid loopbackAddress value %s' % loopbackAddress)
+        
         vrf = OverlayVrf(name, description, routedVnid, loopbackAddress, overlayTenant)
         vrf.vrfCounter = self._dao.incrementAndGetCounter("OverlayVrf.vrfCounter")
 
@@ -84,6 +92,9 @@ class Overlay():
         '''
         Create a new Subnet
         '''
+        if not Overlay.isValidIpBlock(cidr):
+            raise ValueError('Invalid cidr value %s' % cidr)
+            
         subnet = OverlaySubnet(name, description, overlay_network, cidr)
 
         self._dao.createObjects(dbSession, [subnet])
@@ -271,6 +282,23 @@ class Overlay():
         self._dao.deleteObject(dbSession, device)
         logger.info("device[id: '%s', name: '%s']: deleted", device.id, device.name)
             
+    @staticmethod
+    def isValidIpAddress(value):
+        try:
+            return valid_ipv4(value, INET_PTON) or valid_ipv6(value, INET_PTON)
+        except AddrFormatError as exc:
+            logger.error("%s", exc)
+        return False
+    
+    @staticmethod
+    def isValidIpBlock(value):
+        try:
+            block = IPNetwork(value)
+            return True
+        except AddrFormatError as exc:
+            logger.error("%s", exc)
+        return False
+        
 class ConfigEngine():
     def __init__(self, conf, dao, commitQueue=None):
         self._conf = conf
@@ -711,13 +739,15 @@ class ConfigEngine():
     # overlay = Overlay(conf, dao)
 
     # with dao.getReadWriteSession() as session:
-        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'spine', '1.2.3.4', '1.1.1.1', 'pod1', 'test', 'foobar')
-        # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'spine', '1.2.3.5', '1.1.1.2', 'pod1', 'test', 'foobar')
-        # d3 = overlay.createDevice(session, 'd3', 'description for d3', 'spine', '1.2.3.6', '1.1.1.3', 'pod1', 'test', 'foobar')
+        # d1 = overlay.createDevice(session, 'd1', '', 'leaf', '10.92.82.10', '10.92.82.10', 'pod1', 'root', 'Embe1mpls')
+        # d2 = overlay.createDevice(session, 'd2', '', 'leaf', '10.92.82.12', '10.92.82.12', 'pod1', 'root', 'Embe1mpls')
+        # d3 = overlay.createDevice(session, 'd3', '', 'leaf', '10.92.82.13', '10.92.82.13', 'pod1', 'root', 'Embe1mpls')
+        # d4 = overlay.createDevice(session, 'd4', '', 'leaf', '10.92.82.14', '10.92.82.14', 'pod1', 'root', 'Embe1mpls')
         # d1_id = d1.id
         # d2_id = d2.id
         # d3_id = d3.id
-        # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2])
+        # d4_id = d4.id
+        # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2, d3, d4])
         # f1_id = f1.id
         # t1 = overlay.createTenant(session, 't1', '', f1)
         # t1_id = t1.id
@@ -737,15 +767,15 @@ class ConfigEngine():
         # s1_id = s1.id
         # s2 = overlay.createSubnet(session, 's2', '', n1, '1.2.3.5/24')
         # s2_id = s2.id
-        # l2port1 = overlay.createL2port(session, 'l2port1', '', [n1], 'xe-0/0/1', d1)
+        # l2port1 = overlay.createL2port(session, 'l2port1', '', [n1], 'xe-0/0/1', d2)
         # l2port1_id = l2port1.id
         # l2port2 = overlay.createL2port(session, 'l2port2', '', [n1, n2, n3], 'xe-0/0/1', d2)
         # l2port2_id = l2port2.id
-        # members = [ {'interface': 'xe-0/0/11', 'device': d1}, {'interface': 'xe-0/0/11', 'device': d2} ]
-        # aggregatedL2port1 = overlay.createAggregatedL2port(session, 'aggregatedL2port1', '', [n1, n2], members, '00:11', '11:00')
+        # members = [ {'interface': 'xe-0/0/11', 'device': d2}, {'interface': 'xe-0/0/11', 'device': d3} ]
+        # aggregatedL2port1 = overlay.createAggregatedL2port(session, 'aggregatedL2port1', '', [n1, n2], members, '00:01:01:01:01:01:01:01:01:01', '00:00:00:01:01:01')
         # aggregatedL2port1_id = aggregatedL2port1.id
-        # members = [ {'interface': 'xe-0/0/12', 'device': d1}, {'interface': 'xe-0/0/12', 'device': d3} ]
-        # aggregatedL2port2 = overlay.createAggregatedL2port(session, 'aggregatedL2port2', '', [n1, n2], members, '00:22', '22:00')
+        # members = [ {'interface': 'xe-0/0/12', 'device': d2}, {'interface': 'xe-0/0/12', 'device': d4} ]
+        # aggregatedL2port2 = overlay.createAggregatedL2port(session, 'aggregatedL2port2', '', [n1, n2], members, '00:02:02:02:02:02:02:02:02:02', '00:00:00:02:02:02')
         # aggregatedL2port2_id = aggregatedL2port2.id
         
     # with dao.getReadSession() as session:

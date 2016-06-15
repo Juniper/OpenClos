@@ -317,7 +317,7 @@ class OverlayRestRoutes():
         try:
             name = fabricDict['name']
             description = fabricDict.get('description')
-            overlayAsn = fabricDict['overlayAsn']
+            overlayAsn = int(fabricDict['overlayAsn'])
             routeReflectorAddress = fabricDict['routeReflectorAddress']
             devices = fabricDict['devices']
             deviceObjects = []
@@ -339,6 +339,9 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except ValueError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
         except Exception as ex:
@@ -605,7 +608,7 @@ class OverlayRestRoutes():
         try:
             name = vrfDict['name']
             description = vrfDict.get('description')
-            routedVnid = vrfDict.get('routedVnid')
+            routedVnid = int(vrfDict.get('routedVnid'))
             loopbackAddress = vrfDict.get('loopbackAddress')
             tenantId = vrfDict['tenant'].split('/')[-1]
             try:
@@ -621,6 +624,9 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except ValueError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
         except Exception as ex:
@@ -643,7 +649,7 @@ class OverlayRestRoutes():
         try:
             name = vrfDict['name']
             description = vrfDict.get('description')
-            routedVnid = vrfDict.get('routedVnid')
+            routedVnid = int(vrfDict.get('routedVnid'))
             loopbackAddress = vrfDict.get('loopbackAddress')
             
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
@@ -772,6 +778,9 @@ class OverlayRestRoutes():
         except KeyError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except ValueError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(500, exception=PlatformError(ex.message))
@@ -809,6 +818,9 @@ class OverlayRestRoutes():
             logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
             raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
         except KeyError as ex:
+            logger.debug('Bad request: %s', ex.message)
+            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+        except ValueError as ex:
             logger.debug('Bad request: %s', ex.message)
             raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
         except Exception as ex:
