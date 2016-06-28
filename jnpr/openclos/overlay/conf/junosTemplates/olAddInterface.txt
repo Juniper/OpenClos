@@ -1,5 +1,7 @@
 interfaces {
     {{interfaceName}} {
+        delete:
+        unit 0;
         flexible-vlan-tagging;
         {% for network in networks %}unit {{network[0]}} {
             vlan-id {{network[0]}};
