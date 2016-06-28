@@ -217,7 +217,8 @@ class OverlayVrf(ManagedElement, Base):
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
-        self.routedVnid = int(routedVnid)
+        if routedVnid is not None:
+            self.routedVnid = int(routedVnid)
         self.loopbackAddress = loopbackAddress
         self.overlay_tenant = overlay_tenant
         
@@ -230,7 +231,8 @@ class OverlayVrf(ManagedElement, Base):
         '''
         self.name = name
         self.description = description
-        self.routedVnid = int(routedVnid)
+        if routedVnid is not None:
+            self.routedVnid = int(routedVnid)
         self.loopbackAddress = loopbackAddress
         
     def getDevices(self, role=None):
