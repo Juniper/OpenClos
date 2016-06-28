@@ -364,7 +364,7 @@ class OverlayRestRoutes():
         try:
             name = fabricDict['name']
             description = fabricDict.get('description')
-            overlayAsn = fabricDict['overlayAsn']
+            overlayAsn = int(fabricDict['overlayAsn'])
             routeReflectorAddress = fabricDict['routeReflectorAddress']
             devices = fabricDict['devices']
             fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
@@ -608,7 +608,9 @@ class OverlayRestRoutes():
         try:
             name = vrfDict['name']
             description = vrfDict.get('description')
-            routedVnid = int(vrfDict.get('routedVnid'))
+            routedVnid = vrfDict.get('routedVnid')
+            if routedVnid is not None:
+                routedVnid = int(routedVnid)
             loopbackAddress = vrfDict.get('loopbackAddress')
             tenantId = vrfDict['tenant'].split('/')[-1]
             try:
@@ -649,7 +651,9 @@ class OverlayRestRoutes():
         try:
             name = vrfDict['name']
             description = vrfDict.get('description')
-            routedVnid = int(vrfDict.get('routedVnid'))
+            routedVnid = vrfDict.get('routedVnid')
+            if routedVnid is not None:
+                routedVnid = int(routedVnid)
             loopbackAddress = vrfDict.get('loopbackAddress')
             
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
