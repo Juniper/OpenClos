@@ -70,6 +70,7 @@ class sampleApplication:
         '''
         restServer = RestServer()
         restServer.initRest()
+        restServer.installRoutes()
         restServer.start()
         return restServer
 
