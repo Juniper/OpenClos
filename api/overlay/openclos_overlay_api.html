@@ -391,14 +391,6 @@
                             </li>
 
                             
-                            <li class="nav-item put">
-                                <a class="nav-link" href="#put__l3ports__l3portId_">
-                                    <strong>PUT</strong>
-                                    /openclos/v1/overlay/l3ports/{l3portId}
-                                </a>
-                            </li>
-
-                            
                             <li class="nav-item get">
                                 <a class="nav-link" href="#get__networks">
                                     <strong>GET</strong>
@@ -506,14 +498,6 @@
                             <li class="nav-item get">
                                 <a class="nav-link" href="#get__tenants__tenantId_">
                                     <strong>GET</strong>
-                                    /openclos/v1/overlay/tenants/{tenantId}
-                                </a>
-                            </li>
-
-                            
-                            <li class="nav-item put">
-                                <a class="nav-link" href="#put__tenants__tenantId_">
-                                    <strong>PUT</strong>
                                     /openclos/v1/overlay/tenants/{tenantId}
                                 </a>
                             </li>
@@ -646,7 +630,7 @@
                              id="post__aggregatedL2ports_d">
                             
                             <h3>Description</h3>
-                            <p>Creates a new aggregated L2 port.</p>
+                            <p>Creates new aggregated L2 port.</p>
                             
 
                             
@@ -733,7 +717,7 @@
                              id="delete__aggregatedL2ports__aggregatedL2portId__d">
                             
                             <h3>Description</h3>
-                            <p>Deletes a aggregated L2 port based on UUID</p>
+                            <p>Deletes aggregated L2 port based on UUID</p>
                             
 
                             
@@ -820,7 +804,7 @@
                              id="get__aggregatedL2ports__aggregatedL2portId__d">
                             
                             <h3>Description</h3>
-                            <p>Returns a aggregated L2 port based on UUID</p>
+                            <p>Returns aggregated L2 port based on UUID</p>
                             
 
                             
@@ -907,7 +891,7 @@
                              id="put__aggregatedL2ports__aggregatedL2portId__d">
                             
                             <h3>Description</h3>
-                            <p>Modifies a aggregated L2 port based on UUID</p>
+                            <p>Modifies aggregated L2 port based on UUID</p>
                             
 
                             
@@ -939,7 +923,7 @@
                                         <td>body</td>
                                         <td>aggregated L2 port to modify</td>
                                         <td>True</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of aggregated L2 port.</p></span></div><div class="schema"><span class="sKey">esi</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>ESI.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific aggregated L2 port.</p></span></div><div class="schema"><span class="sKey">lacp</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>LACP.</p></span></div><div class="schema"><span class="sKey">members</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>List of members.</p></span><div class="schema">[<div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device to which the configlet is pushed.</p></span></div><div class="schema"><span class="sKey">interface</span> (<span class="sType">string</span>): <span class="sDescription"><p>Interface name.</p></span></div>]</div></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of aggregated L2 port.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>): <span class="sDescription"><p>List of network URIs.</p></span></div></td>
+                                        <td><div class="schema"><span class="sKey">esi</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>ESI.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific aggregated L2 port.</p></span></div><div class="schema"><span class="sKey">lacp</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>LACP.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div></td>
                                     </tr>
                                     
                                 </tbody>
@@ -1453,7 +1437,7 @@ Default to all.
                                         <td>body</td>
                                         <td>device to modify</td>
                                         <td>True</td>
-                                        <td><div class="schema"><span class="sKey">address</span> (<span class="sType">string</span>): <span class="sDescription"><p>IP address of device.</p></span></div><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of device.</p></span></div><div class="schema"><span class="sKey">fabrics</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of fabric URIs where this device is part of.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific device.</p></span></div><div class="schema"><span class="sKey">l2ports</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of L2 port URIs.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of device.</p></span></div><div class="schema"><span class="sKey">podName</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of the underlay POD where this device belongs to.</p></span></div><div class="schema"><span class="sKey">role</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Role of device.</p></span></div><div class="schema"><span class="sKey">routerId</span> (<span class="sType">string</span>): <span class="sDescription"><p>Router ID. Typically IP address of Loopback interface.</p></span></div></td>
+                                        <td><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific device.</p></span></div><div class="schema"><span class="sKey">password</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>cleartext password of device.</p></span></div><div class="schema"><span class="sKey">username</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Username of device.</p></span></div></td>
                                     </tr>
                                     
                                 </tbody>
@@ -1866,7 +1850,7 @@ Default to all.
                                         <td>body</td>
                                         <td>Fabric to modify</td>
                                         <td>True</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of fabric.</p></span></div><div class="schema"><span class="sKey">devices</span> (<span class="sType">array[string]</span>): <span class="sDescription"><p>List of device URIs.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific fabric.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of fabric.</p></span></div><div class="schema"><span class="sKey">overlayAsn</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Overlay ASN of fabric.</p></span></div><div class="schema"><span class="sKey">routeReflectorAddress</span> (<span class="sType">string</span>): <span class="sDescription"><p>IP address of Route Reflector.</p></span></div><div class="schema"><span class="sKey">tenants</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of tenant URIs.</p></span></div></td>
+                                        <td><div class="schema"><span class="sKey">devices</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of device URIs.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific fabric.</p></span></div><div class="schema"><span class="sKey">overlayAsn</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Overlay ASN of fabric.</p></span></div><div class="schema"><span class="sKey">routeReflectorAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of Route Reflector.</p></span></div></td>
                                     </tr>
                                     
                                 </tbody>
@@ -1887,7 +1871,7 @@ Default to all.
                                     <tr>
                                         <td>200</td>
                                         <td>Fabric modified</td>
-                                        <td></td>
+                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of fabric.</p></span></div><div class="schema"><span class="sKey">devices</span> (<span class="sType">array[string]</span>): <span class="sDescription"><p>List of device URIs.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific fabric.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of fabric.</p></span></div><div class="schema"><span class="sKey">overlayAsn</span> (<span class="sType">int32 integer</span>): <span class="sDescription"><p>Overlay ASN of fabric.</p></span></div><div class="schema"><span class="sKey">routeReflectorAddress</span> (<span class="sType">string</span>): <span class="sDescription"><p>IP address of Route Reflector.</p></span></div><div class="schema"><span class="sKey">tenants</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of tenant URIs.</p></span></div></td>
                                     </tr>
                                     
                                     <tr>
@@ -2279,7 +2263,7 @@ Default to all.
                                         <td>body</td>
                                         <td>L2 port to modify</td>
                                         <td>True</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of L2 port.</p></span></div><div class="schema"><span class="sKey">device</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the device this L2 port belongs to.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific L2 port.</p></span></div><div class="schema"><span class="sKey">interface</span> (<span class="sType">string</span>): <span class="sDescription"><p>Interface name of L2 port.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of L2 port.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>): <span class="sDescription"><p>List of network URIs.</p></span></div></td>
+                                        <td><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific L2 port.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div></td>
                                     </tr>
                                     
                                 </tbody>
@@ -2643,107 +2627,6 @@ Default to all.
                             </table>
                         </div>
                     </div>
-                    <div class="card method put">
-                        <div class="card-header put"
-                             id="put__l3ports__l3portId_">
-                            <a name="put__l3ports__l3portId_">
-                                <h3>
-                                    <strong>PUT</strong>
-                                    /openclos/v1/overlay/l3ports/{l3portId}
-                                    <span class="pull-right">
-                                        
-                                    </span>
-                                </h3>
-                            </a>
-                        </div>
-                        <div class="card-block"
-                             id="put__l3ports__l3portId__d">
-                            
-                            <h3>Description</h3>
-                            <p>Modifies a L3 port based on UUID</p>
-                            
-
-                            
-
-                            
-                            <h3>Parameters</h3>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Located in</th>
-                                        <th>Description</th>
-                                        <th>Required</th>
-                                        <th>Schema</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    
-                                    <tr>
-                                        <td>l3portId</td>
-                                        <td>path</td>
-                                        <td>UUID of L3 port</td>
-                                        <td>True</td>
-                                        <td>uuid string</td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>l3port</td>
-                                        <td>body</td>
-                                        <td>L3 port to modify</td>
-                                        <td>True</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of L3 port.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific L3 port.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of L3 port.</p></span></div><div class="schema"><span class="sKey">subnet</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the subnet this L3 port belongs to.</p></span></div></td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
-                            
-
-                            <h3>Responses</h3>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Description</th>
-                                        <th>Schema</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    
-                                    <tr>
-                                        <td>200</td>
-                                        <td>L3 port modified</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of L3 port.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific L3 port.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of L3 port.</p></span></div><div class="schema"><span class="sKey">subnet</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the subnet this L3 port belongs to.</p></span></div></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>404</td>
-                                        <td>Not found</td>
-                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>500</td>
-                                        <td>Internal server error</td>
-                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>401</td>
-                                        <td>Unauthorized</td>
-                                        <td></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>400</td>
-                                        <td>Bad request</td>
-                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                     <div class="card method get">
                         <div class="card-header get"
                              id="get__networks">
@@ -3099,7 +2982,7 @@ Default to all.
                                         <td>body</td>
                                         <td>network to modify</td>
                                         <td>True</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of network.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific network.</p></span></div><div class="schema"><span class="sKey">l2aps</span> (<span class="sType">object</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of L2 attchment point URIs (including L2 port and aggregated L2 port).</p></span><div class="schema"><span class="sKey">l2ap</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of L2 attachment points.</p></span><div class="schema">[<div class="schema"><span class="sKey">type</span> (<span class="sType">string</span>): <span class="sDescription"><p>type of L2 attachment point. (l2ap/l2port/aggregatedL2port)</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for L2 attachment point.</p></span></div>]</div></div><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of L2 attachment points.</p></span></div></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of network.</p></span></div><div class="schema"><span class="sKey">pureL3Int</span> (<span class="sType">boolean</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>flag to indicate this network is for L3 only</p></span></div><div class="schema"><span class="sKey">subnets</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of subnet URIs.</p></span></div><div class="schema"><span class="sKey">vlanid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>VLAN ID.</p></span></div><div class="schema"><span class="sKey">vnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>VNID.</p></span></div><div class="schema"><span class="sKey">vrf</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the vrf this network belongs to.</p></span></div></td>
+                                        <td><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific network.</p></span></div><div class="schema"><span class="sKey">vlanid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>VLAN ID.</p></span></div><div class="schema"><span class="sKey">vnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>VNID.</p></span></div></td>
                                     </tr>
                                     
                                 </tbody>
@@ -3512,7 +3395,7 @@ Default to all.
                                         <td>body</td>
                                         <td>subnet to modify</td>
                                         <td>True</td>
-                                        <td><div class="schema"><span class="sKey">cidr</span> (<span class="sType">string</span>): <span class="sDescription"><p>CIDR block of subnet.</p></span></div><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of subnet.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific subnet.</p></span></div><div class="schema"><span class="sKey">l3ports</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of L3 port URIs.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of subnet.</p></span></div><div class="schema"><span class="sKey">network</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the network this subnet belongs to.</p></span></div></td>
+                                        <td><div class="schema"><span class="sKey">cidr</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>CIDR block of subnet.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific subnet.</p></span></div></td>
                                     </tr>
                                     
                                 </tbody>
@@ -3876,107 +3759,6 @@ Default to all.
                             </table>
                         </div>
                     </div>
-                    <div class="card method put">
-                        <div class="card-header put"
-                             id="put__tenants__tenantId_">
-                            <a name="put__tenants__tenantId_">
-                                <h3>
-                                    <strong>PUT</strong>
-                                    /openclos/v1/overlay/tenants/{tenantId}
-                                    <span class="pull-right">
-                                        
-                                    </span>
-                                </h3>
-                            </a>
-                        </div>
-                        <div class="card-block"
-                             id="put__tenants__tenantId__d">
-                            
-                            <h3>Description</h3>
-                            <p>Modifies a tenant based on UUID</p>
-                            
-
-                            
-
-                            
-                            <h3>Parameters</h3>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Located in</th>
-                                        <th>Description</th>
-                                        <th>Required</th>
-                                        <th>Schema</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    
-                                    <tr>
-                                        <td>tenantId</td>
-                                        <td>path</td>
-                                        <td>UUID of tenant</td>
-                                        <td>True</td>
-                                        <td>uuid string</td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>tenant</td>
-                                        <td>body</td>
-                                        <td>Tenant to modify</td>
-                                        <td>True</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of tenant.</p></span></div><div class="schema"><span class="sKey">fabric</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the fabric this tenant belongs to.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific tenant.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of tenant.</p></span></div><div class="schema"><span class="sKey">vrfs</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of VRF URIs.</p></span></div></td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
-                            
-
-                            <h3>Responses</h3>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Description</th>
-                                        <th>Schema</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    
-                                    <tr>
-                                        <td>200</td>
-                                        <td>Tenant modified</td>
-                                        <td></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>404</td>
-                                        <td>Not found</td>
-                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>500</td>
-                                        <td>Internal server error</td>
-                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>401</td>
-                                        <td>Unauthorized</td>
-                                        <td></td>
-                                    </tr>
-                                    
-                                    <tr>
-                                        <td>400</td>
-                                        <td>Bad request</td>
-                                        <td><div class="schema"><span class="sKey">errorCode</span> (<span class="sType">int32 integer</span>)</div><div class="schema"><span class="sKey">errorMessage</span> (<span class="sType">string</span>)</div></td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                     <div class="card method get">
                         <div class="card-header get"
                              id="get__vrfs">
@@ -4015,7 +3797,7 @@ Default to all.
                                     <tr>
                                         <td>200</td>
                                         <td>Success</td>
-                                        <td><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of VRFs.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for list of VRFs.</p></span></div><div class="schema"><span class="sKey">vrf</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of VRFs.</p></span><div class="schema">[<div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of vrf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific vrf.</p></span></div><div class="schema"><span class="sKey">loopbackAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of loopback interface.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of vrf.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div><div class="schema"><span class="sKey">routedVnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Routed VNID.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">object</span>)<div class="schema"><span class="sKey">brief</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the brief deploy status of this vrf.</p></span></div><div class="schema"><span class="sKey">detail</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the detail deploy status of this vrf.</p></span></div></div><div class="schema"><span class="sKey">tenant</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the tenant this vrf belongs to.</p></span></div>]</div></div></td>
+                                        <td><div class="schema"><span class="sKey">total</span> (<span class="sType">integer</span>): <span class="sDescription"><p>Number of VRFs.</p></span></div><div class="schema"><span class="sKey">uri</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI for list of VRFs.</p></span></div><div class="schema"><span class="sKey">vrf</span> (<span class="sType">array[object]</span>): <span class="sDescription"><p>list of VRFs.</p></span><div class="schema">[<div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of vrf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific vrf.</p></span></div><div class="schema"><span class="sKey">loopbackAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of loopback interface.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of vrf.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div><div class="schema"><span class="sKey">routedVnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Routed VNID.</p></span></div><div class="schema"><span class="sKey">tenant</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the tenant this vrf belongs to.</p></span></div>]</div></div></td>
                                     </tr>
                                     
                                     <tr>
@@ -4090,7 +3872,7 @@ Default to all.
                                     <tr>
                                         <td>201</td>
                                         <td>VRF added</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of vrf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific vrf.</p></span></div><div class="schema"><span class="sKey">loopbackAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of loopback interface.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of vrf.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div><div class="schema"><span class="sKey">routedVnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Routed VNID.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">object</span>)<div class="schema"><span class="sKey">brief</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the brief deploy status of this vrf.</p></span></div><div class="schema"><span class="sKey">detail</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the detail deploy status of this vrf.</p></span></div></div><div class="schema"><span class="sKey">tenant</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the tenant this vrf belongs to.</p></span></div></td>
+                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of vrf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific vrf.</p></span></div><div class="schema"><span class="sKey">loopbackAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of loopback interface.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of vrf.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div><div class="schema"><span class="sKey">routedVnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Routed VNID.</p></span></div><div class="schema"><span class="sKey">tenant</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the tenant this vrf belongs to.</p></span></div></td>
                                     </tr>
                                     
                                     <tr>
@@ -4264,7 +4046,7 @@ Default to all.
                                     <tr>
                                         <td>200</td>
                                         <td>Success</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of vrf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific vrf.</p></span></div><div class="schema"><span class="sKey">loopbackAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of loopback interface.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of vrf.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div><div class="schema"><span class="sKey">routedVnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Routed VNID.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">object</span>)<div class="schema"><span class="sKey">brief</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the brief deploy status of this vrf.</p></span></div><div class="schema"><span class="sKey">detail</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the detail deploy status of this vrf.</p></span></div></div><div class="schema"><span class="sKey">tenant</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the tenant this vrf belongs to.</p></span></div></td>
+                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of vrf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific vrf.</p></span></div><div class="schema"><span class="sKey">loopbackAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of loopback interface.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of vrf.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div><div class="schema"><span class="sKey">routedVnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Routed VNID.</p></span></div><div class="schema"><span class="sKey">tenant</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the tenant this vrf belongs to.</p></span></div></td>
                                     </tr>
                                     
                                     <tr>
@@ -4306,7 +4088,7 @@ Default to all.
                              id="put__vrfs__vrfId__d">
                             
                             <h3>Description</h3>
-                            <p>Modifies a VRF based on UUID</p>
+                            <p>Modify a VRF based on UUID</p>
                             
 
                             
@@ -4338,7 +4120,7 @@ Default to all.
                                         <td>body</td>
                                         <td>VRF to modify</td>
                                         <td>True</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of vrf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific vrf.</p></span></div><div class="schema"><span class="sKey">loopbackAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of loopback interface.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of vrf.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div><div class="schema"><span class="sKey">routedVnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Routed VNID.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">object</span>)<div class="schema"><span class="sKey">brief</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the brief deploy status of this vrf.</p></span></div><div class="schema"><span class="sKey">detail</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the detail deploy status of this vrf.</p></span></div></div><div class="schema"><span class="sKey">tenant</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the tenant this vrf belongs to.</p></span></div></td>
+                                        <td><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific vrf.</p></span></div><div class="schema"><span class="sKey">loopbackAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of loopback interface.</p></span></div></td>
                                     </tr>
                                     
                                 </tbody>
@@ -4359,7 +4141,7 @@ Default to all.
                                     <tr>
                                         <td>200</td>
                                         <td>VRF modified</td>
-                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of vrf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific vrf.</p></span></div><div class="schema"><span class="sKey">loopbackAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of loopback interface.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of vrf.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div><div class="schema"><span class="sKey">routedVnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Routed VNID.</p></span></div><div class="schema"><span class="sKey">status</span> (<span class="sType">object</span>)<div class="schema"><span class="sKey">brief</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the brief deploy status of this vrf.</p></span></div><div class="schema"><span class="sKey">detail</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the detail deploy status of this vrf.</p></span></div></div><div class="schema"><span class="sKey">tenant</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the tenant this vrf belongs to.</p></span></div></td>
+                                        <td><div class="schema"><span class="sKey">description</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Description of vrf.</p></span></div><div class="schema"><span class="sKey">id</span> (<span class="sType">uuid string</span>): <span class="sDescription"><p>UUID representing a specific vrf.</p></span></div><div class="schema"><span class="sKey">loopbackAddress</span> (<span class="sType">string</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>IP address of loopback interface.</p></span></div><div class="schema"><span class="sKey">name</span> (<span class="sType">string</span>): <span class="sDescription"><p>Name of vrf.</p></span></div><div class="schema"><span class="sKey">networks</span> (<span class="sType">array[string]</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>List of network URIs.</p></span></div><div class="schema"><span class="sKey">routedVnid</span> (<span class="sType">int32 integer</span>, <span class="sOptional">optional</span>): <span class="sDescription"><p>Routed VNID.</p></span></div><div class="schema"><span class="sKey">tenant</span> (<span class="sType">string</span>): <span class="sDescription"><p>URI of the tenant this vrf belongs to.</p></span></div></td>
                                     </tr>
                                     
                                     <tr>
@@ -4399,7 +4181,7 @@ Default to all.
                     <a href="https://github.com/JuhaniImberg/swagger-render">
                         Swagger-Render
                     </a> 1.6.0<br>
-                    2016-05-20 01:18:47.820277
+                    2016-07-05 18:30:11.007938
                 </footer>
             </div>
         </div>
