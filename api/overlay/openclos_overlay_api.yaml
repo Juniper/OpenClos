@@ -93,7 +93,7 @@ paths:
                 description: device to modify
                 required: true
                 schema:
-                    $ref: '#/definitions/device'
+                    $ref: '#/definitions/modifyDevice'
             responses:
                 '200':
                     description: device modified
@@ -218,10 +218,12 @@ paths:
                 description: Fabric to modify
                 required: true
                 schema:
-                    $ref: '#/definitions/fabric'
+                    $ref: '#/definitions/modifyFabric'
             responses:
                 '200':
                     description: Fabric modified
+                    schema:
+                        $ref: '#/definitions/fabric'
                 '400':
                     description: Bad request
                     schema:
@@ -325,40 +327,6 @@ paths:
                     description: Internal server error
                     schema:
                         $ref: '#/definitions/restError'
-        put:
-            description: |
-                Modifies a tenant based on UUID
-            operationId: putTenant
-            parameters:
-            -   name: tenantId
-                in: path
-                description: UUID of tenant
-                required: true
-                type: string
-                format: uuid
-            -   name: tenant
-                in: body
-                description: Tenant to modify
-                required: true
-                schema:
-                    $ref: '#/definitions/tenant'
-            responses:
-                '200':
-                    description: Tenant modified
-                '400':
-                    description: Bad request
-                    schema:
-                        $ref: '#/definitions/restError'
-                '401':
-                    description: Unauthorized
-                '404':
-                    description: Not found
-                    schema:
-                        $ref: '#/definitions/restError'                        
-                '500':
-                    description: Internal server error
-                    schema:
-                        $ref: '#/definitions/restError'
         delete:
             description: |
                 Deletes a tenant based on UUID
@@ -450,7 +418,7 @@ paths:
                         $ref: '#/definitions/restError'
         put:
             description: |
-                Modifies a VRF based on UUID
+                Modify a VRF based on UUID
             operationId: putVrf
             parameters:
             -   name: vrfId
@@ -464,7 +432,7 @@ paths:
                 description: VRF to modify
                 required: true
                 schema:
-                    $ref: '#/definitions/vrf'
+                    $ref: '#/definitions/modifyVrf'
             responses:
                 '200':
                     description: VRF modified
@@ -587,7 +555,7 @@ paths:
                 description: network to modify
                 required: true
                 schema:
-                    $ref: '#/definitions/network'
+                    $ref: '#/definitions/modifyNetwork'
             responses:
                 '200':
                     description: network modified
@@ -712,7 +680,7 @@ paths:
                 description: subnet to modify
                 required: true
                 schema:
-                    $ref: '#/definitions/subnet'
+                    $ref: '#/definitions/modifySubnet'
             responses:
                 '200':
                     description: subnet modified
@@ -811,42 +779,6 @@ paths:
                     description: Success
                     schema:
                         $ref: '#/definitions/l3port'
-                '401':
-                    description: Unauthorized
-                '404':
-                    description: Not found
-                    schema:
-                        $ref: '#/definitions/restError'                        
-                '500':
-                    description: Internal server error
-                    schema:
-                        $ref: '#/definitions/restError'
-        put:
-            description: |
-                Modifies a L3 port based on UUID
-            operationId: putL3port
-            parameters:
-            -   name: l3portId
-                in: path
-                description: UUID of L3 port
-                required: true
-                type: string
-                format: uuid
-            -   name: l3port
-                in: body
-                description: L3 port to modify
-                required: true
-                schema:
-                    $ref: '#/definitions/l3port'
-            responses:
-                '200':
-                    description: L3 port modified
-                    schema:
-                        $ref: '#/definitions/l3port'
-                '400':
-                    description: Bad request
-                    schema:
-                        $ref: '#/definitions/restError'
                 '401':
                     description: Unauthorized
                 '404':
@@ -962,7 +894,7 @@ paths:
                 description: L2 port to modify
                 required: true
                 schema:
-                    $ref: '#/definitions/l2port'
+                    $ref: '#/definitions/modifyL2port'
             responses:
                 '200':
                     description: L2 port modified
@@ -1020,7 +952,7 @@ paths:
                     description: Unauthorized
         post:
             description: |
-                Creates a new aggregated L2 port.
+                Creates new aggregated L2 port.
             operationId: addAggregatedL2port
             parameters:
             -   name: aggregatedL2port
@@ -1047,7 +979,7 @@ paths:
     '/aggregatedL2ports/{aggregatedL2portId}':
         get:
             description: |
-                Returns a aggregated L2 port based on UUID
+                Returns aggregated L2 port based on UUID
             operationId: getAggregatedL2port
             parameters:
             -   name: aggregatedL2portId
@@ -1073,7 +1005,7 @@ paths:
                         $ref: '#/definitions/restError'
         put:
             description: |
-                Modifies a aggregated L2 port based on UUID
+                Modifies aggregated L2 port based on UUID
             operationId: putAggregatedL2port
             parameters:
             -   name: aggregatedL2portId
@@ -1087,7 +1019,7 @@ paths:
                 description: aggregated L2 port to modify
                 required: true
                 schema:
-                    $ref: '#/definitions/aggregatedL2port'
+                    $ref: '#/definitions/modifyAggregatedL2port'
             responses:
                 '200':
                     description: aggregated L2 port modified
@@ -1109,7 +1041,7 @@ paths:
                         $ref: '#/definitions/restError'
         delete:
             description: |
-                Deletes a aggregated L2 port based on UUID
+                Deletes aggregated L2 port based on UUID
             operationId: deleteAggregatedL2port
             parameters:
             -   name: aggregatedL2portId
@@ -1268,6 +1200,21 @@ definitions:
                 items:
                     type: string
                 description: List of L2 port URIs.
+    modifyDevice:
+        type: object
+        required:
+        -   id
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific device.'
+            username:
+                type: string
+                description: Username of device.
+            password:
+                type: string
+                description: cleartext password of device.
     devices:
         type: object
         required:
@@ -1348,6 +1295,27 @@ definitions:
                 items:
                     type: string
                 description: List of tenant URIs.
+    modifyFabric:
+        type: object
+        required:
+        -   id
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific fabric.'
+            overlayAsn:
+                type: integer
+                format: int32
+                description: Overlay ASN of fabric.
+            routeReflectorAddress:
+                type: string
+                description: IP address of Route Reflector.
+            devices:
+                type: array
+                items:
+                    type: string
+                description: List of device URIs.
     fabrics:
         type: object
         required:
@@ -1452,7 +1420,6 @@ definitions:
         -   id
         -   name
         -   tenant
-        -   status
         properties:
             id:
                 type: string
@@ -1479,18 +1446,18 @@ definitions:
                 items:
                     type: string
                 description: List of network URIs.
-            status:
-                type: object
-                required:
-                -   brief
-                -   detail
-                properties:
-                    brief:
-                        type: string
-                        description: URI of the brief deploy status of this vrf.
-                    detail:
-                        type: string
-                        description: URI of the detail deploy status of this vrf.
+    modifyVrf:
+        type: object
+        required:
+        -   id
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific vrf.'
+            loopbackAddress:
+                type: string
+                description: IP address of loopback interface.
     vrfs:
         type: object
         required:
@@ -1598,6 +1565,23 @@ definitions:
                     total:
                         type: integer
                         description: Number of L2 attachment points.
+    modifyNetwork:
+        type: object
+        required:
+        -   id
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific network.'
+            vlanid:
+                type: integer
+                format: int32
+                description: VLAN ID.
+            vnid:
+                type: integer
+                format: int32
+                description: VNID.
     networks:
         type: object
         required:
@@ -1664,6 +1648,18 @@ definitions:
                 items:
                     type: string
                 description: List of L3 port URIs.
+    modifySubnet:
+        type: object
+        required:
+        -   id
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific subnet.'
+            cidr:
+                type: string
+                description: CIDR block of subnet.
     subnets:
         type: object
         required:
@@ -1790,6 +1786,20 @@ definitions:
             description:
                 type: string
                 description: Description of L2 port.
+    modifyL2port:
+        type: object
+        required:
+        -   id
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific L2 port.'
+            networks:
+                type: array
+                items:
+                    type: string
+                description: List of network URIs.
     l2ports:
         type: object
         required:
@@ -1883,6 +1893,26 @@ definitions:
                 items:
                     $ref: '#/definitions/aggregatedL2portMember'                        
                 description: List of members.
+    modifyAggregatedL2port:
+        type: object
+        required:
+        -   id
+        properties:
+            id:
+                type: string
+                format: uuid
+                description: 'UUID representing a specific aggregated L2 port.'
+            esi:
+                type: string
+                description: ESI.
+            lacp:
+                type: string
+                description: LACP.
+            networks:
+                type: array
+                items:
+                    type: string
+                description: List of network URIs.
     aggregatedL2ports:
         type: object
         required:

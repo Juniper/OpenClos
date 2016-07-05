@@ -128,7 +128,7 @@
                         "description": "device to modify",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/device"
+                            "$ref": "#/definitions/modifyDevice"
                         }
                     }
                 ],
@@ -308,13 +308,16 @@
                         "description": "Fabric to modify",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/fabric"
+                            "$ref": "#/definitions/modifyFabric"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Fabric modified"
+                        "description": "Fabric modified",
+                        "schema": {
+                            "$ref": "#/definitions/fabric"
+                        }
                     },
                     "400": {
                         "description": "Bad request",
@@ -467,55 +470,6 @@
                     }
                 }
             },
-            "put": {
-                "description": "Modifies a tenant based on UUID\n",
-                "operationId": "putTenant",
-                "parameters": [
-                    {
-                        "name": "tenantId",
-                        "in": "path",
-                        "description": "UUID of tenant",
-                        "required": true,
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    {
-                        "name": "tenant",
-                        "in": "body",
-                        "description": "Tenant to modify",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/tenant"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Tenant modified"
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/restError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "404": {
-                        "description": "Not found",
-                        "schema": {
-                            "$ref": "#/definitions/restError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/restError"
-                        }
-                    }
-                }
-            },
             "delete": {
                 "description": "Deletes a tenant based on UUID\n",
                 "operationId": "deleteTenant",
@@ -645,7 +599,7 @@
                 }
             },
             "put": {
-                "description": "Modifies a VRF based on UUID\n",
+                "description": "Modify a VRF based on UUID\n",
                 "operationId": "putVrf",
                 "parameters": [
                     {
@@ -662,7 +616,7 @@
                         "description": "VRF to modify",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vrf"
+                            "$ref": "#/definitions/modifyVrf"
                         }
                     }
                 ],
@@ -839,7 +793,7 @@
                         "description": "network to modify",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/network"
+                            "$ref": "#/definitions/modifyNetwork"
                         }
                     }
                 ],
@@ -1019,7 +973,7 @@
                         "description": "subnet to modify",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/subnet"
+                            "$ref": "#/definitions/modifySubnet"
                         }
                     }
                 ],
@@ -1162,58 +1116,6 @@
                         "description": "Success",
                         "schema": {
                             "$ref": "#/definitions/l3port"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "404": {
-                        "description": "Not found",
-                        "schema": {
-                            "$ref": "#/definitions/restError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/restError"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Modifies a L3 port based on UUID\n",
-                "operationId": "putL3port",
-                "parameters": [
-                    {
-                        "name": "l3portId",
-                        "in": "path",
-                        "description": "UUID of L3 port",
-                        "required": true,
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    {
-                        "name": "l3port",
-                        "in": "body",
-                        "description": "L3 port to modify",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/l3port"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "L3 port modified",
-                        "schema": {
-                            "$ref": "#/definitions/l3port"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/restError"
                         }
                     },
                     "401": {
@@ -1379,7 +1281,7 @@
                         "description": "L2 port to modify",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/l2port"
+                            "$ref": "#/definitions/modifyL2port"
                         }
                     }
                 ],
@@ -1465,7 +1367,7 @@
                 }
             },
             "post": {
-                "description": "Creates a new aggregated L2 port.\n",
+                "description": "Creates new aggregated L2 port.\n",
                 "operationId": "addAggregatedL2port",
                 "parameters": [
                     {
@@ -1505,7 +1407,7 @@
         },
         "/aggregatedL2ports/{aggregatedL2portId}": {
             "get": {
-                "description": "Returns a aggregated L2 port based on UUID\n",
+                "description": "Returns aggregated L2 port based on UUID\n",
                 "operationId": "getAggregatedL2port",
                 "parameters": [
                     {
@@ -1542,7 +1444,7 @@
                 }
             },
             "put": {
-                "description": "Modifies a aggregated L2 port based on UUID\n",
+                "description": "Modifies aggregated L2 port based on UUID\n",
                 "operationId": "putAggregatedL2port",
                 "parameters": [
                     {
@@ -1559,7 +1461,7 @@
                         "description": "aggregated L2 port to modify",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/aggregatedL2port"
+                            "$ref": "#/definitions/modifyAggregatedL2port"
                         }
                     }
                 ],
@@ -1594,7 +1496,7 @@
                 }
             },
             "delete": {
-                "description": "Deletes a aggregated L2 port based on UUID\n",
+                "description": "Deletes aggregated L2 port based on UUID\n",
                 "operationId": "deleteAggregatedL2port",
                 "parameters": [
                     {
@@ -1808,6 +1710,27 @@
                 }
             }
         },
+        "modifyDevice": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID representing a specific device."
+                },
+                "username": {
+                    "type": "string",
+                    "description": "Username of device."
+                },
+                "password": {
+                    "type": "string",
+                    "description": "cleartext password of device."
+                }
+            }
+        },
         "devices": {
             "type": "object",
             "required": [
@@ -1913,6 +1836,35 @@
                         "type": "string"
                     },
                     "description": "List of tenant URIs."
+                }
+            }
+        },
+        "modifyFabric": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID representing a specific fabric."
+                },
+                "overlayAsn": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Overlay ASN of fabric."
+                },
+                "routeReflectorAddress": {
+                    "type": "string",
+                    "description": "IP address of Route Reflector."
+                },
+                "devices": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of device URIs."
                 }
             }
         },
@@ -2056,8 +2008,7 @@
             "required": [
                 "id",
                 "name",
-                "tenant",
-                "status"
+                "tenant"
             ],
             "properties": {
                 "id": {
@@ -2092,23 +2043,23 @@
                         "type": "string"
                     },
                     "description": "List of network URIs."
+                }
+            }
+        },
+        "modifyVrf": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID representing a specific vrf."
                 },
-                "status": {
-                    "type": "object",
-                    "required": [
-                        "brief",
-                        "detail"
-                    ],
-                    "properties": {
-                        "brief": {
-                            "type": "string",
-                            "description": "URI of the brief deploy status of this vrf."
-                        },
-                        "detail": {
-                            "type": "string",
-                            "description": "URI of the detail deploy status of this vrf."
-                        }
-                    }
+                "loopbackAddress": {
+                    "type": "string",
+                    "description": "IP address of loopback interface."
                 }
             }
         },
@@ -2258,6 +2209,29 @@
                 }
             }
         },
+        "modifyNetwork": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID representing a specific network."
+                },
+                "vlanid": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "VLAN ID."
+                },
+                "vnid": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "VNID."
+                }
+            }
+        },
         "networks": {
             "type": "object",
             "required": [
@@ -2345,6 +2319,23 @@
                         "type": "string"
                     },
                     "description": "List of L3 port URIs."
+                }
+            }
+        },
+        "modifySubnet": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID representing a specific subnet."
+                },
+                "cidr": {
+                    "type": "string",
+                    "description": "CIDR block of subnet."
                 }
             }
         },
@@ -2520,6 +2511,26 @@
                 }
             }
         },
+        "modifyL2port": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID representing a specific L2 port."
+                },
+                "networks": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of network URIs."
+                }
+            }
+        },
         "l2ports": {
             "type": "object",
             "required": [
@@ -2645,6 +2656,34 @@
                         "$ref": "#/definitions/aggregatedL2portMember"
                     },
                     "description": "List of members."
+                }
+            }
+        },
+        "modifyAggregatedL2port": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID representing a specific aggregated L2 port."
+                },
+                "esi": {
+                    "type": "string",
+                    "description": "ESI."
+                },
+                "lacp": {
+                    "type": "string",
+                    "description": "LACP."
+                },
+                "networks": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of network URIs."
                 }
             }
         },
