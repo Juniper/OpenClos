@@ -80,7 +80,6 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/fabrics', 'POST', self.createFabric)
         self.app.route(self.baseUrl + '/fabrics/<fabricId>', 'PUT', self.modifyFabric)
         self.app.route(self.baseUrl + '/tenants', 'POST', self.createTenant)
-        self.app.route(self.baseUrl + '/tenants/<tenantId>', 'PUT', self.modifyTenant)
         self.app.route(self.baseUrl + '/vrfs', 'POST', self.createVrf)
         self.app.route(self.baseUrl + '/vrfs/<vrfId>', 'PUT', self.modifyVrf)
         self.app.route(self.baseUrl + '/networks', 'POST', self.createNetwork)
@@ -88,7 +87,6 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/subnets', 'POST', self.createSubnet)
         self.app.route(self.baseUrl + '/subnets/<subnetId>', 'PUT', self.modifySubnet)
         self.app.route(self.baseUrl + '/l3ports', 'POST', self.createL3port)
-        self.app.route(self.baseUrl + '/l3ports/<l3portId>', 'PUT', self.modifyL3port)
         self.app.route(self.baseUrl + '/l2ports', 'POST', self.createL2port)
         self.app.route(self.baseUrl + '/l2ports/<l2portId>', 'PUT', self.modifyL2port)
         self.app.route(self.baseUrl + '/aggregatedL2ports', 'POST', self.createAggregatedL2port)
@@ -206,19 +204,11 @@ class OverlayRestRoutes():
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         try:
-            name = deviceDict['name']
-            description = deviceDict.get('description')
-            role = deviceDict['role']
-            address = deviceDict['address']
-            routerId = deviceDict['routerId']
-            podName = deviceDict['podName']
-            username = deviceDict['username']
-            password = deviceDict['password']
+            username = deviceDict.get('username')
+            password = deviceDict.get('password')
             
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
-            deviceObject.update(name, description, role, address, routerId, podName, username, password)
-            self.__dao.updateObjects(dbSession, [deviceObject])
-            logger.info("OverlayDevice[id='%s', name='%s']: modified", deviceObject.id, deviceObject.name)
+            deviceObject = self._overlay.modifyDevice(dbSession, deviceObject, username, password)
             
             device = {'device': self._populateDevice(deviceObject)}
             
@@ -362,27 +352,25 @@ class OverlayRestRoutes():
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         try:
-            name = fabricDict['name']
-            description = fabricDict.get('description')
-            overlayAsn = int(fabricDict['overlayAsn'])
-            routeReflectorAddress = fabricDict['routeReflectorAddress']
-            devices = fabricDict['devices']
+            overlayAsn = fabricDict.get('overlayAsn')
+            routeReflectorAddress = fabricDict.get('routeReflectorAddress')
+            devices = fabricDict.get('devices')
             fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
-            deviceObjects = []
-            for device in devices:
-                try:
-                    deviceId = device.split('/')[-1]
-                    deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
-                    logger.debug("Overlay Device '%s' found", deviceId)
-                    deviceObjects.append(deviceObject)
-                except (exc.NoResultFound) as ex:
-                    logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
-                    raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
+            if devices is not None:
+                deviceObjects = []
+                for device in devices:
+                    try:
+                        deviceId = device.split('/')[-1]
+                        deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
+                        logger.debug("Overlay Device '%s' found", deviceId)
+                        deviceObjects.append(deviceObject)
+                    except (exc.NoResultFound) as ex:
+                        logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+                        raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
+            else:
+                deviceObjects = None
 
-            fabricObject.clearDevices()
-            fabricObject.update(name, description, overlayAsn, routeReflectorAddress, deviceObjects)
-            self.__dao.updateObjects(dbSession, [fabricObject])
-            logger.info("OverlayFabric[id='%s', name='%s']: modified", fabricObject.id, fabricObject.name)
+            fabricObject = self._overlay.modifyFabric(dbSession, fabricObject, overlayAsn, routeReflectorAddress, deviceObjects)
 
             fabric = {'fabric': self._populateFabric(fabricObject)}
 
@@ -496,40 +484,6 @@ class OverlayRestRoutes():
             raise bottle.HTTPError(500, exception=PlatformError(ex.message))
         bottle.response.set_header('Location', self.baseUrl + '/tenants/' + tenantObject.id)
         bottle.response.status = 201
-
-        return tenant
-        
-    def modifyTenant(self, dbSession, tenantId):
-            
-        if bottle.request.json is None:
-            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
-        else:
-            tenantDict = bottle.request.json.get('tenant')
-            if tenantDict is None:
-                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
-
-        try:
-            name = tenantDict['name']
-            description = tenantDict.get('description')
-            
-            tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
-            tenantObject.update(name, description)
-            self.__dao.updateObjects(dbSession, [tenantObject])
-            logger.info("OverlayTenant[id='%s', name='%s']: modified", tenantObject.id, tenantObject.name)
-
-            tenant = {'tenant': self._populateTenant(tenantObject)}
-            
-        except bottle.HTTPError:
-            raise 
-        except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
-            raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
-        except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
-        except Exception as ex:
-            logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
 
         return tenant
         
@@ -649,17 +603,10 @@ class OverlayRestRoutes():
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         try:
-            name = vrfDict['name']
-            description = vrfDict.get('description')
-            routedVnid = vrfDict.get('routedVnid')
-            if routedVnid is not None:
-                routedVnid = int(routedVnid)
             loopbackAddress = vrfDict.get('loopbackAddress')
             
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
-            vrfObject.update(name, description, routedVnid, loopbackAddress)
-            self.__dao.updateObjects(dbSession, [vrfObject])
-            logger.info("OverlayVrf[id='%s', name='%s']: modified", vrfObject.id, vrfObject.name)
+            vrfObject = self._overlay.modifyVrf(dbSession, vrfObject, loopbackAddress)
             
             vrf = {'vrf': self._populateVrf(vrfObject)}
             
@@ -803,16 +750,11 @@ class OverlayRestRoutes():
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         try:
-            name = networkDict['name']
-            description = networkDict.get('description')
-            vlanid = int(networkDict['vlanid'])
-            vnid = int(networkDict['vnid'])
-            pureL3Int = networkDict.get('pureL3Int', False)
+            vlanid = networkDict.get('vlanid')
+            vnid = networkDict.get('vnid')
             
             networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
-            networkObject.update(name, description, vlanid, vnid, pureL3Int)
-            self.__dao.updateObjects(dbSession, [networkObject])
-            logger.info("OverlayNetwork[id='%s', name='%s']: modified", networkObject.id, networkObject.name)
+            networkObject = self._overlay.modifyNetwork(dbSession, networkObject, vlanid, vnid)
             
             network = {'network': self._populateNetwork(networkObject)}
             
@@ -943,14 +885,10 @@ class OverlayRestRoutes():
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         try:
-            name = subnetDict['name']
-            description = subnetDict.get('description')
-            cidr = subnetDict['cidr']
+            cidr = subnetDict.get('cidr')
             
             subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
-            subnetObject.update(name, description, cidr)
-            self.__dao.updateObjects(dbSession, [subnetObject])
-            logger.info("OverlaySubnet[id='%s', name='%s']: modified", subnetObject.id, subnetObject.name)
+            subnetObject = self._overlay.modifySubnet(dbSession, subnetObject, cidr)
             
             subnet = {'subnet': self._populateSubnet(subnetObject)}
             
@@ -1062,40 +1000,6 @@ class OverlayRestRoutes():
 
         return l3port
         
-    def modifyL3port(self, dbSession, l3portId):
-            
-        if bottle.request.json is None:
-            raise bottle.HTTPError(400, exception=InvalidRequest("No json in request object"))
-        else:
-            l3portDict = bottle.request.json.get('l3port')
-            if l3portDict is None:
-                raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
-
-        try:
-            name = l3portDict['name']
-            description = l3portDict.get('description')
-            
-            l3portObject = self.__dao.getObjectById(dbSession, OverlayL3port, l3portId)
-            l3portObject.update(name, description)
-            self.__dao.updateObjects(dbSession, [l3portObject])
-            logger.info("OverlayL3port[id='%s', name='%s']: modified", l3portObject.id, l3portObject.name)
-            
-            l3port = {'l3port': self._populateL3port(l3portObject)}
-            
-        except bottle.HTTPError:
-            raise 
-        except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, ex.message)
-            raise bottle.HTTPError(404, exception=OverlayL3portNotFound(l3portId))
-        except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
-        except Exception as ex:
-            logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
-
-        return l3port
-
     def deleteL3port(self, dbSession, l3portId):
             
         try:
@@ -1163,6 +1067,9 @@ class OverlayRestRoutes():
         return uri.split("/")[-1]
         
     def getNetworkObjects(self, dbSession, networkUris):
+        if networkUris is None:
+            return None
+            
         networkObjects = []
         for networkUri in networkUris:
             id = self.getIdFromUri(networkUri)
@@ -1222,22 +1129,9 @@ class OverlayRestRoutes():
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         try:
-            name = l2portDict['name']
-            description = l2portDict.get('description')
-            interface = l2portDict['interface']
             l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
-            networkObjects = self.getNetworkObjects(dbSession, l2portDict['networks'])                
-            deviceId = self.getIdFromUri(l2portDict['device'])
-            try:
-                deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
-            except (exc.NoResultFound) as ex:
-                logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
-                raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
-            
-            l2portObject.clearNetworks()
-            l2portObject.update(name, description, networkObjects, interface, deviceObject)
-            self.__dao.updateObjects(dbSession, [l2portObject])
-            logger.info("OverlayL2port[id='%s', name='%s']: modified", l2portObject.id, l2portObject.name)
+            networkObjects = self.getNetworkObjects(dbSession, l2portDict.get('networks'))                
+            l2portObject = self._overlay.modifyL2port(dbSession, l2portObject, networkObjects)
 
             l2port = {'l2port': self._populateL2port(l2portObject)}
             
@@ -1380,21 +1274,13 @@ class OverlayRestRoutes():
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
 
         try:
-            name = aggregatedL2portDict['name']
-            description = aggregatedL2portDict.get('description')
             esi = aggregatedL2portDict.get('esi')
             lacp = aggregatedL2portDict.get('lacp')
             aggregatedL2portObject = self.__dao.getObjectById(dbSession, OverlayAggregatedL2port, aggregatedL2portId)
-            networkObjects = self.getNetworkObjects(dbSession, aggregatedL2portDict['networks'])      
-            members = self._getAggregatedL2portMembers(dbSession, aggregatedL2portDict['members'])
+            networkObjects = self.getNetworkObjects(dbSession, aggregatedL2portDict.get('networks'))      
 
-            aggregatedL2portObject.clearNetworks()
-            aggregatedL2portObject.clearMembers()
-            self._overlay.modifyAggregatedL2port(dbSession, aggregatedL2portObject, name, description, networkObjects, members, esi, lacp)
+            aggregatedL2portObject = self._overlay.modifyAggregatedL2port(dbSession, aggregatedL2portObject, networkObjects, esi, lacp)
 
-            self.__dao.updateObjects(dbSession, [aggregatedL2portObject])
-            logger.info("OverlayAggregatedL2port[id='%s', name='%s']: modified", aggregatedL2portObject.id, aggregatedL2portObject.name)
-            
             aggregatedL2port = {'aggregatedL2port': self._populateAggregatedL2port(aggregatedL2portObject)}
             
         except bottle.HTTPError:

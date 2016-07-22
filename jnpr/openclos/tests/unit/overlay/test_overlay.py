@@ -252,18 +252,11 @@ class TestOverlay(unittest.TestCase):
     def testUpdateDevice(self):        
         with self._dao.getReadWriteSession() as session:        
             deviceObject = self.helper._createDevice(session)
-            deviceObject.update('d2', 'description for d2', 'leaf', '1.2.3.5', '1.1.1.2', 'pod2', 'test', 'foobar')
-            self._dao.updateObjects(session, [deviceObject])
+            self.helper.overlay.modifyDevice(session, deviceObject, 'test', 'foobar')
             
         with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayDevice).count())
             deviceObjectFromDb = session.query(OverlayDevice).one()
-            self.assertEqual('d2', deviceObjectFromDb.name)
-            self.assertEqual('description for d2', deviceObjectFromDb.description)
-            self.assertEqual('leaf', deviceObjectFromDb.role)
-            self.assertEqual('1.2.3.5', deviceObjectFromDb.address)
-            self.assertEqual('1.1.1.2', deviceObjectFromDb.routerId)
-            self.assertEqual('pod2', deviceObjectFromDb.podName)
             self.assertEqual('test', deviceObjectFromDb.username)
             self.assertEqual('foobar', deviceObjectFromDb.getCleartextPassword())
             
@@ -283,16 +276,11 @@ class TestOverlay(unittest.TestCase):
     def testUpdateFabric(self):
         with self._dao.getReadWriteSession() as session:   
             fabricObject = self.helper._createFabric(session)
-            fabricObjectFromDb = session.query(OverlayFabric).one()
-            fabricObjectFromDb.clearDevices()
-            fabricObjectFromDb.update('f2', 'description for f2', 65002, '3.3.3.3', [])
-            self._dao.updateObjects(session, [fabricObjectFromDb])
+            self.helper.overlay.modifyFabric(session, fabricObject, 65002, '3.3.3.3', [])
             
         with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayFabric).count())
             fabricObjectFromDb = session.query(OverlayFabric).one()
-            self.assertEqual('f2', fabricObjectFromDb.name)
-            self.assertEqual('description for f2', fabricObjectFromDb.description)
             self.assertEqual(65002, fabricObjectFromDb.overlayAS)
             self.assertEqual('3.3.3.3', fabricObjectFromDb.routeReflectorAddress)
             self.assertEqual(0, len(fabricObjectFromDb.overlay_devices))
@@ -302,18 +290,6 @@ class TestOverlay(unittest.TestCase):
             self.helper._createTenant(session)
             self.assertEqual(1, session.query(OverlayTenant).count())
 
-    def testUpdateTenant(self):
-        with self._dao.getReadWriteSession() as session:        
-            tenantObject = self.helper._createTenant(session)
-            tenantObject.update('t2', 'description for t2')
-            self._dao.updateObjects(session, [tenantObject])
-            
-        with self._dao.getReadSession() as session:
-            self.assertEqual(1, session.query(OverlayTenant).count())
-            tenantObjectFromDb = session.query(OverlayTenant).one()
-            self.assertEqual('t2', tenantObjectFromDb.name)
-            self.assertEqual('description for t2', tenantObjectFromDb.description)
-            
     def testCreateVrf(self):        
         with self._dao.getReadWriteSession() as session:
             self.helper._createVrf(session)
@@ -336,15 +312,11 @@ class TestOverlay(unittest.TestCase):
     def testUpdateVrf(self):
         with self._dao.getReadWriteSession() as session:        
             vrfObject = self.helper._createVrf(session)
-            vrfObject.update('v2', 'description for v2', 101, '1.1.1.2')
-            self._dao.updateObjects(session, [vrfObject])
+            self.helper.overlay.modifyVrf(session, vrfObject, '1.1.1.2')
             
         with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayVrf).count())
             vrfObjectFromDb = session.query(OverlayVrf).one()
-            self.assertEqual('v2', vrfObjectFromDb.name)
-            self.assertEqual('description for v2', vrfObjectFromDb.description)
-            self.assertEqual(101, vrfObjectFromDb.routedVnid)
             self.assertEqual('1.1.1.2', vrfObjectFromDb.loopbackAddress)
             
     def testCreateNetwork(self):        
@@ -355,17 +327,13 @@ class TestOverlay(unittest.TestCase):
     def testUpdateNetwork(self):
         with self._dao.getReadWriteSession() as session:        
             networkObject = self.helper._createNetwork(session)
-            networkObject.update('n2', 'description for n2', 1001, 101, True)
-            self._dao.updateObjects(session, [networkObject])
+            self.helper.overlay.modifyNetwork(session, networkObject, 1001, 101)
             
         with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayNetwork).count())
             networkObjectFromDb = session.query(OverlayNetwork).one()
-            self.assertEqual('n2', networkObjectFromDb.name)
-            self.assertEqual('description for n2', networkObjectFromDb.description)
             self.assertEqual(1001, networkObjectFromDb.vlanid)
             self.assertEqual(101, networkObjectFromDb.vnid)
-            self.assertEqual(True, networkObjectFromDb.pureL3Int)
             
     def testCreateSubnet(self):        
         with self._dao.getReadWriteSession() as session:
@@ -375,32 +343,17 @@ class TestOverlay(unittest.TestCase):
     def testUpdateSubnet(self):
         with self._dao.getReadWriteSession() as session:        
             subnetObject = self.helper._createSubnet(session)
-            subnetObject.update('s2', 'description for s2', '1.2.3.5/16')
-            self._dao.updateObjects(session, [subnetObject])
+            self.helper.overlay.modifySubnet(session, subnetObject, '1.2.3.5/16')
             
         with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlaySubnet).count())
             subnetObjectFromDb = session.query(OverlaySubnet).one()
-            self.assertEqual('s2', subnetObjectFromDb.name)
-            self.assertEqual('description for s2', subnetObjectFromDb.description)
             self.assertEqual('1.2.3.5/16', subnetObjectFromDb.cidr)
             
     def testCreateL3port(self):
         with self._dao.getReadWriteSession() as session:
             self.helper._createL3port(session)
             self.assertEqual(1, session.query(OverlayL3port).count())
-            
-    def testUpdateL3port(self):
-        with self._dao.getReadWriteSession() as session:        
-            l3portObject = self.helper._createL3port(session)
-            l3portObject.update('l3port2', 'description for l3port2')
-            self._dao.updateObjects(session, [l3portObject])
-            
-        with self._dao.getReadSession() as session:
-            self.assertEqual(1, session.query(OverlayL3port).count())
-            l3portObjectFromDb = session.query(OverlayL3port).one()
-            self.assertEqual('l3port2', l3portObjectFromDb.name)
-            self.assertEqual('description for l3port2', l3portObjectFromDb.description)
             
     def testCreateL2port(self):        
         with self._dao.getReadWriteSession() as session:
@@ -421,15 +374,10 @@ class TestOverlay(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:        
             self.helper._create2Network4L2port(session)
             ports = session.query(OverlayL2port).all()
-            ports[0].clearNetworks()
-            ports[0].update('l2port.changed', 'description changed', ports[2].overlay_networks, 'xe-1/0/0', ports[0].overlay_device)
-            self._dao.updateObjects(session, ports)
+            self.helper.overlay.modifyL2port(session, ports[0], ports[2].overlay_networks)
             
         with self._dao.getReadSession() as session:
             ports = session.query(OverlayL2port).all()
-            self.assertEqual('l2port.changed', ports[0].name)
-            self.assertEqual('description changed', ports[0].description)
-            self.assertEqual('xe-1/0/0', ports[0].interface)
             self.assertEqual(2, len(ports[0].overlay_networks))
             
     def testCreateAggregatedL2port(self):
@@ -442,18 +390,14 @@ class TestOverlay(unittest.TestCase):
             aggregatedL2portObject = self.helper._createAggregatedL2port(session)
             aggregatedL2ports = session.query(OverlayAggregatedL2port).all()
             networkObjects = session.query(OverlayNetwork).all()
-            aggregatedL2ports[0].clearNetworks()
-            aggregatedL2ports[0].clearMembers()
-            self.helper.overlay.modifyAggregatedL2port(session, aggregatedL2ports[0], 'aggregatedL2port2', 'description for aggregatedL2port2', networkObjects, [], '11:01:01:01:01:01:01:01:01:01', '11:00:00:01:01:01')
-            self._dao.updateObjects(session, aggregatedL2ports)
+            self.helper.overlay.modifyAggregatedL2port(session, aggregatedL2ports[0], networkObjects, '11:01:01:01:01:01:01:01:01:01', '11:00:00:01:01:01')
             
         with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayAggregatedL2port).count())
             aggregatedL2portObjectFromDb = session.query(OverlayAggregatedL2port).one()
-            self.assertEqual('aggregatedL2port2', aggregatedL2portObjectFromDb.name)
-            self.assertEqual('description for aggregatedL2port2', aggregatedL2portObjectFromDb.description)
             self.assertEqual('11:01:01:01:01:01:01:01:01:01', aggregatedL2portObjectFromDb.esi)
             self.assertEqual('11:00:00:01:01:01', aggregatedL2portObjectFromDb.lacp)
+            self.assertEqual(1, len(aggregatedL2portObjectFromDb.overlay_networks))
        
     def testCreateDeployStatus(self):
         with self._dao.getReadWriteSession() as session:
@@ -491,7 +435,7 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             fabric= self.helper._createFabric(session)
             # overlay.createXYZ would also call required configure
-            #self.configEngine.configureFabric(session, fabric)
+            #self.configEngine.configureFabric(session, "create", fabric)
             
             self.assertEqual(1, session.query(OverlayDeployStatus).count())
             config = session.query(OverlayDeployStatus).one().configlet
@@ -507,7 +451,7 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             fabric= self.helper._createFabric2Spine3Leaf(session)
             # overlay.createXYZ would also call required configure
-            #self.configEngine.configureFabric(session, fabric)
+            #self.configEngine.configureFabric(session, "create", fabric)
             
             self.assertEqual(5, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
@@ -539,7 +483,7 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             fabric= self.helper._createFabric2Pods(session)
             # overlay.createXYZ would also call required configure
-            #self.configEngine.configureFabric(session, fabric)
+            #self.configEngine.configureFabric(session, "create", fabric)
             
             self.assertEqual(9, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
@@ -594,7 +538,7 @@ class TestConfigEngine(unittest.TestCase):
             vrf = self.helper._createVrf(session)
             vrfObjectUrl = '/vrfs/%s' % (vrf.id)
             # overlay.createXYZ would also call required configure
-            #self.configEngine.configureVrf(session, vrf)
+            #self.configEngine.configureVrf(session, "create", vrf)
             
             # 2 deployments fabric and vrf
             self.assertEqual(2, session.query(OverlayDeployStatus).count())
@@ -620,7 +564,7 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
-            self.assertIn("bd1001", config)
+            self.assertIn("bd_n1", config)
             self.assertIn("l3-interface irb.101", config)
                         
             config = deployments[8].configlet
@@ -630,14 +574,14 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
-            self.assertIn("bd1001", config)
+            self.assertIn("bd_n1", config)
             self.assertIn("l3-interface irb.101", config)
                 
             config = deployments[9].configlet
             print "leaf1:\n" + config
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
-            self.assertIn("bd1001", config)
+            self.assertIn("bd_n1", config)
             self.assertNotIn("l3-interface irb.", config)
 
     def testConfigureSubnet(self):
@@ -806,8 +750,8 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(0, session.query(OverlayNetwork).count())
             self.assertEqual(0, session.query(OverlaySubnet).count())
-            self.assertEqual(0, session.query(OverlayL2port).count())
-            self.assertEqual(7, session.query(OverlayDeployStatus).count())
+            self.assertEqual(1, session.query(OverlayL2port).count())
+            self.assertEqual(8, session.query(OverlayDeployStatus).count())
 
     def testConfigureAggregatedL2Port(self):
         with self._dao.getReadWriteSession() as session:

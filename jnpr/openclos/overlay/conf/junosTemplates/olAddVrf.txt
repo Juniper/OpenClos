@@ -3,7 +3,7 @@ routing-instances {
         instance-type vrf;
         {% if vrfCounter %}route-distinguisher {{routerId}}:{{vrfCounter}};
         vrf-target target:{{asn}}:{{vrfCounter}};
-        interface lo0.{{vrfCounter}};{% endif %}
+        {% if loopback %}interface lo0.{{vrfCounter}};{% endif %}{% endif %}
         {% if irbName %}interface {{irbName}};{% endif %}        
     }
 }

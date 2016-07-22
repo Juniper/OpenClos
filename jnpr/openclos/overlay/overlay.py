@@ -38,6 +38,16 @@ class Overlay():
         logger.info("OverlayDevice[id: '%s', name: '%s']: created", device.id, device.name)
         return device
 
+    def modifyDevice(self, dbSession, device, username, password):
+        '''
+        Modify an existing Device
+        '''
+        device.update(username, password)
+
+        self._dao.updateObjects(dbSession, [device])
+        logger.info("OverlayDevice[id: '%s', name: '%s']: modified", device.id, device.name)
+        return device
+
     def createFabric(self, dbSession, name, description, overlayAsn, routeReflectorAddress, devices):
         '''
         Create a new Fabric
@@ -49,7 +59,32 @@ class Overlay():
 
         self._dao.createObjects(dbSession, [fabric])
         logger.info("OverlayFabric[id: '%s', name: '%s']: created", fabric.id, fabric.name)
-        self._configEngine.configureFabric(dbSession, fabric)
+        self._configEngine.configureFabric(dbSession, "create", fabric)
+        return fabric
+
+    def modifyFabric(self, dbSession, fabric, overlayAsn, routeReflectorAddress, devices):
+        '''
+        Modify an existing Fabric
+        '''
+        (added, deleted, deviceChangeOnly) = fabric.update(overlayAsn, routeReflectorAddress, devices)
+
+        self._dao.updateObjects(dbSession, [fabric])
+        logger.info("OverlayFabric[id: '%s', name: '%s']: modified", fabric.id, fabric.name)
+        
+        # Apply changes to all devices
+        # Note we don't need to reapply l2port/aggregatedL2port because the newly added device
+        # won't have a port install on it yet. User has to go through create API flow to do that.
+        self._configEngine.configureFabric(dbSession, "update", fabric)
+        for tenant in fabric.overlay_tenants:
+            for vrf in tenant.overlay_vrfs:
+                self._configEngine.configureVrf(dbSession, "update", vrf)
+                for network in vrf.overlay_networks:
+                    self._configEngine.configureNetwork(dbSession, "update", network)
+                    for subnet in network.overlay_subnets:
+                        self._configEngine.configureSubnet(dbSession, "update", subnet)
+
+        # TODO: Optionally delete ALL configs from deleted devices (?)
+                    
         return fabric
 
     def createTenant(self, dbSession, name, description, overlay_fabric):
@@ -66,7 +101,7 @@ class Overlay():
         '''
         Create a new Vrf
         '''
-        if not Overlay.isValidIpBlock(loopbackAddress):
+        if loopbackAddress is not None and not Overlay.isValidIpBlock(loopbackAddress):
             raise ValueError('Invalid loopbackAddress value %s' % loopbackAddress)
         
         vrf = OverlayVrf(name, description, routedVnid, loopbackAddress, overlayTenant)
@@ -74,7 +109,21 @@ class Overlay():
 
         self._dao.createObjects(dbSession, [vrf])
         logger.info("OverlayVrf[id: '%s', name: '%s']: created", vrf.id, vrf.name)
-        self._configEngine.configureVrf(dbSession, vrf)
+        self._configEngine.configureVrf(dbSession, "create", vrf)
+        return vrf
+
+    def modifyVrf(self, dbSession, vrf, loopbackAddress):
+        '''
+        Modify an existing Vrf
+        '''
+        if loopbackAddress is not None and not Overlay.isValidIpBlock(loopbackAddress):
+            raise ValueError('Invalid loopbackAddress value %s' % loopbackAddress)
+        
+        vrf.update(loopbackAddress)
+
+        self._dao.updateObjects(dbSession, [vrf])
+        logger.info("OverlayVrf[id: '%s', name: '%s']: modified", vrf.id, vrf.name)
+        self._configEngine.configureVrf(dbSession, "update", vrf)
         return vrf
 
     def createNetwork(self, dbSession, name, description, overlay_vrf, vlanid, vnid, pureL3Int):
@@ -85,7 +134,18 @@ class Overlay():
 
         self._dao.createObjects(dbSession, [network])
         logger.info("OverlayNetwork[id: '%s', name: '%s']: created", network.id, network.name)
-        self._configEngine.configureNetwork(dbSession, network)
+        self._configEngine.configureNetwork(dbSession, "create", network)
+        return network
+
+    def modifyNetwork(self, dbSession, network, vlanid, vnid):
+        '''
+        Modify an existing Network
+        '''
+        network.update(vlanid, vnid)
+
+        self._dao.updateObjects(dbSession, [network])
+        logger.info("OverlayNetwork[id: '%s', name: '%s']: modified", network.id, network.name)
+        self._configEngine.configureNetwork(dbSession, "update", network)
         return network
 
     def createSubnet(self, dbSession, name, description, overlay_network, cidr):
@@ -99,7 +159,18 @@ class Overlay():
 
         self._dao.createObjects(dbSession, [subnet])
         logger.info("OverlaySubnet[id: '%s', name: '%s']: created", subnet.id, subnet.name)
-        self._configEngine.configureSubnet(dbSession, subnet)
+        self._configEngine.configureSubnet(dbSession, "create", subnet)
+        return subnet
+
+    def modifySubnet(self, dbSession, subnet, cidr):
+        '''
+        Modify an existing Subnet
+        '''
+        subnet.update(cidr)
+
+        self._dao.updateObjects(dbSession, [subnet])
+        logger.info("OverlaySubnet[id: '%s', name: '%s']: modified", subnet.id, subnet.name)
+        self._configEngine.configureSubnet(dbSession, "update", subnet)
         return subnet
 
     def createL3port(self, dbSession, name, description, overlay_subnet):
@@ -120,9 +191,20 @@ class Overlay():
 
         self._dao.createObjects(dbSession, [l2port])
         logger.info("OverlayL2port[id: '%s', name: '%s']: created", l2port.id, l2port.name)
-        self._configEngine.configureL2port(dbSession, l2port)
+        self._configEngine.configureL2port(dbSession, "create", l2port)
         return l2port
 
+    def modifyL2port(self, dbSession, l2port, overlay_networks):
+        '''
+        Modify an existing L2port
+        '''
+        l2port.update(overlay_networks)
+
+        self._dao.updateObjects(dbSession, [l2port])
+        logger.info("OverlayL2port[id: '%s', name: '%s']: modified", l2port.id, l2port.name)
+        self._configEngine.configureL2port(dbSession, "update", l2port)
+        return l2port
+        
     def _validateAggregatedL2port(self, dbSession, name, members):
         # We need to validate 2 cases:
         # 1. Reject if another aggregatedL2port with the same name already has member on the same device.
@@ -171,25 +253,19 @@ class Overlay():
             memberObjects.append(memberObject)
 
         self._dao.createObjects(dbSession, memberObjects)
-        self._configEngine.configureAggregatedL2port(dbSession, aggregatedL2port)
+        self._configEngine.configureAggregatedL2port(dbSession, "create", aggregatedL2port)
         
         return aggregatedL2port
         
-    def modifyAggregatedL2port(self, dbSession, aggregatedL2port, name, description, overlay_networks, members, esi, lacp):
+    def modifyAggregatedL2port(self, dbSession, aggregatedL2port, overlay_networks, esi, lacp):
         '''
-        Modify a new AggregatedL2port
+        Modify an existing AggregatedL2port
         '''
-        aggregatedL2port.update(name, description, overlay_networks, esi, lacp)
+        aggregatedL2port.update(overlay_networks, esi, lacp)
 
-        # add members
-        memberObjects = []
-        for memberDict in members:
-            memberObject = OverlayAggregatedL2portMember(memberDict['interface'], memberDict['device'], aggregatedL2port)
-            logger.info("OverlayAggregatedL2portMember[id: '%s', device: '%s', interface: '%s']: created", memberObject.id, memberObject.overlay_device.name, memberObject.interface)
-            memberObjects.append(memberObject)
-
-        self._dao.createObjects(dbSession, memberObjects)
-        
+        self._dao.updateObjects(dbSession, [aggregatedL2port])
+        logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: modified", aggregatedL2port.id, aggregatedL2port.name)
+        self._configEngine.configureAggregatedL2port(dbSession, "update", aggregatedL2port)
         return aggregatedL2port
         
     def deleteL2port(self, dbSession, l2Port):
@@ -210,19 +286,15 @@ class Overlay():
         '''
         Delete subnet from device
         '''
-        logger.info("Subnet[id: '%s', cidr: '%s']: delete request submitted", subnet.id, subnet.name)
+        logger.info("OverlaySubnet[id: '%s', cidr: '%s']: delete request submitted", subnet.id, subnet.name)
         self._configEngine.deleteSubnet(dbSession, subnet)
 
     def deleteNetwork(self, dbSession, network):
         '''
         Delete network from device, also delete subnet and all l2Ports attached to the network
         '''
-        logger.info("Network[id: '%s', name: '%s']: delete request submitted", network.id, network.name)
-        for port in network.overlay_l2aps:
-            if type(port) is OverlayL2port:
-                self.deleteL2port(dbSession, port)
-            elif type(port) is OverlayAggregatedL2port:
-                self.deleteAggregatedL2port(dbSession, port)
+        logger.info("OverlayNetwork[id: '%s', name: '%s']: delete request submitted", network.id, network.name)
+        # NOTE deleting l2port/aggregatedL2port from network is done in ConfigEngine.deleteNetwork()
         for subnet in network.overlay_subnets:
             self.deleteSubnet(dbSession, subnet)
         self._configEngine.deleteNetwork(dbSession, network)
@@ -231,7 +303,7 @@ class Overlay():
         '''
         Delete vrf rom device, also delete network, subnet ports etc.
         '''
-        logger.info("vrf[id: '%s', name: '%s']: delete request submitted", vrf.id, vrf.name)
+        logger.info("OverlayVrf[id: '%s', name: '%s']: delete request submitted", vrf.id, vrf.name)
         for network in vrf.overlay_networks:
             self.deleteNetwork(dbSession, network)
         self._configEngine.deleteVrf(dbSession, vrf)
@@ -240,7 +312,7 @@ class Overlay():
         '''
         Delete tenant from device, also vrf, delete network, subnet ports etc.
         '''
-        logger.info("tenant[id: '%s', name: '%s']: delete request submitted", tenant.id, tenant.name)
+        logger.info("OverlayTenant[id: '%s', name: '%s']: delete request submitted", tenant.id, tenant.name)
         for vrf in tenant.overlay_vrfs:
             self.deleteVrf(dbSession, vrf)
         # Delete the tenant itself
@@ -250,7 +322,7 @@ class Overlay():
         '''
         Delete fabric from device, also vrf, delete network, subnet ports etc.
         '''
-        logger.info("fabric[id: '%s', name: '%s']: delete request submitted", fabric.id, fabric.name)
+        logger.info("OverlayFabric[id: '%s', name: '%s']: delete request submitted", fabric.id, fabric.name)
         for tenant in fabric.overlay_tenants:
             for vrf in tenant.overlay_vrfs:
                 self.deleteVrf(dbSession, vrf)
@@ -280,7 +352,7 @@ class Overlay():
         # and then try to delete device again.
         self._checkDeviceDependency(dbSession, device)
         self._dao.deleteObject(dbSession, device)
-        logger.info("device[id: '%s', name: '%s']: deleted", device.id, device.name)
+        logger.info("OverlayDevice[id: '%s', name: '%s']: deleted", device.id, device.name)
             
     @staticmethod
     def isValidIpAddress(value):
@@ -303,43 +375,68 @@ class ConfigEngine():
     def __init__(self, conf, dao, commitQueue=None):
         self._conf = conf
         self._dao = dao
-        self._templateLoader = TemplateLoader(junosTemplatePackage="jnpr.openclos.overlay")
         if commitQueue:
             self._commitQueue = commitQueue
         else:
             self._commitQueue = OverlayCommitQueue.getInstance()
-        
+        # Preload all templates
+        self._templateLoader = TemplateLoader(junosTemplatePackage="jnpr.openclos.overlay")
+        self._olAddProtocolBgpSpine = self._templateLoader.getTemplate('olAddProtocolBgpSpine.txt')
+        self._olAddProtocolBgpLeaf = self._templateLoader.getTemplate('olAddProtocolBgpLeaf.txt')
+        self._olAddRoutingOptions = self._templateLoader.getTemplate('olAddRoutingOptions.txt')
+        self._olAddSwitchOptions = self._templateLoader.getTemplate('olAddSwitchOptions.txt')
+        self._olAddPolicyOptions = self._templateLoader.getTemplate('olAddPolicyOptions.txt')
+        self._olAddLoopback = self._templateLoader.getTemplate('olAddLoopback.txt')
+        self._olAddIrb = self._templateLoader.getTemplate("olAddIrb.txt")
+        self._olAddVrf = self._templateLoader.getTemplate("olAddVrf.txt")
+        self._olAddBridgeDomain = self._templateLoader.getTemplate("olAddBridgeDomain.txt")
+        self._olAddProtocolEvpn = self._templateLoader.getTemplate('olAddProtocolEvpn.txt')
+        self._olAddInterface = self._templateLoader.getTemplate('olAddInterface.txt')
+        self._olAddLag = self._templateLoader.getTemplate('olAddLag.txt')
+        self._olDelInterface = self._templateLoader.getTemplate('olDelInterface.txt')
+        self._olDelSubnetFromIrb = self._templateLoader.getTemplate("olDelSubnetFromIrb.txt")
+        self._olDelIrb = self._templateLoader.getTemplate("olDelIrb.txt")
+        self._olDelIrbFromVrf = self._templateLoader.getTemplate("olDelIrbFromVrf.txt")
+        self._olDelBridgeDomain = self._templateLoader.getTemplate("olDelBridgeDomain.txt")
+        self._olDelNetworkFromEvpn = self._templateLoader.getTemplate('olDelNetworkFromEvpn.txt')
+        self._olDelNetworkPolicyOptions = self._templateLoader.getTemplate('olDelNetworkPolicyOptions.txt')
+        self._olDelNetworkFromInterfaces = self._templateLoader.getTemplate('olDelNetworkFromInterfaces.txt')
+        self._olDelLag = self._templateLoader.getTemplate('olDelLag.txt')
+        self._olDelVrf = self._templateLoader.getTemplate("olDelVrf.txt")
+        self._olDelLoopback = self._templateLoader.getTemplate("olDelLoopback.txt")
+        self._olDelSwitchOptions = self._templateLoader.getTemplate('olDelSwitchOptions.txt')
+        self._olDelProtocolBgp = self._templateLoader.getTemplate('olDelProtocolBgp.txt')
+        self._olDelPolicyOptions = self._templateLoader.getTemplate('olDelPolicyOptions.txt')
+        self._olDelProtocolEvpn = self._templateLoader.getTemplate('olDelProtocolEvpn.txt')
 
-    def configureFabric(self, dbSession, fabric):
+    def configureFabric(self, dbSession, operation, fabric):
         '''
         Generate iBGP config
         '''
         
-        spineTemplate = self._templateLoader.getTemplate('olAddProtocolBgpSpine.txt')
-        leafTemplate = self._templateLoader.getTemplate('olAddProtocolBgpLeaf.txt')
         deployments = []        
         for device in fabric.overlay_devices:
             config = self.configureRoutingOptions(device)
             config += self.configureSwitchOptions(device.routerId)
 
             if device.role == 'spine':
-                config += spineTemplate.render(routerId=device.routerId, asn=fabric.overlayAS, 
+                config += self._olAddProtocolBgpSpine.render(routerId=device.routerId, asn=fabric.overlayAS, 
                             podLeafs=[l.routerId for l in fabric.getPodLeafs(device.podName)], 
                             allSpines=[s.routerId for s in fabric.getSpines() if s != device], 
                             routeReflector=fabric.routeReflectorAddress)
             elif device.role == 'leaf':
-                config += leafTemplate.render(routerId=device.routerId, asn=fabric.overlayAS, 
+                config += self._olAddProtocolBgpLeaf.render(routerId=device.routerId, asn=fabric.overlayAS, 
                             podSpines=[s.routerId for s in fabric.getPodSpines(device.podName)],
                             remoteGateways=self.getRemoteGateways(fabric, device.podName))
             config += self.configureFabricPolicyOptions(fabric, device)
             config += self.configureEvpn()
             
-            deployments.append(OverlayDeployStatus(config, fabric.getUrl(), "create", device, fabric))    
+            deployments.append(OverlayDeployStatus(config, fabric.getUrl(), operation, device, fabric))    
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("configureFabric [id: '%s', name: '%s']: configured", fabric.id, fabric.name)
         self._commitQueue.addJobs(deployments)
-    
+        
     def getRemoteGateways(self, fabric, podName):
         allSpines = set(fabric.getSpines())
         podSpines = set(fabric.getPodSpines(podName))
@@ -349,47 +446,52 @@ class ConfigEngine():
 
     def configureRoutingOptions(self, device):
         if device.role == 'spine':
-            template = self._templateLoader.getTemplate('olAddRoutingOptions.txt')
-            return template.render(routerId=device.routerId)
+            return self._olAddRoutingOptions.render(routerId=device.routerId)
         else:
             return ""
         
     def configureSwitchOptions(self, routerId):
-        template = self._templateLoader.getTemplate('olAddSwitchOptions.txt')
-        return template.render(routerId=routerId, esiRouteTarget=esiRouteTarget)
+        return self._olAddSwitchOptions.render(routerId=routerId, esiRouteTarget=esiRouteTarget)
 
     def configureFabricPolicyOptions(self, fabric, device):
-        template = self._templateLoader.getTemplate('olAddPolicyOptions.txt')
         if device.role == 'spine':
-            return template.render(esiRTarget=esiRouteTarget)
+            return self._olAddPolicyOptions.render(esiRTarget=esiRouteTarget)
         else:
-            return template.render(remoteGateways=self.getRemoteGateways(fabric, device.podName), esiRTarget=esiRouteTarget)
+            return self._olAddPolicyOptions.render(remoteGateways=self.getRemoteGateways(fabric, device.podName), esiRTarget=esiRouteTarget)
         
     def configureNetworkPolicyOptions(self, vni=None, asn=None):
-        template = self._templateLoader.getTemplate('olAddPolicyOptions.txt')
-        return template.render(vni=vni, asn=asn)
+        return self._olAddPolicyOptions.render(vni=vni, asn=asn)
 
-    def configureVrf(self, dbSession, vrf):
+    def configureVrf(self, dbSession, operation, vrf):
         deployments = []
-        loopbackIps = self.getLoopbackIps(vrf.loopbackAddress)
         spines = vrf.getSpines()
+        if vrf.loopbackAddress is not None:
+            loopbackIps = self.getLoopbackIps(vrf.loopbackAddress)
+        else:
+            # In case user hasn't set loopback address block yet, create an artificial list of Nones 
+            # so the izip loop below will work
+            loopbackIps = [None for spine in spines]
         
         if len(loopbackIps) < len(spines):
             logger.error("configureVrf [id: '%s', name: '%s']: loopback IPs count: %d less than spine count: %d", 
                          vrf.id, vrf.name, len(loopbackIps), len(spines))
             
-        template = self._templateLoader.getTemplate('olAddVrf.txt')
         for spine, loopback in itertools.izip(spines, loopbackIps):
-            config = self.configureLoopback(loopback, vrf.vrfCounter)
+            if loopback is not None:
+                config = self.configureLoopback(loopback, vrf.vrfCounter)
+                config += self._olAddVrf.render(vrfName=vrf.name,  vrfCounter=vrf.vrfCounter,
+                    routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS, loopback=loopback)
+            else:
+                # If user hasn't set loopback address block yet, do not configure lo.<vrfCounter> interface
+                config = self._olAddVrf.render(vrfName=vrf.name,  vrfCounter=vrf.vrfCounter,
+                    routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS)
             
-            config += template.render(vrfName=vrf.name,  vrfCounter=vrf.vrfCounter,
-                routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS)
-            deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "create", spine, vrf.overlay_tenant.overlay_fabric))    
+            deployments.append(OverlayDeployStatus(config, vrf.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("configureVrf [id: '%s', name: '%s']: configured", vrf.id, vrf.name)
         self._commitQueue.addJobs(deployments)
-
+        
     def getLoopbackIps(self, loopbackBlock):
         '''
         returns all IPs from the CIRD including network and broadcast
@@ -404,46 +506,40 @@ class ConfigEngine():
             return hosts
         
     def configureLoopback(self, loopbackIp, loopbackUnit):
-        template = self._templateLoader.getTemplate('olAddLoopback.txt')
-        return template.render(loopbackUnit=loopbackUnit, loopbackAddress=loopbackIp)
+        return self._olAddLoopback.render(loopbackUnit=loopbackUnit, loopbackAddress=loopbackIp)
 
-
-    def configureNetwork(self, dbSession, network):
+    def configureNetwork(self, dbSession, operation, network):
         '''
         Create IRB, BD, update VRF, update evpn, update policy
         '''
         deployments = []        
         vrf = network.overlay_vrf
         asn = vrf.overlay_tenant.overlay_fabric.overlayAS
-
-        irbTemplate = self._templateLoader.getTemplate("olAddIrb.txt")
-        vrfTemplate = self._templateLoader.getTemplate("olAddVrf.txt")
-        bdTemplate = self._templateLoader.getTemplate("olAddBridgeDomain.txt")
         
-        for spine in vrf.getSpines():            
+        for spine in vrf.getSpines():
+        
+            config = self._olAddIrb.render(vlanId=network.vlanid)
             
-            config = irbTemplate.render(vlanId=network.vlanid)
-            
-            config += vrfTemplate.render(vrfName=vrf.name, irbName="irb." + str(network.vlanid))
+            config += self._olAddVrf.render(vrfName=vrf.name, irbName="irb." + str(network.vlanid))
             config += self.configureEvpn(network.vnid, asn)
             config += self.configureNetworkPolicyOptions(network.vnid, asn)
-            config += bdTemplate.render(vlanId=network.vlanid, vxlanId=network.vnid, role="spine")
+            config += self._olAddBridgeDomain.render(networkName=network.name, vlanId=network.vlanid, vxlanId=network.vnid, role="spine")
             
-            deployments.append(OverlayDeployStatus(config, network.getUrl(), "create", spine, vrf.overlay_tenant.overlay_fabric))    
+            deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
 
         for leaf in vrf.getLeafs():            
             
             config = self.configureEvpn(network.vnid, asn)
             config += self.configureNetworkPolicyOptions(network.vnid, asn)
-            config += bdTemplate.render(vlanId=network.vlanid, vxlanId=network.vnid)
+            config += self._olAddBridgeDomain.render(networkName=network.name, vlanId=network.vlanid, vxlanId=network.vnid)
 
-            deployments.append(OverlayDeployStatus(config, network.getUrl(), "create", leaf, vrf.overlay_tenant.overlay_fabric))    
+            deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, leaf, vrf.overlay_tenant.overlay_fabric))    
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("configureNetwork [network id: '%s', network name: '%s']: configured", network.id, network.name)
         self._commitQueue.addJobs(deployments)
     
-    def configureSubnet(self, dbSession, subnet):
+    def configureSubnet(self, dbSession, operation, subnet):
         '''
         Add subnet address to IRB
         '''
@@ -459,20 +555,17 @@ class ConfigEngine():
             logger.error("configureSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
                          vrf.id, network.id, len(irbIps), len(spines))
 
-        irbTemplate = self._templateLoader.getTemplate("olAddIrb.txt")
-        
-        for spine, irbIp in itertools.izip(spines, irbIps):            
-            config = irbTemplate.render(firstIpFromSubnet=irbVirtualGateway, secondOrThirdIpFromSubnet=irbIp, 
+        for spine, irbIp in itertools.izip(spines, irbIps):
+            config = self._olAddIrb.render(firstIpFromSubnet=irbVirtualGateway, secondOrThirdIpFromSubnet=irbIp, 
                 vlanId=network.vlanid)
-            deployments.append(OverlayDeployStatus(config, subnet.getUrl(), "create", spine, vrf.overlay_tenant.overlay_fabric))    
+            deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("configureSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
         self._commitQueue.addJobs(deployments)
         
     def configureEvpn(self, vni=None, asn=None):
-        template = self._templateLoader.getTemplate('olAddProtocolEvpn.txt')
-        return template.render(vxlanId=vni, asn=asn)
+        return self._olAddProtocolEvpn.render(vxlanId=vni, asn=asn)
         
             
     def getSubnetIps(self, subnetBlock):
@@ -483,29 +576,27 @@ class ConfigEngine():
         ips = [str(ip) + "/" + cidr for ip in IPNetwork(subnetBlock).iter_hosts()]
         return ips        
         
-    def configureL2port(self, dbSession, l2Port):
+    def configureL2port(self, dbSession, operation, l2Port):
         '''
         Create access port interface
         '''
         deployments = []
-        networks = [(net.vlanid, net.vnid) for net in l2Port.overlay_networks]
+        networks = [(net.vlanid, net.vnid, net.name) for net in l2Port.overlay_networks]
         vrf = l2Port.overlay_networks[0].overlay_vrf
-        template = self._templateLoader.getTemplate('olAddInterface.txt')
-        config = template.render(interfaceName=l2Port.interface, networks=networks)
+        config = self._olAddInterface.render(interfaceName=l2Port.interface, networks=networks)
 
-        deployments.append(OverlayDeployStatus(config, l2Port.getUrl(), "create", l2Port.overlay_device, vrf.overlay_tenant.overlay_fabric))
+        deployments.append(OverlayDeployStatus(config, l2Port.getUrl(), operation, l2Port.overlay_device, vrf.overlay_tenant.overlay_fabric))
         self._dao.createObjects(dbSession, deployments)
         logger.info("configureL2port [l2Port id: '%s', l2Port name: '%s']: configured", l2Port.id, l2Port.interface)
         self._commitQueue.addJobs(deployments)
 
-    def configureAggregatedL2port(self, dbSession, aggregatedL2port):
+    def configureAggregatedL2port(self, dbSession, operation, aggregatedL2port):
         '''
         Create Aggregated L2 Port
         '''
         deployments = []
         networks = [(net.vlanid, net.vnid) for net in aggregatedL2port.overlay_networks]
         vrf = aggregatedL2port.overlay_networks[0].overlay_vrf
-        template = self._templateLoader.getTemplate('olAddLag.txt')
         membersByDevice = {}
         # Normalize members based on device ids 
         # Note we need to do this so in Single-Homed use case, we only create one commit push
@@ -516,8 +607,8 @@ class ConfigEngine():
                 
         for deviceId, deviceMembers in membersByDevice.iteritems():
             lagCount = len(deviceMembers['device'].aggregatedL2port_members)
-            config = template.render(memberInterfaces=deviceMembers['members'], networks=networks, lagName=aggregatedL2port.name, ethernetSegmentId=aggregatedL2port.esi, systemId=aggregatedL2port.lacp, lagCount=lagCount)
-            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "create", deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
+            config = self._olAddLag.render(memberInterfaces=deviceMembers['members'], networks=networks, lagName=aggregatedL2port.name, ethernetSegmentId=aggregatedL2port.esi, systemId=aggregatedL2port.lacp, lagCount=lagCount)
+            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
             
         self._dao.createObjects(dbSession, deployments)
         logger.info("configureAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
@@ -553,17 +644,15 @@ class ConfigEngine():
         
         if l2Port.overlay_device in deployedDevices:
             deployments = []
-            networks = [(net.vlanid, net.vnid) for net in l2Port.overlay_networks]
+            networks = [(net.vlanid, net.vnid, net.name) for net in l2Port.overlay_networks]
             vrf = l2Port.overlay_networks[0].overlay_vrf
-            template = self._templateLoader.getTemplate('olDelInterface.txt')
-            config = template.render(interfaceName=l2Port.interface, networks=networks)
+            config = self._olDelInterface.render(interfaceName=l2Port.interface, networks=networks)
 
             deployments.append(OverlayDeployStatus(config, l2Port.getUrl(), "delete", l2Port.overlay_device, vrf.overlay_tenant.overlay_fabric))
             self._dao.createObjects(dbSession, deployments)
             logger.info("deleteL2port [l2Port id: '%s', l2Port name: '%s']: configured", l2Port.id, l2Port.interface)
             self._commitQueue.addJobs(deployments)
 
-        
     def deleteSubnet(self, dbSession, subnet):
         deployedDevices = self._getObjectDeployedDevices(dbSession, subnet.getUrl())
         if len(deployedDevices) == 0:
@@ -583,11 +672,9 @@ class ConfigEngine():
             logger.error("deleteSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
                          vrf.id, network.id, len(irbIps), len(spines))
 
-        irbTemplate = self._templateLoader.getTemplate("olDelSubnetFromIrb.txt")
-        
         for spine, irbIp in itertools.izip(spines, irbIps):      
             if spine in deployedDevices:
-                config = irbTemplate.render(secondOrThirdIpFromSubnet=irbIp, vlanId=network.vlanid)
+                config = self._olDelSubnetFromIrb.render(secondOrThirdIpFromSubnet=irbIp, vlanId=network.vlanid)
                 deployments.append(OverlayDeployStatus(config, subnet.getUrl(), "delete", spine, vrf.overlay_tenant.overlay_fabric))    
 
         self._dao.createObjects(dbSession, deployments)
@@ -608,31 +695,27 @@ class ConfigEngine():
         vrf = network.overlay_vrf
         asn = vrf.overlay_tenant.overlay_fabric.overlayAS
 
-        irbTemplate = self._templateLoader.getTemplate("olDelIrb.txt")
-        vrfTemplate = self._templateLoader.getTemplate("olDelIrbFromVrf.txt")
-        bdTemplate = self._templateLoader.getTemplate("olDelBridgeDomain.txt")
-        evpnTemplate = self._templateLoader.getTemplate('olDelNetworkFromEvpn.txt')
-        policyTemplate = self._templateLoader.getTemplate('olDelNetworkPolicyOptions.txt')
-        
         for spine in vrf.getSpines():
             if spine in deployedDevices:
                 config = ""
-                config += irbTemplate.render(vlanId=network.vlanid)
-                config += vrfTemplate.render(vrfName=vrf.name, vlanId=network.vlanid)
-                config += bdTemplate.render(vxlanId=network.vnid)
-                config += evpnTemplate.render(vxlanId=network.vnid)
-                config += policyTemplate.render(vxlanId=network.vnid, asn=asn)
+                config += self._olDelIrb.render(vlanId=network.vlanid)
+                config += self._olDelIrbFromVrf.render(vrfName=vrf.name, vlanId=network.vlanid)
+                config += self._olDelBridgeDomain.render(networkName=network.name)
+                config += self._olDelNetworkFromEvpn.render(vxlanId=network.vnid)
+                config += self._olDelNetworkPolicyOptions.render(vxlanId=network.vnid, asn=asn)
                 deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", spine, vrf.overlay_tenant.overlay_fabric))
-                logger.debug("deleteNetwork: device: %s, object: %s, config: %s", spine.address, network.getUrl(), config)
+                logger.debug("deleteNetwork: spine: %s, object: %s, config: %s", spine.address, network.getUrl(), config)
         
         for leaf in vrf.getLeafs():
             if leaf in deployedDevices:
                 config = ""
-                config += bdTemplate.render(vxlanId=network.vnid)
-                config += evpnTemplate.render(vxlanId=network.vnid)
-                config += policyTemplate.render(vxlanId=network.vnid, asn=asn)
+                config += self._olDelBridgeDomain.render(networkName=network.name)
+                config += self._olDelNetworkFromEvpn.render(vxlanId=network.vnid)
+                config += self._olDelNetworkPolicyOptions.render(vxlanId=network.vnid, asn=asn)
+                interfaces = [l2ap.configName() for l2ap in network.overlay_l2aps]
+                config += self._olDelNetworkFromInterfaces.render(interfaces=interfaces, vlanId=network.vlanid)
                 deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", leaf, vrf.overlay_tenant.overlay_fabric))
-                logger.debug("deleteNetwork: device: %s, object: %s, config: %s", leaf.address, network.getUrl(), config)
+                logger.debug("deleteNetwork: leaf: %s, object: %s, config: %s", leaf.address, network.getUrl(), config)
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteNetwork [id: '%s', name: '%s']: configured", network.id, network.name)
@@ -650,7 +733,6 @@ class ConfigEngine():
             
         deployments = []
         vrf = aggregatedL2port.overlay_networks[0].overlay_vrf
-        template = self._templateLoader.getTemplate('olDelLag.txt')
         membersByDevice = {}
         # Normalize members based on device ids 
         # Note we need to do this so in Single-Homed use case, we only create one commit push
@@ -664,7 +746,7 @@ class ConfigEngine():
             lagCount = len(deviceMembers['device'].aggregatedL2port_members) - len(deviceMembers['members'])
             if lagCount < 0:
                 raise ValueError("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: lagCount is already 0. It cannot be decreased." % (aggregatedL2port.id, aggregatedL2port.name))
-            config = template.render(memberInterfaces=deviceMembers['members'], lagName=aggregatedL2port.name, lagCount=lagCount)
+            config = self._olDelLag.render(memberInterfaces=deviceMembers['members'], lagName=aggregatedL2port.name, lagCount=lagCount)
             deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "delete", deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
@@ -682,13 +764,10 @@ class ConfigEngine():
             
         deployments = []
 
-        vrfTemplate = self._templateLoader.getTemplate("olDelVrf.txt")
-        loopbackTemplate = self._templateLoader.getTemplate("olDelLoopback.txt")
-        
         for spine in vrf.getSpines():
             if spine in deployedDevices:
-                config = loopbackTemplate.render(loopbackUnit=vrf.vrfCounter)
-                config += vrfTemplate.render(vrfName=vrf.name)
+                config = self._olDelLoopback.render(loopbackUnit=vrf.vrfCounter)
+                config += self._olDelVrf.render(vrfName=vrf.name)
                 deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "delete", spine, vrf.overlay_tenant.overlay_fabric))
 
         self._dao.createObjects(dbSession, deployments)
@@ -707,29 +786,23 @@ class ConfigEngine():
             
         deployments = []
 
-        switchTemplate = self._templateLoader.getTemplate('olDelSwitchOptions.txt')
-        bgpTemplate = self._templateLoader.getTemplate('olDelProtocolBgp.txt')
-        policyTemplate = self._templateLoader.getTemplate('olDelPolicyOptions.txt')
-        evpnTemplate = self._templateLoader.getTemplate('olDelProtocolEvpn.txt')
-
         for device in fabric.overlay_devices:
             if device in deployedDevices:
-                config = switchTemplate.render()
+                config = self._olDelSwitchOptions.render()
 
                 if device.role == 'spine':
-                    config += bgpTemplate.render(role="spine")
-                    config += policyTemplate.render()
+                    config += self._olDelProtocolBgp.render(role="spine")
+                    config += self._olDelPolicyOptions.render()
                 elif device.role == 'leaf':
-                    config += bgpTemplate.render(role="leaf")
-                    config += policyTemplate.render(remoteGateways=self.getRemoteGateways(fabric, device.podName))
-                config += evpnTemplate.render()
+                    config += self._olDelProtocolBgp.render(role="leaf")
+                    config += self._olDelPolicyOptions.render(remoteGateways=self.getRemoteGateways(fabric, device.podName))
+                config += self._olDelProtocolEvpn.render()
                 
                 deployments.append(OverlayDeployStatus(config, fabric.getUrl(), "delete", device, fabric))
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteFabric [id: '%s', name: '%s']: configured", fabric.id, fabric.name)
         self._commitQueue.addJobs(deployments)
-
 
 # def main():
     # conf = {}
