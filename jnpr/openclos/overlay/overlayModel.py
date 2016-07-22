@@ -58,28 +58,14 @@ class OverlayDevice(ManagedElement, Base):
         self.username = username
         self.encryptedPassword = self.cryptic.encrypt(password)
         
-    def update(self, name, description, role, address, routerId, podName, username, password):
+    def update(self, username, password):
         '''
         Updates device object.
         '''
-        if username is None or username == '':
-            raise ValueError("username cannot be None or empty")
-        if password is None or password == '':
-            raise ValueError("password cannot be None or empty")
-            
-        # Note in MySQL non-strict mode, inserting an invalid role will not throw error.
-        # So we will validate role ourselves.
-        if role not in self.enumRole:
-            raise ValueError("invalid role '%s'" % role)
-        
-        self.name = name
-        self.description = description
-        self.role = role
-        self.address = address
-        self.routerId = routerId
-        self.podName = podName
-        self.username = username
-        self.encryptedPassword = self.cryptic.encrypt(password)
+        if username is not None:
+            self.username = username
+        if password is not None:
+            self.encryptedPassword = self.cryptic.encrypt(password)
     
     def getCleartextPassword(self):
         '''
@@ -134,23 +120,44 @@ class OverlayFabric(ManagedElement, Base):
     def getUrl(self):
         return "/fabrics/" + self.id
     
-    def update(self, name, description, overlayAS, routeReflectorAddress, devices):
+    def update(self, overlayAS, routeReflectorAddress, devices):
         '''
         Updates Fabric object.
-        NOTE: you MUST call clearDevices() before you call update(). Othewise you will receive a "conflict key" error
         '''
-        self.name = name
-        self.description = description
-        self.overlayAS = int(overlayAS)
-        self.routeReflectorAddress = routeReflectorAddress
-        for device in devices:
-            self.overlay_devices.append(device)
-    
-    def clearDevices(self):
-        '''
-        Remove existing devices
-        '''
-        del self.overlay_devices[:]
+        deviceChangeOnly = True
+        if overlayAS is not None:
+            if self.overlayAS != int(overlayAS):
+                deviceChangeOnly = False
+            self.overlayAS = int(overlayAS)
+        if routeReflectorAddress is not None:
+            if self.routeReflectorAddress != routeReflectorAddress:
+                deviceChangeOnly = False
+            self.routeReflectorAddress = routeReflectorAddress
+        added = []
+        deleted = []
+        if devices is not None:
+            # First remove the existing device that is not in the new list
+            for oldDevice in self.overlay_devices[:]:
+                remove = True
+                for newDevice in devices:
+                    if oldDevice.id == newDevice.id:
+                        remove = False
+                        break
+                if remove:
+                    deleted.append(oldDevice)
+                    self.overlay_devices.remove(oldDevice)
+
+            # Then add the new device that is not in the existing list
+            for newDevice in devices:
+                add = True
+                for oldDevice in self.overlay_devices:
+                    if newDevice.id == oldDevice.id:
+                        add = False
+                        break
+                if add:
+                    added.append(newDevice)
+                    self.overlay_devices.append(newDevice)
+        return (added, deleted, deviceChangeOnly)
 
     def getSpines(self):
         return [dev for dev in self.overlay_devices if dev.role == "spine"]
@@ -189,20 +196,13 @@ class OverlayTenant(ManagedElement, Base):
         self.description = description
         self.overlay_fabric = overlay_fabric
         
-    def update(self, name, description):
-        '''
-        Updates Tenant object.
-        '''
-        self.name = name
-        self.description = description
-    
 class OverlayVrf(ManagedElement, Base):
     __tablename__ = 'overlayVrf'
     id = Column(String(60), primary_key=True)
     name = Column(String(255), nullable=False, unique=True)
     description = Column(String(256))
     routedVnid = Column(Integer)
-    loopbackAddress = Column(String(60), nullable=False)
+    loopbackAddress = Column(String(60))
     vrfCounter = Column(Integer)
     overlay_tenant_id = Column(String(60), ForeignKey('overlayTenant.id'), nullable=False)
     overlay_tenant = relationship("OverlayTenant", backref=backref('overlay_vrfs', order_by=name, cascade='all, delete, delete-orphan'))
@@ -225,15 +225,12 @@ class OverlayVrf(ManagedElement, Base):
     def getUrl(self):
         return "/vrfs/" + self.id
     
-    def update(self, name, description, routedVnid, loopbackAddress):
+    def update(self, loopbackAddress):
         '''
         Updates VRF object.
         '''
-        self.name = name
-        self.description = description
-        if routedVnid is not None:
-            self.routedVnid = int(routedVnid)
-        self.loopbackAddress = loopbackAddress
+        if loopbackAddress is not None:
+            self.loopbackAddress = loopbackAddress
         
     def getDevices(self, role=None):
         if self.overlay_tenant and self.overlay_tenant.overlay_fabric:
@@ -289,15 +286,14 @@ class OverlayNetwork(ManagedElement, Base):
     def getUrl(self):
         return "/networks/" + self.id
     
-    def update(self, name, description, vlanid, vnid, pureL3Int):
+    def update(self, vlanid, vnid):
         '''
         Updates network object.
         '''
-        self.name = name
-        self.description = description
-        self.vlanid = int(vlanid)
-        self.vnid = int(vnid)
-        self.pureL3Int = pureL3Int
+        if vlanid is not None:
+            self.vlanid = int(vlanid)
+        if vnid is not None:
+            self.vnid = int(vnid)
     
 class OverlaySubnet(ManagedElement, Base):
     __tablename__ = 'overlaySubnet'
@@ -325,13 +321,12 @@ class OverlaySubnet(ManagedElement, Base):
     def getUrl(self):
         return "/subnets/" + self.id
 
-    def update(self, name, description, cidr):
+    def update(self, cidr):
         '''
         Updates subnet object.
         '''
-        self.name = name
-        self.description = description
-        self.cidr = cidr
+        if cidr is not None:
+            self.cidr = cidr
     
 class OverlayL3port(ManagedElement, Base):
     __tablename__ = 'overlayL3port'
@@ -375,7 +370,7 @@ class OverlayL2ap(ManagedElement, Base):
         
     def __init__(self, name, description, overlay_networks):
         '''
-        Creates L2 port object.
+        Creates L2 attach point object.
         '''
         self.id = str(uuid.uuid4())
         self.name = name
@@ -383,21 +378,43 @@ class OverlayL2ap(ManagedElement, Base):
         for network in overlay_networks:
             self.overlay_networks.append(network)
         
-    def update(self, name, description, overlay_networks):
+    def update(self, overlay_networks):
         '''
-        Updates L2 port object.
-        NOTE: you MUST call clearNetworks() before you call update(). Othewise you will receive a "conflict key" error
+        Updates L2 attach point object.
         '''
-        self.name = name
-        self.description = description
-        for network in overlay_networks:
-            self.overlay_networks.append(network)
+        added = []
+        deleted = []
+        if overlay_networks is not None:
+            # First remove the existing network that is not in the new list
+            for oldNetwork in self.overlay_networks[:]:
+                remove = True
+                for newNetwork in overlay_networks:
+                    if oldNetwork.id == newNetwork.id:
+                        remove = False
+                        break
+                if remove:
+                    deleted.append(oldNetwork)
+                    self.overlay_networks.remove(oldNetwork)
+
+            # Then add the new network that is not in the existing list
+            for newNetwork in overlay_networks:
+                add = True
+                for oldNetwork in self.overlay_networks:
+                    if newNetwork.id == oldNetwork.id:
+                        add = False
+                        break
+                if add:
+                    added.append(newNetwork)
+                    self.overlay_networks.append(newNetwork)
+        return (added, deleted)
     
-    def clearNetworks(self):
+    def configName(self):
         '''
-        Remove existing networks
+        Returns the name used in config stanza on device.
+        In case of l2port, it shall be the OverlayL2port.interface.
+        In case of aggregatedL2port, it shall be OverlayAggregatedL2port.name.
         '''
-        del self.overlay_networks[:]
+        return self.name
         
 class OverlayL2port(OverlayL2ap):
     __tablename__ = 'overlayL2port'
@@ -420,14 +437,19 @@ class OverlayL2port(OverlayL2ap):
     def getUrl(self):
         return "/l2ports/" + self.id
     
-    def update(self, name, description, overlay_networks, interface, overlay_device):
+    def update(self, overlay_networks):
         '''
         Updates L2 port object.
-        NOTE: you MUST call clearNetworks() before you call update(). Othewise you will receive a "conflict key" error
         '''
-        super(OverlayL2port, self).update(name, description, overlay_networks)
-        self.interface = interface
-        self.overlay_device = overlay_device
+        super(OverlayL2port, self).update(overlay_networks)
+        
+    def configName(self):
+        '''
+        Returns the name used in config stanza on device.
+        In case of l2port, it shall be the OverlayL2port.interface.
+        In case of aggregatedL2port, it shall be OverlayAggregatedL2port.name.
+        '''
+        return self.interface
     
 class OverlayAggregatedL2portMember(ManagedElement, Base):
     __tablename__ = 'overlayAggregatedL2portMember'
@@ -478,20 +500,23 @@ class OverlayAggregatedL2port(OverlayL2ap):
     def getUrl(self):
         return "/aggregatedL2ports/" + self.id
     
-    def update(self, name, description, overlay_networks, esi, lacp):
+    def update(self, overlay_networks, esi, lacp):
         '''
         Updates aggregated interface object.
-        NOTE: you MUST call clearNetworks() before you call update(). Othewise you will receive a "conflict key" error
         '''
-        super(OverlayAggregatedL2port, self).update(name, description, overlay_networks)
-        self.esi = esi
-        self.lacp = lacp
-    
-    def clearMembers(self):
+        super(OverlayAggregatedL2port, self).update(overlay_networks)
+        if esi is not None:
+            self.esi = esi
+        if lacp is not None:
+            self.lacp = lacp
+        
+    def configName(self):
         '''
-        Remove existing members
+        Returns the name used in config stanza on device.
+        In case of l2port, it shall be the OverlayL2port.interface.
+        In case of aggregatedL2port, it shall be OverlayAggregatedL2port.name.
         '''
-        del self.members[:]
+        return self.name
         
 class OverlayDeployStatus(ManagedElement, Base):
     __tablename__ = 'overlayDeployStatus'

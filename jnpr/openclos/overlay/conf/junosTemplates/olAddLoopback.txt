@@ -1,6 +1,7 @@
 interfaces {
     lo0 {
         unit {{loopbackUnit}} {
+            replace:
             family inet {
                 address {{loopbackAddress}};
             }

@@ -55,12 +55,10 @@ registry = set([
     'POST /openclos/v1/overlay/l2ports',
     'POST /openclos/v1/overlay/aggregatedL2ports',
     'PUT /openclos/v1/overlay/fabrics/<fabricId>',
-    'PUT /openclos/v1/overlay/tenants/<tenantId>',
     'PUT /openclos/v1/overlay/vrfs/<vrfId>',
     'PUT /openclos/v1/overlay/devices/<deviceId>',
     'PUT /openclos/v1/overlay/networks/<networkId>',
     'PUT /openclos/v1/overlay/subnets/<subnetId>',
-    'PUT /openclos/v1/overlay/l3ports/<l3portId>',
     'PUT /openclos/v1/overlay/l2ports/<l2portId>',
     'PUT /openclos/v1/overlay/aggregatedL2ports/<aggregatedL2portId>',
     'DELETE /openclos/v1/overlay/fabrics/<fabricId>',
@@ -155,13 +153,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
             deviceId = deviceObject.id
         deviceDict = {
             "device": {
-                "name": "d1",
-                "description": "changed",
-                "role": "spine",
-                "address": "1.2.3.5",
-                "routerId": "1.1.1.2",
-                "podName": "pod2",
-                "username": "root",
+                "username": "root1",
                 "password": "testing123"
             }
         }
@@ -169,21 +161,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(deviceDict))
         self.assertEqual(200, response.status_int)
-        self.assertEqual('changed', response.json['device']['description'])
-        self.assertEqual('1.2.3.5', response.json['device']['address'])
-        self.assertEqual('1.1.1.2', response.json['device']['routerId'])
-        self.assertEqual('pod2', response.json['device']['podName'])
         
     def testModifyDeviceNotFound(self):
         deviceDict = {
             "device": {
                 "id": '12345',
-                "name": "d1",
-                "description": "changed",
-                "role": "spine",
-                "address": "1.2.3.5",
-                "routerId": "1.1.1.2",
-                "podName": "pod1",
                 "username": "root",
                 "password": "testing123"
             }
@@ -266,8 +248,6 @@ class TestOverlayRestRoutes(unittest.TestCase):
 
         fabricDict = {
             "fabric": {
-                "name": "f1",
-                "description": "description for f1",
                 "overlayAsn": 65002,
                 "routeReflectorAddress": "3.3.3.3"
             }
@@ -288,8 +268,6 @@ class TestOverlayRestRoutes(unittest.TestCase):
         fabricDict = {
             "fabric": {
                 "id": '12345',
-                "name": "f1",
-                "description": "description for f1",
                 "overlayAsn": 65001,
                 "routeReflectorAddress": "3.3.3.3"
             }
@@ -361,41 +339,6 @@ class TestOverlayRestRoutes(unittest.TestCase):
         response = self.restServerTestApp.get('/openclos/v1/overlay/tenants/' + response.json['tenant']['id'])
         self.assertEqual(200, response.status_int) 
 
-    def testModifyTenant(self):
-        with self._dao.getReadWriteSession() as session:   
-            tenantObject = self.helper._createTenant(session)
-            tenantId = tenantObject.id
-            fabricId = tenantObject.overlay_fabric_id
-        tenantDict = {
-            "tenant": {
-                "name": "t1",
-                "description": "changed",
-            }
-        }
-        tenantDict['tenant']['id'] = tenantId
-        tenantDict['tenant']['fabric'] = fabricId
-        response = self.restServerTestApp.put('/openclos/v1/overlay/tenants/' + tenantId, 
-                                               headers = {'Content-Type':'application/json'}, 
-                                               params=json.dumps(tenantDict))
-        self.assertEqual(200, response.status_int)
-        self.assertEqual('changed', response.json['tenant']['description'])
-        
-    def testModifyTenantNotFound(self):
-        tenantDict = {
-            "tenant": {
-                "id": '12345',
-                "name": "f1",
-                "description": "description for f1",
-                "fabric": '12345'
-            }
-        }
-        with self.assertRaises(AppError) as e:
-            self.restServerTestApp.put('/openclos/v1/overlay/tenants/12345',
-                                       headers = {'Content-Type':'application/json'}, 
-                                       params=json.dumps(tenantDict))
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1106' in e.exception.message)
-        
     def testDeleteTenant(self):
         with self._dao.getReadWriteSession() as session:   
             tenantObject = self.helper._createTenant(session)
@@ -467,31 +410,21 @@ class TestOverlayRestRoutes(unittest.TestCase):
 
         vrfDict = {
             "vrf": {
-                "name": "v1",
-                "description": "changed",
-                "routedVnid": 101,
                 "loopbackAddress": "1.1.1.2"
             }
         }
-        vrfDict['vrf']['tenant'] = tenantId
         vrfDict['vrf']['id'] = vrfId
         response = self.restServerTestApp.put('/openclos/v1/overlay/vrfs/' + vrfId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(vrfDict))
         self.assertEqual(200, response.status_int)
-        self.assertEqual('changed', response.json['vrf']['description'])
-        self.assertEqual(101, response.json['vrf']['routedVnid'])
         self.assertEqual('1.1.1.2', response.json['vrf']['loopbackAddress'])
         
     def testModifyVrfNotFound(self):
         vrfDict = {
             "vrf": {
                 "id": '12345',
-                "name": "v1",
-                "description": "description for v1",
-                "routedVnid": 101,
-                "loopbackAddress": "1.1.1.2",
-                "tenant": '12345'
+                "loopbackAddress": "1.1.1.2"
             }
         }
         with self.assertRaises(AppError) as e:
@@ -572,33 +505,24 @@ class TestOverlayRestRoutes(unittest.TestCase):
 
         networkDict = {
             "network": {
-                "name": "n1",
-                "description": "changed",
                 "vlanid": 1001,
-                "vnid": 101,
-                "pureL3Int": True
+                "vnid": 101
             }
         }
-        networkDict['network']['vrf'] = vrfId
         networkDict['network']['id'] = networkId
         response = self.restServerTestApp.put('/openclos/v1/overlay/networks/' + networkId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(networkDict))
         self.assertEqual(200, response.status_int)
-        self.assertEqual('changed', response.json['network']['description'])
         self.assertEqual(1001, response.json['network']['vlanid'])
         self.assertEqual(101, response.json['network']['vnid'])
-        self.assertEqual(True, response.json['network']['pureL3Int'])
         
     def testModifyNetworkNotFound(self):
         networkDict = {
             "network": {
                 "id": '12345',
-                "name": "n1",
-                "description": "description for n1",
                 "vlanid": 1000,
-                "vnid": 100,
-                "pureL3Int": False
+                "vnid": 100
             }
         }
         with self.assertRaises(AppError) as e:
@@ -677,26 +601,20 @@ class TestOverlayRestRoutes(unittest.TestCase):
 
         subnetDict = {
             "subnet": {
-                "name": "s1",
-                "description": "changed",
                 "cidr": "1.2.3.5/24"
             }
         }
-        subnetDict['subnet']['network'] = networkId
         subnetDict['subnet']['id'] = subnetId
         response = self.restServerTestApp.put('/openclos/v1/overlay/subnets/' + subnetId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(subnetDict))
         self.assertEqual(200, response.status_int)
-        self.assertEqual('changed', response.json['subnet']['description'])
         self.assertEqual('1.2.3.5/24', response.json['subnet']['cidr'])
         
     def testModifySubnetNotFound(self):
         subnetDict = {
             "subnet": {
                 "id": '12345',
-                "name": "s1",
-                "description": "description for s1",
                 "cidr": "1.2.3.5/24"
             }
         }
@@ -767,41 +685,6 @@ class TestOverlayRestRoutes(unittest.TestCase):
         response = self.restServerTestApp.get('/openclos/v1/overlay/l3ports/' + response.json['l3port']['id'])
         self.assertEqual(200, response.status_int) 
 
-    def testModifyL3port(self):
-        with self._dao.getReadWriteSession() as session:        
-            l3portObject = self.helper._createL3port(session)
-            l3portId = l3portObject.id
-            subnetId = l3portObject.overlay_subnet.id
-
-        l3portDict = {
-            "l3port": {
-                "name": "l3port1",
-                "description": "changed"
-            }
-        }
-        l3portDict['l3port']['subnet'] = subnetId
-        l3portDict['l3port']['id'] = l3portId
-        response = self.restServerTestApp.put('/openclos/v1/overlay/l3ports/' + l3portId, 
-                                               headers = {'Content-Type':'application/json'}, 
-                                               params=json.dumps(l3portDict))
-        self.assertEqual(200, response.status_int)
-        self.assertEqual('changed', response.json['l3port']['description'])
-        
-    def testModifyL3portNotFound(self):
-        l3portDict = {
-            "l3port": {
-                "id": '12345',
-                "name": "l3port1",
-                "description": "description for l3port1"
-            }
-        }
-        with self.assertRaises(AppError) as e:
-            self.restServerTestApp.put('/openclos/v1/overlay/l3ports/12345',
-                                       headers = {'Content-Type':'application/json'}, 
-                                       params=json.dumps(l3portDict))
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1111' in e.exception.message)
-        
     def testDeleteL3port(self):
         with self._dao.getReadWriteSession() as session:        
             l3portObject = self.helper._createL3port(session)
@@ -874,29 +757,21 @@ class TestOverlayRestRoutes(unittest.TestCase):
 
         l2portDict = {
             "l2port": {
-                "name": "l2port1",
-                "description": "changed",
-                "interface": "xe-0/0/0"
             }
         }
         l2portDict['l2port']['networks'] = [networkId]
-        l2portDict['l2port']['device'] = deviceId
         l2portDict['l2port']['id'] = l2portId
         response = self.restServerTestApp.put('/openclos/v1/overlay/l2ports/' + l2portId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(l2portDict))
         self.assertEqual(200, response.status_int)
-        self.assertEqual('changed', response.json['l2port']['description'])
+        self.assertEqual(1, len(response.json['l2port']['networks']))
         
     def testModifyL2portNotFound(self):
         l2portDict = {
             "l2port": {
                 "id": '12345',
-                "name": "l2port1",
-                "description": "description for l2port1",
-                "interface": "xe-0/0/0",
-                "networks": ["56789"],
-                "device": "11111"
+                "networks": ["56789"]
             }
         }
         with self.assertRaises(AppError) as e:
@@ -974,35 +849,29 @@ class TestOverlayRestRoutes(unittest.TestCase):
             aggregatedL2portObject = self.helper._createAggregatedL2port(session)
             aggregatedL2portId = aggregatedL2portObject.id
             networkId = aggregatedL2portObject.overlay_networks[0].id
-            deviceId = aggregatedL2portObject.overlay_networks[0].overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0].id
         aggregatedL2portDict = {
             "aggregatedL2port": {
-                "name": "aggregatedL2port1",
-                "description": "changed",
                 "esi": "11:01:01:01:01:01:01:01:01:01",
                 "lacp": "11:00:00:01:01:01"
             }
         }
         aggregatedL2portDict['aggregatedL2port']['id'] = aggregatedL2portId
         aggregatedL2portDict['aggregatedL2port']['networks'] = [networkId]
-        aggregatedL2portDict['aggregatedL2port']['members'] = [{'device': deviceId, 'interface': 'xe-0/0/12'}]
         response = self.restServerTestApp.put('/openclos/v1/overlay/aggregatedL2ports/' + aggregatedL2portId, 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(aggregatedL2portDict))
         self.assertEqual(200, response.status_int)
-        self.assertEqual('changed', response.json['aggregatedL2port']['description'])
         self.assertEqual('11:01:01:01:01:01:01:01:01:01', response.json['aggregatedL2port']['esi'])
         self.assertEqual('11:00:00:01:01:01', response.json['aggregatedL2port']['lacp'])
-        self.assertEqual('xe-0/0/12', response.json['aggregatedL2port']['members'][0]['interface'])
+        self.assertEqual(1, len(response.json['aggregatedL2port']['networks']))
         
     def testModifyAggregatedL2portNotFound(self):
         aggregatedL2portDict = {
             "aggregatedL2port": {
                 "id": '12345',
-                "name": "aggregatedL2port1",
-                "description": "changed",
                 "esi": "11:01:01:01:01:01:01:01:01:01",
-                "lacp": "11:00:00:01:01:01"
+                "lacp": "11:00:00:01:01:01",
+                "networks": ["12345"]
             }
         }
         with self.assertRaises(AppError) as e:
