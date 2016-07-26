@@ -50,8 +50,8 @@ class Pod(ManagedElement, Base):
     spineCount = Column(Integer)
     spineDeviceType = Column(String(100))
     spineJunosImage = Column(String(126))
-    spineUplinkRegex = Column(String(126))
-    spineDownlinkRegex = Column(String(126))
+    spineUplinkRegex = Column(String(4096))
+    spineDownlinkRegex = Column(String(4096))
     leafCount = Column(Integer)
     leafUplinkcountMustBeUp = Column(Integer)
     leafSettings = relationship("LeafSetting", order_by='LeafSetting.deviceFamily', cascade='all, delete, delete-orphan')
@@ -160,9 +160,13 @@ class Pod(ManagedElement, Base):
             self.spineUplinkRegex = spineSettings[0].get('uplinkPorts')
             if self.spineUplinkRegex:
                 self.spineUplinkRegex = ','.join(self.spineUplinkRegex)
+            else:
+                self.spineUplinkRegex = None
             self.spineDownlinkRegex = spineSettings[0].get('downlinkPorts')
             if self.spineDownlinkRegex:
                 self.spineDownlinkRegex = ','.join(self.spineDownlinkRegex)
+            else:
+                self.spineDownlinkRegex = None
         self.leafCount = podDict.get('leafCount')
         leafSettings = podDict.get('leafSettings')
         if leafSettings is not None:
@@ -171,9 +175,13 @@ class Pod(ManagedElement, Base):
                 uplinkRegex = leafSetting.get('uplinkPorts')
                 if uplinkRegex:
                     uplinkRegex = ','.join(uplinkRegex)
+                else:
+                    uplinkRegex = None
                 downlinkRegex = leafSetting.get('downlinkPorts')
                 if downlinkRegex:
                     downlinkRegex = ','.join(downlinkRegex)
+                else:
+                    downlinkRegex = None
                 self.leafSettings.append(LeafSetting(leafSetting['deviceType'], self.id, 
                     uplinkRegex=uplinkRegex, downlinkRegex=downlinkRegex, junosImage=leafSetting.get('junosImage')))
         
@@ -320,8 +328,8 @@ class LeafSetting(ManagedElement, Base):
     __tablename__ = 'leafSetting'
     deviceFamily = Column(String(100), primary_key=True)
     pod_id = Column(String(60), ForeignKey('pod.id'), nullable=False, primary_key=True)
-    uplinkRegex = Column(String(126))
-    downlinkRegex = Column(String(126))
+    uplinkRegex = Column(String(4096))
+    downlinkRegex = Column(String(4096))
     junosImage = Column(String(126))
     config = Column(BLOB)
 

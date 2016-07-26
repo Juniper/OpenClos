@@ -198,8 +198,12 @@ class OpenClosProperty(PropertyLoader):
             return outputDir
 
 
+# Match a range of ports. e.g: xe-0/0/[0-3]
+portRangeRegx = re.compile(r"([a-z]+-\d\/\d\/\[)(\d{1,3})-(\d{1,3})(\])")
 
-portNameRegx = re.compile(r"([a-z]+-\d\/\d\/\[)(\d{1,3})-(\d{1,3})(\])")
+# Match a single port. e.g: xe-0/0/1
+singlePortRegx = re.compile(r"^[a-z]+-\d\/\d\/\d{1,3}$")
+
 class DeviceSku(PropertyLoader):
     def __init__(self, fileName='deviceFamily.yaml'):
         self.skuDetail = {}
@@ -360,14 +364,19 @@ class DeviceSku(PropertyLoader):
 
         Currently it does not expands regex for fpc/pic, only port is expanded
         '''
-        if not portRegex:
+        if not portRegex or len(portRegex) == 0:
             return []
         
         portNames = []
-        match = portNameRegx.match(portRegex)
+        match = portRangeRegx.match(portRegex)
         if match is None:
-            raise InvalidConfiguration("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (portRegex))
-        
+            # Check if it is a single port.
+            match = singlePortRegx.match(portRegex)
+            if match is not None:
+                return [portRegex]
+            else:
+                raise InvalidConfiguration("Port name regular expression is not formatted properly: %s, example: xe-0/0/[0-10]" % (portRegex))
+                
         preRegx = match.group(1)    # group index starts with 1, NOT 0
         postRegx = match.group(4)
         startNum = int(match.group(2))
@@ -410,7 +419,7 @@ class DeviceSku(PropertyLoader):
         Currently it does not expands regex for fpc/pic, only port is expanded
         '''
 
-        if not portRegexCsvList:
+        if not portRegexCsvList or len(portRegexCsvList) == 0:
             return []
 
         portNames = []
@@ -427,10 +436,10 @@ class DeviceSku(PropertyLoader):
         :returns list: ['xe-0/0/[0-10]', 'et-0/0/[0-3]']
         '''
 
-        if portRegexCsvList:
-            return portRegexCsvList.split(',')
-        else:
+        if not portRegexCsvList or len(portRegexCsvList) == 0:
             return []
+        
+        return portRegexCsvList.split(',')
         
 '''
 If you run OpenClos as integrated with ND, prior to calling loadLoggingConfig, you will call setFileHandlerFullPath 
