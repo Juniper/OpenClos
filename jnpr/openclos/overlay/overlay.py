@@ -72,8 +72,6 @@ class Overlay():
         logger.info("OverlayFabric[id: '%s', name: '%s']: modified", fabric.id, fabric.name)
         
         # Apply changes to all devices
-        # Note we don't need to reapply l2port/aggregatedL2port because the newly added device
-        # won't have a port install on it yet. User has to go through create API flow to do that.
         self._configEngine.configureFabric(dbSession, "update", fabric)
         for tenant in fabric.overlay_tenants:
             for vrf in tenant.overlay_vrfs:
@@ -82,6 +80,11 @@ class Overlay():
                     self._configEngine.configureNetwork(dbSession, "update", network)
                     for subnet in network.overlay_subnets:
                         self._configEngine.configureSubnet(dbSession, "update", subnet)
+                    for l2ap in network.overlay_l2aps:
+                        if l2ap.type == 'l2port':
+                            self._configEngine.configureL2port(dbSession, "update", l2ap)
+                        elif l2ap.type == 'aggregatedL2port':
+                            self._configEngine.configureAggregatedL2port(dbSession, "update", l2ap)
 
         # TODO: Optionally delete ALL configs from deleted devices (?)
                     
