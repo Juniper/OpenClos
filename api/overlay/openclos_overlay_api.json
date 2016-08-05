@@ -173,6 +173,17 @@
                         "required": true,
                         "type": "string",
                         "format": "uuid"
+                    },
+                    {
+                        "name": "force",
+                        "in": "query",
+                        "description": "force to delete object in case of failure returned from device. default to 0.",
+                        "required": false,
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
                     }
                 ],
                 "responses": {
@@ -353,6 +364,17 @@
                         "required": true,
                         "type": "string",
                         "format": "uuid"
+                    },
+                    {
+                        "name": "force",
+                        "in": "query",
+                        "description": "force to delete object in case of failure returned from device. default to 0.",
+                        "required": false,
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
                     }
                 ],
                 "responses": {
@@ -481,6 +503,17 @@
                         "required": true,
                         "type": "string",
                         "format": "uuid"
+                    },
+                    {
+                        "name": "force",
+                        "in": "query",
+                        "description": "force to delete object in case of failure returned from device. default to 0.",
+                        "required": false,
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
                     }
                 ],
                 "responses": {
@@ -661,6 +694,17 @@
                         "required": true,
                         "type": "string",
                         "format": "uuid"
+                    },
+                    {
+                        "name": "force",
+                        "in": "query",
+                        "description": "force to delete object in case of failure returned from device. default to 0.",
+                        "required": false,
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
                     }
                 ],
                 "responses": {
@@ -838,6 +882,17 @@
                         "required": true,
                         "type": "string",
                         "format": "uuid"
+                    },
+                    {
+                        "name": "force",
+                        "in": "query",
+                        "description": "force to delete object in case of failure returned from device. default to 0.",
+                        "required": false,
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
                     }
                 ],
                 "responses": {
@@ -1018,6 +1073,17 @@
                         "required": true,
                         "type": "string",
                         "format": "uuid"
+                    },
+                    {
+                        "name": "force",
+                        "in": "query",
+                        "description": "force to delete object in case of failure returned from device. default to 0.",
+                        "required": false,
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
                     }
                 ],
                 "responses": {
@@ -1146,6 +1212,17 @@
                         "required": true,
                         "type": "string",
                         "format": "uuid"
+                    },
+                    {
+                        "name": "force",
+                        "in": "query",
+                        "description": "force to delete object in case of failure returned from device. default to 0.",
+                        "required": false,
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
                     }
                 ],
                 "responses": {
@@ -1326,6 +1403,17 @@
                         "required": true,
                         "type": "string",
                         "format": "uuid"
+                    },
+                    {
+                        "name": "force",
+                        "in": "query",
+                        "description": "force to delete object in case of failure returned from device. default to 0.",
+                        "required": false,
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
                     }
                 ],
                 "responses": {
@@ -1506,6 +1594,17 @@
                         "required": true,
                         "type": "string",
                         "format": "uuid"
+                    },
+                    {
+                        "name": "force",
+                        "in": "query",
+                        "description": "force to delete object in case of failure returned from device. default to 0.",
+                        "required": false,
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
                     }
                 ],
                 "responses": {
