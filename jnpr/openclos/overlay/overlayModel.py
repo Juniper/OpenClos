@@ -183,9 +183,9 @@ class OverlayTenant(ManagedElement, Base):
     description = Column(String(256))
     overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'), nullable=False)
     overlay_fabric = relationship("OverlayFabric", backref=backref('overlay_tenants', order_by=name, cascade='all, delete, delete-orphan'))
-    __table_args__ = (
-        Index('overlay_fabric_id_overlay_tenant_name_uindex', 'overlay_fabric_id', 'name', unique=True),
-    )
+    # __table_args__ = (
+        # Index('overlay_fabric_id_overlay_tenant_name_uindex', 'overlay_fabric_id', 'name', unique=True),
+    # )
 
     def __init__(self, name, description, overlay_fabric):
         '''
@@ -206,9 +206,9 @@ class OverlayVrf(ManagedElement, Base):
     vrfCounter = Column(Integer)
     overlay_tenant_id = Column(String(60), ForeignKey('overlayTenant.id'), nullable=False)
     overlay_tenant = relationship("OverlayTenant", backref=backref('overlay_vrfs', order_by=name, cascade='all, delete, delete-orphan'))
-    __table_args__ = (
-        Index('overlay_tenant_id_overlay_vrf_name_uindex', 'overlay_tenant_id', 'name', unique=True),
-    )
+    # __table_args__ = (
+        # Index('overlay_tenant_id_overlay_vrf_name_uindex', 'overlay_tenant_id', 'name', unique=True),
+    # )
 
     def __init__(self, name, description, routedVnid, loopbackAddress, overlay_tenant):
         '''
@@ -264,9 +264,9 @@ class OverlayNetwork(ManagedElement, Base):
     overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'), nullable=False)
     overlay_vrf = relationship("OverlayVrf", backref=backref('overlay_networks', order_by=name, cascade='all, delete, delete-orphan'))
     overlay_l2aps = relationship("OverlayL2ap", secondary='overlayNetworkOverlayL2apTable', back_populates="overlay_networks")
-    __table_args__ = (
-        Index('overlay_vrf_id_overlay_network_name_uindex', 'overlay_vrf_id', 'name', unique=True),
-    )
+    # __table_args__ = (
+        # Index('overlay_vrf_id_overlay_network_name_uindex', 'overlay_vrf_id', 'name', unique=True),
+    # )
 
     def __init__(self, name, description, overlay_vrf, vlanid, vnid, pureL3Int):
         '''
@@ -304,7 +304,7 @@ class OverlaySubnet(ManagedElement, Base):
     overlay_network_id = Column(String(60), ForeignKey('overlayNetwork.id'), nullable=False)
     overlay_network = relationship("OverlayNetwork", backref=backref('overlay_subnets', order_by=name, cascade='all, delete, delete-orphan'))
     __table_args__ = (
-        Index('overlay_network_id_overlay_subnet_name_uindex', 'overlay_network_id', 'name', unique=True),
+        # Index('overlay_network_id_overlay_subnet_name_uindex', 'overlay_network_id', 'name', unique=True),
         Index('overlay_network_id_overlay_subnet_cidr_uindex', 'overlay_network_id', 'cidr', unique=True),
     )
 
@@ -335,9 +335,9 @@ class OverlayL3port(ManagedElement, Base):
     description = Column(String(256))
     overlay_subnet_id = Column(String(60), ForeignKey('overlaySubnet.id'), nullable=False)
     overlay_subnet = relationship("OverlaySubnet", backref=backref('overlay_l3ports', order_by=name, cascade='all, delete, delete-orphan'))
-    __table_args__ = (
-        Index('overlay_subnet_id_overlay_l3port_name_uindex', 'overlay_subnet_id', 'name', unique=True),
-    )
+    # __table_args__ = (
+        # Index('overlay_subnet_id_overlay_l3port_name_uindex', 'overlay_subnet_id', 'name', unique=True),
+    # )
 
     def __init__(self, name, description, overlay_subnet):
         '''
@@ -523,7 +523,7 @@ class OverlayDeployStatus(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     configlet = Column(BLOB)
     object_url = Column(String(1024), nullable=False)
-    operation = Column(Enum('create', 'update', 'delete'))
+    operation = Column(Enum('create', 'update', 'delete', 'delete-force'))
     overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
     overlay_device = relationship("OverlayDevice", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
     overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'))
@@ -536,7 +536,7 @@ class OverlayDeployStatus(ManagedElement, Base):
         # Index('object_url_overlay_device_id_uindex', 'object_url', 'overlay_device_id', unique=True),
     # )
     enumStatus = frozenset(['unknown', 'progress', 'success', 'failure'])
-    enumOperation = frozenset(['create', 'update', 'delete'])
+    enumOperation = frozenset(['create', 'update', 'delete', 'delete-force'])
     
     def __init__(self, configlet, object_url, operation, overlay_device, overlay_fabric, status=None, statusReason=None):
         '''

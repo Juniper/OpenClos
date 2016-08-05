@@ -124,6 +124,14 @@ paths:
                 required: true
                 type: string
                 format: uuid
+            -   name: force
+                in: query
+                description: force to delete object in case of failure returned from device. default to 0.
+                required: false
+                type: integer
+                enum: 
+                -   0
+                -   1
             responses:
                 '204':
                     description: device deleted
@@ -249,6 +257,14 @@ paths:
                 required: true
                 type: string
                 format: uuid
+            -   name: force
+                in: query
+                description: force to delete object in case of failure returned from device. default to 0.
+                required: false
+                type: integer
+                enum: 
+                -   0
+                -   1
             responses:
                 '204':
                     description: Fabric deleted
@@ -338,6 +354,14 @@ paths:
                 required: true
                 type: string
                 format: uuid
+            -   name: force
+                in: query
+                description: force to delete object in case of failure returned from device. default to 0.
+                required: false
+                type: integer
+                enum: 
+                -   0
+                -   1
             responses:
                 '204':
                     description: Tenant deleted
@@ -463,6 +487,14 @@ paths:
                 required: true
                 type: string
                 format: uuid
+            -   name: force
+                in: query
+                description: force to delete object in case of failure returned from device. default to 0.
+                required: false
+                type: integer
+                enum: 
+                -   0
+                -   1
             responses:
                 '204':
                     description: VRF deleted
@@ -586,6 +618,14 @@ paths:
                 required: true
                 type: string
                 format: uuid
+            -   name: force
+                in: query
+                description: force to delete object in case of failure returned from device. default to 0.
+                required: false
+                type: integer
+                enum: 
+                -   0
+                -   1
             responses:
                 '204':
                     description: network deleted
@@ -711,6 +751,14 @@ paths:
                 required: true
                 type: string
                 format: uuid
+            -   name: force
+                in: query
+                description: force to delete object in case of failure returned from device. default to 0.
+                required: false
+                type: integer
+                enum: 
+                -   0
+                -   1
             responses:
                 '204':
                     description: subnet deleted
@@ -800,6 +848,14 @@ paths:
                 required: true
                 type: string
                 format: uuid
+            -   name: force
+                in: query
+                description: force to delete object in case of failure returned from device. default to 0.
+                required: false
+                type: integer
+                enum: 
+                -   0
+                -   1
             responses:
                 '204':
                     description: L3 port deleted
@@ -925,6 +981,14 @@ paths:
                 required: true
                 type: string
                 format: uuid
+            -   name: force
+                in: query
+                description: force to delete object in case of failure returned from device. default to 0.
+                required: false
+                type: integer
+                enum: 
+                -   0
+                -   1
             responses:
                 '204':
                     description: L2 port deleted
@@ -1050,6 +1114,14 @@ paths:
                 required: true
                 type: string
                 format: uuid
+            -   name: force
+                in: query
+                description: force to delete object in case of failure returned from device. default to 0.
+                required: false
+                type: integer
+                enum: 
+                -   0
+                -   1
             responses:
                 '204':
                     description: aggregated L2 port deleted

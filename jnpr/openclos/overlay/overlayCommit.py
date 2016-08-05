@@ -11,7 +11,7 @@ import concurrent.futures
 import Queue
 from sqlalchemy.orm import exc
 
-from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus
+from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus, OverlayL2ap
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.loader import OpenClosProperty, loadLoggingConfig
 from jnpr.openclos.common import SingletonBase
@@ -43,49 +43,81 @@ class OverlayCommitJob():
     def updateStatus(self, status, reason=None):
         try:
             with self.parent._dao.getReadWriteSession() as session:
-                statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).one()
+                statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).first()
+                if statusObject is None:
+                    logger.debug("OverlayDeployStatus %s no longer exists", self.id)
+                    return
+
+                # Update status in all cases
+                logger.debug("OverlayDeployStatus %s status changed to %s, %s", self.id, status, reason)
+                statusObject.update(status, reason)
+                
+                # If we are in progress, there is nothing else to do
+                if status == 'progress':
+                    return
                 
                 if statusObject.operation == "create":
-                    statusObject.update(status, reason)
-                elif statusObject.operation == "delete":
+                    # Nothing else to do
+                    pass
+                    
+                elif statusObject.operation == "delete" or statusObject.operation == "delete-force":
                     # There are 3 cases: (It does not make sense to have a case of creation failure, delete success)
-                    # 1. create success, delete success
-                    # 2. create success, delete failure
-                    # 3. create failure, delete failure
-                    # For 1 and 3, it is safe to delete the object itself and all its status.
-                    # For 2, we need to keep the object and its status in case someone fixes the OOB issue and 
+                    # 1. create/update success, delete success
+                    # 2. create/update success, delete failure
+                    # 3. create/update failure, delete failure
+                    # For 1 it is safe to delete the object itself and all its status.
+                    # For 2 and 3, we need to keep the object and its status in case someone fixes the OOB issue and 
                     # send another delete again.
                     #
-                    # Find all status for this object on this device. Typically there will be 2: one create and one delete.
-                    relatedStatusOnThisDevice = session.query(OverlayDeployStatus).filter(
+                    # Find all previous create/update/delete records for this object on this device
+                    allPreviousStatusOnThisDevice = session.query(OverlayDeployStatus).filter(
                         OverlayDeployStatus.object_url == statusObject.object_url).filter(
-                        OverlayDeployStatus.overlay_device_id == self.deviceId).all()
+                        OverlayDeployStatus.overlay_device_id == self.deviceId).filter(
+                        OverlayDeployStatus.id != self.id).all()
                     if status == 'success':
                         # case 1
-                        self.parent._dao.deleteObjects(session, relatedStatusOnThisDevice)
+                        self.parent._dao.deleteObjects(session, allPreviousStatusOnThisDevice)
+                        self.parent._dao.deleteObject(session, statusObject)
                     elif status == 'failure':
                         # case 2 or 3
-                        for rs in relatedStatusOnThisDevice:
-                            if rs.operation == 'create':
-                                if rs.status == 'failure':
-                                    # case 3
-                                    self.parent._dao.deleteObjects(session, relatedStatusOnThisDevice)
-                                elif rs.status == 'success':
-                                    # case 2
-                                    logger.debug("Object %s was created successfully but delete failed. Keep this status. There might be OOB changes on the device causing this failure", rs.object_url)
-                        
+                        self.parent._dao.deleteObjects(session, allPreviousStatusOnThisDevice)
+                    
                     # If all devices are done, then delete the object.
-                    notSuccessCount = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == statusObject.object_url).count()
-                    if notSuccessCount == 0:
-                        logger.debug("Config deleted on all devices. Object %s deleted", statusObject.object_url)
+                    deleteObject = False
+                    allStatus = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == statusObject.object_url).all()
+                    logger.debug("Object %s: '%s' mode", statusObject.object_url, statusObject.operation)
+                    if statusObject.operation == "delete-force":
+                        deleteObject = True
+                    elif statusObject.operation == "delete":
+                        if len(allStatus) == 0:
+                            logger.debug("Configuration deleted on all devices successfully")
+                            deleteObject = True
+                        else:
+                            logger.debug("Configuration not deleted on all devices")
+                            deleteObject = False
+                    if deleteObject:
+                        logger.debug("Object %s deleted", statusObject.object_url)
                         objectTypeId = statusObject.getObjectTypeAndId()
                         obj = session.query(objectTypeId[0]).filter_by(id=objectTypeId[1]).first()
                         if obj:
                             session.delete(obj)
+                        # REVISIT: We have to check if overlayL2ap table has any row that does not have a network
+                        for l2ap in session.query(OverlayL2ap).all():
+                            if len(l2ap.overlay_networks) == 0:
+                                session.delete(l2ap)
+                        # Make sure all status are deleted
+                        self.parent._dao.deleteObjects(session, allStatus)
+                    else:
+                        logger.debug("Object %s not deleted", statusObject.object_url)
                         
                 elif statusObject.operation == "update":
-                    statusObject.update(status, reason)
-                    ## TODO: add hook to update the actual object
+                    # Find all previous create/update/delete records for this object on this device and delete them
+                    # This will make sure we only have 1 latest record exist for this object on this device
+                    allPreviousStatusOnThisDevice = session.query(OverlayDeployStatus).filter(
+                        OverlayDeployStatus.object_url == statusObject.object_url).filter(
+                        OverlayDeployStatus.overlay_device_id == self.deviceId).filter(
+                        OverlayDeployStatus.id != self.id).all()
+                    self.parent._dao.deleteObjects(session, allPreviousStatusOnThisDevice)
 
         except Exception as exc:
             logger.error("%s", exc)
@@ -257,7 +289,6 @@ class OverlayCommitQueue(SingletonBase):
             logger.error("Encounted error '%s' on OverlayCommitQueue", exc)
             raise
 
-            
 # def main():        
     # from jnpr.openclos.overlay.overlayModel import OverlayDevice, OverlayFabric, OverlayAggregatedL2port
     # import time

@@ -105,6 +105,10 @@ class OverlayRestRoutes():
 
     def uninstall(self):
         self.commitQueue.stop()
+
+    def _getForce(self):
+        force = bottle.request.query.get('force', '0')
+        return True if force == '1' else False
     
     def _getUriPrefix(self):
         if self.uriPrefix is None:
@@ -234,7 +238,7 @@ class OverlayRestRoutes():
         try:
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             logger.info("OverlayDevice[id='%s', name='%s']: deleted", deviceObject.id, deviceObject.name)
-            self._overlay.deleteDevice(dbSession, deviceObject)
+            self._overlay.deleteDevice(dbSession, deviceObject, self._getForce())
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
@@ -393,7 +397,7 @@ class OverlayRestRoutes():
         try:
             fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
             logger.info("OverlayFabric[id='%s', name='%s']: delete request is submitted", fabricObject.id, fabricObject.name)
-            self._overlay.deleteFabric(dbSession, fabricObject)
+            self._overlay.deleteFabric(dbSession, fabricObject, self._getForce())
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
@@ -492,7 +496,7 @@ class OverlayRestRoutes():
         try:
             tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
             logger.info("OverlayTenant[id='%s', name='%s']: delete request is submitted", tenantObject.id, tenantObject.name)
-            self._overlay.deleteTenant(dbSession, tenantObject)
+            self._overlay.deleteTenant(dbSession, tenantObject, self._getForce())
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
@@ -629,7 +633,7 @@ class OverlayRestRoutes():
         try:
             vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
             logger.info("OverlayVrf[id='%s', name='%s']: delete request is submitted", vrfObject.id, vrfObject.name)
-            self._overlay.deleteVrf(dbSession, vrfObject)
+            self._overlay.deleteVrf(dbSession, vrfObject, self._getForce())
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
@@ -780,7 +784,7 @@ class OverlayRestRoutes():
         try:
             networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
             logger.info("OverlayNetwork[id='%s', name='%s']: delete request is submitted", networkObject.id, networkObject.name)
-            self._overlay.deleteNetwork(dbSession, networkObject)
+            self._overlay.deleteNetwork(dbSession, networkObject, self._getForce())
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
@@ -911,7 +915,7 @@ class OverlayRestRoutes():
         try:
             subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
             logger.info("OverlaySubnet[id='%s', cidr='%s']: delete request is submitted", subnetObject.id, subnetObject.cidr)
-            self._overlay.deleteSubnet(dbSession, subnetObject)
+            self._overlay.deleteSubnet(dbSession, subnetObject, self._getForce())
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
@@ -1153,8 +1157,8 @@ class OverlayRestRoutes():
             
         try:
             l2portObject = self.__dao.getObjectById(dbSession, OverlayL2port, l2portId)
-            self._overlay.deleteL2port(dbSession, l2portObject)
             logger.info("OverlayL2port[id='%s', name='%s']: delete request is submitted", l2portObject.id, l2portObject.name)
+            self._overlay.deleteL2port(dbSession, l2portObject, self._getForce())
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
@@ -1304,8 +1308,8 @@ class OverlayRestRoutes():
             
         try:
             aggregatedL2portObject = self.__dao.getObjectById(dbSession, OverlayAggregatedL2port, aggregatedL2portId)
-            self._overlay.deleteAggregatedL2port(dbSession, aggregatedL2portObject)
             logger.info("OverlayAggregatedL2port[id='%s', name='%s']: delete request is submitted", OverlayAggregatedL2port.id, OverlayAggregatedL2port.name)
+            self._overlay.deleteAggregatedL2port(dbSession, aggregatedL2portObject, self._getForce())
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
