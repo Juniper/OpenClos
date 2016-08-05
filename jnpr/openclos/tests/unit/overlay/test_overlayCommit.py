@@ -116,7 +116,7 @@ class TestOverlayCommitJob(unittest.TestCase):
             commitJob = OverlayCommitJob(self, deployment)
             commitJob.updateStatus("failure")
             self.assertIsNotNone(session.query(OverlayL2port).one())
-            self.assertEqual(2, len(session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == portUrl).all()))
+            self.assertEqual(1, len(session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == portUrl).all()))
         
     def testUpdateStatusDeleteProgress(self):
         with self._dao.getReadWriteSession() as session:
@@ -130,5 +130,17 @@ class TestOverlayCommitJob(unittest.TestCase):
             self.assertIsNotNone(session.query(OverlayL2port).one())
             self.assertEqual(2, len(session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == portUrl).all()))
 
+    def testUpdateStatusDeleteFailureForceMode(self):
+        with self._dao.getReadWriteSession() as session:
+            port = self.helper._createL2port(session)
+            portUrl = port.getUrl()
+            deployment = OverlayDeployStatus("", portUrl, "delete-force", port.overlay_device, port.overlay_networks[0].overlay_vrf.overlay_tenant.overlay_fabric)
+            self._dao.createObjects(session, [deployment])
+            session.commit()
+            commitJob = OverlayCommitJob(self, deployment)
+            commitJob.updateStatus("failure")
+            self.assertEqual(0, session.query(OverlayL2port).count())
+            self.assertEqual(0, len(session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == portUrl).all()))
+        
 if __name__ == '__main__':
     unittest.main()

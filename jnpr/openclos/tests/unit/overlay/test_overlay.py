@@ -672,7 +672,7 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(4, session.query(OverlayDeployStatus).count())
             
             configEngine = self.helper.overlay._configEngine
-            configEngine.deleteL2port(session, port)
+            configEngine.deleteL2port(session, port, True)
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(1, session.query(OverlayNetwork).count())
@@ -690,7 +690,7 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(8, session.query(OverlayDeployStatus).count())
 
             configEngine = self.helper.overlay._configEngine
-            configEngine.deleteL2port(session, ports[2])
+            configEngine.deleteL2port(session, ports[2], True)
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(2, session.query(OverlayNetwork).count())
@@ -708,7 +708,7 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(14, session.query(OverlayDeployStatus).count())
             
             configEngine = self.helper.overlay._configEngine
-            configEngine.deleteSubnet(session, subnet)
+            configEngine.deleteSubnet(session, subnet, True)
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(1, session.query(OverlayNetwork).count())
@@ -726,7 +726,7 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(14, session.query(OverlayDeployStatus).count())
             
             configEngine = self.helper.overlay._configEngine
-            configEngine.deleteNetwork(session, subnet.overlay_network)
+            configEngine.deleteNetwork(session, subnet.overlay_network, True)
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(0, session.query(OverlayNetwork).count())
@@ -745,7 +745,7 @@ class TestConfigEngine(unittest.TestCase):
             # 15 deployments 5 fabric, 2 vrf and 5 network, 2 subnet, 1 port add
             self.assertEqual(15, session.query(OverlayDeployStatus).count())
             
-            self.helper.overlay.deleteNetwork(session, subnet.overlay_network)
+            self.helper.overlay.deleteNetwork(session, subnet.overlay_network, True)
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(0, session.query(OverlayNetwork).count())
@@ -782,7 +782,7 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(7, session.query(OverlayDeployStatus).count())
 
             configEngine = self.helper.overlay._configEngine
-            configEngine.deleteAggregatedL2port(session, ports[2])
+            configEngine.deleteAggregatedL2port(session, ports[2], True)
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(2, session.query(OverlayNetwork).count())
@@ -797,7 +797,7 @@ class TestConfigEngine(unittest.TestCase):
             # 2 deployments 1 fabric, 1 vrf
             self.assertEqual(2, session.query(OverlayDeployStatus).count())
 
-            self.helper.overlay._configEngine.deleteVrf(session, vrf)
+            self.helper.overlay._configEngine.deleteVrf(session, vrf, True)
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(0, session.query(OverlayVrf).count())
             self.assertEqual(1, session.query(OverlayDeployStatus).count())
@@ -811,7 +811,7 @@ class TestConfigEngine(unittest.TestCase):
             # 12 deployments 5 fabric, 2 vrf and 5 network add
             self.assertEqual(12, session.query(OverlayDeployStatus).count())
             
-            self.helper.overlay.deleteVrf(session, network.overlay_vrf)
+            self.helper.overlay.deleteVrf(session, network.overlay_vrf, True)
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(0, session.query(OverlayVrf).count())
             self.assertEqual(0, session.query(OverlayNetwork).count())
@@ -824,7 +824,7 @@ class TestConfigEngine(unittest.TestCase):
             # 12 deployments 5 fabric
             self.assertEqual(5, session.query(OverlayDeployStatus).count())
             
-            self.helper.overlay._configEngine.deleteFabric(session, fabric)
+            self.helper.overlay._configEngine.deleteFabric(session, fabric, True)
             self.assertEqual(0, session.query(OverlayFabric).count())
             self.assertEqual(0, session.query(OverlayDeployStatus).count())
 
@@ -835,7 +835,7 @@ class TestConfigEngine(unittest.TestCase):
             # 12 deployments 9 fabric
             self.assertEqual(9, session.query(OverlayDeployStatus).count())
 
-            self.helper.overlay._configEngine.deleteFabric(session, fabric)
+            self.helper.overlay._configEngine.deleteFabric(session, fabric, True)
             self.assertEqual(0, session.query(OverlayFabric).count())
             self.assertEqual(0, session.query(OverlayDeployStatus).count())
 
