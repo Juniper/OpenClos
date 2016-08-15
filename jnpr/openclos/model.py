@@ -91,29 +91,38 @@ class Pod(ManagedElement, Base):
         '''
     
     def needToRebuildInventory(self, podDict):
+        changed = []
+        
         # Compare following simple properties
-        if (self.spineCount != podDict.get('spineCount') or
-            self.leafCount != podDict.get('leafCount') or
-            self.interConnectPrefix != podDict.get('interConnectPrefix') or
-            self.vlanPrefix != podDict.get('vlanPrefix') or
-            self.loopbackPrefix != podDict.get('loopbackPrefix') or
-            self.managementPrefix != podDict.get('managementPrefix')):
-            return True
+        if self.spineCount != podDict.get('spineCount'):
+            changed.append('spineCount')
+        if self.leafCount != podDict.get('leafCount'):
+            changed.append('leafCount')
+        if self.interConnectPrefix != podDict.get('interConnectPrefix'):
+            changed.append('interConnectPrefix')
+        if self.vlanPrefix != podDict.get('vlanPrefix'):
+            changed.append('vlanPrefix')
+        if self.loopbackPrefix != podDict.get('loopbackPrefix'):
+            changed.append('loopbackPrefix')
+        if self.managementPrefix != podDict.get('managementPrefix'):
+            changed.append('managementPrefix')
             
         # Compare following complex properties
         spineSettings = podDict.get('spineSettings')
         if spineSettings:
             spineDeviceType = spineSettings[0].get('deviceType')
             spineUplinkRegex = spineSettings[0].get('uplinkPorts')
-            if spineUplinkRegex:
+            if spineUplinkRegex is not None:
                 spineUplinkRegex = ','.join(spineUplinkRegex)
             spineDownlinkRegex = spineSettings[0].get('downlinkPorts')
-            if spineDownlinkRegex:
+            if spineDownlinkRegex is not None:
                 spineDownlinkRegex = ','.join(spineDownlinkRegex)
-        if (self.spineDeviceType != spineDeviceType or 
-            self.spineUplinkRegex != spineUplinkRegex or 
-            self.spineDownlinkRegex != spineDownlinkRegex):
-            return True
+        if self.spineDeviceType != spineDeviceType:
+            changed.append('spineSettings/deviceType')
+        if self.spineUplinkRegex != spineUplinkRegex:
+            changed.append('spineSettings/uplinkPorts')
+        if self.spineDownlinkRegex != spineDownlinkRegex:
+            changed.append('spineSettings/downlinkPorts')
 
         # Compare following complex properties
         otherLeafSettingSet = set()
@@ -121,19 +130,19 @@ class Pod(ManagedElement, Base):
         if leafSettings is not None:
             for leafSetting in leafSettings:
                 uplinkRegex = leafSetting.get('uplinkPorts')
-                if uplinkRegex:
+                if uplinkRegex is not None:
                     uplinkRegex = ','.join(uplinkRegex)
                 downlinkRegex = leafSetting.get('downlinkPorts')
-                if downlinkRegex:
+                if downlinkRegex is not None:
                     downlinkRegex = ','.join(downlinkRegex)
                 otherLeafSettingSet.add(leafSetting['deviceType'] + ' ' + str(uplinkRegex) + ' ' + str(downlinkRegex))
         selfLeafSettingSet = set()
         for selfLeafSetting in self.leafSettings:
             selfLeafSettingSet.add(selfLeafSetting.deviceFamily + ' ' + str(selfLeafSetting.uplinkRegex) + ' ' + str(selfLeafSetting.downlinkRegex))
         if selfLeafSettingSet != otherLeafSettingSet:
-            return True
-            
-        return False
+            changed.append('leafSettings')
+        
+        return changed
             
     def update(self, id, name, podDict):
         '''
@@ -158,30 +167,22 @@ class Pod(ManagedElement, Base):
             self.spineDeviceType = spineSettings[0].get('deviceType')
             self.spineJunosImage = spineSettings[0].get('junosImage')
             self.spineUplinkRegex = spineSettings[0].get('uplinkPorts')
-            if self.spineUplinkRegex:
+            if self.spineUplinkRegex is not None:
                 self.spineUplinkRegex = ','.join(self.spineUplinkRegex)
-            else:
-                self.spineUplinkRegex = None
             self.spineDownlinkRegex = spineSettings[0].get('downlinkPorts')
-            if self.spineDownlinkRegex:
+            if self.spineDownlinkRegex is not None:
                 self.spineDownlinkRegex = ','.join(self.spineDownlinkRegex)
-            else:
-                self.spineDownlinkRegex = None
         self.leafCount = podDict.get('leafCount')
         leafSettings = podDict.get('leafSettings')
         if leafSettings is not None:
             self.leafSettings = []
             for leafSetting in leafSettings:
                 uplinkRegex = leafSetting.get('uplinkPorts')
-                if uplinkRegex:
+                if uplinkRegex is not None:
                     uplinkRegex = ','.join(uplinkRegex)
-                else:
-                    uplinkRegex = None
                 downlinkRegex = leafSetting.get('downlinkPorts')
-                if downlinkRegex:
+                if downlinkRegex is not None:
                     downlinkRegex = ','.join(downlinkRegex)
-                else:
-                    downlinkRegex = None
                 self.leafSettings.append(LeafSetting(leafSetting['deviceType'], self.id, 
                     uplinkRegex=uplinkRegex, downlinkRegex=downlinkRegex, junosImage=leafSetting.get('junosImage')))
         

@@ -384,8 +384,9 @@ class L3ClosMediation():
         
     def _updatePodData(self, session, pod, podDict, inventoryData):
         # if following data changed we need to reallocate resource
-        if pod.needToRebuildInventory(podDict) == True:
-            logger.debug("Pod[id='%s', name='%s']: rebuilding required", pod.id, pod.name)
+        changed = pod.needToRebuildInventory(podDict)
+        if len(changed) > 0:
+            logger.debug("Pod[id='%s', name='%s']: attributes %s changed", pod.id, pod.name, changed)
             if len(pod.devices) > 0:
                 self._dao.deleteObjects(session, pod.devices)
                 session.expire(pod)
