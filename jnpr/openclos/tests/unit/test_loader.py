@@ -30,6 +30,17 @@ class TestPropertyLoader(unittest.TestCase):
         #print PropertyLoader.mergeDict(prop, override)
         self.assertDictEqual(merged, self.propertyLoader.mergeDict(prop, override))
 
+    def testMergetListNestedDict(self):
+        prop = {'plugin': [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]}
+        override = {'plugin': [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]}
+        merged = {'plugin': [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]}
+        self.assertDictEqual(merged, self.propertyLoader.mergeDict(prop, override))
+
+        prop = {'plugin': [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]}
+        override = {'plugin': [{'sample': 'fooo', 'bar': 'hoge'}]}
+        merged = {'plugin': [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}, {'sample': 'fooo', 'bar': 'hoge'}]}
+        self.assertDictEqual(merged, self.propertyLoader.mergeDict(prop, override))
+
     def testLoadProperty(self):
         self.propertyLoader = PropertyLoader('openclos.yaml', False)
         self.assertIsNot({}, self.propertyLoader._properties)

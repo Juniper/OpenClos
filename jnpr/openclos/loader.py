@@ -109,7 +109,7 @@ class PropertyLoader(object):
                 if type(v) is dict:
                     prop[k] = self.mergeDict(prop[k], v)
                 elif type(v) is list:
-                    prop[k] = list(set(prop[k]).union(v))
+                    prop[k] = [x for x in prop[k] if x not in v] + v
                 else:
                     prop[k] = v
             else:
