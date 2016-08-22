@@ -1,0 +1,12 @@
+{% if vxlanId %}
+protocols {
+    evpn {
+        delete:
+        extended-vni-list {{vxlanId}};
+        vni-options {
+            delete:
+            vni {{vxlanId}};
+        }
+    }
+}
+{% endif %}

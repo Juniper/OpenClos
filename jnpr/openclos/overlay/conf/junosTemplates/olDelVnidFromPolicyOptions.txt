@@ -1,0 +1,10 @@
+{% if vni %}
+policy-options {
+    policy-statement LEAF-IN {
+        delete:
+        term a{{vni}};
+    }
+    delete:
+    community com{{vni}};
+}    
+{% endif %}
