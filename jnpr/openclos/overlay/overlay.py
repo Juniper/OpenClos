@@ -144,11 +144,11 @@ class Overlay():
         '''
         Modify an existing Network
         '''
-        network.update(vlanid, vnid)
+        old = network.update(vlanid, vnid)
 
         self._dao.updateObjects(dbSession, [network])
         logger.info("OverlayNetwork[id: '%s', name: '%s']: modified", network.id, network.name)
-        self._configEngine.configureNetwork(dbSession, "update", network)
+        self._configEngine.configureNetwork(dbSession, "update", network, old)
         return network
 
     def createSubnet(self, dbSession, name, description, overlay_network, cidr):
@@ -411,6 +411,8 @@ class ConfigEngine():
         self._olDelProtocolBgp = self._templateLoader.getTemplate('olDelProtocolBgp.txt')
         self._olDelPolicyOptions = self._templateLoader.getTemplate('olDelPolicyOptions.txt')
         self._olDelProtocolEvpn = self._templateLoader.getTemplate('olDelProtocolEvpn.txt')
+        self._olDelVnidFromProtocolEvpn = self._templateLoader.getTemplate('olDelVnidFromProtocolEvpn.txt')
+        self._olDelVnidFromPolicyOptions = self._templateLoader.getTemplate('olDelVnidFromPolicyOptions.txt')
 
     def configureFabric(self, dbSession, operation, fabric):
         '''
@@ -511,7 +513,7 @@ class ConfigEngine():
     def configureLoopback(self, loopbackIp, loopbackUnit):
         return self._olAddLoopback.render(loopbackUnit=loopbackUnit, loopbackAddress=loopbackIp)
 
-    def configureNetwork(self, dbSession, operation, network):
+    def configureNetwork(self, dbSession, operation, network, old=None):
         '''
         Create IRB, BD, update VRF, update evpn, update policy
         '''
@@ -528,6 +530,14 @@ class ConfigEngine():
             config += self.configureNetworkPolicyOptions(network.vnid, asn)
             config += self._olAddBridgeDomain.render(networkName=network.name, vlanId=network.vlanid, vxlanId=network.vnid, role="spine")
             
+            # If this is a modify, remove existing vlanid/vnid config
+            if old is not None:
+                if old["vnid"] != network.vnid:
+                    config += self._olDelVnidFromProtocolEvpn.render(vxlanId=old["vnid"])
+                    config += self._olDelVnidFromPolicyOptions.render(vni=old["vnid"])
+                if old["vlanid"] != network.vlanid:
+                    config += self._olDelIrb.render(vlanId=old["vlanid"])
+                
             deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
 
         for leaf in vrf.getLeafs():            
@@ -536,6 +546,12 @@ class ConfigEngine():
             config += self.configureNetworkPolicyOptions(network.vnid, asn)
             config += self._olAddBridgeDomain.render(networkName=network.name, vlanId=network.vlanid, vxlanId=network.vnid)
 
+            # If this is a modify, remove existing vnid config
+            if old is not None:
+                if old["vnid"] != network.vnid:
+                    config += self._olDelVnidFromProtocolEvpn.render(vxlanId=old["vnid"])
+                    config += self._olDelVnidFromPolicyOptions.render(vni=old["vnid"])
+                
             deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, leaf, vrf.overlay_tenant.overlay_fabric))    
 
         self._dao.createObjects(dbSession, deployments)
@@ -773,7 +789,9 @@ class ConfigEngine():
 
         for spine in vrf.getSpines():
             if spine in deployedDevices:
-                config = self._olDelLoopback.render(loopbackUnit=vrf.vrfCounter)
+                config = ""
+                if vrf.loopbackAddress is not None:
+                    config += self._olDelLoopback.render(loopbackUnit=vrf.vrfCounter)
                 config += self._olDelVrf.render(vrfName=vrf.name)
                 deployments.append(OverlayDeployStatus(config, vrf.getUrl(),  "delete-force" if force else "delete", spine, vrf.overlay_tenant.overlay_fabric))
 

@@ -290,10 +290,17 @@ class OverlayNetwork(ManagedElement, Base):
         '''
         Updates network object.
         '''
+        old = { 
+            "vlanid": self.vlanid, 
+            "vnid": self.vnid
+        }
+        
         if vlanid is not None:
             self.vlanid = int(vlanid)
         if vnid is not None:
             self.vnid = int(vnid)
+            
+        return old
     
 class OverlaySubnet(ManagedElement, Base):
     __tablename__ = 'overlaySubnet'
