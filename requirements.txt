@@ -10,7 +10,7 @@ bottle
 junos-eznc
 futures
 pysnmp
-netifaces
+netifaces==0.10.4
 paste
 
 # modules needed for test
