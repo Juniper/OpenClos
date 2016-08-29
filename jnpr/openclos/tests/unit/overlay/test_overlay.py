@@ -673,6 +673,7 @@ class TestConfigEngine(unittest.TestCase):
             
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteL2port(session, port, True)
+            configEngine._commitQueue.cleanUpDb()
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(1, session.query(OverlayNetwork).count())
@@ -691,6 +692,7 @@ class TestConfigEngine(unittest.TestCase):
 
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteL2port(session, ports[2], True)
+            configEngine._commitQueue.cleanUpDb()
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(2, session.query(OverlayNetwork).count())
@@ -709,6 +711,7 @@ class TestConfigEngine(unittest.TestCase):
             
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteSubnet(session, subnet, True)
+            configEngine._commitQueue.cleanUpDb()
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(1, session.query(OverlayNetwork).count())
@@ -727,6 +730,7 @@ class TestConfigEngine(unittest.TestCase):
             
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteNetwork(session, subnet.overlay_network, True)
+            configEngine._commitQueue.cleanUpDb()
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(0, session.query(OverlayNetwork).count())
@@ -746,12 +750,13 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(15, session.query(OverlayDeployStatus).count())
             
             self.helper.overlay.deleteNetwork(session, subnet.overlay_network, True)
+            self.helper.overlay._configEngine._commitQueue.cleanUpDb()
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(0, session.query(OverlayNetwork).count())
             self.assertEqual(0, session.query(OverlaySubnet).count())
-            self.assertEqual(1, session.query(OverlayL2port).count())
-            self.assertEqual(8, session.query(OverlayDeployStatus).count())
+            self.assertEqual(0, session.query(OverlayL2port).count())
+            self.assertEqual(10, session.query(OverlayDeployStatus).count())
 
     def testConfigureAggregatedL2Port(self):
         with self._dao.getReadWriteSession() as session:
@@ -783,6 +788,7 @@ class TestConfigEngine(unittest.TestCase):
 
             configEngine = self.helper.overlay._configEngine
             configEngine.deleteAggregatedL2port(session, ports[2], True)
+            configEngine._commitQueue.cleanUpDb()
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(1, session.query(OverlayVrf).count())
             self.assertEqual(2, session.query(OverlayNetwork).count())
@@ -798,6 +804,8 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(2, session.query(OverlayDeployStatus).count())
 
             self.helper.overlay._configEngine.deleteVrf(session, vrf, True)
+            self.helper.overlay._configEngine._commitQueue.cleanUpDb()
+
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(0, session.query(OverlayVrf).count())
             self.assertEqual(1, session.query(OverlayDeployStatus).count())
@@ -812,10 +820,11 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(12, session.query(OverlayDeployStatus).count())
             
             self.helper.overlay.deleteVrf(session, network.overlay_vrf, True)
+            self.helper.overlay._configEngine._commitQueue.cleanUpDb()
             self.assertEqual(1, session.query(OverlayFabric).count())
             self.assertEqual(0, session.query(OverlayVrf).count())
             self.assertEqual(0, session.query(OverlayNetwork).count())
-            self.assertEqual(5, session.query(OverlayDeployStatus).count())
+            self.assertEqual(10, session.query(OverlayDeployStatus).count())
 
     def testDeleteFabric2Spine3Leaf(self):
         with self._dao.getReadWriteSession() as session:
@@ -825,6 +834,8 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(5, session.query(OverlayDeployStatus).count())
             
             self.helper.overlay._configEngine.deleteFabric(session, fabric, True)
+            self.helper.overlay._configEngine._commitQueue.cleanUpDb()
+            
             self.assertEqual(0, session.query(OverlayFabric).count())
             self.assertEqual(0, session.query(OverlayDeployStatus).count())
 
@@ -836,6 +847,8 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(9, session.query(OverlayDeployStatus).count())
 
             self.helper.overlay._configEngine.deleteFabric(session, fabric, True)
+            self.helper.overlay._configEngine._commitQueue.cleanUpDb()
+            
             self.assertEqual(0, session.query(OverlayFabric).count())
             self.assertEqual(0, session.query(OverlayDeployStatus).count())
 

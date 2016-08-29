@@ -195,6 +195,9 @@ class OverlayTenant(ManagedElement, Base):
         self.name = name
         self.description = description
         self.overlay_fabric = overlay_fabric
+    
+    def getUrl(self):
+        return "/tenants/" + self.id
         
 class OverlayVrf(ManagedElement, Base):
     __tablename__ = 'overlayVrf'
@@ -332,8 +335,14 @@ class OverlaySubnet(ManagedElement, Base):
         '''
         Updates subnet object.
         '''
+        old = { 
+            "cidr": self.cidr
+        }
+        
         if cidr is not None:
             self.cidr = cidr
+            
+        return old
     
 class OverlayL3port(ManagedElement, Base):
     __tablename__ = 'overlayL3port'
@@ -530,7 +539,7 @@ class OverlayDeployStatus(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     configlet = Column(BLOB)
     object_url = Column(String(1024), nullable=False)
-    operation = Column(Enum('create', 'update', 'delete', 'delete-force'))
+    operation = Column(Enum('create', 'update', 'delete'))
     overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), nullable=False)
     overlay_device = relationship("OverlayDevice", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
     overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'))
@@ -543,7 +552,7 @@ class OverlayDeployStatus(ManagedElement, Base):
         # Index('object_url_overlay_device_id_uindex', 'object_url', 'overlay_device_id', unique=True),
     # )
     enumStatus = frozenset(['unknown', 'progress', 'success', 'failure'])
-    enumOperation = frozenset(['create', 'update', 'delete', 'delete-force'])
+    enumOperation = frozenset(['create', 'update', 'delete'])
     
     def __init__(self, configlet, object_url, operation, overlay_device, overlay_fabric, status=None, statusReason=None):
         '''
@@ -580,14 +589,16 @@ class OverlayDeployStatus(ManagedElement, Base):
         self.status = status
         self.statusReason = statusReason
         
-    def getObjectTypeAndId(self):
-        
+    @staticmethod
+    def getObjectTypeAndId(objectUrl):
         '''
         returns tuple with objectType and objectId
         '''
-        objectUrlSplit = self.object_url.split("/")
+        objectUrlSplit = objectUrl.split("/")
         if objectUrlSplit[1] == "fabrics":
             return(OverlayFabric, objectUrlSplit[2])
+        elif objectUrlSplit[1] == "tenants":
+            return(OverlayTenant, objectUrlSplit[2])
         elif objectUrlSplit[1] == "vrfs":
             return(OverlayVrf, objectUrlSplit[2])
         elif objectUrlSplit[1] == "networks":
@@ -598,3 +609,29 @@ class OverlayDeployStatus(ManagedElement, Base):
             return(OverlayL2port, objectUrlSplit[2])
         elif objectUrlSplit[1] == "aggregatedL2ports":
             return(OverlayAggregatedL2port, objectUrlSplit[2])
+
+    @staticmethod
+    def hasChildren(object):
+        '''
+        returns True if object has children
+        '''
+        if object is None:
+            return False
+        elif isinstance(object, OverlayFabric):
+            return len(object.overlay_tenants) > 0
+        elif isinstance(object, OverlayTenant):
+            return len(object.overlay_vrfs) > 0
+        elif isinstance(object, OverlayVrf):
+            return len(object.overlay_networks) > 0
+        elif isinstance(object, OverlayNetwork):
+            return (len(object.overlay_l2aps) > 0) or (len(object.overlay_subnets) > 0)
+        elif isinstance(object, OverlaySubnet):
+            return False
+        elif isinstance(object, OverlayL3port):
+            return False
+        elif isinstance(object, OverlayL2port):
+            return False
+        elif isinstance(object, OverlayAggregatedL2port):
+            return False
+        else:
+            return False

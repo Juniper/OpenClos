@@ -169,11 +169,11 @@ class Overlay():
         '''
         Modify an existing Subnet
         '''
-        subnet.update(cidr)
+        old = subnet.update(cidr)
 
         self._dao.updateObjects(dbSession, [subnet])
         logger.info("OverlaySubnet[id: '%s', name: '%s']: modified", subnet.id, subnet.name)
-        self._configEngine.configureSubnet(dbSession, "update", subnet)
+        self._configEngine.configureSubnet(dbSession, "update", subnet, old)
         return subnet
 
     def createL3port(self, dbSession, name, description, overlay_subnet):
@@ -275,59 +275,42 @@ class Overlay():
         '''
         Delete L2port from device, if success then from DB
         '''
-        logger.info("OverlayL2port[id: '%s', name: '%s']: delete request submitted", l2port.id, l2port.name)
         self._configEngine.deleteL2port(dbSession, l2port, force)
 
     def deleteAggregatedL2port(self, dbSession, aggregatedL2port, force=False):
         '''
         Delete Aggregated L2 port from device, if success then from DB
         '''
-        logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: delete request submitted", aggregatedL2port.id, aggregatedL2port.name)
         self._configEngine.deleteAggregatedL2port(dbSession, aggregatedL2port, force)
 
     def deleteSubnet(self, dbSession, subnet, force=False):
         '''
         Delete subnet from device
         '''
-        logger.info("OverlaySubnet[id: '%s', cidr: '%s']: delete request submitted", subnet.id, subnet.name)
         self._configEngine.deleteSubnet(dbSession, subnet, force)
 
     def deleteNetwork(self, dbSession, network, force=False):
         '''
         Delete network from device, also delete subnet and all l2ports attached to the network
         '''
-        logger.info("OverlayNetwork[id: '%s', name: '%s']: delete request submitted", network.id, network.name)
-        # NOTE deleting l2port/aggregatedL2port from network is done in ConfigEngine.deleteNetwork()
-        for subnet in network.overlay_subnets:
-            self.deleteSubnet(dbSession, subnet, force)
         self._configEngine.deleteNetwork(dbSession, network, force)
 
     def deleteVrf(self, dbSession, vrf, force=False):
         '''
         Delete vrf rom device, also delete network, subnet ports etc.
         '''
-        logger.info("OverlayVrf[id: '%s', name: '%s']: delete request submitted", vrf.id, vrf.name)
-        for network in vrf.overlay_networks:
-            self.deleteNetwork(dbSession, network, force)
         self._configEngine.deleteVrf(dbSession, vrf, force)
 
     def deleteTenant(self, dbSession, tenant, force=False):
         '''
         Delete tenant from device, also vrf, delete network, subnet ports etc.
         '''
-        logger.info("OverlayTenant[id: '%s', name: '%s']: delete request submitted", tenant.id, tenant.name)
-        for vrf in tenant.overlay_vrfs:
-            self.deleteVrf(dbSession, vrf, force)
-        # Delete the tenant itself
-        self._dao.deleteObject(dbSession, tenant)
+        self._configEngine.deleteTenant(dbSession, tenant, force)
         
     def deleteFabric(self, dbSession, fabric, force=False):
         '''
         Delete fabric from device, also vrf, delete network, subnet ports etc.
         '''
-        logger.info("OverlayFabric[id: '%s', name: '%s']: delete request submitted", fabric.id, fabric.name)
-        for tenant in fabric.overlay_tenants:
-            self.deleteTenant(dbSession, tenant, force)
         self._configEngine.deleteFabric(dbSession, fabric, force)
 
     def _checkDeviceDependency(self, dbSession, deviceObject):
@@ -558,7 +541,7 @@ class ConfigEngine():
         logger.info("configureNetwork [network id: '%s', network name: '%s']: configured", network.id, network.name)
         self._commitQueue.addJobs(deployments)
     
-    def configureSubnet(self, dbSession, operation, subnet):
+    def configureSubnet(self, dbSession, operation, subnet, old=None):
         '''
         Add subnet address to IRB
         '''
@@ -570,14 +553,27 @@ class ConfigEngine():
         irbIps = self.getSubnetIps(subnet.cidr)
         irbVirtualGateway = irbIps.pop(0).split("/")[0]
         
+        # If this is a modify, remove existing irb config
+        oldIrbIps = None
+        oldIrbVirtualGateway = None
+        if old is not None:
+            if old["cidr"] != subnet.cidr:
+                oldIrbIps = self.getSubnetIps(old["cidr"])
+                oldIrbVirtualGateway = oldIrbIps.pop(0).split("/")[0]
+            
         if len(irbIps) < len(spines):
             logger.error("configureSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
                          vrf.id, network.id, len(irbIps), len(spines))
 
-        for spine, irbIp in itertools.izip(spines, irbIps):
-            config = self._olAddIrb.render(firstIpFromSubnet=irbVirtualGateway, secondOrThirdIpFromSubnet=irbIp, 
-                vlanId=network.vlanid)
-            deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
+        if oldIrbIps is None:
+            for spine, irbIp, in itertools.izip(spines, irbIps):
+                config = self._olAddIrb.render(firstIpFromSubnet=irbVirtualGateway, secondOrThirdIpFromSubnet=irbIp, vlanId=network.vlanid)
+                deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
+        else:
+            for spine, irbIp, oldIrbIp in itertools.izip(spines, irbIps, oldIrbIps):
+                config = self._olAddIrb.render(firstIpFromSubnet=irbVirtualGateway, secondOrThirdIpFromSubnet=irbIp, vlanId=network.vlanid)
+                config += self._olDelSubnetFromIrb.render(secondOrThirdIpFromSubnet=oldIrbIp, vlanId=network.vlanid)
+                deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("configureSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
@@ -644,23 +640,16 @@ class ConfigEngine():
             statusOnAllDevices = dbSession.query(OverlayDeployStatus).filter(
                 OverlayDeployStatus.object_url == objectUrl).all()
             # Delete all status
-            logger.debug("Object %s all deploy status deleted", objectUrl)
             self._dao.deleteObjects(dbSession, statusOnAllDevices)
-            if force:
-                logger.debug("Force mode: Object %s deleted", objectUrl)
-                # Delete the object itself
-                self._dao.deleteObject(dbSession, object)
-                # REVISIT: We have to check if overlayL2ap table has any row that does not have a network
-                for l2ap in dbSession.query(OverlayL2ap).all():
-                    if len(l2ap.overlay_networks) == 0:
-                        self._dao.deleteObject(dbSession, l2ap)
-                
+            logger.debug("Object %s all deploy status deleted", objectUrl)
+            # Now schedule deletion of the object itself
+            self._commitQueue.addDbCleanUp(objectUrl, force)
             return []
         else:
             logger.debug("_deleteCheck: Object %s deployed at devices: %s", objectUrl, [status.overlay_device.name for status in successStatusOnAllDevices])
             return [status.overlay_device for status in successStatusOnAllDevices]
         
-    def deleteL2port(self, dbSession, l2port, force=False):
+    def deleteL2port(self, dbSession, l2port, force):
         '''
         Delete L2port from device
         '''
@@ -669,23 +658,26 @@ class ConfigEngine():
             # Shortcut: if we don't have any deployed device, we can safely delete the object without going to the devices.
             return
         
+        logger.info("OverlayL2port[id: '%s', name: '%s']: delete request submitted", l2port.id, l2port.name)
         if l2port.overlay_device in deployedDevices:
             deployments = []
             networks = [(net.vlanid, net.vnid, net.name) for net in l2port.overlay_networks]
             vrf = l2port.overlay_networks[0].overlay_vrf
             config = self._olDelInterface.render(interfaceName=l2port.interface, networks=networks)
 
-            deployments.append(OverlayDeployStatus(config, l2port.getUrl(), "delete-force" if force else "delete", l2port.overlay_device, vrf.overlay_tenant.overlay_fabric))
+            deployments.append(OverlayDeployStatus(config, l2port.getUrl(), "delete", l2port.overlay_device, vrf.overlay_tenant.overlay_fabric))
             self._dao.createObjects(dbSession, deployments)
             logger.info("deleteL2port [l2port id: '%s', l2port name: '%s']: configured", l2port.id, l2port.interface)
             self._commitQueue.addJobs(deployments)
+            self._commitQueue.addDbCleanUp(l2port.getUrl(), force)
 
-    def deleteSubnet(self, dbSession, subnet, force=False):
+    def deleteSubnet(self, dbSession, subnet, force):
         deployedDevices = self._deleteCheck(dbSession, force, subnet.getUrl(), subnet)
         if len(deployedDevices) == 0:
             # Shortcut: if we don't have any deployed device, we can safely delete the object without going to the devices.
             return
 
+        logger.info("OverlaySubnet[id: '%s', cidr: '%s']: delete request submitted", subnet.id, subnet.name)
         deployments = []        
         network = subnet.overlay_network
         vrf = network.overlay_vrf
@@ -701,13 +693,14 @@ class ConfigEngine():
         for spine, irbIp in itertools.izip(spines, irbIps):      
             if spine in deployedDevices:
                 config = self._olDelSubnetFromIrb.render(secondOrThirdIpFromSubnet=irbIp, vlanId=network.vlanid)
-                deployments.append(OverlayDeployStatus(config, subnet.getUrl(),  "delete-force" if force else "delete", spine, vrf.overlay_tenant.overlay_fabric))    
+                deployments.append(OverlayDeployStatus(config, subnet.getUrl(), "delete", spine, vrf.overlay_tenant.overlay_fabric))    
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
         self._commitQueue.addJobs(deployments)
+        self._commitQueue.addDbCleanUp(subnet.getUrl(), force)
 
-    def deleteNetwork(self, dbSession, network, force=False):
+    def deleteNetwork(self, dbSession, network, force):
         '''
         Delete IRB, BD, update VRF, update evpn, update policy
         '''
@@ -716,6 +709,8 @@ class ConfigEngine():
             # Shortcut: if we don't have any deployed device, we can safely delete the object without going to the devices.
             return
             
+        logger.info("OverlayNetwork[id: '%s', name: '%s']: delete request submitted", network.id, network.name)
+        # NOTE deleting l2port/aggregatedL2port from network is done in ConfigEngine.deleteNetwork()
         deployments = []
         vrf = network.overlay_vrf
         asn = vrf.overlay_tenant.overlay_fabric.overlayAS
@@ -728,7 +723,7 @@ class ConfigEngine():
                 config += self._olDelBridgeDomain.render(networkName=network.name)
                 config += self._olDelNetworkFromEvpn.render(vxlanId=network.vnid)
                 config += self._olDelNetworkPolicyOptions.render(vxlanId=network.vnid, asn=asn)
-                deployments.append(OverlayDeployStatus(config, network.getUrl(),  "delete-force" if force else "delete", spine, vrf.overlay_tenant.overlay_fabric))
+                deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", spine, vrf.overlay_tenant.overlay_fabric))
                 # logger.debug("deleteNetwork: spine: %s, object: %s, config: %s", spine.address, network.getUrl(), config)
         
         for leaf in vrf.getLeafs():
@@ -739,14 +734,15 @@ class ConfigEngine():
                 config += self._olDelNetworkPolicyOptions.render(vxlanId=network.vnid, asn=asn)
                 interfaces = [l2ap.configName() for l2ap in network.overlay_l2aps]
                 config += self._olDelNetworkFromInterfaces.render(interfaces=interfaces, vlanId=network.vlanid)
-                deployments.append(OverlayDeployStatus(config, network.getUrl(),  "delete-force" if force else "delete", leaf, vrf.overlay_tenant.overlay_fabric))
+                deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", leaf, vrf.overlay_tenant.overlay_fabric))
                 # logger.debug("deleteNetwork: leaf: %s, object: %s, config: %s", leaf.address, network.getUrl(), config)
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteNetwork [id: '%s', name: '%s']: configured", network.id, network.name)
         self._commitQueue.addJobs(deployments)
+        self._commitQueue.addDbCleanUp(network.getUrl(), force)
 
-    def deleteAggregatedL2port(self, dbSession, aggregatedL2port, force=False):
+    def deleteAggregatedL2port(self, dbSession, aggregatedL2port, force):
         '''
         Delete Aggregated L2 Port from device
         '''
@@ -755,6 +751,7 @@ class ConfigEngine():
             # Shortcut: if we don't have any deployed device, we can safely delete the object without going to the devices.
             return
             
+        logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: delete request submitted", aggregatedL2port.id, aggregatedL2port.name)
         deployments = []
         vrf = aggregatedL2port.overlay_networks[0].overlay_vrf
         membersByDevice = {}
@@ -771,12 +768,13 @@ class ConfigEngine():
             if lagCount < 0:
                 raise ValueError("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: lagCount is already 0. It cannot be decreased." % (aggregatedL2port.id, aggregatedL2port.name))
             config = self._olDelLag.render(memberInterfaces=deviceMembers['members'], lagName=aggregatedL2port.name, lagCount=lagCount)
-            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(),  "delete-force" if force else "delete", deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
+            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "delete", deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
         self._commitQueue.addJobs(deployments)
+        self._commitQueue.addDbCleanUp(aggregatedL2port.getUrl(), force)
 
-    def deleteVrf(self, dbSession, vrf, force=False):
+    def deleteVrf(self, dbSession, vrf, force):
         '''
         Delete VRF and vrf-loopback interface        
         '''
@@ -785,21 +783,29 @@ class ConfigEngine():
             # Shortcut: if we don't have any deployed device, we can safely delete the object without going to the devices.
             return
             
+        logger.info("OverlayVrf[id: '%s', name: '%s']: delete request submitted", vrf.id, vrf.name)
         deployments = []
-
         for spine in vrf.getSpines():
             if spine in deployedDevices:
                 config = ""
                 if vrf.loopbackAddress is not None:
                     config += self._olDelLoopback.render(loopbackUnit=vrf.vrfCounter)
                 config += self._olDelVrf.render(vrfName=vrf.name)
-                deployments.append(OverlayDeployStatus(config, vrf.getUrl(),  "delete-force" if force else "delete", spine, vrf.overlay_tenant.overlay_fabric))
+                deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "delete", spine, vrf.overlay_tenant.overlay_fabric))
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteVrf [id: '%s', name: '%s']: configured", vrf.id, vrf.name)
         self._commitQueue.addJobs(deployments)
+        self._commitQueue.addDbCleanUp(vrf.getUrl(), force)
     
-    def deleteFabric(self, dbSession, fabric, force=False):
+    def deleteTenant(self, dbSession, tenant, force):
+        '''
+        Delete tenant
+        '''
+        logger.info("deleteTenant [id: '%s', name: '%s']: configured", tenant.id, tenant.name)
+        self._commitQueue.addDbCleanUp(tenant.getUrl(), force)
+    
+    def deleteFabric(self, dbSession, fabric, force):
         '''
         Delete Fabric, iBGP         
         '''
@@ -808,8 +814,8 @@ class ConfigEngine():
             # Shortcut: if we don't have any deployed device, we can safely delete the object without going to the devices.
             return
             
+        logger.info("OverlayFabric[id: '%s', name: '%s']: delete request submitted", fabric.id, fabric.name)
         deployments = []
-
         for device in fabric.overlay_devices:
             if device in deployedDevices:
                 config = self._olDelSwitchOptions.render()
@@ -822,11 +828,12 @@ class ConfigEngine():
                     config += self._olDelPolicyOptions.render(remoteGateways=self.getRemoteGateways(fabric, device.podName))
                 config += self._olDelProtocolEvpn.render()
                 
-                deployments.append(OverlayDeployStatus(config, fabric.getUrl(),  "delete-force" if force else "delete", device, fabric))
+                deployments.append(OverlayDeployStatus(config, fabric.getUrl(), "delete", device, fabric))
 
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteFabric [id: '%s', name: '%s']: configured", fabric.id, fabric.name)
         self._commitQueue.addJobs(deployments)
+        self._commitQueue.addDbCleanUp(fabric.getUrl(), force)
 
 # def main():
     # conf = {}

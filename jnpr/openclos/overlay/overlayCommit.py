@@ -38,6 +38,7 @@ class OverlayCommitJob():
         self.devicePass = deployStatusObject.overlay_device.getCleartextPassword()
         self.configlet = deployStatusObject.configlet
         self.operation = deployStatusObject.operation
+        self.objectUrl = deployStatusObject.object_url
         self.queueId = '%s:%s' % (self.deviceIp, self.deviceId)
 
     def updateStatus(self, status, reason=None):
@@ -56,11 +57,11 @@ class OverlayCommitJob():
                 if status == 'progress':
                     return
                 
-                if statusObject.operation == "create":
+                elif statusObject.operation == "create":
                     # Nothing else to do
                     pass
                     
-                elif statusObject.operation == "delete" or statusObject.operation == "delete-force":
+                elif statusObject.operation == "delete":
                     # There are 3 cases: (It does not make sense to have a case of creation failure, delete success)
                     # 1. create/update success, delete success
                     # 2. create/update success, delete failure
@@ -68,7 +69,7 @@ class OverlayCommitJob():
                     # For 1 it is safe to delete the object itself and all its status.
                     # For 2 and 3, we need to keep the object and its status in case someone fixes the OOB issue and 
                     # send another delete again.
-                    #
+                    
                     # Find all previous create/update/delete records for this object on this device
                     allPreviousStatusOnThisDevice = session.query(OverlayDeployStatus).filter(
                         OverlayDeployStatus.object_url == statusObject.object_url).filter(
@@ -76,39 +77,10 @@ class OverlayCommitJob():
                         OverlayDeployStatus.id != self.id).all()
                     if status == 'success':
                         # case 1
-                        self.parent._dao.deleteObjects(session, allPreviousStatusOnThisDevice)
-                        self.parent._dao.deleteObject(session, statusObject)
+                        self.parent._dao.deleteObjects(session, allPreviousStatusOnThisDevice + [statusObject])
                     elif status == 'failure':
                         # case 2 or 3
                         self.parent._dao.deleteObjects(session, allPreviousStatusOnThisDevice)
-                    
-                    # If all devices are done, then delete the object.
-                    deleteObject = False
-                    allStatus = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == statusObject.object_url).all()
-                    logger.debug("Object %s: '%s' mode", statusObject.object_url, statusObject.operation)
-                    if statusObject.operation == "delete-force":
-                        deleteObject = True
-                    elif statusObject.operation == "delete":
-                        if len(allStatus) == 0:
-                            logger.debug("Configuration deleted on all devices successfully")
-                            deleteObject = True
-                        else:
-                            logger.debug("Configuration not deleted on all devices")
-                            deleteObject = False
-                    if deleteObject:
-                        logger.debug("Object %s deleted", statusObject.object_url)
-                        objectTypeId = statusObject.getObjectTypeAndId()
-                        obj = session.query(objectTypeId[0]).filter_by(id=objectTypeId[1]).first()
-                        if obj:
-                            session.delete(obj)
-                        # REVISIT: We have to check if overlayL2ap table has any row that does not have a network
-                        for l2ap in session.query(OverlayL2ap).all():
-                            if len(l2ap.overlay_networks) == 0:
-                                session.delete(l2ap)
-                        # Make sure all status are deleted
-                        self.parent._dao.deleteObjects(session, allStatus)
-                    else:
-                        logger.debug("Object %s not deleted", statusObject.object_url)
                         
                 elif statusObject.operation == "update":
                     # Find all previous create/update/delete records for this object on this device and delete them
@@ -181,6 +153,7 @@ class OverlayCommitQueue(SingletonBase):
         self.dispatchInterval = DEFAULT_DISPATCH_INTERVAL
         self.thread = Thread(target=self.dispatchThreadFunction, args=())
         self.started = False
+        self.__tbdObjects = [] # [(url, force)] e.g. [('/vrfs/1234', True), ('/networks/2345', False), ...]
         
         conf = OpenClosProperty().getProperties()
         # iterate 'plugin' section of openclos.yaml and install routes on all plugins
@@ -211,12 +184,22 @@ class OverlayCommitQueue(SingletonBase):
                 self.__deviceQueues[job.queueId].put(job)
 
         return jobs
-
+        
+    def addDbCleanUp(self, objectUrl, force):
+        with self.__lock:
+            self.__tbdObjects.append((objectUrl, force))
+        
     '''
     To be used by unit test only
     '''
     def _getDeviceQueues(self):
         return self.__deviceQueues
+
+    '''
+    To be used by unit test only
+    '''
+    def _getTbdObjects(self):
+        return self.__tbdObjects
         
     def runJobs(self):
         # check device queues (round robin)
@@ -255,6 +238,53 @@ class OverlayCommitQueue(SingletonBase):
         with self.__lock:
             self.__devicesInProgress.discard(queueId)
     
+    def _deleteObjectAndFixL2ap(self, session, objectUrl, object):
+        if object:
+            session.delete(object)
+            logger.debug("cleanUpDb: Object %s deleted", objectUrl)
+            
+        # REVISIT: We have to check if overlayL2ap table has any row that does not have a network
+        for l2ap in session.query(OverlayL2ap).all():
+            if len(l2ap.overlay_networks) == 0:
+                session.delete(l2ap)
+                logger.debug("cleanUpDb: Orphan OverlayL2ap %s deleted", l2ap.getUrl())
+    
+    def cleanUpDb(self):
+        tbdObjectsCopy = None
+        with self.__lock:
+            tbdObjectsCopy = self.__tbdObjects[:]
+            
+        # Go through all to-be-deleted objects. If there is no status for that object, we can
+        # safely delete it from db.
+        logger.debug("cleanUpDb: tbdObjects = %s", tbdObjectsCopy)
+        with self._dao.getReadWriteSession() as session:
+            for objectUrl, force in tbdObjectsCopy:
+                # Get the object
+                objectTypeId = OverlayDeployStatus.getObjectTypeAndId(objectUrl)
+                obj = session.query(objectTypeId[0]).filter_by(id=objectTypeId[1]).first()
+                # Get the object deploy status
+                statusOnAllDevices = session.query(OverlayDeployStatus).filter(
+                    OverlayDeployStatus.object_url == objectUrl).all()
+                    
+                if force:
+                    # Delete object and all status
+                    self._dao.deleteObjects(session, statusOnAllDevices)
+                    self._deleteObjectAndFixL2ap(session, objectUrl, obj)
+                    with self.__lock:
+                        self.__tbdObjects.remove((objectUrl, force))
+                else:
+                    if len(statusOnAllDevices) == 0:
+                        logger.debug("cleanUpDb: Deploy status not found. Deleting object %s...", objectUrl)
+                        # Now check if the object has children
+                        if not OverlayDeployStatus.hasChildren(obj):
+                            self._deleteObjectAndFixL2ap(session, objectUrl, obj)
+                            with self.__lock:
+                                self.__tbdObjects.remove((objectUrl, force))
+                        else:
+                            logger.debug("cleanUpDb: Object %s not deleted because it has children", objectUrl)
+                    else:
+                        logger.debug("cleanUpDb: Deploy status found. Object %s not deleted", objectUrl)
+                        
     def start(self):
         with self.__lock:
             if self.started:
@@ -281,6 +311,7 @@ class OverlayCommitQueue(SingletonBase):
                 self.stopEvent.wait(self.dispatchInterval)
                 if not self.stopEvent.is_set():
                     self.runJobs()
+                    self.cleanUpDb()
                 else:
                     logger.debug("OverlayCommitQueue: stopEvent is set")
                     return

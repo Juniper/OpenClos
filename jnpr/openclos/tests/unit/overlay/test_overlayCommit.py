@@ -9,7 +9,7 @@ sys.path.insert(0,os.path.abspath(os.path.dirname(__file__) + '/' + '../../..'))
 
 import unittest
 from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue, OverlayCommitJob
-from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus, OverlayL2port
+from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus, OverlayL2port, OverlayFabric, OverlayVrf
 from jnpr.openclos.deviceConnector import CachedConnectionFactory
 from jnpr.openclos.loader import loadLoggingConfig
 from jnpr.openclos.dao import Dao
@@ -52,14 +52,21 @@ class TestOverlayCommitQueue(unittest.TestCase):
             self.assertEqual(statuss[0].id, deviceQueues.values()[0].get_nowait().id)
             self.assertEqual(statuss[1].id, deviceQueues.values()[0].get_nowait().id)
             
-    
+    def testAddDbCleanUp(self):
+        with self._dao.getReadWriteSession() as session:
+            # create VRF creates DeployStatus and adds to commit queue
+            vrf = self.helper._createVrf(session)
+            self.commitQueue.addDbCleanUp(vrf.getUrl(), True)
+            tbdObjects = self.commitQueue._getTbdObjects()
+            self.assertEqual(1, len(tbdObjects))
+            self.assertEqual(tbdObjects[0], (vrf.getUrl(), True))
 
     def testRunJobs(self):
         self.commitQueue.start()
         
         import time
         with self._dao.getReadWriteSession() as session:
-            vrf = self.helper._createFabric(session)
+            self.helper._createFabric(session)
         time.sleep(1)
         # with self._dao.getReadSession() as session:
             # deployStatus = session.query(OverlayDeployStatus).one()
@@ -74,6 +81,19 @@ class TestOverlayCommitQueue(unittest.TestCase):
             deployStatus = session.query(OverlayDeployStatus).one()
             self.assertEqual("failure", deployStatus.status)
 
+    def testCleanUpDb(self):
+        with self._dao.getReadWriteSession() as session:
+            fabric = self.helper._createFabric(session)
+            url = fabric.getUrl()
+            
+        with self._dao.getReadWriteSession() as session:
+            self.assertEqual(1, session.query(OverlayFabric).count())
+
+        self.commitQueue.addDbCleanUp(url, True)
+        self.commitQueue.cleanUpDb()
+        
+        with self._dao.getReadSession() as session:
+            self.assertEqual(0, session.query(OverlayFabric).count())
 
 class TestOverlayCommitJob(unittest.TestCase):
     def setUp(self):
@@ -99,48 +119,44 @@ class TestOverlayCommitJob(unittest.TestCase):
             port = self.helper._createL2port(session)
             portUrl = port.getUrl()
             deployment = OverlayDeployStatus("", portUrl, "delete", port.overlay_device, port.overlay_networks[0].overlay_vrf.overlay_tenant.overlay_fabric)
+            deploy_id = deployment.id
             self._dao.createObjects(session, [deployment])
             session.commit()
             commitJob = OverlayCommitJob(self, deployment)
             commitJob.updateStatus("success")
-            self.assertEqual([], session.query(OverlayL2port).all())
-            self.assertEqual([], session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == portUrl).all())
+            
+        with self._dao.getReadWriteSession() as session:
+            self.assertEqual(0, session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == deploy_id).count())
         
     def testUpdateStatusDeleteFailure(self):
         with self._dao.getReadWriteSession() as session:
             port = self.helper._createL2port(session)
             portUrl = port.getUrl()
             deployment = OverlayDeployStatus("", portUrl, "delete", port.overlay_device, port.overlay_networks[0].overlay_vrf.overlay_tenant.overlay_fabric)
+            deploy_id = deployment.id
             self._dao.createObjects(session, [deployment])
             session.commit()
             commitJob = OverlayCommitJob(self, deployment)
             commitJob.updateStatus("failure")
-            self.assertIsNotNone(session.query(OverlayL2port).one())
-            self.assertEqual(1, len(session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == portUrl).all()))
+            
+        with self._dao.getReadWriteSession() as session:
+            deployment = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == deploy_id).one()
+            self.assertEqual("failure", deployment.status)
         
     def testUpdateStatusDeleteProgress(self):
         with self._dao.getReadWriteSession() as session:
             port = self.helper._createL2port(session)
             portUrl = port.getUrl()
             deployment = OverlayDeployStatus("", portUrl, "delete", port.overlay_device, port.overlay_networks[0].overlay_vrf.overlay_tenant.overlay_fabric)
+            deploy_id = deployment.id
             self._dao.createObjects(session, [deployment])
             session.commit()
             commitJob = OverlayCommitJob(self, deployment)
             commitJob.updateStatus("progress")
-            self.assertIsNotNone(session.query(OverlayL2port).one())
-            self.assertEqual(2, len(session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == portUrl).all()))
-
-    def testUpdateStatusDeleteFailureForceMode(self):
+            
         with self._dao.getReadWriteSession() as session:
-            port = self.helper._createL2port(session)
-            portUrl = port.getUrl()
-            deployment = OverlayDeployStatus("", portUrl, "delete-force", port.overlay_device, port.overlay_networks[0].overlay_vrf.overlay_tenant.overlay_fabric)
-            self._dao.createObjects(session, [deployment])
-            session.commit()
-            commitJob = OverlayCommitJob(self, deployment)
-            commitJob.updateStatus("failure")
-            self.assertEqual(0, session.query(OverlayL2port).count())
-            self.assertEqual(0, len(session.query(OverlayDeployStatus).filter(OverlayDeployStatus.object_url == portUrl).all()))
+            deployment = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == deploy_id).one()
+            self.assertEqual("progress", deployment.status)
         
 if __name__ == '__main__':
     unittest.main()
