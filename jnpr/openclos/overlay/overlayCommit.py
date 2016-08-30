@@ -256,7 +256,7 @@ class OverlayCommitQueue(SingletonBase):
             
         # Go through all to-be-deleted objects. If there is no status for that object, we can
         # safely delete it from db.
-        logger.debug("cleanUpDb: tbdObjects = %s", tbdObjectsCopy)
+        # logger.debug("cleanUpDb: tbdObjects = %s", tbdObjectsCopy)
         with self._dao.getReadWriteSession() as session:
             for objectUrl, force in tbdObjectsCopy:
                 # Get the object

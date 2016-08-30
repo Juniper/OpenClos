@@ -7,7 +7,7 @@ pyyaml
 jinja2
 pydot
 bottle
-junos-eznc
+junos-eznc==1.0.2
 futures
 pysnmp
 netifaces==0.10.4
