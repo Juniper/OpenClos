@@ -448,7 +448,18 @@ class ConfigEngine():
             return self._olAddPolicyOptions.render(remoteGateways=self.getRemoteGateways(fabric, device.podName), esiRTarget=esiRouteTarget)
         
     def configureNetworkPolicyOptions(self, vni=None, asn=None):
-        return self._olAddPolicyOptions.render(vni=vni, asn=asn)
+        return self._olAddPolicyOptions.render(vni=vni, asn=ConfigEngine.formatASN(asn))
+
+    @staticmethod
+    def formatASN(value):
+        if value is None:
+            return None
+        elif int(value) < 65536:
+            return str(value)
+        elif int(value) >= 65536:
+            return str(value) + "L"
+        else:
+            return value
 
     def configureVrf(self, dbSession, operation, vrf):
         deployments = []
@@ -463,16 +474,16 @@ class ConfigEngine():
         if len(loopbackIps) < len(spines):
             logger.error("configureVrf [id: '%s', name: '%s']: loopback IPs count: %d less than spine count: %d", 
                          vrf.id, vrf.name, len(loopbackIps), len(spines))
-            
+        
         for spine, loopback in itertools.izip(spines, loopbackIps):
             if loopback is not None:
                 config = self.configureLoopback(loopback, vrf.vrfCounter)
                 config += self._olAddVrf.render(vrfName=vrf.name,  vrfCounter=vrf.vrfCounter,
-                    routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS, loopback=loopback)
+                    routerId=spine.routerId, asn=ConfigEngine.formatASN(vrf.overlay_tenant.overlay_fabric.overlayAS), loopback=loopback)
             else:
                 # If user hasn't set loopback address block yet, do not configure lo.<vrfCounter> interface
                 config = self._olAddVrf.render(vrfName=vrf.name,  vrfCounter=vrf.vrfCounter,
-                    routerId=spine.routerId, asn=vrf.overlay_tenant.overlay_fabric.overlayAS)
+                    routerId=spine.routerId, asn=ConfigEngine.formatASN(vrf.overlay_tenant.overlay_fabric.overlayAS))
             
             deployments.append(OverlayDeployStatus(config, vrf.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
 
@@ -580,7 +591,7 @@ class ConfigEngine():
         self._commitQueue.addJobs(deployments)
         
     def configureEvpn(self, vni=None, asn=None):
-        return self._olAddProtocolEvpn.render(vxlanId=vni, asn=asn)
+        return self._olAddProtocolEvpn.render(vxlanId=vni, asn=ConfigEngine.formatASN(asn))
         
             
     def getSubnetIps(self, subnetBlock):
@@ -722,7 +733,7 @@ class ConfigEngine():
                 config += self._olDelIrbFromVrf.render(vrfName=vrf.name, vlanId=network.vlanid)
                 config += self._olDelBridgeDomain.render(networkName=network.name)
                 config += self._olDelNetworkFromEvpn.render(vxlanId=network.vnid)
-                config += self._olDelNetworkPolicyOptions.render(vxlanId=network.vnid, asn=asn)
+                config += self._olDelNetworkPolicyOptions.render(vxlanId=network.vnid)
                 deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", spine, vrf.overlay_tenant.overlay_fabric))
                 # logger.debug("deleteNetwork: spine: %s, object: %s, config: %s", spine.address, network.getUrl(), config)
         
@@ -731,7 +742,7 @@ class ConfigEngine():
                 config = ""
                 config += self._olDelBridgeDomain.render(networkName=network.name)
                 config += self._olDelNetworkFromEvpn.render(vxlanId=network.vnid)
-                config += self._olDelNetworkPolicyOptions.render(vxlanId=network.vnid, asn=asn)
+                config += self._olDelNetworkPolicyOptions.render(vxlanId=network.vnid)
                 interfaces = [l2ap.configName() for l2ap in network.overlay_l2aps]
                 config += self._olDelNetworkFromInterfaces.render(interfaces=interfaces, vlanId=network.vlanid)
                 deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", leaf, vrf.overlay_tenant.overlay_fabric))
