@@ -1,4 +1,4 @@
 vlans {
     delete:
-    bd_{{networkName}};
+    {{networkName}};
 }

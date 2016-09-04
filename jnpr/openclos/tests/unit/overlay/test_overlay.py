@@ -564,7 +564,7 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
-            self.assertIn("bd_n1", config)
+            self.assertIn("n1", config)
             self.assertIn("l3-interface irb.101", config)
                         
             config = deployments[8].configlet
@@ -574,14 +574,14 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
-            self.assertIn("bd_n1", config)
+            self.assertIn("n1", config)
             self.assertIn("l3-interface irb.101", config)
                 
             config = deployments[9].configlet
             print "leaf1:\n" + config
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
-            self.assertIn("bd_n1", config)
+            self.assertIn("n1", config)
             self.assertNotIn("l3-interface irb.", config)
 
     def testConfigureSubnet(self):

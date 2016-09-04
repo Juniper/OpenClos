@@ -1,6 +1,6 @@
 vlans {
     replace:
-    bd_{{networkName}} {
+    {{networkName}} {
         {% if role == "spine" %}vlan-id {{vlanId}};
         l3-interface irb.{{vlanId}};{% endif %}
         vxlan {
