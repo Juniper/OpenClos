@@ -10,7 +10,7 @@ interfaces {
     }
 }
 vlans {
-    {% for network in networks %}bd_{{network[2]}} {
+    {% for network in networks %}{{network[2]}} {
         interface {{interfaceName}}.{{network[0]}};
     }
     {% endfor %}
