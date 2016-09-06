@@ -457,7 +457,7 @@ class OverlayL2port(OverlayL2ap):
         '''
         Updates L2 port object.
         '''
-        super(OverlayL2port, self).update(overlay_networks)
+        return super(OverlayL2port, self).update(overlay_networks)
         
     def configName(self):
         '''
@@ -520,11 +520,11 @@ class OverlayAggregatedL2port(OverlayL2ap):
         '''
         Updates aggregated interface object.
         '''
-        super(OverlayAggregatedL2port, self).update(overlay_networks)
         if esi is not None:
             self.esi = esi
         if lacp is not None:
             self.lacp = lacp
+        return super(OverlayAggregatedL2port, self).update(overlay_networks)
         
     def configName(self):
         '''

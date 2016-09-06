@@ -1,3 +1,4 @@
+{% if networks|length > 0 %}
 interfaces {
     {{interfaceName}} {
         {% for network in networks %}delete:
@@ -12,3 +13,4 @@ vlans {
     }
     {% endfor %}
 }
+{% endif %}

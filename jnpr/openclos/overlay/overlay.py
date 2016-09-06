@@ -201,11 +201,11 @@ class Overlay():
         '''
         Modify an existing L2port
         '''
-        l2port.update(overlay_networks)
+        (addedNetworks, deletedNetworks) = l2port.update(overlay_networks)
 
         self._dao.updateObjects(dbSession, [l2port])
         logger.info("OverlayL2port[id: '%s', name: '%s']: modified", l2port.id, l2port.name)
-        self._configEngine.configureL2port(dbSession, "update", l2port)
+        self._configEngine.configureL2port(dbSession, "update", l2port, deletedNetworks)
         return l2port
         
     def _validateAggregatedL2port(self, dbSession, name, members):
@@ -264,11 +264,11 @@ class Overlay():
         '''
         Modify an existing AggregatedL2port
         '''
-        aggregatedL2port.update(overlay_networks, esi, lacp)
+        (addedNetworks, deletedNetworks) = aggregatedL2port.update(overlay_networks, esi, lacp)
 
         self._dao.updateObjects(dbSession, [aggregatedL2port])
         logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: modified", aggregatedL2port.id, aggregatedL2port.name)
-        self._configEngine.configureAggregatedL2port(dbSession, "update", aggregatedL2port)
+        self._configEngine.configureAggregatedL2port(dbSession, "update", aggregatedL2port, deletedNetworks)
         return aggregatedL2port
         
     def deleteL2port(self, dbSession, l2port, force=False):
@@ -602,7 +602,7 @@ class ConfigEngine():
         ips = [str(ip) + "/" + cidr for ip in IPNetwork(subnetBlock).iter_hosts()]
         return ips        
         
-    def configureL2port(self, dbSession, operation, l2port):
+    def configureL2port(self, dbSession, operation, l2port, deletedNetworks=None):
         '''
         Create access port interface
         '''
@@ -610,18 +610,20 @@ class ConfigEngine():
         networks = [(net.vlanid, net.vnid, net.name) for net in l2port.overlay_networks]
         vrf = l2port.overlay_networks[0].overlay_vrf
         config = self._olAddInterface.render(interfaceName=l2port.interface, networks=networks)
-
+        if deletedNetworks is not None:
+            deletedNetworks = [(net.vlanid, net.vnid, net.name) for net in deletedNetworks]
+            config += self._olDelInterface.render(interfaceName=l2port.interface, networks=deletedNetworks)
         deployments.append(OverlayDeployStatus(config, l2port.getUrl(), operation, l2port.overlay_device, vrf.overlay_tenant.overlay_fabric))
         self._dao.createObjects(dbSession, deployments)
         logger.info("configureL2port [l2port id: '%s', l2port name: '%s']: configured", l2port.id, l2port.interface)
         self._commitQueue.addJobs(deployments)
 
-    def configureAggregatedL2port(self, dbSession, operation, aggregatedL2port):
+    def configureAggregatedL2port(self, dbSession, operation, aggregatedL2port, deletedNetworks=None):
         '''
         Create Aggregated L2 Port
         '''
         deployments = []
-        networks = [(net.vlanid, net.vnid) for net in aggregatedL2port.overlay_networks]
+        networks = [(net.vlanid, net.vnid, net.name) for net in aggregatedL2port.overlay_networks]
         vrf = aggregatedL2port.overlay_networks[0].overlay_vrf
         membersByDevice = {}
         # Normalize members based on device ids 
@@ -634,6 +636,12 @@ class ConfigEngine():
         for deviceId, deviceMembers in membersByDevice.iteritems():
             lagCount = len(deviceMembers['device'].aggregatedL2port_members)
             config = self._olAddLag.render(memberInterfaces=deviceMembers['members'], networks=networks, lagName=aggregatedL2port.name, ethernetSegmentId=aggregatedL2port.esi, systemId=aggregatedL2port.lacp, lagCount=lagCount)
+            if deletedNetworks is not None:
+                deletedNetworks2 = [(net.vlanid, net.vnid, net.name) for net in deletedNetworks]
+                # NOTE we are using _olDelInterface template instead of _olDelLag template because
+                # we just need to remove the "unit" from "interfaces" stanza and "interface" from "vlans" stanza.
+                # We don't have to deal with other part of _olDelLag template.
+                config += self._olDelInterface.render(interfaceName=aggregatedL2port.name, networks=deletedNetworks2)
             deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
             
         self._dao.createObjects(dbSession, deployments)
