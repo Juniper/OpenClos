@@ -21,11 +21,13 @@ interfaces {
             {{ethernetSegmentId}};
             all-active;
         }
+        {% if networks|length > 0 %}
         flexible-vlan-tagging;
         {% for network in networks %}unit {{network[0]}} {
             vlan-id {{network[0]}};
         }
         {% endfor %}
+        {% endif %}
         aggregated-ether-options {
             lacp {
                 active;
@@ -34,3 +36,12 @@ interfaces {
         }
     }
 }
+
+{% if networks|length > 0 %}
+vlans {
+    {% for network in networks %}{{network[2]}} {
+        interface {{lagName}}.{{network[0]}};
+    }
+    {% endfor %}
+}
+{% endif %}

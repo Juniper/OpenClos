@@ -21,3 +21,13 @@ interfaces {
     delete:
     {{lagName}};
 }
+
+{% if networks|length > 0 %}
+vlans {
+    {% for network in networks %}{{network[2]}} {
+        delete:
+        interface {{lagName}}.{{network[0]}};
+    }
+    {% endfor %}
+}
+{% endif %}
