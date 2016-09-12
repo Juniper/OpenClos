@@ -1,4 +1,0 @@
-vlans {
-    delete:
-    {{networkName}};
-}

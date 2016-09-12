@@ -1,0 +1,35 @@
+delete:
+switch-options;
+
+protocols {
+    bgp {
+        delete:
+        group overlay-evpn;
+        {% if role == "spine" %}
+        delete:
+        group overlay-evpn-rr;
+        {% endif %}
+    }
+    delete:
+    evpn;
+}
+
+policy-options {
+    delete:
+    policy-statement LEAF-IN;
+    delete:
+    community comm-leaf-esi;
+    {% if role == "leaf" %}
+    {% if remoteGateways %}
+    delete:
+    policy-statement OVERLAY-IN;
+    {% endif %}
+    {% endif %}
+}
+
+{% if role == "spine" %}
+routing-options {
+    delete:
+    forwarding-table;
+}
+{% endif %}

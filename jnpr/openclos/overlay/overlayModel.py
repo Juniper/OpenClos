@@ -232,8 +232,14 @@ class OverlayVrf(ManagedElement, Base):
         '''
         Updates VRF object.
         '''
+        old = { 
+            "loopbackAddress": self.loopbackAddress
+        }
+        
         if loopbackAddress is not None:
             self.loopbackAddress = loopbackAddress
+        
+        return old
         
     def getDevices(self, role=None):
         if self.overlay_tenant and self.overlay_tenant.overlay_fabric:

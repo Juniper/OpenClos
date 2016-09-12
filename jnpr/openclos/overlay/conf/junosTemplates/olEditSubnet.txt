@@ -1,0 +1,16 @@
+interfaces {
+    irb {
+        unit {{vlanId}} {
+            family inet {
+                replace:
+                address {{irbAddress}} {
+                    virtual-gateway-address {{irbVirtualGateway}};
+                }
+                {% if oldIrbAddress %}
+                delete:
+                address {{oldIrbAddress}};
+                {% endif %}
+            }
+        }
+    }
+}

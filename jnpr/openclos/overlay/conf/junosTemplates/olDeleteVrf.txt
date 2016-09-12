@@ -1,0 +1,13 @@
+{% if loopbackAddress %}
+interfaces {
+    lo0 {
+        delete:
+        unit {{vrfCounter}};
+    }
+}
+{% endif %}
+
+routing-instances {
+    delete:
+    VRF_{{vrfName}};
+}

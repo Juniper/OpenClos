@@ -1,7 +1,0 @@
-interfaces {
-    {% for interface in interfaces %}{{interface}} {
-        delete:
-        unit {{vlanId}};
-    }
-    {% endfor %}
-}

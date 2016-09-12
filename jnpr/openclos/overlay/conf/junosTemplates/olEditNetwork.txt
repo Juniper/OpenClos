@@ -1,0 +1,99 @@
+vlans {
+    {{networkName}} {
+        {% if role == "spine" %}
+        vlan-id {{vlanId}};
+        l3-interface irb.{{vlanId}};
+        {% endif %}
+        vxlan {
+            vni {{vnid}};
+            ingress-node-replication;
+        }
+    }
+}
+
+{% if role == "spine" %}
+interfaces {
+    irb {
+        unit {{vlanId}} {
+            family inet;
+        }
+        {% if oldVlanId %}
+        delete:
+        unit {{oldVlanId}};
+        {% endif %}
+    }
+}
+
+routing-instances {
+    VRF_{{vrfName}} {
+        interface irb.{{vlanId}};    
+        {% if oldVlanId %}
+        delete:
+        interface irb.{{oldVlanId}};    
+        {% endif %}
+    }
+}
+{% endif %}
+
+{% if role == "leaf" and oldVlanId %}
+interfaces {
+    {% for interface in interfaces %}{{interface}} {
+        unit {{vlanId}} {
+            vlan-id {{vlanId}};
+        }
+        delete:
+        unit {{oldVlanId}};
+    }
+    {% endfor %}
+}
+vlans {
+    {{networkName}} {
+        {% for interface in interfaces %}
+        interface {{interface}}.{{vlanId}};
+        delete:
+        interface {{interface}}.{{oldVlanId}};
+        {% endfor %}
+    }
+}
+{% endif %}
+
+protocols {
+    evpn {
+        encapsulation vxlan;
+        multicast-mode ingress-replication;
+        extended-vni-list [ {{vnid}} ];
+        vni-options {
+            vni {{vnid}} {
+                vrf-target export target:{{asn}}:{{vnid}};
+            }
+        }
+        {% if oldVnid %}
+        delete:
+        extended-vni-list {{oldVnid}};
+        vni-options {
+            delete:
+            vni {{oldVnid}};
+        }
+        {% endif %}
+    }
+}
+
+policy-options {
+    policy-statement LEAF-IN {
+        replace:
+        term a{{vnid}} {
+            from community com{{vnid}};
+            then accept;
+        }
+        {% if oldVnid %}
+        delete:
+        term a{{oldVnid}};
+        {% endif %}
+    }
+    replace:
+    community com{{vnid}} members target:{{asn}}:{{vnid}};
+    {% if oldVnid %}
+    delete:
+    community com{{oldVnid}};
+    {% endif %}
+}    

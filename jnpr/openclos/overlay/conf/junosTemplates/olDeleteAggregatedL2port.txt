@@ -22,7 +22,7 @@ interfaces {
     {{lagName}};
 }
 
-{% if networks|length > 0 %}
+{% if networks and networks|length > 0 %}
 vlans {
     {% for network in networks %}{{network[2]}} {
         delete:

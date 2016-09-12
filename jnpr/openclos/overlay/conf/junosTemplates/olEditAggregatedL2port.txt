@@ -15,17 +15,22 @@ interfaces {
         }
     }
     {% endfor %}
-    replace:
     {{lagName}} {
         esi {
             {{ethernetSegmentId}};
             all-active;
         }
-        {% if networks|length > 0 %}
         flexible-vlan-tagging;
+        {% if networks and networks|length > 0 %}
         {% for network in networks %}unit {{network[0]}} {
             vlan-id {{network[0]}};
         }
+        {% endfor %}
+        {% endif %}
+        {% if deletedNetworks and deletedNetworks|length > 0 %}
+        {% for deletedNetwork in deletedNetworks %}
+        delete:
+        unit {{deletedNetwork[0]}};
         {% endfor %}
         {% endif %}
         aggregated-ether-options {
@@ -37,11 +42,18 @@ interfaces {
     }
 }
 
-{% if networks|length > 0 %}
 vlans {
+    {% if networks and networks|length > 0 %}
     {% for network in networks %}{{network[2]}} {
         interface {{lagName}}.{{network[0]}};
     }
     {% endfor %}
+    {% endif %}
+    {% if deletedNetworks and deletedNetworks|length > 0 %}
+    {% for deletedNetwork in deletedNetworks %}{{deletedNetwork[2]}} {
+        delete:
+        interface {{lagName}}.{{deletedNetwork[0]}};
+    }
+    {% endfor %}
+    {% endif %}
 }
-{% endif %}

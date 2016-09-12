@@ -3,7 +3,7 @@ interfaces {
         unit {{vlanId}} {
             family inet {
                 delete:
-                address {{secondOrThirdIpFromSubnet}};
+                address {{irbAddress}};
             }
         }
     }

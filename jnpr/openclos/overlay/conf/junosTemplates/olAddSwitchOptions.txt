@@ -1,7 +1,0 @@
-replace:
-switch-options {
-    vtep-source-interface lo0.0;
-    vrf-import LEAF-IN;
-    vrf-target target:{{esiRouteTarget}};
-    route-distinguisher {{routerId}}:0;
-}
