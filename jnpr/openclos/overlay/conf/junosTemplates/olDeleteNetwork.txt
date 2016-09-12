@@ -1,0 +1,50 @@
+{% if role == "spine" %}
+interfaces {
+    irb {
+        delete:
+        unit {{vlanId}};
+    }
+}
+
+routing-instances {
+    VRF_{{vrfName}} {
+        delete:
+        interface irb.{{vlanId}};        
+    }
+}
+{% endif %}
+
+vlans {
+    delete:
+    {{networkName}};
+}
+
+protocols {
+    evpn {
+        delete:
+        extended-vni-list {{vnid}};
+        vni-options {
+            delete:
+            vni {{vnid}};
+        }
+    }
+}
+
+policy-options {
+    policy-statement LEAF-IN {
+        delete:
+        term a{{vnid}};
+    }
+    delete:
+    community com{{vnid}};
+}    
+
+{% if role == "leaf" %}
+interfaces {
+    {% for interface in interfaces %}{{interface}} {
+        delete:
+        unit {{vlanId}};
+    }
+    {% endfor %}
+}
+{% endif %}

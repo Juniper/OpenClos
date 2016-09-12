@@ -1,8 +1,0 @@
-policy-options {
-    delete:
-    policy-statement LEAF-IN;
-    delete:
-    community comm-leaf-esi;
-    {% if remoteGateways %}delete:
-    policy-statement OVERLAY-IN;{% endif %}
-}

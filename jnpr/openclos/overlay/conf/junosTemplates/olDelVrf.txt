@@ -1,4 +1,0 @@
-routing-instances {
-    delete:
-    VRF_{{vrfName}};
-}

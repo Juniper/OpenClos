@@ -1,13 +1,15 @@
-{% if networks|length > 0 %}
+{% if networks and networks|length > 0 %}
 interfaces {
     {{interfaceName}} {
-        {% for network in networks %}delete:
+        {% for network in networks %}
+        delete:
         unit {{network[0]}};
         {% endfor %}
     }
 }
 vlans {
-    {% for network in networks %}{{network[2]}} {
+    {% for network in networks %}
+    {{network[2]}} {
         delete:
         interface {{interfaceName}}.{{network[0]}};
     }

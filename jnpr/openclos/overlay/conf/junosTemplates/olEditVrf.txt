@@ -1,0 +1,29 @@
+{% if loopbackAddress %}
+interfaces {
+    lo0 {
+        unit {{vrfCounter}} {
+            family inet {
+                replace:
+                address {{loopbackAddress}};
+                {% if oldLoopbackAddress %}
+                delete:
+                address {{oldLoopbackAddress}};
+                {% endif %}
+            }
+        }
+    }
+}
+routing-instances {
+    VRF_{{vrfName}} {
+        interface lo0.{{vrfCounter}};
+    }
+}
+{% endif %}
+
+routing-instances {
+    VRF_{{vrfName}} {
+        instance-type vrf;
+        route-distinguisher {{routerId}}:{{vrfCounter}};
+        vrf-target target:{{asn}}:{{vrfCounter}};
+    }
+}

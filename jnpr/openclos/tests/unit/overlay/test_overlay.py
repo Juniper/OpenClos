@@ -526,11 +526,11 @@ class TestConfigEngine(unittest.TestCase):
     def testGetLoopbackIps(self):
         configEngine = self.helper.overlay._configEngine
 
-        ips = configEngine.getLoopbackIps("192.168.48.0/30")
+        ips = configEngine.getLoopbackIps("192.168.48.0/30", 0)
         self.assertEquals(['192.168.48.0/32', '192.168.48.1/32', '192.168.48.2/32', '192.168.48.3/32'], ips)
-        ips = configEngine.getLoopbackIps("192.168.48.0/31")
+        ips = configEngine.getLoopbackIps("192.168.48.0/31", 0)
         self.assertEquals(['192.168.48.0/32', '192.168.48.1/32'], ips)
-        ips = configEngine.getLoopbackIps("192.168.48.0/32")
+        ips = configEngine.getLoopbackIps("192.168.48.0/32", 0)
         self.assertEquals(['192.168.48.0/32'], ips)
 
     def testConfigureVrf(self):

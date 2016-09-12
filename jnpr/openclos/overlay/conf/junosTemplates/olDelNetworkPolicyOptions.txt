@@ -1,8 +1,0 @@
-policy-options {
-    policy-statement LEAF-IN {
-        delete:
-        term a{{vxlanId}};
-    }
-    delete:
-    community com{{vxlanId}};
-}    

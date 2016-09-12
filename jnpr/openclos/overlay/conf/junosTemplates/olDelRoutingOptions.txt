@@ -1,6 +1,0 @@
-routing-options {
-    delete:
-    forwarding-table {
-        ecmp-fast-reroute;
-    }
-}
