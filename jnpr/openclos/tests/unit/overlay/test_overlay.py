@@ -772,9 +772,12 @@ class TestConfigEngine(unittest.TestCase):
             self.assertTrue('device-count 1;' in deployments[4].configlet)
             self.assertTrue('device-count 2;' in deployments[5].configlet)
             self.assertTrue('device-count 3;' in deployments[6].configlet)
-            self.assertEquals(1, deployments[4].configlet.count("vlan-id "))
-            self.assertEquals(1, deployments[5].configlet.count("vlan-id "))
-            self.assertEquals(2, deployments[6].configlet.count("vlan-id "))
+            self.assertEquals(1, deployments[4].configlet.count("native-vlan-id "))
+            self.assertEquals(1, deployments[4].configlet.count(" vlan-id "))
+            self.assertEquals(1, deployments[5].configlet.count("native-vlan-id "))
+            self.assertEquals(1, deployments[5].configlet.count(" vlan-id "))
+            self.assertEquals(0, deployments[6].configlet.count("native-vlan-id "))
+            self.assertEquals(2, deployments[6].configlet.count(" vlan-id "))
 
     def testDeleteAggregatedL2Port(self):
         with self._dao.getReadWriteSession() as session:
