@@ -35,7 +35,7 @@ routing-instances {
 }
 {% endif %}
 
-{% if role == "leaf" and oldVlanId %}
+{% if role == "leaf" and oldVlanId and interfaces and interfaces|length > 0%}
 interfaces {
     {% for interface in interfaces %}{{interface}} {
         unit {{vlanId}} {

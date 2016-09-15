@@ -473,7 +473,6 @@ class ConfigEngine():
         deployments = []        
         vrf = network.overlay_vrf
         asn = vrf.overlay_tenant.overlay_fabric.overlayAS
-        interfaces = [l2ap.configName() for l2ap in network.overlay_l2aps]
         oldVnid = None
         oldVlanId = None
         if old is not None:
@@ -494,7 +493,18 @@ class ConfigEngine():
                 asn=ConfigEngine.formatASN(asn))
             deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
 
-        for leaf in vrf.getLeafs():            
+        for leaf in vrf.getLeafs():     
+            # Compile a list of interfaces that belong to this leaf
+            interfaces = []
+            for l2ap in network.overlay_l2aps:
+                if l2ap.type == 'l2port':
+                    if l2ap.overlay_device_id == leaf.id:
+                        interfaces.append(l2ap.configName())
+                elif l2ap.type == 'aggregatedL2port':
+                    for member in l2ap.members:
+                        if member.overlay_device_id == leaf.id:
+                            interfaces.append(l2ap.configName())
+                            
             config = self._olEditNetwork.render(
                 role="leaf",
                 vrfName=vrf.name,
