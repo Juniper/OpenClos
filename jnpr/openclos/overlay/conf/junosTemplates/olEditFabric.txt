@@ -7,13 +7,12 @@ switch-options {
 }
 
 policy-options {
+    replace:
     policy-statement LEAF-IN {
-        replace:
         term import_leaf_esi {
             from community comm-leaf-esi;
             then accept;
         }
-        replace:
         term default {
             then reject;
         }
