@@ -80,15 +80,21 @@ protocols {
 
 policy-options {
     policy-statement LEAF-IN {
+        delete:
+        term default;
+        {% if oldVnid %}
+        delete:
+        term a{{oldVnid}};
+        {% endif %}
         replace:
         term a{{vnid}} {
             from community com{{vnid}};
             then accept;
         }
-        {% if oldVnid %}
-        delete:
-        term a{{oldVnid}};
-        {% endif %}
+        replace:
+        term default {
+            then reject;
+        }
     }
     replace:
     community com{{vnid}} members target:{{asn}}:{{vnid}};
