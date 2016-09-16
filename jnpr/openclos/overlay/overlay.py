@@ -48,25 +48,22 @@ class Overlay():
         logger.info("OverlayDevice[id: '%s', name: '%s']: modified", device.id, device.name)
         return device
 
-    def createFabric(self, dbSession, name, description, overlayAsn, routeReflectorAddress, devices):
+    def createFabric(self, dbSession, name, description, overlayAsn, devices):
         '''
         Create a new Fabric
         '''
-        if not Overlay.isValidIpAddress(routeReflectorAddress):
-            raise ValueError('Invalid routeReflectorAddress value %s' % routeReflectorAddress)
-        
-        fabric = OverlayFabric(name, description, overlayAsn, routeReflectorAddress, devices)
+        fabric = OverlayFabric(name, description, overlayAsn, devices)
 
         self._dao.createObjects(dbSession, [fabric])
         logger.info("OverlayFabric[id: '%s', name: '%s']: created", fabric.id, fabric.name)
         self._configEngine.editFabric(dbSession, "create", fabric)
         return fabric
 
-    def modifyFabric(self, dbSession, fabric, overlayAsn, routeReflectorAddress, devices):
+    def modifyFabric(self, dbSession, fabric, overlayAsn, devices):
         '''
         Modify an existing Fabric
         '''
-        (added, deleted, deviceChangeOnly) = fabric.update(overlayAsn, routeReflectorAddress, devices)
+        (added, deleted) = fabric.update(overlayAsn, devices)
 
         self._dao.updateObjects(dbSession, [fabric])
         logger.info("OverlayFabric[id: '%s', name: '%s']: modified", fabric.id, fabric.name)
@@ -394,7 +391,6 @@ class ConfigEngine():
                 podSpines=[s.routerId for s in fabric.getPodSpines(device.podName)],
                 podLeafs=[l.routerId for l in fabric.getPodLeafs(device.podName)], 
                 allSpines=[s.routerId for s in fabric.getSpines() if s != device], 
-                routeReflector=fabric.routeReflectorAddress,
                 remoteGateways=self.getRemoteGateways(fabric, device.podName),
                 esiRouteTarget=esiRouteTarget)
             deployments.append(OverlayDeployStatus(config, fabric.getUrl(), operation, device, fabric))    
@@ -843,7 +839,7 @@ class ConfigEngine():
         # d2_id = d2.id
         # d3_id = d3.id
         # d4_id = d4.id
-        # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2, d3, d4])
+        # f1 = overlay.createFabric(session, 'f1', '', 65001, [d1, d2, d3, d4])
         # f1_id = f1.id
         # t1 = overlay.createTenant(session, 't1', '', f1)
         # t1_id = t1.id

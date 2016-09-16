@@ -39,12 +39,11 @@ class TestOverlayHelper:
         fabricDict = {
             "name": "f" + offset,
             "description": "description for f" + offset,
-            "overlayAsn": 65001,
-            "routeReflectorAddress": "2.2.2." + offset
+            "overlayAsn": 65001
         }
         deviceObject = self._createDevice(dbSession, offset)
         return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
-                    fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], [deviceObject])
+                    fabricDict['overlayAsn'], [deviceObject])
     
     def _createFabric2Spine3Leaf(self, dbSession):
         devices = []
@@ -56,11 +55,10 @@ class TestOverlayHelper:
         fabricDict = {
             "name": "f1",
             "description": "description for f1",
-            "overlayAsn": 65001,
-            "routeReflectorAddress": "2.2.2.2"
+            "overlayAsn": 65001
         }
         return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
-                    fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], devices)
+                    fabricDict['overlayAsn'], devices)
 
     def _createFabric2Pods(self, dbSession):
         devices = []
@@ -78,11 +76,10 @@ class TestOverlayHelper:
         fabricDict = {
             "name": "f1",
             "description": "description for f1",
-            "overlayAsn": 65001,
-            "routeReflectorAddress": "2.2.2.2"
+            "overlayAsn": 65001
         }
         return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
-                    fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], devices)
+                    fabricDict['overlayAsn'], devices)
 
     def _createTenant(self, dbSession, offset="1", fabricObject=None):
         tenantDict = {
@@ -276,13 +273,12 @@ class TestOverlay(unittest.TestCase):
     def testUpdateFabric(self):
         with self._dao.getReadWriteSession() as session:   
             fabricObject = self.helper._createFabric(session)
-            self.helper.overlay.modifyFabric(session, fabricObject, 65002, '3.3.3.3', [])
+            self.helper.overlay.modifyFabric(session, fabricObject, 65002, [])
             
         with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayFabric).count())
             fabricObjectFromDb = session.query(OverlayFabric).one()
             self.assertEqual(65002, fabricObjectFromDb.overlayAS)
-            self.assertEqual('3.3.3.3', fabricObjectFromDb.routeReflectorAddress)
             self.assertEqual(0, len(fabricObjectFromDb.overlay_devices))
     
     def testCreateTenant(self):

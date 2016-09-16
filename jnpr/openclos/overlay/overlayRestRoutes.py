@@ -256,7 +256,6 @@ class OverlayRestRoutes():
         fabric['name'] = fabricObject.name
         fabric['description'] = fabricObject.description
         fabric['overlayAsn'] = fabricObject.overlayAS
-        fabric['routeReflectorAddress'] = fabricObject.routeReflectorAddress
         fabric['uri'] = '%s/fabrics/%s' % (self._getUriPrefix(), fabricObject.id)
         devices = []
         for device in fabricObject.overlay_devices:
@@ -312,7 +311,6 @@ class OverlayRestRoutes():
             name = fabricDict['name']
             description = fabricDict.get('description')
             overlayAsn = int(fabricDict['overlayAsn'])
-            routeReflectorAddress = fabricDict['routeReflectorAddress']
             devices = fabricDict['devices']
             deviceObjects = []
             for device in devices:
@@ -325,7 +323,7 @@ class OverlayRestRoutes():
                     logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
                     raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
 
-            fabricObject = self._overlay.createFabric(dbSession, name, description, overlayAsn, routeReflectorAddress, deviceObjects)
+            fabricObject = self._overlay.createFabric(dbSession, name, description, overlayAsn, deviceObjects)
             logger.info("OverlayFabric[id='%s', name='%s']: created", fabricObject.id, fabricObject.name)
 
             fabric = {'fabric': self._populateFabric(fabricObject)}
@@ -357,7 +355,6 @@ class OverlayRestRoutes():
 
         try:
             overlayAsn = fabricDict.get('overlayAsn')
-            routeReflectorAddress = fabricDict.get('routeReflectorAddress')
             devices = fabricDict.get('devices')
             fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
             if devices is not None:
@@ -374,7 +371,7 @@ class OverlayRestRoutes():
             else:
                 deviceObjects = None
 
-            fabricObject = self._overlay.modifyFabric(dbSession, fabricObject, overlayAsn, routeReflectorAddress, deviceObjects)
+            fabricObject = self._overlay.modifyFabric(dbSession, fabricObject, overlayAsn, deviceObjects)
 
             fabric = {'fabric': self._populateFabric(fabricObject)}
 

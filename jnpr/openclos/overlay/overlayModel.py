@@ -92,47 +92,35 @@ class OverlayFabric(ManagedElement, Base):
     name = Column(String(255), index=True, nullable=False)
     description = Column(String(256))
     overlayAS = Column(BigInteger, nullable=False, unique=True)
-    routeReflectorAddress = Column(String(60), nullable=False, unique=True)
 
     overlay_devices = relationship(
         'OverlayDevice',
         secondary='overlayFabricOverlayDeviceLink'
     )
     
-    def __init__(self, name, description, overlayAS, routeReflectorAddress, devices):
+    def __init__(self, name, description, overlayAS, devices):
         '''
         Creates Fabric object.
         '''
         if overlayAS is None or overlayAS == '':
             raise ValueError("overlayAS cannot be None or empty")
             
-        if routeReflectorAddress is None or routeReflectorAddress == '':
-            raise ValueError("routeReflectorAddress cannot be None or empty")
-            
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
         self.overlayAS = int(overlayAS)
-        self.routeReflectorAddress = routeReflectorAddress
         for device in devices:
             self.overlay_devices.append(device)
 
     def getUrl(self):
         return "/fabrics/" + self.id
     
-    def update(self, overlayAS, routeReflectorAddress, devices):
+    def update(self, overlayAS, devices):
         '''
         Updates Fabric object.
         '''
-        deviceChangeOnly = True
         if overlayAS is not None:
-            if self.overlayAS != int(overlayAS):
-                deviceChangeOnly = False
             self.overlayAS = int(overlayAS)
-        if routeReflectorAddress is not None:
-            if self.routeReflectorAddress != routeReflectorAddress:
-                deviceChangeOnly = False
-            self.routeReflectorAddress = routeReflectorAddress
         added = []
         deleted = []
         if devices is not None:
@@ -157,7 +145,7 @@ class OverlayFabric(ManagedElement, Base):
                 if add:
                     added.append(newDevice)
                     self.overlay_devices.append(newDevice)
-        return (added, deleted, deviceChangeOnly)
+        return (added, deleted)
 
     def getSpines(self):
         return [dev for dev in self.overlay_devices if dev.role == "spine"]

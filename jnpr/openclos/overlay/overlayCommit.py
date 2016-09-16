@@ -341,7 +341,7 @@ class OverlayCommitQueue(SingletonBase):
         # d1_id = d1.id
         # d2 = overlay.createDevice(session, 'd2', 'description for d2', 'leaf', '10.92.82.13', '10.92.82.13', 'pod1', 'root', 'Embe1mpls')
         # d2_id = d2.id
-        # f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.2', [d1, d2])
+        # f1 = overlay.createFabric(session, 'f1', '', 65001, [d1, d2])
         # f1_id = f1.id
         # t1 = overlay.createTenant(session, 't1', '', f1)
         # t1_id = t1.id
