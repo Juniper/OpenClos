@@ -539,7 +539,7 @@ class OverlayDeployStatus(ManagedElement, Base):
     overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'))
     overlay_fabric = relationship("OverlayFabric", backref=backref('deploy_status', cascade='all, delete, delete-orphan'))
     status = Column(Enum('unknown', 'progress', 'success', 'failure'), default='unknown')
-    statusReason = Column(String(1024))
+    statusReason = Column(String(4096))
     # REVISIT: This constraint seems wrong. If we configure 2 subnets under the same network, 2 rows will be created. 
     # Both rows will have the same object_url which is the network object's url and the same device id.
     # __table_args__ = (
