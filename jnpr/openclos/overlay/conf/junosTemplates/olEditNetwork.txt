@@ -37,8 +37,12 @@ routing-instances {
 
 {% if role == "leaf" and oldVlanId and interfaces and interfaces|length > 0%}
 interfaces {
-    {% for interface in interfaces %}{{interface}} {
+    {% for (interface, networkCount) in interfaces %}{{interface}} {
+        {% if networkCount == 1%}
+        native-vlan-id {{vlanId}};
+        {% endif %}
         unit {{vlanId}} {
+            encapsulation vlan-bridge;
             vlan-id {{vlanId}};
         }
         delete:
@@ -48,7 +52,7 @@ interfaces {
 }
 vlans {
     {{networkName}} {
-        {% for interface in interfaces %}
+        {% for (interface, networkCount) in interfaces %}
         interface {{interface}}.{{vlanId}};
         delete:
         interface {{interface}}.{{oldVlanId}};
