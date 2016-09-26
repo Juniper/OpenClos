@@ -495,11 +495,11 @@ class ConfigEngine():
             for l2ap in network.overlay_l2aps:
                 if l2ap.type == 'l2port':
                     if l2ap.overlay_device_id == leaf.id:
-                        interfaces.append(l2ap.configName())
+                        interfaces.append((l2ap.configName(), len(l2ap.overlay_networks)))
                 elif l2ap.type == 'aggregatedL2port':
                     for member in l2ap.members:
                         if member.overlay_device_id == leaf.id:
-                            interfaces.append(l2ap.configName())
+                            interfaces.append((l2ap.configName(), len(l2ap.overlay_networks)))
                             
             config = self._olEditNetwork.render(
                 role="leaf",
