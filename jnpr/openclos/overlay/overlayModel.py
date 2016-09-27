@@ -161,7 +161,13 @@ class OverlayFabricOverlayDeviceLink(ManagedElement, Base):
     overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'), primary_key=True)
     overlay_device_id = Column(String(60), ForeignKey('overlayDevice.id'), primary_key=True)
     __table_args__ = (
-        Index('overlay_fabric_id_overlay_device_id_uindex', 'overlay_fabric_id', 'overlay_device_id', unique=True),
+        # NOTE currently we do not support multiple overlay over same underlay. In another word, 
+        # overlayDevice is not shared by multiple overlayFabrics. 
+        # When we do support multiple overlay over same underlay in the future, disable 
+        # overlay_device_id_uindex and re-enable overlay_fabric_id_overlay_device_id_uindex
+        #
+        # Index('overlay_fabric_id_overlay_device_id_uindex', 'overlay_fabric_id', 'overlay_device_id', unique=True),
+        Index('overlay_device_id_uindex', 'overlay_device_id', unique=True),
     )
 
 class OverlayTenant(ManagedElement, Base):
@@ -255,7 +261,7 @@ class OverlayNetwork(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     name = Column(String(255), nullable=False)
     description = Column(String(256))
-    vlanid = Column(Integer, unique=True, nullable=False) # for current release, vlanid has to be globally unique
+    vlanid = Column(Integer, nullable=False) # Allow same vlan-id on different overlay fabrics. Programmatically check vlan-id uniqueness wihtin the same overlay fabric.
     vnid = Column(Integer, unique=True, nullable=False) # for current release, vnid has to be globally unique
     pureL3Int = Column(Boolean)
     overlay_vrf_id = Column(String(60), ForeignKey('overlayVrf.id'), nullable=False)
@@ -272,6 +278,14 @@ class OverlayNetwork(ManagedElement, Base):
         if vlanid < 1 or vlanid > 4096:
             raise ValueError("vlanid %s out of range (1-4096)" % vlanid)
 
+        # Make sure vlan-id is unique within same overlay fabric
+        fabric = overlay_vrf.overlay_tenant.overlay_fabric
+        for tenant in fabric.overlay_tenants:
+            for vrf in tenant.overlay_vrfs:
+                for network in vrf.overlay_networks:
+                    if vlanid == network.vlanid:
+                        raise ValueError("vlanid %s is not unique within overlayFabric[id: '%s', name: '%s']" % (vlanid, fabric.id, fabric.name)) 
+        
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
