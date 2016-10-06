@@ -704,7 +704,6 @@ class ConfigEngine():
         deployments = []
         vrf = network.overlay_vrf
         asn = vrf.overlay_tenant.overlay_fabric.overlayAS
-        interfaces = [l2ap.configName() for l2ap in network.overlay_l2aps]
 
         for spine in vrf.getSpines():
             if spine in deployedDevices:
@@ -719,6 +718,17 @@ class ConfigEngine():
         
         for leaf in vrf.getLeafs():
             if leaf in deployedDevices:
+                # Compile a list of interfaces that belong to this leaf
+                interfaces = []
+                for l2ap in network.overlay_l2aps:
+                    if l2ap.type == 'l2port':
+                        if l2ap.overlay_device_id == leaf.id:
+                            interfaces.append((l2ap.configName(), len(l2ap.overlay_networks)))
+                    elif l2ap.type == 'aggregatedL2port':
+                        for member in l2ap.members:
+                            if member.overlay_device_id == leaf.id:
+                                interfaces.append((l2ap.configName(), len(l2ap.overlay_networks)))
+                                
                 config = self._olDeleteNetwork.render(
                     role="leaf",
                     vrfName=vrf.name,

@@ -41,7 +41,11 @@ policy-options {
 
 {% if role == "leaf" %}
 interfaces {
-    {% for interface in interfaces %}{{interface}} {
+    {% for (interface, networkCount) in interfaces %}{{interface}} {
+        {% if networkCount == 1%}
+        delete:
+        native-vlan-id;
+        {% endif %}
         delete:
         unit {{vlanId}};
     }
