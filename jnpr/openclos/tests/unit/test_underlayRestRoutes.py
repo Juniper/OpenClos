@@ -290,7 +290,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int)
         self.assertTrue(response.json['OpenClosConf']['restServer'].has_key('port'))
         self.assertTrue(response.json['OpenClosConf']['snmpTrap']['openclos_trap_group'].has_key('port'))   
-        self.assertEquals(19, len(response.json['OpenClosConf']['supportedDevices']))
+        self.assertEquals(18, len(response.json['OpenClosConf']['supportedDevices']))
         
     def testdeletePod(self):
         with self._dao.getReadWriteSession() as session:

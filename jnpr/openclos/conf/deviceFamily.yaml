@@ -33,9 +33,6 @@ deviceFamily:
         spine:
             uplinkPorts: 
             downlinkPorts: 
-        leaf:
-            uplinkPorts: 
-            downlinkPorts: 
              
     qfx5100-48s-6q:
         leaf:
@@ -97,10 +94,6 @@ deviceFamily:
             # if ULC-30Q28 is used, the port range would change to 'et-*/0/[0-29]'
             uplinkPorts: 
             downlinkPorts: ['et-0/0/[0-35]', 'et-1/0/[0-35]', 'et-2/0/[0-35]', 'et-3/0/[0-35]', 'et-4/0/[0-35]', 'et-5/0/[0-35]', 'et-6/0/[0-35]', 'et-7/0/[0-35]']
-        leaf:
-            # assuming 8 x ULC-60S-6Q used
-            uplinkPorts: ['et-0/0/[60-65]', 'et-1/0/[60-65]', 'et-2/0/[60-65]', 'et-3/0/[60-65]', 'et-4/0/[60-65]', 'et-5/0/[60-65]', 'et-6/0/[60-65]', 'et-7/0/[60-65]']
-            downlinkPorts: ['et-0/0/[0-59]', 'et-1/0/[0-59]', 'et-2/0/[0-59]', 'et-3/0/[0-59]', 'et-4/0/[0-59]', 'et-5/0/[0-59]', 'et-6/0/[0-59]', 'et-7/0/[0-59]']
 
 5Stage:
         
