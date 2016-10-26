@@ -163,8 +163,8 @@ class TestDeviceSku(unittest.TestCase):
         self.assertEqual(18, len(ports['downlinkPorts']))
 
         ports = self.deviceSku.getPortNamesForDeviceFamily('qfx5100-24q-2p', 'leaf')
-        self.assertEqual(0, len(ports['uplinkPorts']))
-        self.assertEqual(0, len(ports['downlinkPorts']))
+        self.assertEqual(4, len(ports['uplinkPorts']))
+        self.assertEqual(28, len(ports['downlinkPorts']))
         
         ports = self.deviceSku.getPortNamesForDeviceFamily('qfx5100-48s-6q', 'fabric')
         self.assertEqual(0, len(ports['uplinkPorts']))
