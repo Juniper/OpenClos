@@ -111,8 +111,8 @@ lineCard:
         uplinkPorts:
         downlinkPorts: 'et-0/0/[0-35]'
     ULC-60S-6Q:
-        uplinkPorts: 'et-0/0/[60-65]'
-        downlinkPorts: 'et-0/0/[0-59]'
+        uplinkPorts: 'et-0/0/[0-59]'
+        downlinkPorts: 'et-0/0/[60-65]'
         
         
     
