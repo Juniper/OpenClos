@@ -13,7 +13,7 @@ import time
 
 from jnpr.junos import Device as DeviceConnection
 from jnpr.junos.factory import loadyaml
-from jnpr.junos.exception import ConnectError, RpcError, CommitError, LockError
+from jnpr.junos.exception import ConnectError, RpcError, CommitError, LockError, ConfigLoadError
 from jnpr.junos.utils.config import Config
 
 from loader import loadLoggingConfig, OpenClosProperty
@@ -318,8 +318,26 @@ class NetconfConnection(AbstractConnection):
             logger.info('%s Committed config', self._debugContext)
         except CommitError as exc:
             logger.error('updateDeviceConfiguration failed for %s, CommitError: %s, %s', self._debugContext, exc.__repr__(), exc.rpc_error)
-            configurationUnit.rollback() 
-            raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self._debugContext), exc.__repr__())
+            only_warnings = True
+            for err in exc.errs:
+                if err['severity'] == 'error':
+                    only_warnings = False
+            if not only_warnings:
+                configurationUnit.rollback() 
+                raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self._debugContext), exc.__repr__())
+            else:
+                logger.error('Found only warnings. Ignored')
+        except ConfigLoadError as exc:
+            logger.error('updateDeviceConfiguration failed for %s, ConfigLoadError: %s, %s', self._debugContext, exc.__repr__(), exc.rpc_error)
+            only_warnings = True
+            for err in exc.errs:
+                if err['severity'] == 'error':
+                    only_warnings = False
+            if not only_warnings:
+                configurationUnit.rollback() 
+                raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self._debugContext), exc.__repr__())
+            else:
+                logger.error('Found only warnings. Ignored')
         except RpcError as exc:
             logger.error('updateDeviceConfiguration failed for %s, RpcError: %s', self._debugContext, exc.__repr__())
             configurationUnit.rollback() 
@@ -358,6 +376,23 @@ class NetconfConnection(AbstractConnection):
                 logger.debug('%s failed delete vcp slot: %s, port: %d', self._debugContext,slot, port)
             else:
                 logger.debug('%s deleted vcp slot: %s, port: %d', self._debugContext,slot, port)
+
+    def runCommand(self, command):
+        logger.debug('%s command [%s] started', self._debugContext, command)
+
+        try:
+            result = self._deviceConnection.cli(command)        
+            logger.debug('%s command [%s] result: %s', self._debugContext, command, result)
+            return result
+        except RpcError as exc:
+            logger.error('%s command [%s] failure, %s', self._debugContext, command, exc)
+            raise DeviceRpcFailed("device '%s': command [%s]" % (self._ip, command), exc)
+        except Exception as exc:
+            logger.error('%s command [%s] unknown error, %s', self._debugContext, command, exc)
+            logger.debug('StackTrace: %s', traceback.format_exc())
+            raise DeviceRpcFailed("device '%s': command [%s]" % (self._ip, command), exc)
+        finally:
+            logger.debug('%s command [%s] ended', self._debugContext, command)
 
 def stripPlusSignFromIpString(ipString):
     pos = ipString.find('+')
