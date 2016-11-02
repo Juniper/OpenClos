@@ -175,8 +175,8 @@ class TestOverlayHelper:
 
     def _createAggregatedL2port(self, dbSession):
         aggregatedL2portDict = {
-            "name": "aggregatedL2port1",
-            "description": "description for aggregatedL2port1",
+            "name": "ae0",
+            "description": "description for ae0",
             "esi": "00:01:01:01:01:01:01:01:01:01",
             "lacp": "00:00:00:01:01:01"
         }
@@ -192,12 +192,12 @@ class TestOverlayHelper:
         deviceObject = networkObject1.overlay_vrf.overlay_tenant.overlay_fabric.overlay_devices[0]
         
         members1 = [{ "interface": "xe-0/0/11", "device": deviceObject }]
-        port1 = self.overlay.createAggregatedL2port(dbSession, "aggregatedL2port1", "description for aggregatedL2port1", [networkObject1], members1, "00:01:01:01:01:01:01:01:01:01", "00:00:00:01:01:01")
+        ae0 = self.overlay.createAggregatedL2port(dbSession, "ae0", "description for ae0", [networkObject1], members1, "00:01:01:01:01:01:01:01:01:01", "00:00:00:01:01:01")
         members2 = [{ "interface": "xe-0/0/12", "device": deviceObject }]
-        port2 = self.overlay.createAggregatedL2port(dbSession, "aggregatedL2port2", "description for aggregatedL2port2", [networkObject2], members2, "00:01:01:01:01:01:01:01:01:02", "00:00:00:01:01:02")
+        ae1 = self.overlay.createAggregatedL2port(dbSession, "ae1", "description for ae1", [networkObject2], members2, "00:01:01:01:01:01:01:01:01:02", "00:00:00:01:01:02")
         members3 = [{ "interface": "xe-0/0/13", "device": deviceObject }]
-        port3 = self.overlay.createAggregatedL2port(dbSession, "aggregatedL2port3", "description for aggregatedL2port3", [networkObject1, networkObject2], members3, "00:01:01:01:01:01:01:01:01:03", "00:00:00:01:01:03")
-        return [port1, port2, port3]
+        ae2 = self.overlay.createAggregatedL2port(dbSession, "ae2", "description for ae2", [networkObject1, networkObject2], members3, "00:01:01:01:01:01:01:01:01:03", "00:00:00:01:01:03")
+        return [ae0, ae1, ae2]
 
     def _createDeployStatus(self, dbSession, deviceObject, vrfObject):
         deployStatusDict = {
@@ -754,6 +754,12 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(0, session.query(OverlayL2port).count())
             self.assertEqual(10, session.query(OverlayDeployStatus).count())
 
+    def testGetCurrentLagNumber(self):
+        with self._dao.getReadWriteSession() as session:
+            ports = self.helper._create2Network3AggregatedL2port(session)
+            lagNumber = self.helper.overlay._configEngine._getCurrentLagNumber(session)
+            self.assertEqual(2, lagNumber)
+        
     def testConfigureAggregatedL2Port(self):
         with self._dao.getReadWriteSession() as session:
             ports = self.helper._create2Network3AggregatedL2port(session)

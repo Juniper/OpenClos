@@ -7,6 +7,7 @@ Created on Nov 23, 2015
 import logging
 import os
 import itertools
+import re
 from netaddr import IPNetwork, valid_ipv4, valid_ipv6
 from netaddr.core import AddrFormatError, INET_PTON
 
@@ -376,6 +377,8 @@ class ConfigEngine():
         self._olDeleteSubnet = self._templateLoader.getTemplate("olDeleteSubnet.txt")
         self._olDeleteL2port = self._templateLoader.getTemplate("olDeleteL2port.txt")
         self._olDeleteAggregatedL2port = self._templateLoader.getTemplate("olDeleteAggregatedL2port.txt")
+        
+        self._aggregatedL2portNamePattern = re.compile(r'ae([0-9]+)')
 
     def editFabric(self, dbSession, operation, fabric):
         '''
@@ -581,6 +584,16 @@ class ConfigEngine():
         logger.info("editL2port [l2port id: '%s', l2port name: '%s']: configured", l2port.id, l2port.interface)
         self._commitQueue.addJobs(deployments)
 
+    def _getCurrentLagNumber(self, dbSession):
+        lagNumber = 0
+        lagName = dbSession.query(OverlayAggregatedL2port).order_by(OverlayAggregatedL2port.name.desc()).first()
+        if lagName:
+            lagNameGroup = self._aggregatedL2portNamePattern.match(lagName.name)
+            if lagNameGroup:
+                lagNumber = int(lagNameGroup.group(1))
+        return lagNumber
+            
+    
     def editAggregatedL2port(self, dbSession, operation, aggregatedL2port, deletedNetworks=None):
         '''
         Create Aggregated L2 Port
@@ -600,14 +613,14 @@ class ConfigEngine():
             membersByDevice[member.overlay_device.id]['members'].append(member.interface)
                 
         for deviceId, deviceMembers in membersByDevice.iteritems():
-            lagCount = len(deviceMembers['device'].aggregatedL2port_members)
+            nextLagNumber = self._getCurrentLagNumber(dbSession) + 1
             config = self._olEditAggregatedL2port.render(
                 memberInterfaces=deviceMembers['members'], 
                 networks=networks, 
                 lagName=aggregatedL2port.name, 
                 ethernetSegmentId=aggregatedL2port.esi, 
                 systemId=aggregatedL2port.lacp, 
-                lagCount=lagCount,
+                lagCount=nextLagNumber,
                 deletedNetworks=deletedNetworks2)
             deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
             
@@ -766,13 +779,9 @@ class ConfigEngine():
                 membersByDevice[member.overlay_device.id]['members'].append(member.interface)
                 
         for deviceId, deviceMembers in membersByDevice.iteritems():
-            lagCount = len(deviceMembers['device'].aggregatedL2port_members) - len(deviceMembers['members'])
-            if lagCount < 0:
-                raise ValueError("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: lagCount is already 0. It cannot be decreased." % (aggregatedL2port.id, aggregatedL2port.name))
             config = self._olDeleteAggregatedL2port.render(
                 memberInterfaces=deviceMembers['members'], 
-                lagName=aggregatedL2port.name, 
-                lagCount=lagCount)
+                lagName=aggregatedL2port.name)
             deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "delete", deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
