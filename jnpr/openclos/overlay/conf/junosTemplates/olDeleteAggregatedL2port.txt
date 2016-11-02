@@ -1,18 +1,3 @@
-{% if lagCount > 0 %}
-chassis {
-    aggregated-devices {
-        ethernet {
-            device-count {{lagCount}};
-        }
-    }
-}
-{% else %}
-chassis {
-    delete:
-    aggregated-devices;
-}
-{% endif %}
-
 interfaces {
     {% for memberInterface in memberInterfaces %}
     delete:

@@ -9,6 +9,7 @@ import logging
 from threading import Thread, Event, RLock
 import concurrent.futures
 import Queue
+import re
 from sqlalchemy.orm import exc
 
 from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus, OverlayL2ap
@@ -26,7 +27,7 @@ moduleName = 'overlayCommit'
 loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 
-class OverlayCommitJob():
+class OverlayCommitJob(object):
     def __init__(self, parent, deployStatusObject):
         # Note we only hold on to the data from the deployStatusObject (deviceId, configlet, etc.). 
         # We are not holding reference to the deployStatusObject itself as it can become invalid when db session is out of scope
@@ -141,6 +142,102 @@ class OverlayCommitJob():
             logger.error('StackTrace: %s', traceback.format_exc())
             raise
 
+class OverlayAggregatedL2portCommitJob(OverlayCommitJob):
+    def __init__(self, parent, deployStatusObject):
+        super(OverlayAggregatedL2portCommitJob, self).__init__(parent, deployStatusObject)
+        self._deviceCountPattern = re.compile(r'device-count ([0-9]+);')
+
+    def updateConfiglet(self, configlet):
+        try:
+            with self.parent._dao.getReadWriteSession() as session:
+                statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).first()
+                if statusObject is None:
+                    logger.debug("OverlayDeployStatus %s no longer exists", self.id)
+                    return
+
+                # Update configlet
+                statusObject.configlet = configlet
+                
+        except Exception as exc:
+            logger.error("%s", exc)
+            logger.error('StackTrace: %s', traceback.format_exc())
+
+    def commit(self):
+        try:
+            # Note we don't want to hold the caller's session for too long since this function is potentially lengthy
+            # that is why we don't ask caller to pass a dbSession to us. Instead we get the session inside this method
+            # only long enough to update the status value
+            logger.info("Job %s: starting commit on device [%s]", self.id, self.queueId)
+
+            # first update the status to 'progress'
+            self.updateStatus("progress")
+                
+            # now commit and set the result/reason accordingly
+            result = 'success'
+            reason = None
+            try:
+                with CachedConnectionFactory.getInstance().connection(NetconfConnection,
+                                                                      self.deviceIp,
+                                                                      username=self.deviceUser,
+                                                                      password=self.devicePass) as connector:
+                                                                      
+                    # Find the device-count on the device
+                    deviceCountOnDevice = 0
+                    deviceCountStanza = connector.runCommand("show configuration chassis aggregated-devices ethernet device-count")
+                    if deviceCountStanza:
+                        group = self._deviceCountPattern.match(deviceCountStanza.strip())
+                        if group:
+                            deviceCountOnDevice = int(group.group(1))
+                    
+                    # Find the device-count in self.configlet
+                    deviceCountOnFile = 0
+                    for line in self.configlet.split('\n'):
+                        group = self._deviceCountPattern.match(line.strip())
+                        if group:
+                            deviceCountOnFile = int(group.group(1))
+                            break
+                    
+                    # If deviceCountOnDevice > deviceCountOnFile, this means the device has already a higher
+                    # value, we should not change it to lower value. So set configlet to use deviceCountOnDevice which
+                    # will result in a no-op when commit.
+                    #
+                    # Else if deviceCountOnDevice <= deviceCountOnFile, this means the device currently has a lower or equal 
+                    # value, we should just go ahead commit because configlet contains the higher value.
+                    logger.debug("deviceCountOnDevice=%d, deviceCountOnFile=%d", deviceCountOnDevice, deviceCountOnFile)
+                    if deviceCountOnDevice > deviceCountOnFile:
+                        logger.debug("device-count value on device is already bigger than what we are about to set. Probably due to OOB change, DO NOT modify device-count stanza")
+                        self.configlet = self._deviceCountPattern.sub("device-count %d;" % deviceCountOnDevice, self.configlet)
+                        self.updateConfiglet(self.configlet)
+                    
+                    # Now it is time to commit
+                    connector.updateConfig(self.configlet)
+            except DeviceConnectFailed as exc:
+                #logger.error("%s", exc)
+                #logger.error('StackTrace: %s', traceback.format_exc())
+                result = 'failure'
+                reason = exc.__repr__()
+            except DeviceRpcFailed as exc:
+                #logger.error("%s", exc)
+                #logger.error('StackTrace: %s', traceback.format_exc())
+                result = 'failure'
+                reason = exc.__repr__()
+            except Exception as exc:
+                #logger.error("%s", exc)
+                #logger.error('StackTrace: %s', traceback.format_exc())
+                result = 'failure'
+                reason = str(exc)
+            
+            # commit is done so update the result
+            self.updateStatus(result, reason)
+                
+            logger.info("Job %s: done with device [%s]", self.id, self.queueId)
+            # remove device id from cache
+            self.parent.markDeviceIdle(self.queueId)
+        except Exception as exc:
+            logger.error("Job %s: error '%s'", self.id, exc)
+            logger.error('StackTrace: %s', traceback.format_exc())
+            raise
+
 class OverlayCommitQueue(SingletonBase):
     def __init__(self, daoClass=DEFAULT_DAO_CLASS):
         self._dao = daoClass.getInstance()
@@ -174,7 +271,12 @@ class OverlayCommitQueue(SingletonBase):
     def addJobs(self, deployStatusObjects):
         jobs = []
         for deployStatusObject in deployStatusObjects:
-            jobs.append(OverlayCommitJob(self, deployStatusObject))
+            objectUrl = deployStatusObject.object_url
+            # Special case: aggregatedL2port needs to read existing value from current config and push a new value
+            if objectUrl.startswith('/aggregatedL2ports'): 
+                jobs.append(OverlayAggregatedL2portCommitJob(self, deployStatusObject))
+            else:
+                jobs.append(OverlayCommitJob(self, deployStatusObject))
             logger.debug("Job %s: added to device [%s]", jobs[-1].id, jobs[-1].queueId)
             
         with self.__lock:
