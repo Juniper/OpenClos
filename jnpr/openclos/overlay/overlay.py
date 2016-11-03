@@ -777,11 +777,13 @@ class ConfigEngine():
                 if member.overlay_device.id not in membersByDevice:
                     membersByDevice[member.overlay_device.id] = {'members': [], 'device': member.overlay_device}
                 membersByDevice[member.overlay_device.id]['members'].append(member.interface)
-                
+
+        networks = [(net.vlanid, net.vnid, net.name) for net in aggregatedL2port.overlay_networks]
         for deviceId, deviceMembers in membersByDevice.iteritems():
             config = self._olDeleteAggregatedL2port.render(
                 memberInterfaces=deviceMembers['members'], 
-                lagName=aggregatedL2port.name)
+                lagName=aggregatedL2port.name,
+                networks=networks)
             deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "delete", deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
         self._dao.createObjects(dbSession, deployments)
         logger.info("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
