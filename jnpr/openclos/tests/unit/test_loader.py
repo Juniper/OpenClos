@@ -163,8 +163,8 @@ class TestDeviceSku(unittest.TestCase):
         self.assertEqual(18, len(ports['downlinkPorts']))
 
         ports = self.deviceSku.getPortNamesForDeviceFamily('qfx5100-24q-2p', 'leaf')
-        self.assertEqual(4, len(ports['uplinkPorts']))
-        self.assertEqual(28, len(ports['downlinkPorts']))
+        self.assertEqual(8, len(ports['uplinkPorts']))
+        self.assertEqual(24, len(ports['downlinkPorts']))
         
         ports = self.deviceSku.getPortNamesForDeviceFamily('qfx5100-48s-6q', 'fabric')
         self.assertEqual(0, len(ports['uplinkPorts']))
@@ -184,7 +184,7 @@ class TestDeviceSku(unittest.TestCase):
         
         ports=self.deviceSku.getPortNamesForDeviceFamily('qfx5200-32c-32q','leaf')
         self.assertEqual(8, len(ports['uplinkPorts']))
-        self.assertEqual(28, len(ports['downlinkPorts']))
+        self.assertEqual(24, len(ports['downlinkPorts']))
 
     def testGetSupportedDeviceFamilyBadInputFile(self):
         self.deviceSku = DeviceSku('')
