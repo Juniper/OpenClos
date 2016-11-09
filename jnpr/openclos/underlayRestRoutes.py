@@ -430,6 +430,7 @@ class UnderlayRestRoutes():
         except PodNotFound as exc:
             raise bottle.HTTPError(404, exception=exc)
         except Exception as exc:
+            logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(500, exception=exc)
 
     def createDeviceConfiguration(self, dbSession, podId):
@@ -441,6 +442,7 @@ class UnderlayRestRoutes():
         except PodNotFound as exc:
             raise bottle.HTTPError(404, exception=exc)
         except Exception as exc:
+            logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(500, exception=exc)
             
     def createZtpConfiguration(self, dbSession, podId):
@@ -450,6 +452,7 @@ class UnderlayRestRoutes():
         except PodNotFound as exc:
             raise bottle.HTTPError(404, exception=exc)
         except Exception as exc:
+            logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(500, exception=exc)
 
     def reconfigPod(self, dbSession, podId):
@@ -472,6 +475,7 @@ class UnderlayRestRoutes():
             url = str(bottle.request.url).translate(None, ',') + '/' + updatedPod.id
             return self.getPod(dbSession, podId, url)
         except Exception as exc:
+            logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(400, exception=exc)
     
     def setOpenClosConfigParams(self):
@@ -547,6 +551,7 @@ class UnderlayRestRoutes():
             return self.l2Report.generateReport(podId, cachedData)
 
         except Exception as exc:
+            logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(404, exception=PodNotFound(podId, exc))
     
     def getL3Report(self, dbSession, podId):
@@ -561,4 +566,5 @@ class UnderlayRestRoutes():
             return self.l3Report.generateReport(podId, cachedData)
 
         except Exception as exc:
+            logger.debug('StackTrace: %s', traceback.format_exc())
             raise bottle.HTTPError(404, exception=PodNotFound(podId, exc))

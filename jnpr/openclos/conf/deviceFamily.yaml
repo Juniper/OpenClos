@@ -55,7 +55,7 @@ deviceFamily:
             downlinkPorts: 'et-0/0/[00-31]'
         leaf:
             uplinkPorts: 'et-0/0/[00-07]'
-            downlinkPorts: 'et-0/0/[08-35]'
+            downlinkPorts: 'et-0/0/[08-31]'
     ex4300-24p:
         leaf:
             uplinkPorts: 'et-0/1/[0-3]'
@@ -84,8 +84,8 @@ deviceFamily:
             uplinkPorts: 
             downlinkPorts: ['et-0/0/[0-23]', 'et-0/1/[0-3]', 'et-0/2/[0-3]']
         leaf:
-            uplinkPorts: 'et-0/0/[00-03]'
-            downlinkPorts: ['et-0/0/[04-23]', 'et-0/1/[0-3]', 'et-0/2/[0-3]']
+            uplinkPorts: 'et-0/0/[00-07]'
+            downlinkPorts: ['et-0/0/[08-23]', 'et-0/1/[0-3]', 'et-0/2/[0-3]']
     qfx10002-36q:
         spine:
             uplinkPorts:
