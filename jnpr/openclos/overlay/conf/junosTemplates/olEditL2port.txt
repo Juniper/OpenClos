@@ -3,7 +3,7 @@ interfaces {
         delete:
         unit 0;
         flexible-vlan-tagging;
-        encapsulation flexible-ethernet-services;
+        encapsulation extended-vlan-bridge;
         {% if networks and networks|length == 1 %}
         native-vlan-id {{networks[0][0]}};
         {% else %}
@@ -12,7 +12,6 @@ interfaces {
         {% endif %}
         {% if networks and networks|length > 0 %}
         {% for network in networks %}unit {{network[0]}} {
-            encapsulation vlan-bridge;
             vlan-id {{network[0]}};
         }
         {% endfor %}
