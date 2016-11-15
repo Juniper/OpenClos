@@ -39,11 +39,12 @@ class TestOverlayHelper:
         fabricDict = {
             "name": "f" + offset,
             "description": "description for f" + offset,
-            "overlayAsn": 65001
+            "overlayAsn": 65001,
+            "routeReflectorAddress": "2.2." + offset + ".0/24"
         }
         deviceObject = self._createDevice(dbSession, offset)
         return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
-                    fabricDict['overlayAsn'], [deviceObject])
+                    fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], [deviceObject])
     
     def _createFabric2Spine3Leaf(self, dbSession):
         devices = []
@@ -55,10 +56,11 @@ class TestOverlayHelper:
         fabricDict = {
             "name": "f1",
             "description": "description for f1",
-            "overlayAsn": 65001
+            "overlayAsn": 65001,
+            "routeReflectorAddress": "2.2.1.0/24"
         }
         return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
-                    fabricDict['overlayAsn'], devices)
+                    fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], devices)
 
     def _createFabric2Pods(self, dbSession):
         devices = []
@@ -76,10 +78,11 @@ class TestOverlayHelper:
         fabricDict = {
             "name": "f1",
             "description": "description for f1",
-            "overlayAsn": 65001
+            "overlayAsn": 65001,
+            "routeReflectorAddress": "2.2.1.0/24"
         }
         return self.overlay.createFabric(dbSession, fabricDict['name'], fabricDict.get('description'), 
-                    fabricDict['overlayAsn'], devices)
+                    fabricDict['overlayAsn'], fabricDict['routeReflectorAddress'], devices)
 
     def _createTenant(self, dbSession, offset="1", fabricObject=None):
         tenantDict = {
@@ -273,12 +276,13 @@ class TestOverlay(unittest.TestCase):
     def testUpdateFabric(self):
         with self._dao.getReadWriteSession() as session:   
             fabricObject = self.helper._createFabric(session)
-            self.helper.overlay.modifyFabric(session, fabricObject, 65002, [])
+            self.helper.overlay.modifyFabric(session, fabricObject, 65002, '2.2.1.0/24', [])
             
         with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayFabric).count())
             fabricObjectFromDb = session.query(OverlayFabric).one()
             self.assertEqual(65002, fabricObjectFromDb.overlayAS)
+            self.assertEqual('2.2.1.0/24', fabricObjectFromDb.routeReflectorAddress)
             self.assertEqual(0, len(fabricObjectFromDb.overlay_devices))
     
     def testCreateTenant(self):
@@ -474,6 +478,36 @@ class TestConfigEngine(unittest.TestCase):
             self.assertIn("policy-options", leaf1Config)
             self.assertNotIn("policy-statement OVERLAY-IN", leaf1Config)
 
+    def test_allocateClusterId(self):
+        regex = re.compile("\s*cluster\s+(.+);\s*") 
+        with self._dao.getReadWriteSession() as session:
+            fabric= self.helper._createFabric2Pods(session)
+            # overlay.createXYZ would also call required configure
+            #self.configEngine.configureFabric(session, "create", fabric)
+            
+            self.assertEqual(9, session.query(OverlayDeployStatus).count())
+            deployments = session.query(OverlayDeployStatus).all()
+
+            spine1Config = deployments[0].configlet
+            print "spine1 pod1:\n" + spine1Config
+            clusterId = regex.search(spine1Config).group(1)
+            self.assertEquals('2.2.1.1', clusterId)
+
+            spine2Config = deployments[1].configlet
+            print "spine2 pod1:\n" + spine2Config
+            clusterId = regex.search(spine2Config).group(1)
+            self.assertEquals('2.2.1.1', clusterId)
+            
+            spine6Config = deployments[5].configlet
+            print "spine6 pod2:\n" + spine6Config
+            clusterId = regex.search(spine6Config).group(1)
+            self.assertEquals('2.2.1.2', clusterId)
+
+            spine7Config = deployments[6].configlet
+            print "spine7 pod2:\n" + spine7Config
+            clusterId = regex.search(spine7Config).group(1)
+            self.assertEquals('2.2.1.2', clusterId)
+            
     def testConfigureFabric2Pods(self):
         regex = re.compile(".*(group\soverlay-evpn\s\{.*?}).*(group\soverlay-evpn-rr\s\{.*?}).*", re.DOTALL)
         with self._dao.getReadWriteSession() as session:

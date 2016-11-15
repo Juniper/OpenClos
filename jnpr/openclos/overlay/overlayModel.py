@@ -92,35 +92,42 @@ class OverlayFabric(ManagedElement, Base):
     name = Column(String(255), index=True, nullable=False)
     description = Column(String(256))
     overlayAS = Column(BigInteger, nullable=False, unique=True)
-
+    routeReflectorAddress = Column(String(60), nullable=False, unique=True)
+  
     overlay_devices = relationship(
         'OverlayDevice',
         secondary='overlayFabricOverlayDeviceLink'
     )
     
-    def __init__(self, name, description, overlayAS, devices):
+    def __init__(self, name, description, overlayAS, routeReflectorAddress, devices):
         '''
         Creates Fabric object.
         '''
         if overlayAS is None or overlayAS == '':
             raise ValueError("overlayAS cannot be None or empty")
             
+        if routeReflectorAddress is None or routeReflectorAddress == '':
+            raise ValueError("routeReflectorAddress cannot be None or empty")
+        
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
         self.overlayAS = int(overlayAS)
+        self.routeReflectorAddress = routeReflectorAddress
         for device in devices:
             self.overlay_devices.append(device)
 
     def getUrl(self):
         return "/fabrics/" + self.id
     
-    def update(self, overlayAS, devices):
+    def update(self, overlayAS, routeReflectorAddress, devices):
         '''
         Updates Fabric object.
         '''
         if overlayAS is not None:
             self.overlayAS = int(overlayAS)
+        if routeReflectorAddress is not None:
+            self.routeReflectorAddress = routeReflectorAddress
         added = []
         deleted = []
         if devices is not None:
@@ -170,6 +177,29 @@ class OverlayFabricOverlayDeviceLink(ManagedElement, Base):
         Index('overlay_device_id_uindex', 'overlay_device_id', unique=True),
     )
 
+class OverlayFabricPodClusterId(ManagedElement, Base):
+    __tablename__ = 'overlayFabricPodCluster'
+    overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'), primary_key=True)
+    podName = Column(String(60), nullable=False, primary_key=True)
+    clusterId = Column(String(60), nullable=False)
+
+    def __init__(self, overlay_fabric_id, podName, clusterId):
+        '''
+        Creates OverlayFabricPodClusterId object.
+        '''
+        self.overlay_fabric_id = overlay_fabric_id
+        self.podName = podName
+        self.clusterId = clusterId
+    
+    def update(self, clusterId):
+        '''
+        Updates OverlayFabricPodClusterId object.
+        '''
+        self.clusterId = clusterId
+    
+    def key(self):
+        return self.overlay_fabric_id + ':' + self.podName
+        
 class OverlayTenant(ManagedElement, Base):
     __tablename__ = 'overlayTenant'
     id = Column(String(60), primary_key=True)
