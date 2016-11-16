@@ -128,31 +128,12 @@ class OverlayFabric(ManagedElement, Base):
             self.overlayAS = int(overlayAS)
         if routeReflectorAddress is not None:
             self.routeReflectorAddress = routeReflectorAddress
-        added = []
-        deleted = []
         if devices is not None:
-            # First remove the existing device that is not in the new list
-            for oldDevice in self.overlay_devices[:]:
-                remove = True
-                for newDevice in devices:
-                    if oldDevice.id == newDevice.id:
-                        remove = False
-                        break
-                if remove:
-                    deleted.append(oldDevice)
-                    self.overlay_devices.remove(oldDevice)
-
-            # Then add the new device that is not in the existing list
-            for newDevice in devices:
-                add = True
-                for oldDevice in self.overlay_devices:
-                    if newDevice.id == oldDevice.id:
-                        add = False
-                        break
-                if add:
-                    added.append(newDevice)
-                    self.overlay_devices.append(newDevice)
-        return (added, deleted)
+            deleted = [device for device in self.overlay_devices if device not in devices]
+            self.overlay_devices = devices
+            return deleted
+        else:
+            return []
 
     def getSpines(self):
         return [dev for dev in self.overlay_devices if dev.role == "spine"]
@@ -436,31 +417,12 @@ class OverlayL2ap(ManagedElement, Base):
         '''
         Updates L2 attach point object.
         '''
-        added = []
-        deleted = []
         if overlay_networks is not None:
-            # First remove the existing network that is not in the new list
-            for oldNetwork in self.overlay_networks[:]:
-                remove = True
-                for newNetwork in overlay_networks:
-                    if oldNetwork.id == newNetwork.id:
-                        remove = False
-                        break
-                if remove:
-                    deleted.append(oldNetwork)
-                    self.overlay_networks.remove(oldNetwork)
-
-            # Then add the new network that is not in the existing list
-            for newNetwork in overlay_networks:
-                add = True
-                for oldNetwork in self.overlay_networks:
-                    if newNetwork.id == oldNetwork.id:
-                        add = False
-                        break
-                if add:
-                    added.append(newNetwork)
-                    self.overlay_networks.append(newNetwork)
-        return (added, deleted)
+            deleted = [network for network in self.overlay_networks if network not in overlay_networks]
+            self.overlay_networks = overlay_networks
+            return deleted
+        else:
+            return []
     
     def configName(self):
         '''

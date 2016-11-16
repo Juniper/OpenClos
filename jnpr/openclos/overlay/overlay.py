@@ -70,7 +70,7 @@ class Overlay():
         if not Overlay.isValidIpBlock(routeReflectorAddress):
             raise ValueError('Invalid routeReflectorAddress value %s' % routeReflectorAddress)
             
-        (added, deleted) = fabric.update(overlayAsn, routeReflectorAddress, devices)
+        deleted = fabric.update(overlayAsn, routeReflectorAddress, devices)
 
         self._dao.updateObjects(dbSession, [fabric])
         logger.info("OverlayFabric[id: '%s', name: '%s']: modified", fabric.id, fabric.name)
@@ -112,7 +112,7 @@ class Overlay():
             raise ValueError('Invalid loopbackAddress value %s' % loopbackAddress)
         
         vrf = OverlayVrf(name, description, routedVnid, loopbackAddress, overlayTenant)
-        vrf.vrfCounter = self._dao.incrementAndGetCounter("OverlayVrf.vrfCounter")
+        vrf.vrfCounter = self._dao.incrementAndGetCounter(dbSession, "OverlayVrf.vrfCounter")
 
         self._dao.createObjects(dbSession, [vrf])
         logger.info("OverlayVrf[id: '%s', name: '%s']: created", vrf.id, vrf.name)
@@ -205,7 +205,7 @@ class Overlay():
         '''
         Modify an existing L2port
         '''
-        (addedNetworks, deletedNetworks) = l2port.update(overlay_networks)
+        deletedNetworks = l2port.update(overlay_networks)
 
         self._dao.updateObjects(dbSession, [l2port])
         logger.info("OverlayL2port[id: '%s', name: '%s']: modified", l2port.id, l2port.name)
@@ -268,7 +268,7 @@ class Overlay():
         '''
         Modify an existing AggregatedL2port
         '''
-        (addedNetworks, deletedNetworks) = aggregatedL2port.update(overlay_networks, esi, lacp)
+        deletedNetworks = aggregatedL2port.update(overlay_networks, esi, lacp)
 
         self._dao.updateObjects(dbSession, [aggregatedL2port])
         logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: modified", aggregatedL2port.id, aggregatedL2port.name)
@@ -386,64 +386,73 @@ class ConfigEngine():
         
         self._aggregatedL2portNamePattern = re.compile(r'ae([0-9]+)')
 
-    def _allocateClusterId(self, fabric):
+    def _allocateClusterId(self, dbSession, fabric):
         lookupTable = {}
-        with self._dao.getReadWriteSession() as session:
-            # Load current entries into memory
-            currentMappings = session.query(OverlayFabricPodClusterId).filter(OverlayFabricPodClusterId.overlay_fabric_id == fabric.id).all()
-            for currentMapping in currentMappings:
-                lookupTable[currentMapping.podName] = currentMapping.clusterId
-            # Remove all entries from db (will be re-populated next)
-            self._dao.deleteObjects(session, currentMappings)
-            
-            newList = []
-            availableClusterIps = [str(ip) for ip in IPNetwork(fabric.routeReflectorAddress).iter_hosts()]
-            #logger.debug("availableClusterIps=%s", availableClusterIps)
-            
-            # Create list of OverlayFabricPodClusterId objects to remember podName->clusterId mapping within an overlay fabric
-            podNameSet = set()
-            for device in fabric.overlay_devices:
-                if not device.podName in podNameSet:
-                    podNameSet.add(device.podName)
-                    # Do we have a mapping for this POD already?
-                    existingClusterId = lookupTable.get(device.podName)
-                    if existingClusterId is not None and existingClusterId in availableClusterIps:
-                        logger.debug("_allocateClusterId: keeping mapping: fabric: '%s', podName: '%s', clusterId: '%s'", fabric.id, device.podName, existingClusterId) 
-                        # Remove allocated clusterId from routeReflector block
-                        availableClusterIps.remove(existingClusterId)
-                        # Re-create the mapping db object
-                        newList.append(OverlayFabricPodClusterId(fabric.id, device.podName, existingClusterId))
-                    else:
-                        # Note we are here either because this is a new POD or because the entire routeReflector block has changed.
-                        # In both cases we need to allocate a new cluster ip for it.
-                        # Create a dummy mapping for the new POD (will be updated later)
-                        lookupTable[device.podName] = "dummy"
-                        # Create a dummy mapping db object (will be updated later)
-                        newList.append(OverlayFabricPodClusterId(fabric.id, device.podName, "dummy"))
-                    
-            # Allocate clusterId to all new entries
-            for newItem in newList:
-                if newItem.clusterId == "dummy":
-                    # Update the object
-                    newItem.update(availableClusterIps.pop(0))
-                    # Update the lookup table
-                    lookupTable[newItem.podName] = newItem.clusterId
-                    logger.info("_allocateClusterId: adding mapping: fabric: '%s', podName: '%s' clusterId: '%s'", newItem.overlay_fabric_id, newItem.podName, newItem.clusterId)
-
-            # Now persist new entries to db
-            self._dao.updateObjects(session, newList)
+        # Load current entries into memory
+        currentMappings = dbSession.query(OverlayFabricPodClusterId).filter(OverlayFabricPodClusterId.overlay_fabric_id == fabric.id).all()
+        for currentMapping in currentMappings:
+            lookupTable[currentMapping.podName] = currentMapping
         
+        updateList = []
+        keepList = []
+        availableClusterIps = [str(ip) for ip in IPNetwork(fabric.routeReflectorAddress).iter_hosts()]
+        #logger.debug("availableClusterIps=%s", availableClusterIps)
+        
+        # Create list of OverlayFabricPodClusterId objects to remember podName->clusterId mapping within an overlay fabric
+        podNameSet = set()
+        for device in fabric.overlay_devices:
+            # logger.debug("device=%s, podName=%s", device.name, device.podName)
+            if not device.podName in podNameSet:
+                podNameSet.add(device.podName)
+                # Do we have a mapping for this POD already?
+                existingMapping = lookupTable.get(device.podName)
+                if existingMapping is not None:
+                    if existingMapping.clusterId in availableClusterIps:
+                        logger.debug("_allocateClusterId: keeping mapping: fabric: '%s', podName: '%s', clusterId: '%s'", fabric.id, device.podName, existingMapping.clusterId) 
+                        # Remove allocated clusterId from routeReflector block
+                        availableClusterIps.remove(existingMapping.clusterId)
+                    else:
+                        # There is an existing mapping but the cluster id does not match. 
+                        # This typically means user changes routeReflector block. 
+                        # We need to update this existing mapping.
+                        existingMapping.clusterId = "dummy"
+                        updateList.append(existingMapping)
+                    keepList.append(existingMapping)
+                else:
+                    # Create a dummy mapping for the new POD (will be updated later)
+                    newItem = OverlayFabricPodClusterId(fabric.id, device.podName, "dummy")
+                    lookupTable[device.podName] = newItem
+                    updateList.append(newItem)
+                    
+        # Allocate clusterId to all new entries
+        for updateItem in updateList:
+            if updateItem.clusterId == "dummy":
+                # Update the object
+                updateItem.update(availableClusterIps.pop(0))
+                # Update the lookup table
+                lookupTable[updateItem.podName] = updateItem
+                logger.info("_allocateClusterId: adding mapping: fabric: '%s', podName: '%s' clusterId: '%s'", updateItem.overlay_fabric_id, updateItem.podName, updateItem.clusterId)
+
+        # Now persist new entries to db
+        # logger.debug("updateList=%s", updateList)
+        self._dao.updateObjects(dbSession, updateList)
+
+        deleteList = [m for m in currentMappings if m not in keepList]
+        # logger.debug("deleteList=%s", deleteList)
+        self._dao.deleteObjects(dbSession, deleteList)
+    
         return lookupTable
     
     def editFabric(self, dbSession, operation, fabric):
         '''
         Generate iBGP config
         '''
-        
-        lookupTable = self._allocateClusterId(fabric)
+        lookupTable = self._allocateClusterId(dbSession, fabric)
+        # logger.debug("lookupTable=%s", lookupTable)
         
         deployments = []        
         for device in fabric.overlay_devices:
+            clusterIdMapping = lookupTable.get(device.podName)
             config = self._olEditFabric.render(
                 role=device.role,
                 routerId=device.routerId,
@@ -451,7 +460,7 @@ class ConfigEngine():
                 podSpines=[s.routerId for s in fabric.getPodSpines(device.podName)],
                 podLeafs=[l.routerId for l in fabric.getPodLeafs(device.podName)], 
                 allSpines=[s.routerId for s in fabric.getSpines() if s != device], 
-                routeReflector=lookupTable.get(device.podName),
+                routeReflector=clusterIdMapping.clusterId if clusterIdMapping else None,
                 remoteGateways=self.getRemoteGateways(fabric, device.podName),
                 esiRouteTarget=esiRouteTarget)
             deployments.append(OverlayDeployStatus(config, fabric.getUrl(), operation, device, fabric))    
