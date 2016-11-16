@@ -92,60 +92,48 @@ class OverlayFabric(ManagedElement, Base):
     name = Column(String(255), index=True, nullable=False)
     description = Column(String(256))
     overlayAS = Column(BigInteger, nullable=False, unique=True)
-
+    routeReflectorAddress = Column(String(60), nullable=False, unique=True)
+  
     overlay_devices = relationship(
         'OverlayDevice',
         secondary='overlayFabricOverlayDeviceLink'
     )
     
-    def __init__(self, name, description, overlayAS, devices):
+    def __init__(self, name, description, overlayAS, routeReflectorAddress, devices):
         '''
         Creates Fabric object.
         '''
         if overlayAS is None or overlayAS == '':
             raise ValueError("overlayAS cannot be None or empty")
             
+        if routeReflectorAddress is None or routeReflectorAddress == '':
+            raise ValueError("routeReflectorAddress cannot be None or empty")
+        
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
         self.overlayAS = int(overlayAS)
+        self.routeReflectorAddress = routeReflectorAddress
         for device in devices:
             self.overlay_devices.append(device)
 
     def getUrl(self):
         return "/fabrics/" + self.id
     
-    def update(self, overlayAS, devices):
+    def update(self, overlayAS, routeReflectorAddress, devices):
         '''
         Updates Fabric object.
         '''
         if overlayAS is not None:
             self.overlayAS = int(overlayAS)
-        added = []
-        deleted = []
+        if routeReflectorAddress is not None:
+            self.routeReflectorAddress = routeReflectorAddress
         if devices is not None:
-            # First remove the existing device that is not in the new list
-            for oldDevice in self.overlay_devices[:]:
-                remove = True
-                for newDevice in devices:
-                    if oldDevice.id == newDevice.id:
-                        remove = False
-                        break
-                if remove:
-                    deleted.append(oldDevice)
-                    self.overlay_devices.remove(oldDevice)
-
-            # Then add the new device that is not in the existing list
-            for newDevice in devices:
-                add = True
-                for oldDevice in self.overlay_devices:
-                    if newDevice.id == oldDevice.id:
-                        add = False
-                        break
-                if add:
-                    added.append(newDevice)
-                    self.overlay_devices.append(newDevice)
-        return (added, deleted)
+            deleted = [device for device in self.overlay_devices if device not in devices]
+            self.overlay_devices = devices
+            return deleted
+        else:
+            return []
 
     def getSpines(self):
         return [dev for dev in self.overlay_devices if dev.role == "spine"]
@@ -170,6 +158,29 @@ class OverlayFabricOverlayDeviceLink(ManagedElement, Base):
         Index('overlay_device_id_uindex', 'overlay_device_id', unique=True),
     )
 
+class OverlayFabricPodClusterId(ManagedElement, Base):
+    __tablename__ = 'overlayFabricPodCluster'
+    overlay_fabric_id = Column(String(60), ForeignKey('overlayFabric.id'), primary_key=True)
+    podName = Column(String(60), nullable=False, primary_key=True)
+    clusterId = Column(String(60), nullable=False)
+
+    def __init__(self, overlay_fabric_id, podName, clusterId):
+        '''
+        Creates OverlayFabricPodClusterId object.
+        '''
+        self.overlay_fabric_id = overlay_fabric_id
+        self.podName = podName
+        self.clusterId = clusterId
+    
+    def update(self, clusterId):
+        '''
+        Updates OverlayFabricPodClusterId object.
+        '''
+        self.clusterId = clusterId
+    
+    def key(self):
+        return self.overlay_fabric_id + ':' + self.podName
+        
 class OverlayTenant(ManagedElement, Base):
     __tablename__ = 'overlayTenant'
     id = Column(String(60), primary_key=True)
@@ -406,31 +417,12 @@ class OverlayL2ap(ManagedElement, Base):
         '''
         Updates L2 attach point object.
         '''
-        added = []
-        deleted = []
         if overlay_networks is not None:
-            # First remove the existing network that is not in the new list
-            for oldNetwork in self.overlay_networks[:]:
-                remove = True
-                for newNetwork in overlay_networks:
-                    if oldNetwork.id == newNetwork.id:
-                        remove = False
-                        break
-                if remove:
-                    deleted.append(oldNetwork)
-                    self.overlay_networks.remove(oldNetwork)
-
-            # Then add the new network that is not in the existing list
-            for newNetwork in overlay_networks:
-                add = True
-                for oldNetwork in self.overlay_networks:
-                    if newNetwork.id == oldNetwork.id:
-                        add = False
-                        break
-                if add:
-                    added.append(newNetwork)
-                    self.overlay_networks.append(newNetwork)
-        return (added, deleted)
+            deleted = [network for network in self.overlay_networks if network not in overlay_networks]
+            self.overlay_networks = overlay_networks
+            return deleted
+        else:
+            return []
     
     def configName(self):
         '''

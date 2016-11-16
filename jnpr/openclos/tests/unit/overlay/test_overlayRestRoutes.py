@@ -228,7 +228,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             "fabric": {
                 "name": "f1",
                 "description": "description for f1",
-                "overlayAsn": 65001
+                "overlayAsn": 65001,
+                "routeReflectorAddress": "2.2.1.0/24"
             }
         }
         fabricDict['fabric']['devices'] = [deviceId]
@@ -247,7 +248,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
 
         fabricDict = {
             "fabric": {
-                "overlayAsn": 65002
+                "overlayAsn": 65002,
+                "routeReflectorAddress": "2.2.2.0/24"
             }
         }
         fabricDict['fabric']['devices'] = [deviceId]
@@ -257,6 +259,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
                                                params=json.dumps(fabricDict))
         self.assertEqual(200, response.status_int)
         self.assertEqual(65002, response.json['fabric']['overlayAsn'])
+        self.assertEqual('2.2.2.0/24', response.json['fabric']['routeReflectorAddress'])
         
     def testModifyFabricNotFound(self):
         with self._dao.getReadWriteSession() as session:
@@ -265,7 +268,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
         fabricDict = {
             "fabric": {
                 "id": '12345',
-                "overlayAsn": 65001
+                "overlayAsn": 65001,
+                "routeReflectorAddress": "2.2.2.0/24"
             }
         }
         fabricDict['fabric']['devices'] = [deviceId]

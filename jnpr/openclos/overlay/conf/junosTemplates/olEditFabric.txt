@@ -51,7 +51,7 @@ protocols {
             multipath;
             {% for neighborIp in podLeafs %}neighbor {{neighborIp}};
             {% endfor %}        
-            cluster {{routerId}};
+            cluster {{routeReflector}};
         }
         group overlay-evpn-rr {
             type internal;

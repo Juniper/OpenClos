@@ -177,14 +177,13 @@ class AbstractDao(SingletonBase):
 
         return {'uplinkPorts': [], 'downlinkPorts': []}
 
-    def incrementAndGetCounter(self, counterName):
+    def incrementAndGetCounter(self, dbSession, counterName):
         count = 1
-        with self.getReadWriteSession() as session:
-            try:
-                count = session.query(Counter).filter(Counter.name == counterName).one().count + 1
-                session.merge(Counter(counterName, count))
-            except (exc.NoResultFound):
-                session.add(Counter(counterName, count))
+        try:
+            count = dbSession.query(Counter).filter(Counter.name == counterName).one().count + 1
+            dbSession.merge(Counter(counterName, count))
+        except (exc.NoResultFound):
+            dbSession.add(Counter(counterName, count))
         return count
 
 class Dao(AbstractDao):
