@@ -145,7 +145,7 @@ class OverlayCommitJob(object):
 class OverlayAggregatedL2portCommitJob(OverlayCommitJob):
     def __init__(self, parent, deployStatusObject):
         super(OverlayAggregatedL2portCommitJob, self).__init__(parent, deployStatusObject)
-        self._deviceCountPattern = re.compile(r'device-count ([0-9]+);')
+        self._deviceCountPattern = re.compile("\s*device-count\s+([0-9]+);\s*")
 
     def updateConfiglet(self, configlet):
         try:
@@ -185,17 +185,15 @@ class OverlayAggregatedL2portCommitJob(OverlayCommitJob):
                     deviceCountOnDevice = 0
                     deviceCountStanza = connector.runCommand("show configuration chassis aggregated-devices ethernet device-count")
                     if deviceCountStanza:
-                        group = self._deviceCountPattern.match(deviceCountStanza.strip())
+                        group = self._deviceCountPattern.search(deviceCountStanza)
                         if group:
                             deviceCountOnDevice = int(group.group(1))
                     
                     # Find the device-count in self.configlet
                     deviceCountOnFile = 0
-                    for line in self.configlet.split('\n'):
-                        group = self._deviceCountPattern.match(line.strip())
-                        if group:
-                            deviceCountOnFile = int(group.group(1))
-                            break
+                    group = self._deviceCountPattern.search(self.configlet)
+                    if group:
+                        deviceCountOnFile = int(group.group(1))
                     
                     # If deviceCountOnDevice > deviceCountOnFile, this means the device has already a higher
                     # value, we should not change it to lower value. So set configlet to use deviceCountOnDevice which
