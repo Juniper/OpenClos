@@ -300,24 +300,21 @@ class NetconfConnection(AbstractConnection):
         try:
             configurationUnit.lock()
             logger.debug('%s Locked config', self._debugContext)
-        except LockError as exc:
-            logger.error('%s updateConfig failed, LockError: %s, %s', self._debugContext, exc.__repr__(), exc.rpc_error)
-            raise DeviceRpcFailed('%s updateConfig failed' % (self._debugContext), exc.__repr__())
-
-        try:
             # make sure no changes are taken from CLI candidate config left over
             configurationUnit.rollback() 
             logger.debug('%s Rollbacked any other config', self._debugContext)
+        except LockError as exc:
+            logger.error('%s updateConfig failed, LockError: %s', self._debugContext, exc.__repr__())
+            raise DeviceRpcFailed('%s updateConfig failed' % (self._debugContext), exc.__repr__())
+
+        try:
             configurationUnit.load(config, format='text')
             logger.debug('%s Load config as candidate', self._debugContext)
 
             #print configurationUnit.diff()
             #print configurationUnit.commit_check()
-
-            configurationUnit.commit()
-            logger.info('%s Committed config', self._debugContext)
-        except CommitError as exc:
-            logger.error('updateDeviceConfiguration failed for %s, CommitError: %s, %s', self._debugContext, exc.__repr__(), exc.rpc_error)
+        except ConfigLoadError as exc:
+            logger.error('updateDeviceConfiguration failed for %s, ConfigLoadError: %s', self._debugContext, exc.__repr__())
             only_warnings = True
             for err in exc.errs:
                 if err['severity'] == 'error':
@@ -327,8 +324,12 @@ class NetconfConnection(AbstractConnection):
                 raise DeviceRpcFailed('updateDeviceConfiguration failed for %s' % (self._debugContext), exc.__repr__())
             else:
                 logger.error('Found only warnings. Ignored')
-        except ConfigLoadError as exc:
-            logger.error('updateDeviceConfiguration failed for %s, ConfigLoadError: %s, %s', self._debugContext, exc.__repr__(), exc.rpc_error)
+        
+        try:
+            configurationUnit.commit()
+            logger.info('%s Committed config', self._debugContext)
+        except CommitError as exc:
+            logger.error('updateDeviceConfiguration failed for %s, CommitError: %s', self._debugContext, exc.__repr__())
             only_warnings = True
             for err in exc.errs:
                 if err['severity'] == 'error':
