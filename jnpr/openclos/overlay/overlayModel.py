@@ -624,7 +624,8 @@ class OverlayDeployStatus(ManagedElement, Base):
         elif isinstance(object, OverlayVrf):
             return len(object.overlay_networks) > 0
         elif isinstance(object, OverlayNetwork):
-            return (len(object.overlay_l2aps) > 0) or (len(object.overlay_subnets) > 0)
+            #return (len(object.overlay_l2aps) > 0) or (len(object.overlay_subnets) > 0)
+            return len(object.overlay_subnets) > 0
         elif isinstance(object, OverlaySubnet):
             return False
         elif isinstance(object, OverlayL3port):

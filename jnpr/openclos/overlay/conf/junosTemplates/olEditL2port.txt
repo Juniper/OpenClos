@@ -2,6 +2,7 @@ interfaces {
     {{interfaceName}} {
         delete:
         unit 0;
+        
         flexible-vlan-tagging;
         encapsulation extended-vlan-bridge;
         {% if networks and networks|length == 1 %}
@@ -10,6 +11,7 @@ interfaces {
         delete:
         native-vlan-id;
         {% endif %}
+        
         {% if networks and networks|length > 0 %}
         {% for network in networks %}unit {{network[0]}} {
             vlan-id {{network[0]}};
