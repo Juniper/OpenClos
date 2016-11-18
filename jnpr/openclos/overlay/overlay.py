@@ -803,11 +803,17 @@ class ConfigEngine():
                 for l2ap in network.overlay_l2aps:
                     if l2ap.type == 'l2port':
                         if l2ap.overlay_device_id == leaf.id:
-                            interfaces.append((l2ap.configName(), len(l2ap.overlay_networks)))
+                            currentNetworks = [n for n in l2ap.overlay_networks if n.id != network.id]
+                            networkCount = len(currentNetworks)
+                            nativeVlanIdOrNone = currentNetworks[0].vlanid if networkCount == 1 else None
+                            interfaces.append((l2ap.configName(), networkCount, nativeVlanIdOrNone))
                     elif l2ap.type == 'aggregatedL2port':
                         for member in l2ap.members:
                             if member.overlay_device_id == leaf.id:
-                                interfaces.append((l2ap.configName(), len(l2ap.overlay_networks)))
+                                currentNetworks = [n for n in l2ap.overlay_networks if n.id != network.id]
+                                networkCount = len(currentNetworks)
+                                nativeVlanIdOrNone = currentNetworks[0].vlanid if networkCount == 1 else None
+                                interfaces.append((l2ap.configName(), networkCount, nativeVlanIdOrNone))
                                 
                 config = self._olDeleteNetwork.render(
                     role="leaf",
