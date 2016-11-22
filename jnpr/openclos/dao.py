@@ -20,6 +20,19 @@ moduleName = 'dao'
 loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 
+def loadPluginDataModels():
+    from loader import OpenClosProperty
+    conf = OpenClosProperty().getProperties()
+    # iterate 'plugin' section of openclos.yaml and install routes on all plugins
+    if 'plugin' in conf:
+        plugins = conf['plugin']
+        for plugin in plugins:
+            moduleName = plugin['package'] + '.' + plugin['name'] + 'Model'
+            logger.info("loading plugin data model '%s'", moduleName) 
+            try:
+                pluginModule = importlib.import_module(moduleName)
+            except (AttributeError, ImportError) as err:
+                logger.error("Failed to load plugin data model '%s'. Error: %s", moduleName, err) 
 
 class AbstractDao(SingletonBase):
     def __init__(self):
@@ -32,7 +45,7 @@ class AbstractDao(SingletonBase):
         dbUrl = self._getDbUrl()
         
         # load plugin data models so create_all will create all tables defined in plugins
-        self.loadPluginDataModels()
+        loadPluginDataModels()
         
         if 'sqlite:' in dbUrl:
             self.__engine = sqlalchemy.create_engine(dbUrl, echo=debugSql)
@@ -190,17 +203,3 @@ class Dao(AbstractDao):
     def _getDbUrl(self):
         from loader import OpenClosProperty
         return OpenClosProperty().getDbUrl()
-    
-    def loadPluginDataModels(self):
-        from loader import OpenClosProperty
-        conf = OpenClosProperty().getProperties()
-        # iterate 'plugin' section of openclos.yaml and install routes on all plugins
-        if 'plugin' in conf:
-            plugins = conf['plugin']
-            for plugin in plugins:
-                moduleName = plugin['package'] + '.' + plugin['name'] + 'Model'
-                logger.info("loading plugin data model '%s'", moduleName) 
-                try:
-                    pluginModule = importlib.import_module(moduleName)
-                except (AttributeError, ImportError) as err:
-                    logger.error("Failed to load plugin data model '%s'. Error: %s", moduleName, err) 
