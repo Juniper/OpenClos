@@ -547,7 +547,15 @@ class ConfigEngine():
             if old["vlanid"] != network.vlanid:
                 oldVlanId = old["vlanid"]
         
+        spineIndex = 0
         for spine in vrf.getSpines():
+            # Compile a list of irb addresses for this spine
+            subnets = []
+            for subnet in network.overlay_subnets:
+                irbIps = self.getSubnetIps(subnet.cidr)
+                irbVirtualGateway = irbIps.pop(0).split("/")[0]
+                subnets.append((irbIps[spineIndex], irbVirtualGateway))
+                
             config = self._olEditNetwork.render(
                 role="spine",
                 vrfName=vrf.name,
@@ -556,9 +564,11 @@ class ConfigEngine():
                 vnid=network.vnid,
                 oldVlanId=oldVlanId,
                 oldVnid=oldVnid,
-                asn=ConfigEngine.formatASN(asn))
+                asn=ConfigEngine.formatASN(asn),
+                subnets=subnets)
             deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
-
+            spineIndex = spineIndex + 1
+            
         for leaf in vrf.getLeafs():     
             # Compile a list of interfaces that belong to this leaf
             interfaces = []
@@ -613,10 +623,13 @@ class ConfigEngine():
 
         for spine, irbIp, oldIrbIp in itertools.izip(spines, irbIps, oldIrbIps):
             config = self._olEditSubnet.render(
+                role="spine",
                 irbAddress=irbIp,
                 irbVirtualGateway=irbVirtualGateway, 
                 oldIrbAddress=oldIrbIp,
-                vlanId=network.vlanid)
+                vlanId=network.vlanid,
+                networkName=network.name,
+                vrfName=vrf.name)
             deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
         
         self._dao.createObjects(dbSession, deployments)
@@ -761,8 +774,12 @@ class ConfigEngine():
         for spine, irbIp in itertools.izip(spines, irbIps):      
             if spine in deployedDevices:
                 config = self._olDeleteSubnet.render(
+                    role="spine",
                     irbAddress=irbIp, 
-                    vlanId=network.vlanid)
+                    vlanId=network.vlanid,
+                    subnetCount=len(network.overlay_subnets),
+                    networkName=network.name,
+                    vrfName=vrf.name)
                 deployments.append(OverlayDeployStatus(config, subnet.getUrl(), "delete", spine, vrf.overlay_tenant.overlay_fabric))    
 
         self._dao.createObjects(dbSession, deployments)
