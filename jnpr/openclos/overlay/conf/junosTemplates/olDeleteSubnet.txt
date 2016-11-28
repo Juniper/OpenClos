@@ -1,3 +1,4 @@
+{% if role == "spine" %}
 interfaces {
     irb {
         unit {{vlanId}} {
@@ -8,3 +9,20 @@ interfaces {
         }
     }
 }
+
+{% if subnetCount == 0 %}
+vlans {
+    {{networkName}} {
+        delete:
+        l3-interface irb.{{vlanId}};
+    }
+}
+
+routing-instances {
+    VRF_{{vrfName}} {
+        delete:
+        interface irb.{{vlanId}};    
+    }
+}
+{% endif %}
+{% endif %}

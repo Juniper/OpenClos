@@ -589,23 +589,23 @@ class TestConfigEngine(unittest.TestCase):
 
             config = deployments[7].configlet
             print "spine1:\n" + config
-            self.assertIn("irb {", config)
-            self.assertNotIn("address ", config)
+            self.assertNotIn("irb {", config)
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
             self.assertIn("n1", config)
-            self.assertIn("l3-interface irb.101", config)
+            self.assertNotIn("l3-interface irb.101", config)
+            self.assertNotIn("interface irb.101", config)
                         
             config = deployments[8].configlet
             print "spine2:\n" + config
-            self.assertIn("irb {", config)
-            self.assertNotIn("address ", config)
+            self.assertNotIn("irb {", config)
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
             self.assertIn("n1", config)
-            self.assertIn("l3-interface irb.101", config)
+            self.assertNotIn("l3-interface irb.101", config)
+            self.assertNotIn("interface irb.101", config)
                 
             config = deployments[9].configlet
             print "leaf1:\n" + config

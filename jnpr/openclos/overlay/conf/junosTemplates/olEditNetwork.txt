@@ -1,41 +1,66 @@
+{% if role == "spine" %}
 vlans {
     {{networkName}} {
-        {% if role == "spine" %}
         vlan-id {{vlanId}};
-        l3-interface irb.{{vlanId}};
-        {% endif %}
         vxlan {
             vni {{vnid}};
             ingress-node-replication;
         }
     }
 }
-
-{% if role == "spine" %}
+{% if subnets and subnets|length > 0 %}
+vlans {
+    {{networkName}} {
+        l3-interface irb.{{vlanId}};
+    }
+}
 interfaces {
     irb {
         unit {{vlanId}} {
-            family inet;
+            family inet {
+                {% for (irbAddress, irbVirtualGateway) in subnets %}
+                replace:
+                address {{irbAddress}} {
+                    virtual-gateway-address {{irbVirtualGateway}};
+                }
+                {% endfor %}
+            }
         }
-        {% if oldVlanId %}
-        delete:
-        unit {{oldVlanId}};
-        {% endif %}
     }
 }
-
 routing-instances {
     VRF_{{vrfName}} {
         interface irb.{{vlanId}};    
-        {% if oldVlanId %}
-        delete:
-        interface irb.{{oldVlanId}};    
-        {% endif %}
     }
 }
 {% endif %}
 
-{% if role == "leaf" and oldVlanId and interfaces and interfaces|length > 0%}
+{% if oldVlanId %}
+interfaces {
+    irb {
+        delete:
+        unit {{oldVlanId}};
+    }
+}
+routing-instances {
+    VRF_{{vrfName}} {
+        delete:
+        interface irb.{{oldVlanId}};    
+    }
+}
+{% endif %}
+{% endif %}
+
+{% if role == "leaf" %}
+vlans {
+    {{networkName}} {
+        vxlan {
+            vni {{vnid}};
+            ingress-node-replication;
+        }
+    }
+}
+{% if oldVlanId and interfaces and interfaces|length > 0%}
 interfaces {
     {% for (interface, networkCount) in interfaces %}{{interface}} {
         flexible-vlan-tagging;
@@ -60,6 +85,7 @@ vlans {
         {% endfor %}
     }
 }
+{% endif %}
 {% endif %}
 
 protocols {
