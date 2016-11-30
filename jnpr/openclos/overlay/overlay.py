@@ -710,9 +710,11 @@ class ConfigEngine():
 
     def _deleteCheck(self, dbSession, force, objectUrl, object):
         # Get only successfully deployed devices
+        # successStatusOnAllDevices = dbSession.query(OverlayDeployStatus).filter(
+            # OverlayDeployStatus.object_url == objectUrl).filter(
+            # OverlayDeployStatus.status == 'success').all()
         successStatusOnAllDevices = dbSession.query(OverlayDeployStatus).filter(
-            OverlayDeployStatus.object_url == objectUrl).filter(
-            OverlayDeployStatus.status == 'success').all()
+            OverlayDeployStatus.object_url == objectUrl).all()
         if len(successStatusOnAllDevices) == 0:
             logger.debug("_deleteCheck: Object %s not deployed at any device", objectUrl)
             # Get status from all devices
