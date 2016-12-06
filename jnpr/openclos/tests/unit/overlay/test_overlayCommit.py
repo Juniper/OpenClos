@@ -75,7 +75,7 @@ class TestOverlayCommitQueue(unittest.TestCase):
         self.commitQueue.stop()
         
         deviceQueues = self.commitQueue._getDeviceQueues()
-        self.assertEqual(0, len(deviceQueues))
+        self.assertEqual(1, len(deviceQueues))
         self.assertFalse(self.commitQueue.thread.isAlive())
         with self._dao.getReadSession() as session:
             deployStatus = session.query(OverlayDeployStatus).one()
