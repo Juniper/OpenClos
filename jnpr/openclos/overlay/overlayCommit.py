@@ -12,7 +12,7 @@ import Queue
 import re
 from sqlalchemy.orm import exc
 
-from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus, OverlayL2ap
+from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus, OverlayL2ap, OverlayFabricPodClusterId
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.loader import OpenClosProperty, loadLoggingConfig
 from jnpr.openclos.common import SingletonBase
@@ -306,33 +306,22 @@ class OverlayCommitQueue(SingletonBase):
         # Note we only hold on to the lock long enough to retrieve the job from the queue.
         # Then we release the lock before we do the actual commit
         with self.__lock:
-            toBeDeleted = []
             for queueId, deviceQueue in self.__deviceQueues.iteritems():
                 # find an idle device
                 if queueId not in self.__devicesInProgress:
-                    self.__devicesInProgress.add(queueId)
-                    logger.debug("Device [%s] has NO commit in progress. Prepare for commit", queueId)
+                    # logger.debug("Device [%s] has NO commit in progress", queueId)
                     # retrieve the job
                     try:
                         job = deviceQueue.get_nowait()
+                        self.__devicesInProgress.add(queueId)
                         # start commit progress 
                         self.executor.submit(job.commit)
                         deviceQueue.task_done()
-                        if deviceQueue.empty():
-                            logger.debug("Device [%s] job queue is empty", queueId)
-                            # Note don't delete the empty job queues within the iteration.
-                            toBeDeleted.append(queueId)
                     except Queue.Empty as exc:
-                        logger.debug("Device [%s] job queue is empty", queueId)
-                        # Note don't delete the empty job queues within the iteration.
-                        toBeDeleted.append(queueId)
-                else:
-                    logger.debug("Device [%s] has commit in progress. Skipped", queueId)
-            
-            # Now it is safe to delete all empty job queues
-            for queueId in toBeDeleted:
-                logger.debug("Deleting job queue for device [%s]", queueId)
-                del self.__deviceQueues[queueId]
+                        # logger.debug("Device [%s] job queue is empty", queueId)
+                        pass
+                # else:
+                    # logger.debug("Device [%s] has commit in progress. Skipped", queueId)
     
     def markDeviceIdle(self, queueId):
         with self.__lock:
@@ -340,6 +329,12 @@ class OverlayCommitQueue(SingletonBase):
     
     def _deleteObjectAndFixL2ap(self, session, objectUrl, object):
         if object:
+            # REVISIT: special case for overlayFabric
+            if objectUrl.startswith("/fabrics"):
+                logger.debug("cleanUpDb: special case for overlayFabric")
+                for clusterId in session.query(OverlayFabricPodClusterId).filter(OverlayFabricPodClusterId.overlay_fabric_id == object.id).all():
+                    session.delete(clusterId)
+                    
             session.delete(object)
             logger.debug("cleanUpDb: Object %s deleted", objectUrl)
             
@@ -352,6 +347,9 @@ class OverlayCommitQueue(SingletonBase):
     def cleanUpDb(self):
         tbdObjectsCopy = None
         with self.__lock:
+            if len(self.__tbdObjects) == 0:
+                return
+                
             tbdObjectsCopy = self.__tbdObjects[:]
             
         # Go through all to-be-deleted objects. If there is no status for that object, we can
