@@ -21,6 +21,7 @@ from jnpr.openclos.deviceConnector import CachedConnectionFactory, NetconfConnec
 
 DEFAULT_MAX_THREADS = 10
 DEFAULT_DISPATCH_INTERVAL = 10
+MAX_DBCLEANUP_INTERVAL = 10
 DEFAULT_DAO_CLASS = Dao
 
 moduleName = 'overlayCommit'
@@ -41,17 +42,18 @@ class OverlayCommitJob(object):
         self.operation = deployStatusObject.operation
         self.objectUrl = deployStatusObject.object_url
         self.queueId = '%s:%s' % (self.deviceIp, self.deviceId)
-
+        self._debugContext = '[%s %s@%s, job=%s]' % (self.operation, self.objectUrl, self.deviceIp, self.id)  
+        
     def updateStatus(self, status, reason=None):
         try:
             with self.parent._dao.getReadWriteSession() as session:
                 statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).first()
                 if statusObject is None:
-                    logger.debug("OverlayDeployStatus %s no longer exists", self.id)
+                    logger.debug("OverlayDeployStatus %s no longer exists", self._debugContext)
                     return
 
                 # Update status in all cases
-                logger.debug("OverlayDeployStatus %s status changed to %s, %s", self.id, status, reason)
+                logger.debug("OverlayDeployStatus %s status changed to %s, %s", self._debugContext, status, reason)
                 statusObject.update(status, reason)
                 
                 # If we are in progress, there is nothing else to do
@@ -101,7 +103,7 @@ class OverlayCommitJob(object):
             # Note we don't want to hold the caller's session for too long since this function is potentially lengthy
             # that is why we don't ask caller to pass a dbSession to us. Instead we get the session inside this method
             # only long enough to update the status value
-            logger.info("Job %s: starting commit on device [%s]", self.id, self.queueId)
+            logger.info("Job %s: starting commit", self._debugContext)
 
             # first update the status to 'progress'
             self.updateStatus("progress")
@@ -134,11 +136,11 @@ class OverlayCommitJob(object):
             # commit is done so update the result
             self.updateStatus(result, reason)
                 
-            logger.info("Job %s: done with device [%s]", self.id, self.queueId)
+            logger.info("Job %s: done", self._debugContext)
             # remove device id from cache
             self.parent.markDeviceIdle(self.queueId)
         except Exception as exc:
-            logger.error("Job %s: error '%s'", self.id, exc)
+            logger.error("Job %s: error '%s'", self._debugContext, exc)
             logger.error('StackTrace: %s', traceback.format_exc())
             raise
 
@@ -152,7 +154,7 @@ class OverlayAggregatedL2portCommitJob(OverlayCommitJob):
             with self.parent._dao.getReadWriteSession() as session:
                 statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).first()
                 if statusObject is None:
-                    logger.debug("OverlayDeployStatus %s no longer exists", self.id)
+                    logger.debug("OverlayDeployStatus %s no longer exists", self._debugContext)
                     return
 
                 # Update configlet
@@ -167,7 +169,7 @@ class OverlayAggregatedL2portCommitJob(OverlayCommitJob):
             # Note we don't want to hold the caller's session for too long since this function is potentially lengthy
             # that is why we don't ask caller to pass a dbSession to us. Instead we get the session inside this method
             # only long enough to update the status value
-            logger.info("Job %s: starting commit on device [%s]", self.id, self.queueId)
+            logger.info("Job %s: starting commit", self._debugContext)
 
             # first update the status to 'progress'
             self.updateStatus("progress")
@@ -228,11 +230,11 @@ class OverlayAggregatedL2portCommitJob(OverlayCommitJob):
             # commit is done so update the result
             self.updateStatus(result, reason)
                 
-            logger.info("Job %s: done with device [%s]", self.id, self.queueId)
+            logger.info("Job %s: done", self._debugContext)
             # remove device id from cache
             self.parent.markDeviceIdle(self.queueId)
         except Exception as exc:
-            logger.error("Job %s: error '%s'", self.id, exc)
+            logger.error("Job %s: error '%s'", self._debugContext, exc)
             logger.error('StackTrace: %s', traceback.format_exc())
             raise
 
@@ -249,6 +251,7 @@ class OverlayCommitQueue(SingletonBase):
         self.thread = Thread(target=self.dispatchThreadFunction, args=())
         self.started = False
         self.__tbdObjects = [] # [(url, force)] e.g. [('/vrfs/1234', True), ('/networks/2345', False), ...]
+        self.maxDbCleanUpInterval = MAX_DBCLEANUP_INTERVAL
         
         conf = OpenClosProperty().getProperties()
         # iterate 'plugin' section of openclos.yaml and install routes on all plugins
@@ -262,6 +265,9 @@ class OverlayCommitQueue(SingletonBase):
                     dispatchInterval = plugin.get('dispatchInterval')
                     if dispatchInterval is not None:
                         self.dispatchInterval = dispatchInterval
+                    maxDbCleanUpInterval = plugin.get('maxDbCleanUpInterval')
+                    if maxDbCleanUpInterval is not None:
+                        self.maxDbCleanUpInterval = maxDbCleanUpInterval
                     break
         
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.maxWorkers)
@@ -272,10 +278,11 @@ class OverlayCommitQueue(SingletonBase):
             objectUrl = deployStatusObject.object_url
             # Special case: aggregatedL2port needs to read existing value from current config and push a new value
             if objectUrl.startswith('/aggregatedL2ports'): 
-                jobs.append(OverlayAggregatedL2portCommitJob(self, deployStatusObject))
+                job = OverlayAggregatedL2portCommitJob(self, deployStatusObject)
             else:
-                jobs.append(OverlayCommitJob(self, deployStatusObject))
-            logger.debug("Job %s: added to device [%s]", jobs[-1].id, jobs[-1].queueId)
+                job = OverlayCommitJob(self, deployStatusObject)
+            jobs.append(job)
+            logger.debug("Job %s: added", job._debugContext)
             
         with self.__lock:
             for job in jobs:
@@ -404,12 +411,25 @@ class OverlayCommitQueue(SingletonBase):
         logger.info("OverlayCommitQueue stopped")
     
     def dispatchThreadFunction(self):
+        # Calculate how often dbCleanUp runs over every dispatch
+        dbCleanUpRunLimit, dummy = divmod(self.maxDbCleanUpInterval, self.dispatchInterval)
+        if dbCleanUpRunLimit == 0:
+            dbCleanUpRunLimit = 1
+        dbCleanUpRunCounter = 0
+        
         try:
             while True:
                 self.stopEvent.wait(self.dispatchInterval)
                 if not self.stopEvent.is_set():
                     self.runJobs()
-                    self.cleanUpDb()
+                    
+                    # Dilute the dbCleanUp run
+                    # logger.debug("dbCleanUpRunLimit = %d, dbCleanUpRunCounter = %d", dbCleanUpRunLimit, dbCleanUpRunCounter)
+                    if dbCleanUpRunCounter >= dbCleanUpRunLimit:
+                        self.cleanUpDb()
+                        dbCleanUpRunCounter = 0
+                    else:
+                        dbCleanUpRunCounter = dbCleanUpRunCounter + 1
                 else:
                     logger.debug("OverlayCommitQueue: stopEvent is set")
                     return
