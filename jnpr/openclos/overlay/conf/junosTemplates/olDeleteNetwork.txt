@@ -50,9 +50,6 @@ interfaces {
         delete:
         native-vlan-id;
         {% endif %}
-        {% if networkCount == 1%}
-        native-vlan-id {{nativeVlanIdOrNone}};
-        {% endif %}
         delete:
         unit {{vlanId}};
     }
