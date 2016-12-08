@@ -127,11 +127,13 @@ class OverlayCommitJob(object):
                 #logger.error('StackTrace: %s', traceback.format_exc())
                 result = 'failure'
                 reason = exc.__repr__()
+                logger.error("Failed config: %s", self.configlet)
             except Exception as exc:
                 #logger.error("%s", exc)
                 #logger.error('StackTrace: %s', traceback.format_exc())
                 result = 'failure'
                 reason = str(exc)
+                logger.error("Failed config: %s", self.configlet)
             
             # commit is done so update the result
             self.updateStatus(result, reason)
@@ -221,11 +223,13 @@ class OverlayAggregatedL2portCommitJob(OverlayCommitJob):
                 #logger.error('StackTrace: %s', traceback.format_exc())
                 result = 'failure'
                 reason = exc.__repr__()
+                logger.error("Failed config: %s", self.configlet)
             except Exception as exc:
                 #logger.error("%s", exc)
                 #logger.error('StackTrace: %s', traceback.format_exc())
                 result = 'failure'
                 reason = str(exc)
+                logger.error("Failed config: %s", self.configlet)
             
             # commit is done so update the result
             self.updateStatus(result, reason)
