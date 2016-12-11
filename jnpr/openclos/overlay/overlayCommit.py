@@ -442,53 +442,6 @@ class OverlayCommitQueue(SingletonBase):
             except Exception as exc:
                 logger.error("Encounted error '%s' on OverlayCommitQueue", exc)
 
-def main():        
-    from jnpr.openclos.overlay.overlayModel import OverlayDevice, OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayL2port, OverlayAggregatedL2port
-    import time
-    
-    conf = OpenClosProperty().getProperties()
-    dao = Dao.getInstance()
-    from jnpr.openclos.overlay.overlay import Overlay
-    overlay = Overlay(conf, Dao.getInstance())
-
-    # Note jnpr.openclos.overlay.overlayCommit.OverlayCommitQueue is different than just OverlayCommitQueue.
-    # If we don't do the import. python will treat those as 2 different classes so singleton behavior will fail.
-    from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue
-    commitQueue = OverlayCommitQueue.getInstance()
-    commitQueue.start()
-    
-    with dao.getReadWriteSession() as session:
-        d1 = overlay.createDevice(session, 'd1', 'description for d1', 'leaf', '10.92.82.12', '10.92.82.12', 'pod1', 'root', 'Embe1mpls')
-        # d1 = overlay.createDevice(session, 'd1', 'description for d1', 'leaf', '1.2.3.1', '1.2.3.1', 'pod1', 'root', 'Embe1mpls')
-        d1_id = d1.id
-        f1 = overlay.createFabric(session, 'f1', '', 65001, '2.2.2.0/24', [d1])
-        f1_id = f1.id
-        t1 = overlay.createTenant(session, 't1', '', f1)
-        t1_id = t1.id
-        v1 = overlay.createVrf(session, 'v1', '', 100, '1.1.1.1/30', t1)
-        v1_id = v1.id
-        # n1 = overlay.createNetwork(session, 'n1', '', v1, 1000, 100, False)
-        # n1_id = n1.id
-        # s1 = overlay.createSubnet(session, 's1', '', n1, '1.2.3.4/24')
-        # s1_id = s1.id
-        # l2port1 = overlay.createL2port(session, 'l2port1', '', [n1], 'xe-0/0/1', d1)
-        # l2port1_id = l2port1.id
-        
-    time.sleep(20)
-    
-    raw_input("press any key...")
-    commitQueue.stop()
-    
-    import threading
-    import sys
-    for th in threading.enumerate():
-        print(th)
-        traceback.print_stack(sys._current_frames()[th.ident])
-        print()
-    
-if __name__ == '__main__':
-    main()
-  
 # def main():        
     # from jnpr.openclos.overlay.overlayModel import OverlayDevice, OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayL2port, OverlayAggregatedL2port
     # import time
