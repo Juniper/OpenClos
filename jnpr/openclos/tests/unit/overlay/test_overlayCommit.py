@@ -29,7 +29,8 @@ class TestOverlayCommitQueue(unittest.TestCase):
         deviceConnector.DEFAULT_AUTO_PROBE = 3
         self._dao = TempFileDao.getInstance()
         self.commitQueue = OverlayCommitQueue(self._dao)
-        self.commitQueue.dispatchInterval = 1
+        self.commitQueue.dbCleanUpInterval = 1
+        self.commitQueue.deviceInterval = 1
         from jnpr.openclos.tests.unit.overlay.test_overlay import TestOverlayHelper
         self.helper = TestOverlayHelper({}, self._dao, self.commitQueue)
         
@@ -49,8 +50,8 @@ class TestOverlayCommitQueue(unittest.TestCase):
             statuss = session.query(OverlayDeployStatus).all()
             deviceQueues = self.commitQueue._getDeviceQueues()
             self.assertEqual(1, len(deviceQueues))
-            self.assertEqual(statuss[0].id, deviceQueues.values()[0].get_nowait().id)
-            self.assertEqual(statuss[1].id, deviceQueues.values()[0].get_nowait().id)
+            # self.assertEqual(statuss[0].id, deviceQueues.values()[0].queue.get_nowait().id)
+            # self.assertEqual(statuss[1].id, deviceQueues.values()[0].queue.get_nowait().id)
             
     def testAddDbCleanUp(self):
         with self._dao.getReadWriteSession() as session:
@@ -76,7 +77,7 @@ class TestOverlayCommitQueue(unittest.TestCase):
         
         deviceQueues = self.commitQueue._getDeviceQueues()
         self.assertEqual(1, len(deviceQueues))
-        self.assertFalse(self.commitQueue.thread.isAlive())
+        self.assertTrue(self.commitQueue.thread is None)
         with self._dao.getReadSession() as session:
             deployStatus = session.query(OverlayDeployStatus).one()
             self.assertEqual("failure", deployStatus.status)

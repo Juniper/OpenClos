@@ -7,21 +7,19 @@ Created on Feb 15, 2016
 import traceback
 import logging
 from threading import Thread, Event, RLock
-import concurrent.futures
 import Queue
 import re
 from sqlalchemy.orm import exc
 
-from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus, OverlayL2ap, OverlayFabricPodClusterId
+from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus, OverlayL2ap, OverlayFabricPodClusterId, OverlayDevice
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.loader import OpenClosProperty, loadLoggingConfig
 from jnpr.openclos.common import SingletonBase
 from jnpr.openclos.exception import DeviceRpcFailed, DeviceConnectFailed
 from jnpr.openclos.deviceConnector import CachedConnectionFactory, NetconfConnection
 
-DEFAULT_MAX_THREADS = 10
-DEFAULT_DISPATCH_INTERVAL = 10
-MAX_DBCLEANUP_INTERVAL = 10
+DEFAULT_DBCLEANUP_INTERVAL = 10
+DEFAULT_DEVICE_INTERVAL = 5
 DEFAULT_DAO_CLASS = Dao
 
 moduleName = 'overlayCommit'
@@ -139,8 +137,6 @@ class OverlayCommitJob(object):
             self.updateStatus(result, reason)
                 
             logger.info("Job %s: done", self._debugContext)
-            # remove device id from cache
-            self.parent.markDeviceIdle(self.queueId)
         except Exception as exc:
             logger.error("Job %s: error '%s'", self._debugContext, exc)
             logger.error('StackTrace: %s', traceback.format_exc())
@@ -235,27 +231,84 @@ class OverlayAggregatedL2portCommitJob(OverlayCommitJob):
             self.updateStatus(result, reason)
                 
             logger.info("Job %s: done", self._debugContext)
-            # remove device id from cache
-            self.parent.markDeviceIdle(self.queueId)
         except Exception as exc:
             logger.error("Job %s: error '%s'", self._debugContext, exc)
             logger.error('StackTrace: %s', traceback.format_exc())
             raise
 
+class OverlayDeviceQueue(object):
+    def __init__(self, deviceId, deviceIp, deviceInterval):
+        self.deviceId = deviceId
+        self.deviceIp = deviceIp
+        self.deviceInterval = deviceInterval
+        self.queue = Queue.Queue()
+        self.thread = None
+        self.stopFlag = False
+
+    def addJob(self, job):
+        self.queue.put(job)
+        logger.debug("Job %s: added", job._debugContext)
+        # Start the thread if it is stopped
+        self.start()
+        
+    def start(self):
+        if self.thread is None or not self.thread.is_alive():
+            self.thread = Thread(target=self.threadFunction, args=())
+            self.thread.daemon = True
+            logger.info("Starting OverlayDeviceQueue %s...", self.deviceIp)
+            self.stopFlag = False
+            self.thread.start()
+            logger.info("OverlayDeviceQueue %s started", self.deviceIp)
+        else:
+            logger.debug("OverlayDeviceQueue %s has already started", self.deviceIp)
+            
+    def stop(self):
+        try:
+            logger.info("Stopping OverlayDeviceQueue %s...", self.deviceIp)
+            self.stopFlag = True
+            if self.thread:
+                self.thread.join()
+                self.thread = None
+            logger.info("OverlayDeviceQueue %s stopped", self.deviceIp)
+        except Exception as exc:
+            logger.error("%s", exc)
+    
+    def threadFunction(self):
+        while True:
+            try:
+                job = self.queue.get(True, self.deviceInterval)
+                if self.stopFlag is True:
+                    logger.debug("OverlayDeviceQueue %s: stopEvent is set", self.deviceIp)
+                    return
+                else:
+                    # start commit progress 
+                    self.queue.task_done()
+                    job.commit()
+            except Queue.Empty as exc:
+                # logger.debug("OverlayDeviceQueue %s is empty", self.deviceIp)
+                if self.stopFlag is True:
+                    logger.debug("OverlayDeviceQueue %s: stopEvent is set", self.deviceIp)
+                # Return regardless
+                return
+            except Exception as exc:
+                logger.error("Encounted error '%s' on OverlayDeviceQueue", exc)
+                if self.stopFlag is True:
+                    logger.debug("OverlayDeviceQueue %s: stopEvent is set", self.deviceIp)
+                    return
+                # Note we continue in this case    
+            
 class OverlayCommitQueue(SingletonBase):
     def __init__(self, daoClass=DEFAULT_DAO_CLASS):
         self._dao = daoClass.getInstance()
         # event to stop from sleep
         self.stopEvent = Event()
         self.__lock = RLock()
-        self.__devicesInProgress = set()
         self.__deviceQueues = {}
-        self.maxWorkers = DEFAULT_MAX_THREADS
-        self.dispatchInterval = DEFAULT_DISPATCH_INTERVAL
-        self.thread = Thread(target=self.dispatchThreadFunction, args=())
-        self.started = False
+        self.thread = None
+        # self.thread.daemon = True
         self.__tbdObjects = [] # [(url, force)] e.g. [('/vrfs/1234', True), ('/networks/2345', False), ...]
-        self.maxDbCleanUpInterval = MAX_DBCLEANUP_INTERVAL
+        self.dbCleanUpInterval = DEFAULT_DBCLEANUP_INTERVAL
+        self.deviceInterval = DEFAULT_DEVICE_INTERVAL
         
         conf = OpenClosProperty().getProperties()
         # iterate 'plugin' section of openclos.yaml and install routes on all plugins
@@ -263,38 +316,25 @@ class OverlayCommitQueue(SingletonBase):
             plugins = conf['plugin']
             for plugin in plugins:
                 if plugin['name'] == 'overlay':
-                    maxWorkers = plugin.get('threadCount')
-                    if maxWorkers is not None:
-                        self.maxWorkers = maxWorkers
-                    dispatchInterval = plugin.get('dispatchInterval')
-                    if dispatchInterval is not None:
-                        self.dispatchInterval = dispatchInterval
-                    maxDbCleanUpInterval = plugin.get('maxDbCleanUpInterval')
-                    if maxDbCleanUpInterval is not None:
-                        self.maxDbCleanUpInterval = maxDbCleanUpInterval
+                    dbCleanUpInterval = plugin.get('dbCleanUpInterval')
+                    if dbCleanUpInterval is not None:
+                        self.dbCleanUpInterval = dbCleanUpInterval
+                    deviceInterval = plugin.get('deviceInterval')
+                    if deviceInterval is not None:
+                        self.deviceInterval = deviceInterval
                     break
-        
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.maxWorkers)
 
     def addJobs(self, deployStatusObjects):
-        jobs = []
         for deployStatusObject in deployStatusObjects:
-            objectUrl = deployStatusObject.object_url
             # Special case: aggregatedL2port needs to read existing value from current config and push a new value
-            if objectUrl.startswith('/aggregatedL2ports'): 
+            if deployStatusObject.object_url.startswith('/aggregatedL2ports'): 
                 job = OverlayAggregatedL2portCommitJob(self, deployStatusObject)
             else:
                 job = OverlayCommitJob(self, deployStatusObject)
-            jobs.append(job)
-            logger.debug("Job %s: added", job._debugContext)
             
-        with self.__lock:
-            for job in jobs:
-                if job.queueId not in self.__deviceQueues:
-                    self.__deviceQueues[job.queueId] = Queue.Queue()
-                self.__deviceQueues[job.queueId].put(job)
-
-        return jobs
+            if job.queueId not in self.__deviceQueues:
+                self.__deviceQueues[job.queueId] = OverlayDeviceQueue(job.deviceId, job.deviceIp, self.deviceInterval)
+            self.__deviceQueues[job.queueId].addJob(job)
         
     def addDbCleanUp(self, objectUrl, force):
         with self.__lock:
@@ -312,32 +352,6 @@ class OverlayCommitQueue(SingletonBase):
     def _getTbdObjects(self):
         return self.__tbdObjects
         
-    def runJobs(self):
-        # check device queues (round robin)
-        # Note we only hold on to the lock long enough to retrieve the job from the queue.
-        # Then we release the lock before we do the actual commit
-        with self.__lock:
-            for queueId, deviceQueue in self.__deviceQueues.iteritems():
-                # find an idle device
-                if queueId not in self.__devicesInProgress:
-                    # logger.debug("Device [%s] has NO commit in progress", queueId)
-                    # retrieve the job
-                    try:
-                        job = deviceQueue.get_nowait()
-                        self.__devicesInProgress.add(queueId)
-                        # start commit progress 
-                        self.executor.submit(job.commit)
-                        deviceQueue.task_done()
-                    except Queue.Empty as exc:
-                        # logger.debug("Device [%s] job queue is empty", queueId)
-                        pass
-                # else:
-                    # logger.debug("Device [%s] has commit in progress. Skipped", queueId)
-    
-    def markDeviceIdle(self, queueId):
-        with self.__lock:
-            self.__devicesInProgress.discard(queueId)
-    
     def _deleteObjectAndFixL2ap(self, session, objectUrl, object):
         if object:
             # REVISIT: special case for overlayFabric
@@ -395,52 +409,38 @@ class OverlayCommitQueue(SingletonBase):
                         logger.debug("cleanUpDb: Deploy status found. Object %s not deleted", objectUrl)
                         
     def start(self):
-        with self.__lock:
-            if self.started:
-                return
-            else:
-                self.started = True
-                
-        logger.info("Starting OverlayCommitQueue...")
-        self.thread.start()
-        logger.info("OverlayCommitQueue started")
+        if self.thread is None or not self.thread.is_alive():
+            self.thread = Thread(target=self.threadFunction, args=())
+            logger.info("Starting OverlayCommitQueue...")
+            self.thread.start()
+            logger.info("OverlayCommitQueue started")
+        else:
+            logger.debug("OverlayCommitQueue has already started")
    
     def stop(self):
-        logger.info("Stopping OverlayCommitQueue...")
-        self.stopEvent.set()
-        self.executor.shutdown()
-        with self.__lock:
-            if self.started:
-                self.thread.join()
-        logger.info("OverlayCommitQueue stopped")
-    
-    def dispatchThreadFunction(self):
-        # Calculate how often dbCleanUp runs over every dispatch
-        dbCleanUpRunLimit, dummy = divmod(self.maxDbCleanUpInterval, self.dispatchInterval)
-        if dbCleanUpRunLimit == 0:
-            dbCleanUpRunLimit = 1
-        dbCleanUpRunCounter = 0
-        
         try:
-            while True:
-                self.stopEvent.wait(self.dispatchInterval)
-                if not self.stopEvent.is_set():
-                    self.runJobs()
-                    
-                    # Dilute the dbCleanUp run
-                    # logger.debug("dbCleanUpRunLimit = %d, dbCleanUpRunCounter = %d", dbCleanUpRunLimit, dbCleanUpRunCounter)
-                    if dbCleanUpRunCounter >= dbCleanUpRunLimit:
-                        self.cleanUpDb()
-                        dbCleanUpRunCounter = 0
-                    else:
-                        dbCleanUpRunCounter = dbCleanUpRunCounter + 1
-                else:
+            logger.info("Stopping OverlayCommitQueue...")
+            self.stopEvent.set()
+            if self.thread:
+                self.thread.join()
+                self.thread = None
+            for queueId, deviceQueue in self.__deviceQueues.iteritems():
+                deviceQueue.stop()
+            logger.info("OverlayCommitQueue stopped")
+        except Exception as exc:
+            logger.error("%s", exc)
+    
+    def threadFunction(self):
+        while True:
+            try:
+                self.stopEvent.wait(self.dbCleanUpInterval)
+                if self.stopEvent.is_set():
                     logger.debug("OverlayCommitQueue: stopEvent is set")
                     return
-                
-        except Exception as exc:
-            logger.error("Encounted error '%s' on OverlayCommitQueue", exc)
-            raise
+                else:
+                    self.cleanUpDb()
+            except Exception as exc:
+                logger.error("Encounted error '%s' on OverlayCommitQueue", exc)
 
 # def main():        
     # from jnpr.openclos.overlay.overlayModel import OverlayDevice, OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayL2port, OverlayAggregatedL2port

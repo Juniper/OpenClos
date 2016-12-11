@@ -25,6 +25,11 @@ class InMemoryDao(Dao):
         loadLoggingConfig(appName = 'unittest')
         return 'sqlite:///'
 
+class TempFileDao(Dao):
+    def _getDbUrl(self):
+        loadLoggingConfig(appName = 'unittest')
+        return 'sqlite:////tmp/sqllite3.db'
+        
 registry = set([
     'GET /openclos/v1/overlay/fabrics',
     'GET /openclos/v1/overlay/fabrics/<fabricId>',
@@ -77,11 +82,13 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def setUp(self):
         if not os.path.exists(configLocation):
             os.makedirs(configLocation)
-        self._dao = InMemoryDao.getInstance()
+        if os.path.isfile('/tmp/sqllite3.db'):
+            os.remove('/tmp/sqllite3.db')
+        self._dao = TempFileDao.getInstance()
         self._conf = {}
         self._conf['restServer'] = {'version': 1, 'protocol': 'http', 'ipAddr': '0.0.0.0', 'port': 20080}
-        self._conf['plugin'] = [{'name': 'overlay', 'package': 'jnpr.openclos.overlay'}]
-        self.restServer = RestServer(self._conf, InMemoryDao)
+        self._conf['plugin'] = [{'name': 'overlay', 'package': 'jnpr.openclos.overlay', 'dbCleanUpInterval': 1, 'deviceInterval': 1}]
+        self.restServer = RestServer(self._conf, TempFileDao)
         self.restServer.initRest()
         self.restServer.installRoutes()
         self.restServerTestApp = TestApp(self.restServer.app)
@@ -90,7 +97,11 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(os.path.join(configLocation, 'test1'), ignore_errors=True)
         self.restServer.stop()
-        InMemoryDao._destroy()
+        self.restServer._reset()
+        self.restServer = None
+        TempFileDao._destroy()
+        if os.path.isfile('/tmp/sqllite3.db'):
+            os.remove('/tmp/sqllite3.db')
         self.helper = None
 
     def testInstall(self):
