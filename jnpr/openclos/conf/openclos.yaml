@@ -135,10 +135,10 @@ plugin:
     -
         name: overlay
         package: jnpr.openclos.overlay
-        # Number of threads in the thread pool for commiting configuration on device
-        # threadCount: 10
-        # Number of seconds. Controls how frequent to scan "commit job queue"
-        # dispatchInterval: 10
+        # Number of seconds. Controls how frequent to clean up database
+        # dbCleanUpInterval: 10
+        # Number of seconds. Controls the timeout to retrieve jobs from device queue
+        # deviceInterval: 5
 
 # device connector configuration
 deviceConnector:

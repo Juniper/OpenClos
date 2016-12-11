@@ -13,6 +13,13 @@ from jnpr.openclos.overlay.overlayModel import OverlayFabric, OverlayTenant, Ove
 from jnpr.openclos.tests.unit.test_dao import InMemoryDao
 from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue
 from jnpr.openclos.overlay.overlay import ConfigEngine
+from jnpr.openclos.loader import loadLoggingConfig
+from jnpr.openclos.dao import Dao
+
+class TempFileDao(Dao):
+    def _getDbUrl(self):
+        loadLoggingConfig(appName = 'unittest')
+        return 'sqlite:////tmp/sqllite3.db'
         
 class TestOverlayHelper:
     def __init__(self, conf, dao, commitQueue=None):
@@ -218,11 +225,15 @@ class TestOverlayHelper:
     
 class TestOverlay(unittest.TestCase):
     def setUp(self):
-        self._dao = InMemoryDao.getInstance()
+        if os.path.isfile('/tmp/sqllite3.db'):
+            os.remove('/tmp/sqllite3.db')
+        self._dao = TempFileDao.getInstance()
         self.helper = TestOverlayHelper({}, self._dao)
     
     def tearDown(self):
-        InMemoryDao._destroy()
+        TempFileDao._destroy()
+        if os.path.isfile('/tmp/sqllite3.db'):
+            os.remove('/tmp/sqllite3.db')
         self.helper = None
 
     def testCreateDevice(self):
@@ -264,6 +275,7 @@ class TestOverlay(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             self.helper._createFabric(session)
             self.assertEqual(1, session.query(OverlayFabric).count())
+            self.assertEqual(1, session.query(OverlayDeployStatus).count())
 
     def testCreateDuplicateFabric(self):
         with self.assertRaises(Exception) as e:
@@ -424,11 +436,15 @@ class TestOverlay(unittest.TestCase):
 
 class TestConfigEngine(unittest.TestCase):
     def setUp(self):
-        self._dao = InMemoryDao.getInstance()
+        if os.path.isfile('/tmp/sqllite3.db'):
+            os.remove('/tmp/sqllite3.db')
+        self._dao = TempFileDao.getInstance()
         self.helper = TestOverlayHelper({}, self._dao)
     
     def tearDown(self):
-        InMemoryDao._destroy()
+        TempFileDao._destroy()
+        if os.path.isfile('/tmp/sqllite3.db'):
+            os.remove('/tmp/sqllite3.db')
         self.helper = None
 
     def testConfigureFabric(self):
