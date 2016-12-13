@@ -147,3 +147,4 @@ deviceConnector:
         # cleanerThreadWaitTime: 60
     NetconfConnection:
         # autoProbe: 15
+        # timeout: 60
