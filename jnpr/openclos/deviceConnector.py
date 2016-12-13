@@ -27,6 +27,7 @@ logger = logging.getLogger(moduleName)
 DEFAULT_KEEP_ALIVE_TIMEOUT = 90
 DEFAULT_CLEANER_THREAD_WAIT_TIME = 60
 DEFAULT_AUTO_PROBE = 15
+DEFAULT_TIMEOUT = 60
 
 class AbstractConnection(object):
     def __init__(self, ip):
@@ -172,6 +173,7 @@ class NetconfConnection(AbstractConnection):
         
         # find configurable parameters
         self._autoProbe = DEFAULT_AUTO_PROBE
+        self._timeout = DEFAULT_TIMEOUT
         conf = OpenClosProperty().getProperties()
         # iterate relevant section of openclos.yaml
         deviceConnectorDict = conf.get('deviceConnector')
@@ -180,6 +182,8 @@ class NetconfConnection(AbstractConnection):
             if NetconfConnectionDict is not None:
                 if 'autoProbe' in NetconfConnectionDict:
                     self._autoProbe = NetconfConnectionDict['autoProbe']
+                if 'timeout' in NetconfConnectionDict:
+                    self._timeout = NetconfConnectionDict['timeout']
         
         if not self._username :
             raise DeviceConnectFailed('%s username is None' % (self._debugContext))
@@ -191,6 +195,7 @@ class NetconfConnection(AbstractConnection):
         
         try:
             DeviceConnection.auto_probe = self._autoProbe
+            DeviceConnection.timeout = self._timeout
             deviceConnection = DeviceConnection(host=self._ip, user=self._username, password=self._password, port=22, gather_facts=False)
             deviceConnection.open()
             logger.info('%s connected', self._debugContext)
