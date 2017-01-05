@@ -24,10 +24,10 @@ logger = logging.getLogger(moduleName)
 esiRouteTarget = "9999:9999"
 
 class Overlay():
-    def __init__(self, conf, dao, commitQueue=None):
+    def __init__(self, conf, dao):
         self._conf = conf
         self._dao = dao
-        self._configEngine = ConfigEngine(conf, dao, commitQueue)
+        self._configEngine = ConfigEngine(conf, dao)
         
     def createDevice(self, dbSession, name, description, role, address, routerId, podName, username, password):
         '''
@@ -91,6 +91,8 @@ class Overlay():
                             self._configEngine.editAggregatedL2port(dbSession, "update", l2ap)
 
         # TODO: Optionally delete ALL configs from deleted devices (?)
+        for deletedDevice in deleted:
+            self._configEngine.removeDeviceConfig(dbSession, deletedDevice, fabric, False)
                     
         return fabric
 
@@ -317,32 +319,22 @@ class Overlay():
         '''
         self._configEngine.deleteFabric(dbSession, fabric, force)
 
-    def _checkDeviceDependency(self, dbSession, deviceObject):
-        # Find l2port or aggregatedL2port on this device and the VRF they belong to.
-        vrfs = []
-        l2portObject = dbSession.query(OverlayL2port).filter(OverlayL2port.overlay_device_id == deviceObject.id).first()
-        if l2portObject is not None:
-            vrfs.append(l2portObject.overlay_network.overlay_vrf)
-        aggregatedL2portMemberObject = dbSession.query(OverlayAggregatedL2portMember).filter(OverlayAggregatedL2portMember.overlay_device_id == deviceObject.id).first()
-        if aggregatedL2portMemberObject is not None:
-            vrfs.append(aggregatedL2portMemberObject.overlay_aggregatedL2port.overlay_network.overlay_vrf)
-        
-        if deviceObject.role == 'spine':
-            for vrf in vrfs:
-                if deviceObject in vrf.overlay_tenant.overlay_fabric.overlay_devices:
-                    raise ValueError('Spine device %s has a VRF which contains active L2 port or aggregated L2 port. Please delete L2 port/aggregated L2 port explicitly first' % deviceId)
-        elif deviceObject.role == 'leaf':
-            if len(vrfs) > 0:
-                raise ValueError('Leaf device %s has active L2 port or aggregated L2 port. Please delete L2 port/aggregated L2 port explicitly first' % deviceId)
-
-    def deleteDevice(self, dbSession, device, force=False):
+    # def _checkDeviceDependency(self, dbSession, deviceObject):
+        # # Find l2port or aggregatedL2port on this device and the VRF they belong to.
+        # if deviceObject.role == 'leaf':
+            # l2portObject = dbSession.query(OverlayL2port).filter(OverlayL2port.overlay_device_id == deviceObject.id).first()
+            # if l2portObject is not None:
+                # raise ValueError('Leaf device %s has active L2 port. Please delete L2 port explicitly first' % deviceObject.id)
+            # aggregatedL2portMemberObject = dbSession.query(OverlayAggregatedL2portMember).filter(OverlayAggregatedL2portMember.overlay_device_id == deviceObject.id).first()
+            # if aggregatedL2portMemberObject is not None:
+                # raise ValueError('Leaf device %s has active aggregated L2 port. Please delete aggregated L2 port explicitly first' % deviceObject.id)
+                
+    def deleteDevice(self, dbSession, device):
         # Validate if there is l2port or aggregatedL2port active on this device.
         # If there is, this request will fail with 500. User needs to delete l2port/aggregatedL2port explicitly 
         # and then try to delete device again.
-        if not force:
-            self._checkDeviceDependency(dbSession, device)
-        self._dao.deleteObject(dbSession, device)
-        logger.info("OverlayDevice[id: '%s', name: '%s']: deleted", device.id, device.name)
+        # self._checkDeviceDependency(dbSession, device)
+        self._configEngine.removeDeviceConfig(dbSession, device, None, True)
             
     @staticmethod
     def isValidIpAddress(value):
@@ -361,14 +353,18 @@ class Overlay():
             logger.error("%s", exc)
         return False
         
+    def startCommitQueue(self):
+        self._configEngine._commitQueue.start()
+        
+    def stopCommitQueue(self):
+        self._configEngine._commitQueue.stop()
+        
 class ConfigEngine():
-    def __init__(self, conf, dao, commitQueue=None):
+    def __init__(self, conf, dao):
         self._conf = conf
         self._dao = dao
-        if commitQueue:
-            self._commitQueue = commitQueue
-        else:
-            self._commitQueue = OverlayCommitQueue.getInstance()
+        self._commitQueue = OverlayCommitQueue(self._dao)
+        
         # Preload all templates
         self._templateLoader = TemplateLoader(junosTemplatePackage="jnpr.openclos.overlay")
         self._olEditFabric = self._templateLoader.getTemplate("olEditFabric.txt")
@@ -383,6 +379,7 @@ class ConfigEngine():
         self._olDeleteSubnet = self._templateLoader.getTemplate("olDeleteSubnet.txt")
         self._olDeleteL2port = self._templateLoader.getTemplate("olDeleteL2port.txt")
         self._olDeleteAggregatedL2port = self._templateLoader.getTemplate("olDeleteAggregatedL2port.txt")
+        self._olRemoveDeviceConfig = self._templateLoader.getTemplate("olRemoveDeviceConfig.txt")
         
         self._aggregatedL2portNamePattern = re.compile(r'ae([0-9]+)')
 
@@ -465,7 +462,7 @@ class ConfigEngine():
                 esiRouteTarget=esiRouteTarget)
             deployments.append(OverlayDeployStatus(config, fabric.getUrl(), operation, device, fabric))    
 
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editFabric [id: '%s', name: '%s']: configured", fabric.id, fabric.name)
         self._commitQueue.addJobs(deployments)
         
@@ -512,7 +509,7 @@ class ConfigEngine():
                 oldLoopbackAddress=oldLoopback)
             deployments.append(OverlayDeployStatus(config, vrf.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
 
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editVrf [id: '%s', name: '%s']: configured", vrf.id, vrf.name)
         self._commitQueue.addJobs(deployments)
         
@@ -593,7 +590,7 @@ class ConfigEngine():
                 interfaces=interfaces)
             deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, leaf, vrf.overlay_tenant.overlay_fabric))    
 
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editNetwork [network id: '%s', network name: '%s']: configured", network.id, network.name)
         self._commitQueue.addJobs(deployments)
         
@@ -632,7 +629,7 @@ class ConfigEngine():
                 vrfName=vrf.name)
             deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
         
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
         self._commitQueue.addJobs(deployments)
         
@@ -660,7 +657,7 @@ class ConfigEngine():
             networks=networks,
             deletedNetworks=deletedNetworks2)
         deployments.append(OverlayDeployStatus(config, l2port.getUrl(), operation, l2port.overlay_device, vrf.overlay_tenant.overlay_fabric))
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editL2port [l2port id: '%s', l2port name: '%s']: configured", l2port.id, l2port.interface)
         self._commitQueue.addJobs(deployments)
 
@@ -704,7 +701,7 @@ class ConfigEngine():
                 deletedNetworks=deletedNetworks2)
             deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
             
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
         self._commitQueue.addJobs(deployments)
 
@@ -749,7 +746,7 @@ class ConfigEngine():
                 networks=networks)
 
             deployments.append(OverlayDeployStatus(config, l2port.getUrl(), "delete", l2port.overlay_device, vrf.overlay_tenant.overlay_fabric))
-            self._dao.createObjects(dbSession, deployments)
+            self._dao.createObjectsAndCommitNow(dbSession, deployments)
             logger.info("deleteL2port [l2port id: '%s', l2port name: '%s']: configured", l2port.id, l2port.interface)
             self._commitQueue.addJobs(deployments)
             self._commitQueue.addDbCleanUp(l2port.getUrl(), force)
@@ -784,7 +781,7 @@ class ConfigEngine():
                     vrfName=vrf.name)
                 deployments.append(OverlayDeployStatus(config, subnet.getUrl(), "delete", spine, vrf.overlay_tenant.overlay_fabric))    
 
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("deleteSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
         self._commitQueue.addJobs(deployments)
         self._commitQueue.addDbCleanUp(subnet.getUrl(), force)
@@ -844,7 +841,7 @@ class ConfigEngine():
                 deployments.append(OverlayDeployStatus(config, network.getUrl(), "delete", leaf, vrf.overlay_tenant.overlay_fabric))
                 # logger.debug("deleteNetwork: leaf: %s, object: %s, config: %s", leaf.address, network.getUrl(), config)
 
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("deleteNetwork [id: '%s', name: '%s']: configured", network.id, network.name)
         self._commitQueue.addJobs(deployments)
         self._commitQueue.addDbCleanUp(network.getUrl(), force)
@@ -877,7 +874,7 @@ class ConfigEngine():
                 lagName=aggregatedL2port.name,
                 networks=networks)
             deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), "delete", deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("deleteAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
         self._commitQueue.addJobs(deployments)
         self._commitQueue.addDbCleanUp(aggregatedL2port.getUrl(), force)
@@ -901,7 +898,7 @@ class ConfigEngine():
                     vrfName=vrf.name)
                 deployments.append(OverlayDeployStatus(config, vrf.getUrl(), "delete", spine, vrf.overlay_tenant.overlay_fabric))
 
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("deleteVrf [id: '%s', name: '%s']: configured", vrf.id, vrf.name)
         self._commitQueue.addJobs(deployments)
         self._commitQueue.addDbCleanUp(vrf.getUrl(), force)
@@ -931,10 +928,54 @@ class ConfigEngine():
                     remoteGateways=self.getRemoteGateways(fabric, device.podName))
                 deployments.append(OverlayDeployStatus(config, fabric.getUrl(), "delete", device, fabric))
 
-        self._dao.createObjects(dbSession, deployments)
+        self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("deleteFabric [id: '%s', name: '%s']: configured", fabric.id, fabric.name)
         self._commitQueue.addJobs(deployments)
         self._commitQueue.addDbCleanUp(fabric.getUrl(), force)
+
+    def removeDeviceConfig(self, dbSession, device, fabricObject=None, cleanUpDb=False):
+        '''
+        Removes overlay config from device
+        '''
+        # If fabricObject is not None, this means user takes this device off of fabricObject. 
+        # If fabricObject is None, this means user is calling deleteDevice without first taking the device
+        # off of its fabric. So in this case we just have to assume the fabric is the first fabric this device is on.
+        # (We can make this assumption because we are supporting only one fabric per device in this release)
+        if fabricObject is not None:
+            fabric = fabricObject
+        elif len(device.overlay_fabrics) > 0:
+            fabric = device.overlay_fabrics[0]
+        else:
+            fabric = None
+            
+        if fabric is not None:
+            logger.info("OverlayDevice[id: '%s', name: '%s']: removeDeviceConfig request submitted", device.id, device.name)
+            deployments = []
+            if len(fabric.overlay_tenants) > 0 and len(fabric.overlay_tenants[0].overlay_vrfs) > 0:
+                vrf = fabric.overlay_tenants[0].overlay_vrfs[0]
+                networks = [(net.vlanid, net.vnid, net.name) for net in vrf.overlay_networks]
+            else:
+                vrf = None
+                networks = []
+            # Compile a list of interfaces that belong to this leaf
+            interfaces = [l2port.configName() for l2port in device.overlay_l2ports]
+            memberInterfaces = [member.interface for member in device.aggregatedL2port_members]
+            lagNames = list(set([member.overlay_aggregatedL2port.configName() for member in device.aggregatedL2port_members]))
+            config = self._olRemoveDeviceConfig.render(
+                role=device.role,
+                networks=networks,
+                vrfCounter=vrf.vrfCounter if vrf else None,
+                vrfName=vrf.name if vrf else None,
+                interfaces=interfaces,
+                memberInterfaces=memberInterfaces,
+                lagNames=lagNames)
+            deployments.append(OverlayDeployStatus(config, device.getUrl(), "delete", device, fabric))
+
+            self._dao.createObjectsAndCommitNow(dbSession, deployments)
+            logger.info("removeDeviceConfig [id: '%s', name: '%s']: configured", device.id, device.name)
+            self._commitQueue.addJobs(deployments)
+        if cleanUpDb:
+            self._commitQueue.addDbCleanUp(device.getUrl(), False)
 
 # def main():
     # conf = {}

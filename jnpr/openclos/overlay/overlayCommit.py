@@ -14,13 +14,11 @@ from sqlalchemy.orm import exc
 from jnpr.openclos.overlay.overlayModel import OverlayDeployStatus, OverlayL2ap, OverlayFabricPodClusterId, OverlayDevice
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.loader import OpenClosProperty, loadLoggingConfig
-from jnpr.openclos.common import SingletonBase
 from jnpr.openclos.exception import DeviceRpcFailed, DeviceConnectFailed
 from jnpr.openclos.deviceConnector import CachedConnectionFactory, NetconfConnection
 
 DEFAULT_DBCLEANUP_INTERVAL = 10
 DEFAULT_DEVICE_INTERVAL = 5
-DEFAULT_DAO_CLASS = Dao
 
 moduleName = 'overlayCommit'
 loadLoggingConfig(appName=moduleName)
@@ -47,7 +45,7 @@ class OverlayCommitJob(object):
             with self.parent._dao.getReadWriteSession() as session:
                 statusObject = session.query(OverlayDeployStatus).filter(OverlayDeployStatus.id == self.id).first()
                 if statusObject is None:
-                    logger.debug("OverlayDeployStatus %s no longer exists", self._debugContext)
+                    logger.debug("OverlayDeployStatus %s not found", self._debugContext)
                     return
 
                 # Update status in all cases
@@ -297,9 +295,9 @@ class OverlayDeviceQueue(object):
                     return
                 # Note we continue in this case    
             
-class OverlayCommitQueue(SingletonBase):
-    def __init__(self, daoClass=DEFAULT_DAO_CLASS):
-        self._dao = daoClass.getInstance()
+class OverlayCommitQueue(object):
+    def __init__(self, dao):
+        self._dao = dao
         # event to stop from sleep
         self.stopEvent = Event()
         self.__lock = RLock()
@@ -441,7 +439,7 @@ class OverlayCommitQueue(SingletonBase):
                     self.cleanUpDb()
             except Exception as exc:
                 logger.error("Encounted error '%s' on OverlayCommitQueue", exc)
-
+                
 # def main():        
     # from jnpr.openclos.overlay.overlayModel import OverlayDevice, OverlayFabric, OverlayTenant, OverlayVrf, OverlayNetwork, OverlaySubnet, OverlayL2port, OverlayAggregatedL2port
     # import time

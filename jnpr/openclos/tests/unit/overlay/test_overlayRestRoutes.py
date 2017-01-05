@@ -16,6 +16,7 @@ from jnpr.openclos.rest import RestServer
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.loader import loadLoggingConfig
 from jnpr.openclos.tests.unit.overlay.test_overlay import TestOverlayHelper
+from jnpr.openclos.overlay import overlayRestRoutes
 
 webServerRoot = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
 configLocation = webServerRoot
@@ -92,7 +93,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.restServer.initRest()
         self.restServer.installRoutes()
         self.restServerTestApp = TestApp(self.restServer.app)
-        self.helper = TestOverlayHelper(self._conf, self._dao)
+        self.helper = TestOverlayHelper(self._conf, self._dao, overlayRestRoutes.routes._overlay)
         
     def tearDown(self):
         shutil.rmtree(os.path.join(configLocation, 'test1'), ignore_errors=True)
