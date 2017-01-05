@@ -86,6 +86,9 @@ class OverlayDevice(ManagedElement, Base):
         else:
             return None
 
+    def getUrl(self):
+        return "/devices/" + self.id
+    
 class OverlayFabric(ManagedElement, Base):
     __tablename__ = 'overlayFabric'
     id = Column(String(60), primary_key=True)
@@ -609,6 +612,8 @@ class OverlayDeployStatus(ManagedElement, Base):
             return(OverlayL2port, objectUrlSplit[2])
         elif objectUrlSplit[1] == "aggregatedL2ports":
             return(OverlayAggregatedL2port, objectUrlSplit[2])
+        elif objectUrlSplit[1] == "devices":
+            return(OverlayDevice, objectUrlSplit[2])
 
     @staticmethod
     def hasChildren(object):
@@ -634,5 +639,7 @@ class OverlayDeployStatus(ManagedElement, Base):
             return False
         elif isinstance(object, OverlayAggregatedL2port):
             return False
+        elif isinstance(object, OverlayDevice):
+            return (len(object.overlay_fabrics) > 0 or len(object.overlay_l2ports) > 0 or len(object.aggregatedL2port_members) > 0) 
         else:
             return False

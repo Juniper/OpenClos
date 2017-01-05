@@ -36,10 +36,7 @@ class OverlayRestRoutes():
         self.app = context['app']
         self.uriPrefix = None
         self._overlay = Overlay(self._conf, self.__dao)
-
-        # commit engine
-        self.commitQueue = OverlayCommitQueue.getInstance()
-        self.commitQueue.start()
+        self._overlay.startCommitQueue()
         
         # install index links
         context['restServer'].addIndexLink(self.baseUrl + '/devices')
@@ -104,7 +101,7 @@ class OverlayRestRoutes():
         self.app.route(self.baseUrl + '/aggregatedL2ports/<aggregatedL2portId>', 'DELETE', self.deleteAggregatedL2port)
 
     def uninstall(self):
-        self.commitQueue.stop()
+        self._overlay.stopCommitQueue()
 
     def _getForce(self):
         force = bottle.request.query.get('force', '0')
@@ -238,7 +235,7 @@ class OverlayRestRoutes():
         try:
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             logger.info("OverlayDevice[id='%s', name='%s']: deleted", deviceObject.id, deviceObject.name)
-            self._overlay.deleteDevice(dbSession, deviceObject, self._getForce())
+            self._overlay.deleteDevice(dbSession, deviceObject)
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:

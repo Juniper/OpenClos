@@ -22,11 +22,12 @@ class TempFileDao(Dao):
         return 'sqlite:////tmp/sqllite3.db'
         
 class TestOverlayHelper:
-    def __init__(self, conf, dao, commitQueue=None):
-        if not commitQueue:
-            commitQueue = OverlayCommitQueue(type(dao))
-        import jnpr.openclos.overlay.overlay
-        self.overlay = jnpr.openclos.overlay.overlay.Overlay(conf, dao, commitQueue)
+    def __init__(self, conf, dao, overlay=None):
+        if overlay is not None:
+            self.overlay = overlay
+        else:
+            import jnpr.openclos.overlay.overlay
+            self.overlay = jnpr.openclos.overlay.overlay.Overlay(conf, dao)
     
     def _createDevice(self, dbSession, offset="1", role="spine", podName="pod1"):
         deviceDict = {
@@ -227,14 +228,21 @@ class TestOverlay(unittest.TestCase):
     def setUp(self):
         if os.path.isfile('/tmp/sqllite3.db'):
             os.remove('/tmp/sqllite3.db')
+        from jnpr.openclos import deviceConnector
+        deviceConnector.DEFAULT_AUTO_PROBE = 3
         self._dao = TempFileDao.getInstance()
+        from jnpr.openclos.tests.unit.overlay.test_overlay import TestOverlayHelper
         self.helper = TestOverlayHelper({}, self._dao)
+        self.helper.overlay._configEngine._commitQueue.dbCleanUpInterval = 1
+        self.helper.overlay._configEngine._commitQueue.deviceInterval = 1
+        self.helper.overlay.startCommitQueue()
     
     def tearDown(self):
+        self.helper.overlay.stopCommitQueue()
+        self.helper = None
         TempFileDao._destroy()
         if os.path.isfile('/tmp/sqllite3.db'):
             os.remove('/tmp/sqllite3.db')
-        self.helper = None
 
     def testCreateDevice(self):
         with self._dao.getReadWriteSession() as session:
@@ -438,14 +446,21 @@ class TestConfigEngine(unittest.TestCase):
     def setUp(self):
         if os.path.isfile('/tmp/sqllite3.db'):
             os.remove('/tmp/sqllite3.db')
+        from jnpr.openclos import deviceConnector
+        deviceConnector.DEFAULT_AUTO_PROBE = 3
         self._dao = TempFileDao.getInstance()
+        from jnpr.openclos.tests.unit.overlay.test_overlay import TestOverlayHelper
         self.helper = TestOverlayHelper({}, self._dao)
+        self.helper.overlay._configEngine._commitQueue.dbCleanUpInterval = 1
+        self.helper.overlay._configEngine._commitQueue.deviceInterval = 1
+        self.helper.overlay.startCommitQueue()
     
     def tearDown(self):
+        self.helper.overlay.stopCommitQueue()
+        self.helper = None
         TempFileDao._destroy()
         if os.path.isfile('/tmp/sqllite3.db'):
             os.remove('/tmp/sqllite3.db')
-        self.helper = None
 
     def testConfigureFabric(self):
         with self._dao.getReadWriteSession() as session:
@@ -453,6 +468,7 @@ class TestConfigEngine(unittest.TestCase):
             # overlay.createXYZ would also call required configure
             #self.configEngine.configureFabric(session, "create", fabric)
             
+        with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayDeployStatus).count())
             config = session.query(OverlayDeployStatus).one().configlet
             print config
@@ -469,6 +485,7 @@ class TestConfigEngine(unittest.TestCase):
             # overlay.createXYZ would also call required configure
             #self.configEngine.configureFabric(session, "create", fabric)
             
+        with self._dao.getReadSession() as session:
             self.assertEqual(5, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
             spine1Config = deployments[0].configlet
@@ -501,6 +518,7 @@ class TestConfigEngine(unittest.TestCase):
             # overlay.createXYZ would also call required configure
             #self.configEngine.configureFabric(session, "create", fabric)
             
+        with self._dao.getReadSession() as session:
             self.assertEqual(9, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
 
@@ -531,6 +549,7 @@ class TestConfigEngine(unittest.TestCase):
             # overlay.createXYZ would also call required configure
             #self.configEngine.configureFabric(session, "create", fabric)
             
+        with self._dao.getReadSession() as session:
             self.assertEqual(9, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
             spine1Config = deployments[0].configlet
@@ -586,6 +605,7 @@ class TestConfigEngine(unittest.TestCase):
             # overlay.createXYZ would also call required configure
             #self.configEngine.configureVrf(session, "create", vrf)
             
+        with self._dao.getReadSession() as session:
             # 2 deployments fabric and vrf
             self.assertEqual(2, session.query(OverlayDeployStatus).count())
             config = session.query(OverlayDeployStatus).filter_by(object_url=vrfObjectUrl).one().configlet
@@ -599,6 +619,7 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             network = self.helper._createNetworkOn2By3Fabric(session)
 
+        with self._dao.getReadSession() as session:
             # 12 deployments 5 fabric, 2 vrf and 5 network            
             self.assertEqual(12, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
@@ -634,6 +655,7 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             subnet = self.helper._createSubnetOn2By3Fabric(session)
 
+        with self._dao.getReadSession() as session:
             # 14 deployments 5 fabric, 2 vrf, 5 network and 2 subnet            
             self.assertEqual(14, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
@@ -654,6 +676,7 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             subnets = self.helper._create2NetworkOn2By3Fabric(session)
             
+        with self._dao.getReadSession() as session:
             # 21 deployments 5 fabric, 2 vrf and 5+5 network, 2+2 subnet            
             self.assertEqual(21, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
@@ -698,6 +721,7 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             ports = self.helper._create2Network4L2port(session)
             
+        with self._dao.getReadSession() as session:
             # 8 deployments 1 fabric, 1 vrf, 2 network and 4 ports            
             deployments = session.query(OverlayDeployStatus).all()
             self.assertEqual(8, len(deployments))
@@ -824,6 +848,7 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadWriteSession() as session:
             ports = self.helper._create2Network3AggregatedL2port(session)
             
+        with self._dao.getReadSession() as session:
             # 7 deployments 1 fabric, 1 vrf, 2 network and 3 aggregateL2port          
             deployments = session.query(OverlayDeployStatus).all()
             self.assertEqual(7, len(deployments))

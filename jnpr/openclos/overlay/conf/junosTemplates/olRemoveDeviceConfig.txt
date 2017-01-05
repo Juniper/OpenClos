@@ -1,0 +1,90 @@
+delete:
+switch-options;
+
+protocols {
+    bgp {
+        delete:
+        group overlay-evpn;
+        {% if role == "spine" %}
+        delete:
+        group overlay-evpn-rr;
+        {% endif %}
+    }
+    delete:
+    evpn;
+}
+
+policy-options {
+    delete:
+    policy-statement LEAF-IN;
+    delete:
+    community comm-leaf-esi;
+    {% if role == "leaf" %}
+    delete:
+    policy-statement OVERLAY-IN;
+    {% endif %}
+    {% for (vlanId, vnid, networkName) in networks %}
+    delete:
+    community com{{vnid}};
+    {% endfor %}
+}
+
+vlans {
+    {% for (vlanId, vnid, networkName) in networks %}
+    delete:
+    {{networkName}};
+    {% endfor %}
+}
+
+{% if role == "spine" %}
+routing-options {
+    delete:
+    forwarding-table;
+}
+interfaces {
+    {% if vrfCounter %}
+    lo0 {
+        delete:
+        unit {{vrfCounter}};
+    }
+    {% endif %}
+    irb {
+        {% for (vlanId, vnid, networkName) in networks %}
+        delete:
+        unit {{vlanId}};
+        {% endfor %}
+    }
+}
+{% if vrfName %}
+routing-instances {
+    delete:
+    VRF_{{vrfName}};
+}
+{% endif %}
+{% endif %}
+
+{% if role == "leaf" %}
+interfaces {
+    {% for interface in interfaces %}{{interface}} {
+        delete:
+        flexible-vlan-tagging;
+        delete:
+        encapsulation extended-vlan-bridge;
+        delete:
+        native-vlan-id;
+        {% for (vlanId, vnid, networkName) in networks %}
+        delete:
+        unit {{vlanId}};
+        {% endfor %}
+    }
+    {% endfor %}
+    {% for memberInterface in memberInterfaces %}
+    delete:
+    {{memberInterface}};
+    {% endfor %}
+    {% for lagName in lagNames %}
+    delete:
+    {{lagName}};
+    {% endfor %}
+}
+{% endif %}

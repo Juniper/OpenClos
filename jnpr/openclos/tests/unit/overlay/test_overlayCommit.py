@@ -28,17 +28,18 @@ class TestOverlayCommitQueue(unittest.TestCase):
         from jnpr.openclos import deviceConnector
         deviceConnector.DEFAULT_AUTO_PROBE = 3
         self._dao = TempFileDao.getInstance()
-        self.commitQueue = OverlayCommitQueue(self._dao)
-        self.commitQueue.dbCleanUpInterval = 1
-        self.commitQueue.deviceInterval = 1
         from jnpr.openclos.tests.unit.overlay.test_overlay import TestOverlayHelper
-        self.helper = TestOverlayHelper({}, self._dao, self.commitQueue)
+        self.helper = TestOverlayHelper({}, self._dao)
+        self.commitQueue = self.helper.overlay._configEngine._commitQueue
+        self.helper.overlay._configEngine._commitQueue.dbCleanUpInterval = 1
+        self.helper.overlay._configEngine._commitQueue.deviceInterval = 1
+        self.helper.overlay.startCommitQueue()
         
     def tearDown(self):
         # shutdown all live connections
         CachedConnectionFactory.getInstance()._stop()
+        self.helper.overlay.stopCommitQueue()
         self.helper = None
-        self.commitQueue = None
         TempFileDao._destroy()
         if os.path.isfile('/tmp/sqllite3.db'):
             os.remove('/tmp/sqllite3.db')
@@ -87,11 +88,12 @@ class TestOverlayCommitQueue(unittest.TestCase):
             fabric = self.helper._createFabric(session)
             url = fabric.getUrl()
             
-        with self._dao.getReadWriteSession() as session:
+        with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayFabric).count())
 
         self.commitQueue.addDbCleanUp(url, True)
-        self.commitQueue.cleanUpDb()
+        import time
+        time.sleep(2)
         
         with self._dao.getReadSession() as session:
             self.assertEqual(0, session.query(OverlayFabric).count())
@@ -101,16 +103,18 @@ class TestOverlayCommitJob(unittest.TestCase):
         if os.path.isfile('/tmp/sqllite3.db'):
             os.remove('/tmp/sqllite3.db')
         self._dao = TempFileDao.getInstance()
-        self.commitQueue = OverlayCommitQueue(self._dao)
-        self.commitQueue.dispatchInterval = 1
         from jnpr.openclos.tests.unit.overlay.test_overlay import TestOverlayHelper
-        self.helper = TestOverlayHelper({}, self._dao, self.commitQueue)
+        self.helper = TestOverlayHelper({}, self._dao)
+        self.commitQueue = self.helper.overlay._configEngine._commitQueue
+        self.helper.overlay._configEngine._commitQueue.dbCleanUpInterval = 1
+        self.helper.overlay._configEngine._commitQueue.deviceInterval = 1
+        self.helper.overlay.startCommitQueue()
         
     def tearDown(self):
         # shutdown all live connections
         CachedConnectionFactory.getInstance()._stop()
+        self.helper.overlay.stopCommitQueue()
         self.helper = None
-        self.commitQueue = None
         TempFileDao._destroy()
         if os.path.isfile('/tmp/sqllite3.db'):
             os.remove('/tmp/sqllite3.db')
