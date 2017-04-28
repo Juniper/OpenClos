@@ -5,6 +5,14 @@
 # When used as Spine in 5-Stage topology, ports are split between uplink and downlink 
 
 deviceFamily:
+    qfx5110-32q:
+        spine:
+          uplinkPorts: 'et-0/0/[16-23]'
+          downlinkPorts: 'et-0/0/[0-15]'
+    qfx5110-48s:
+        leaf:
+          uplinkPorts: 'et-0/0/[48-53]'
+          downlinkPorts: ['ge-0/0/[0-47]','xe-0/0/[0-47]']
     qfx5100-24q-2p:
         fabric:
             uplinkPorts: 
@@ -94,6 +102,10 @@ deviceFamily:
         spine:
             uplinkPorts:
             downlinkPorts: 'et-0/0/[0-71]'
+    qfx5110-32q:
+        spine:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[0-31]'
     qfx10008:
         spine:
             # assuming 8 x ULC-36Q-12Q28 used
