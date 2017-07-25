@@ -1,0 +1,30 @@
+{% if role == "leaf" %}
+interfaces {
+    irb {
+        unit {{vlanId}} {
+            family inet {
+                replace:
+                address {{irbAddress}} {
+                    virtual-gateway-address {{irbVirtualGateway}};
+                }
+                {% if oldIrbAddress %}
+                delete:
+                address {{oldIrbAddress}};
+                {% endif %}
+            }
+        }
+    }
+}
+
+vlans {
+    {{networkName}} {
+        l3-interface irb.{{vlanId}};
+    }
+}
+
+routing-instances {
+    VRF_{{vrfName}} {
+        interface irb.{{vlanId}};    
+    }
+}
+{% endif %}

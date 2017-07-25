@@ -17,6 +17,7 @@ from jnpr.openclos.loader import loadLoggingConfig
 from jnpr.openclos.dao import Dao
 from jnpr.openclos.templateLoader import TemplateLoader
 from jnpr.openclos.overlay.overlayCommit import OverlayCommitQueue
+from jnpr.openclos.model import Device
 
 moduleName = 'overlay'
 loadLoggingConfig(appName=moduleName)
@@ -380,7 +381,8 @@ class ConfigEngine():
         self._olDeleteL2port = self._templateLoader.getTemplate("olDeleteL2port.txt")
         self._olDeleteAggregatedL2port = self._templateLoader.getTemplate("olDeleteAggregatedL2port.txt")
         self._olRemoveDeviceConfig = self._templateLoader.getTemplate("olRemoveDeviceConfig.txt")
-        
+	self._olEditNetworkL3Gateway = self._templateLoader.getTemplate("olEditNetworkL3Gateway.txt")
+	self._olEditSubnetL3Gateway = self._templateLoader.getTemplate("olEditSubnetL3Gateway.txt")
         self._aggregatedL2portNamePattern = re.compile(r'ae([0-9]+)')
 
     def _allocateClusterId(self, dbSession, fabric):
@@ -533,6 +535,9 @@ class ConfigEngine():
         '''
         Create IRB, BD, update VRF, update evpn, update policy
         '''
+        DeviceName = dbSession.query(Device).filter(Device.role == 'leaf').filter(Device.family == 'qfx5110-48s').all()
+        overlayDeviceName = dbSession.query(OverlayDevice).filter(OverlayDevice.role == 'leaf').all()
+        DeviceFilter = dbSession.query(Device).filter(Device.family == 'qfx5110-48s').filter(Device.role == 'leaf').all()
         deployments = []        
         vrf = network.overlay_vrf
         asn = vrf.overlay_tenant.overlay_fabric.overlayAS
@@ -546,25 +551,41 @@ class ConfigEngine():
         
         spineIndex = 0
         for spine in vrf.getSpines():
-            # Compile a list of irb addresses for this spine
-            subnets = []
-            for subnet in network.overlay_subnets:
-                irbIps = self.getSubnetIps(subnet.cidr)
-                irbVirtualGateway = irbIps.pop(0).split("/")[0]
-                subnets.append((irbIps[spineIndex], irbVirtualGateway))
-                
-            config = self._olEditNetwork.render(
-                role="spine",
-                vrfName=vrf.name,
-                networkName=network.name,
-                vlanId=network.vlanid,
-                vnid=network.vnid,
-                oldVlanId=oldVlanId,
-                oldVnid=oldVnid,
-                asn=ConfigEngine.formatASN(asn),
-                subnets=subnets)
-            deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
-            spineIndex = spineIndex + 1
+                # Compile a list of irb addresses for this spine
+                subnets = []
+                interfaces = []
+                for subnet in network.overlay_subnets:
+                    irbIps = self.getSubnetIps(subnet.cidr)
+                    irbVirtualGateway = irbIps.pop(0).split("/")[0]
+                    subnets.append((irbIps[spineIndex], irbVirtualGateway))
+                for l2ap in network.overlay_l2aps:
+                    for leaf in vrf.getLeafs():
+                        for x in DeviceName:
+		            for y in overlayDeviceName:
+                                if (DeviceFilter and x.name == y.name) and (l2ap.overlay_device_id == leaf.id):
+                                    config = self._olEditNetworkL3Gateway.render(
+                                   	role="spine",
+                                 	vrfName=vrf.name,
+                                	networkName=network.name,
+                                	vlanId=network.vlanid,
+                                	vnid=network.vnid,
+                                	oldVlanId=oldVlanId,
+                                	oldVnid=oldVnid,
+                                	asn=ConfigEngine.formatASN(asn))
+                                    deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))
+                            if (DeviceFilter and x.name != y.name and DeviceFilter == []) or (DeviceFilter == []) or (not DeviceFilter):
+                                config = self._olEditNetwork.render(
+                                  	role="spine",
+                                  	vrfName=vrf.name,
+                                 	networkName=network.name,
+                                 	vlanId=network.vlanid,
+                                 	vnid=network.vnid,
+                                	oldVlanId=oldVlanId,
+                                	oldVnid=oldVnid,
+                                	asn=ConfigEngine.formatASN(asn),
+                                	subnets=subnets)
+                		deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
+        spineIndex = spineIndex + 1
             
         for leaf in vrf.getLeafs():     
             # Compile a list of interfaces that belong to this leaf
@@ -576,19 +597,38 @@ class ConfigEngine():
                 elif l2ap.type == 'aggregatedL2port':
                     for member in l2ap.members:
                         if member.overlay_device_id == leaf.id:
-                            interfaces.append((l2ap.configName(), len(l2ap.overlay_networks)))
-                            
-            config = self._olEditNetwork.render(
-                role="leaf",
-                vrfName=vrf.name,
-                networkName=network.name,
-                vlanId=network.vlanid,
-                vnid=network.vnid,
-                oldVlanId=oldVlanId,
-                oldVnid=oldVnid,
-                asn=ConfigEngine.formatASN(asn),
-                interfaces=interfaces)
-            deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, leaf, vrf.overlay_tenant.overlay_fabric))    
+                             interfaces.append((l2ap.configName(), len(l2ap.overlay_networks))) 
+            for subnet in network.overlay_subnets:
+                irbIps = self.getSubnetIps(subnet.cidr)
+                irbVirtualGateway = irbIps.pop(0).split("/")[0]
+                subnets.append((irbIps[spineIndex], irbVirtualGateway))
+            for l2ap in network.overlay_l2aps:
+	    	for x in DeviceName:
+                    for y in overlayDeviceName:
+		        if  (DeviceFilter and  x.name == y.name) and (l2ap.overlay_device_id == leaf.id):
+			    config = self._olEditNetworkL3Gateway.render(
+			          role="leaf",
+			          vrfName=vrf.name,
+			          networkName=network.name,
+			          vlanId=network.vlanid,
+			          vnid=network.vnid,
+			          oldVlanId=oldVlanId,
+			          oldVnid=oldVnid,
+			          asn=ConfigEngine.formatASN(asn),
+			          subnets=subnets)
+                            deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, leaf, vrf.overlay_tenant.overlay_fabric))
+                        if (DeviceFilter and x.name != y.name and DeviceFilter == []) or (DeviceFilter == []) or (not DeviceFilter): 
+			   config = self._olEditNetwork.render(
+			        role="leaf",
+				vrfName=vrf.name,
+				networkName=network.name,
+				vlanId=network.vlanid,
+				vnid=network.vnid,
+				oldVlanId=oldVlanId,
+				oldVnid=oldVnid,
+				asn=ConfigEngine.formatASN(asn),
+				interfaces=interfaces)
+			   deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, leaf, vrf.overlay_tenant.overlay_fabric))    
 
         self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editNetwork [network id: '%s', network name: '%s']: configured", network.id, network.name)
@@ -598,6 +638,10 @@ class ConfigEngine():
         '''
         Add subnet address to IRB
         '''
+        DeviceName = dbSession.query(Device).filter(Device.role == 'leaf').filter(Device.family == 'qfx5110-48s').all()
+        overlayDeviceName = dbSession.query(OverlayDevice).filter(OverlayDevice.role == 'leaf').all()
+        DeviceFilter = dbSession.query(Device).filter(Device.family == 'qfx5110-48s').filter(Device.role == 'leaf').all()
+
         deployments = []        
         network = subnet.overlay_network
         vrf = network.overlay_vrf
@@ -618,21 +662,37 @@ class ConfigEngine():
             logger.error("editSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
                          vrf.id, network.id, len(irbIps), len(spines))
 
-        for spine, irbIp, oldIrbIp in itertools.izip(spines, irbIps, oldIrbIps):
-            config = self._olEditSubnet.render(
-                role="spine",
-                irbAddress=irbIp,
-                irbVirtualGateway=irbVirtualGateway, 
-                oldIrbAddress=oldIrbIp,
-                vlanId=network.vlanid,
-                networkName=network.name,
-                vrfName=vrf.name)
-            deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
-        
+        for leaf, irbIpL, oldIrbIpL in itertools.izip(spines, irbIps, oldIrbIps):
+            for x in DeviceName:
+                for y in overlayDeviceName:
+                    if DeviceFilter and x.name == y.name:
+                       config = self._olEditSubnetL3Gateway.render(
+                      	        role="leaf",
+                       	    	irbAddress=irbIpL,
+               	      	    	irbVirtualGateway=irbVirtualGateway, 
+                       	    	oldIrbAddress=oldIrbIpL,
+                            	vlanId=network.vlanid,
+                            	networkName=network.name,
+                            	vrfName=vrf.name)
+                       deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation,leaf, vrf.overlay_tenant.overlay_fabric))
+        for spine, irbIp, oldIrbIp in itertools.izip(spines, irbIps, oldIrbIps): 
+            for x in DeviceName:
+                for y in overlayDeviceName:          
+                    if(DeviceFilter and x.name != y.name and DeviceFilter == []) or (DeviceFilter == []) or (not DeviceFilter): 
+                            config = self._olEditSubnet.render(
+                                role="spine",
+                                irbAddress=irbIp,
+                                irbVirtualGateway=irbVirtualGateway,
+                                oldIrbAddress=oldIrbIp,
+                                vlanId=network.vlanid,
+                                networkName=network.name,
+                                vrfName=vrf.name)
+                            deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation,spine, vrf.overlay_tenant.overlay_fabric))
+           
         self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
         self._commitQueue.addJobs(deployments)
-        
+   
     def getSubnetIps(self, subnetBlock):
         '''
         returns all usable IPs in CIDR format (1.2.3.4/24) excluding network and broadcast

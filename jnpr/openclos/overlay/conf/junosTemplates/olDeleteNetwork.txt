@@ -52,7 +52,19 @@ interfaces {
         {% endif %}
         delete:
         unit {{vlanId}};
+        irb {
+        delete:
+        unit {{vlanId}};
+        }
     }
     {% endfor %}
+
+   routing-instances {
+    VRF_{{vrfName}} {
+        delete:
+        interface irb.{{vlanId}};
+    }
+}
+
 }
 {% endif %}
