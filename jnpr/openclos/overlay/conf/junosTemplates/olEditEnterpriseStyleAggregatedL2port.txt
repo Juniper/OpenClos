@@ -1,0 +1,63 @@
+chassis {
+    aggregated-devices {
+        ethernet {
+            device-count {{lagCount}};
+        }
+    }
+}
+
+interfaces {
+    {% for memberInterface in memberInterfaces %}
+    replace:
+    {{memberInterface}} {
+        ether-options {
+            802.3ad {{lagName}};
+        }
+    }
+    {% endfor %}
+    {{lagName}} {
+        esi {
+            {{ethernetSegmentId}};
+            all-active;
+        }
+        encapsulation extended-vlan-bridge;
+        {% if networks and networks|length > 0 %}
+        unit 0 {
+            family ethernet-switching{
+            interface-mode trunk;
+            vlan {
+            members [{% for network in networks %} {{network[0]}} {% endfor %}]
+        }
+        }
+        }
+        {% endif %}
+        {% if deletedNetworks and deletedNetworks|length > 0 %}
+        {% for deletedNetwork in deletedNetworks %}
+        delete:
+        unit {{deletedNetwork[0]}};
+        {% endfor %}
+        {% endif %}
+        aggregated-ether-options {
+            lacp {
+                active;
+                system-id {{systemId}};
+            }
+        }
+    }
+}
+
+vlans {
+    {% if networks and networks|length > 0 %}
+    {% for network in networks %}{{network[2]}} {
+        interface {{lagName}}.{{network[0]}};
+    }
+    {% endfor %}
+    {% endif %}
+    {% if deletedNetworks and deletedNetworks|length > 0 %}
+    {% for deletedNetwork in deletedNetworks %}{{deletedNetwork[2]}} {
+        delete:
+        interface {{lagName}}.{{deletedNetwork[0]}};
+    }
+    {% endfor %}
+    {% endif %}
+}

@@ -193,11 +193,11 @@ class Overlay():
         logger.info("OverlayL3port[id: '%s', name: '%s']: created", l3port.id, l3port.name)
         return l3port
 
-    def createL2port(self, dbSession, name, description, overlay_networks, interface, overlay_device):
+    def createL2port(self, dbSession, name, description, overlay_networks, interface, overlay_device , enterprise):
         '''
         Create a new L2port
         '''
-        l2port = OverlayL2port(name, description, overlay_networks, interface, overlay_device)
+        l2port = OverlayL2port(name, description, overlay_networks, interface, overlay_device, enterprise)
 
         self._dao.createObjects(dbSession, [l2port])
         logger.info("OverlayL2port[id: '%s', name: '%s']: created", l2port.id, l2port.name)
@@ -244,13 +244,13 @@ class Overlay():
                 OverlayL2port.interface == memberDict['interface']).count() > 0:
                 raise ValueError('Member %s:%s is in used in another l2port' % (memberDict['device'].name, memberDict['interface']))
                 
-    def createAggregatedL2port(self, dbSession, name, description, overlay_networks, members, esi, lacp):
+    def createAggregatedL2port(self, dbSession, name, description, overlay_networks, members, esi, lacp,enterprise):
         '''
         Create a new AggregatedL2port
         '''
         self._validateAggregatedL2port(dbSession, name, members)
         
-        aggregatedL2port = OverlayAggregatedL2port(name, description, overlay_networks, esi, lacp)
+        aggregatedL2port = OverlayAggregatedL2port(name, description, overlay_networks, esi, lacp,enterprise)
 
         self._dao.createObjects(dbSession, [aggregatedL2port])
         logger.info("OverlayAggregatedL2port[id: '%s', name: '%s']: created", aggregatedL2port.id, aggregatedL2port.name)
@@ -374,6 +374,7 @@ class ConfigEngine():
         self._olEditSubnet = self._templateLoader.getTemplate("olEditSubnet.txt")
         self._olEditL2port = self._templateLoader.getTemplate("olEditL2port.txt")
         self._olEditAggregatedL2port = self._templateLoader.getTemplate("olEditAggregatedL2port.txt")
+        self._olEditMultihomeL2port = self._templateLoader.getTemplate("olEditMultihomeL2port.txt")
         self._olDeleteFabric = self._templateLoader.getTemplate("olDeleteFabric.txt")
         self._olDeleteVrf = self._templateLoader.getTemplate("olDeleteVrf.txt")
         self._olDeleteNetwork = self._templateLoader.getTemplate("olDeleteNetwork.txt")
@@ -381,8 +382,10 @@ class ConfigEngine():
         self._olDeleteL2port = self._templateLoader.getTemplate("olDeleteL2port.txt")
         self._olDeleteAggregatedL2port = self._templateLoader.getTemplate("olDeleteAggregatedL2port.txt")
         self._olRemoveDeviceConfig = self._templateLoader.getTemplate("olRemoveDeviceConfig.txt")
-	self._olEditNetworkL3Gateway = self._templateLoader.getTemplate("olEditNetworkL3Gateway.txt")
-	self._olEditSubnetL3Gateway = self._templateLoader.getTemplate("olEditSubnetL3Gateway.txt")
+        self._olEditNetworkL3Gateway = self._templateLoader.getTemplate("olEditNetworkL3Gateway.txt")
+        self._olEditSubnetL3Gateway = self._templateLoader.getTemplate("olEditSubnetL3Gateway.txt")
+        self._olEditEnterpriseStyleL2port = self._templateLoader.getTemplate("olEditEnterpriseStyleL2port.txt")
+        self._olEditEnterpriseStyleAggregatedL2port = self._templateLoader.getTemplate("olEditEnterpriseStyleAggregatedL2port.txt")
         self._aggregatedL2portNamePattern = re.compile(r'ae([0-9]+)')
 
     def _allocateClusterId(self, dbSession, fabric):
@@ -551,41 +554,41 @@ class ConfigEngine():
         
         spineIndex = 0
         for spine in vrf.getSpines():
-                # Compile a list of irb addresses for this spine
-                subnets = []
-                interfaces = []
-                for subnet in network.overlay_subnets:
-                    irbIps = self.getSubnetIps(subnet.cidr)
-                    irbVirtualGateway = irbIps.pop(0).split("/")[0]
-                    subnets.append((irbIps[spineIndex], irbVirtualGateway))
-                for l2ap in network.overlay_l2aps:
-                    for leaf in vrf.getLeafs():
-                        for x in DeviceName:
-		            for y in overlayDeviceName:
-                                if (DeviceFilter and x.name == y.name) and (l2ap.overlay_device_id == leaf.id):
-                                    config = self._olEditNetworkL3Gateway.render(
-                                   	role="spine",
-                                 	vrfName=vrf.name,
-                                	networkName=network.name,
-                                	vlanId=network.vlanid,
-                                	vnid=network.vnid,
-                                	oldVlanId=oldVlanId,
-                                	oldVnid=oldVnid,
-                                	asn=ConfigEngine.formatASN(asn))
-                                    deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))
-                            if (DeviceFilter and x.name != y.name and DeviceFilter == []) or (DeviceFilter == []) or (not DeviceFilter):
-                                config = self._olEditNetwork.render(
-                                  	role="spine",
-                                  	vrfName=vrf.name,
-                                 	networkName=network.name,
-                                 	vlanId=network.vlanid,
-                                 	vnid=network.vnid,
-                                	oldVlanId=oldVlanId,
-                                	oldVnid=oldVnid,
-                                	asn=ConfigEngine.formatASN(asn),
-                                	subnets=subnets)
-                		deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
-        spineIndex = spineIndex + 1
+            # Compile a list of irb addresses for this spine
+            subnets = []
+            for subnet in network.overlay_subnets:
+                irbIps = self.getSubnetIps(subnet.cidr)
+                irbVirtualGateway = irbIps.pop(0).split("/")[0]
+                subnets.append((irbIps[spineIndex], irbVirtualGateway))
+            for x in DeviceName:
+                for y in overlayDeviceName:
+                    if (DeviceFilter and x.name == y.name):
+                       config = self._olEditNetworkL3Gateway.render(
+                		role="spine",
+                		vrfName=vrf.name,
+                		networkName=network.name,
+                		vlanId=network.vlanid,
+                		vnid=network.vnid,
+                		oldVlanId=oldVlanId,
+                		oldVnid=oldVnid,
+                		asn=ConfigEngine.formatASN(asn))
+            	       deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))   
+                       break
+                    if (DeviceFilter and x.name != y.name) or (DeviceFilter == []) or (not DeviceFilter):
+                        config = self._olEditNetwork.render(
+                                        role="spine",
+                                        vrfName=vrf.name,
+                                        networkName=network.name,
+                                        vlanId=network.vlanid,
+                                        vnid=network.vnid,
+                                        oldVlanId=oldVlanId,
+                                        oldVnid=oldVnid,
+                                        asn=ConfigEngine.formatASN(asn),
+                                        subnets=subnets)
+                        deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))
+                        break
+                break 
+            spineIndex = spineIndex + 1
             
         for leaf in vrf.getLeafs():     
             # Compile a list of interfaces that belong to this leaf
@@ -597,39 +600,40 @@ class ConfigEngine():
                 elif l2ap.type == 'aggregatedL2port':
                     for member in l2ap.members:
                         if member.overlay_device_id == leaf.id:
-                             interfaces.append((l2ap.configName(), len(l2ap.overlay_networks))) 
+                            interfaces.append((l2ap.configName(), len(l2ap.overlay_networks)))
             for subnet in network.overlay_subnets:
                 irbIps = self.getSubnetIps(subnet.cidr)
                 irbVirtualGateway = irbIps.pop(0).split("/")[0]
                 subnets.append((irbIps[spineIndex], irbVirtualGateway))
-            for l2ap in network.overlay_l2aps:
-	    	for x in DeviceName:
-                    for y in overlayDeviceName:
-		        if  (DeviceFilter and  x.name == y.name) and (l2ap.overlay_device_id == leaf.id):
-			    config = self._olEditNetworkL3Gateway.render(
-			          role="leaf",
-			          vrfName=vrf.name,
-			          networkName=network.name,
-			          vlanId=network.vlanid,
-			          vnid=network.vnid,
-			          oldVlanId=oldVlanId,
-			          oldVnid=oldVnid,
-			          asn=ConfigEngine.formatASN(asn),
-			          subnets=subnets)
-                            deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, leaf, vrf.overlay_tenant.overlay_fabric))
-                        if (DeviceFilter and x.name != y.name and DeviceFilter == []) or (DeviceFilter == []) or (not DeviceFilter): 
-			   config = self._olEditNetwork.render(
-			        role="leaf",
-				vrfName=vrf.name,
-				networkName=network.name,
-				vlanId=network.vlanid,
-				vnid=network.vnid,
-				oldVlanId=oldVlanId,
-				oldVnid=oldVnid,
-				asn=ConfigEngine.formatASN(asn),
-				interfaces=interfaces)
-			   deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, leaf, vrf.overlay_tenant.overlay_fabric))    
-
+            for x in DeviceName:
+                for y in overlayDeviceName:
+                    if  DeviceFilter and  x.name == y.name:          
+            		config =self._olEditNetworkL3Gateway.render(
+                		role="leaf",
+                		vrfName=vrf.name,
+                		networkName=network.name,
+                		vlanId=network.vlanid,
+                		vnid=network.vnid,
+                		oldVlanId=oldVlanId,
+                		oldVnid=oldVnid,
+                		asn=ConfigEngine.formatASN(asn),
+                		subnets=subnets)
+            		deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, leaf, vrf.overlay_tenant.overlay_fabric))   
+                        break
+                    if (DeviceFilter and x.name != y.name) or (DeviceFilter == []) or (not DeviceFilter):
+                        config = self._olEditNetwork.render(
+                                role="leaf",
+                                vrfName=vrf.name,
+                                networkName=network.name,
+                                vlanId=network.vlanid,
+                                vnid=network.vnid,
+                                oldVlanId=oldVlanId,
+                                oldVnid=oldVnid,
+                                asn=ConfigEngine.formatASN(asn),
+                                interfaces=interfaces)
+                        deployments.append(OverlayDeployStatus(config, network.getUrl(), operation, leaf, vrf.overlay_tenant.overlay_fabric))
+                        break
+                break    
         self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editNetwork [network id: '%s', network name: '%s']: configured", network.id, network.name)
         self._commitQueue.addJobs(deployments)
@@ -641,7 +645,6 @@ class ConfigEngine():
         DeviceName = dbSession.query(Device).filter(Device.role == 'leaf').filter(Device.family == 'qfx5110-48s').all()
         overlayDeviceName = dbSession.query(OverlayDevice).filter(OverlayDevice.role == 'leaf').all()
         DeviceFilter = dbSession.query(Device).filter(Device.family == 'qfx5110-48s').filter(Device.role == 'leaf').all()
-
         deployments = []        
         network = subnet.overlay_network
         vrf = network.overlay_vrf
@@ -661,38 +664,40 @@ class ConfigEngine():
         if len(irbIps) < len(spines):
             logger.error("editSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
                          vrf.id, network.id, len(irbIps), len(spines))
-
         for leaf, irbIpL, oldIrbIpL in itertools.izip(spines, irbIps, oldIrbIps):
             for x in DeviceName:
                 for y in overlayDeviceName:
                     if DeviceFilter and x.name == y.name:
                        config = self._olEditSubnetL3Gateway.render(
-                      	        role="leaf",
-                       	    	irbAddress=irbIpL,
-               	      	    	irbVirtualGateway=irbVirtualGateway, 
-                       	    	oldIrbAddress=oldIrbIpL,
-                            	vlanId=network.vlanid,
-                            	networkName=network.name,
-                            	vrfName=vrf.name)
-                       deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation,leaf, vrf.overlay_tenant.overlay_fabric))
-        for spine, irbIp, oldIrbIp in itertools.izip(spines, irbIps, oldIrbIps): 
-            for x in DeviceName:
-                for y in overlayDeviceName:          
-                    if(DeviceFilter and x.name != y.name and DeviceFilter == []) or (DeviceFilter == []) or (not DeviceFilter): 
-                            config = self._olEditSubnet.render(
-                                role="spine",
-                                irbAddress=irbIp,
+                                role="leaf",
+                                irbAddress=irbIpL,
                                 irbVirtualGateway=irbVirtualGateway,
-                                oldIrbAddress=oldIrbIp,
+                                oldIrbAddress=oldIrbIpL,
                                 vlanId=network.vlanid,
                                 networkName=network.name,
                                 vrfName=vrf.name)
-                            deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation,spine, vrf.overlay_tenant.overlay_fabric))
-           
+                       deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation,leaf, vrf.overlay_tenant.overlay_fabric))
+                       break
+                break
+        for spine, irbIp, oldIrbIp in itertools.izip(spines, irbIps, oldIrbIps):
+            for x in DeviceName:
+                for y in overlayDeviceName:
+                    if(DeviceFilter and x.name != y.name) or (DeviceFilter == []) or (not DeviceFilter):
+            		config = self._olEditSubnet.render(
+                		role="spine",
+                		irbAddress=irbIp,
+                		irbVirtualGateway=irbVirtualGateway, 
+                		oldIrbAddress=oldIrbIp,
+                		vlanId=network.vlanid,
+                		networkName=network.name,
+               		 	vrfName=vrf.name)
+            		deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
+                        break
+                break  
         self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
         self._commitQueue.addJobs(deployments)
-   
+        
     def getSubnetIps(self, subnetBlock):
         '''
         returns all usable IPs in CIDR format (1.2.3.4/24) excluding network and broadcast
@@ -705,18 +710,28 @@ class ConfigEngine():
         '''
         Create access port interface
         '''
+        Style = dbSession.query(OverlayL2ap).filter(OverlayL2ap.type == 'l2port').all()
         deployments = []
         networks = [(net.vlanid, net.vnid, net.name) for net in l2port.overlay_networks]
         vrf = l2port.overlay_networks[0].overlay_vrf
         deletedNetworks2 = None
         if deletedNetworks is not None:
             deletedNetworks2 = [(net.vlanid, net.vnid, net.name) for net in deletedNetworks]
-            
-        config = self._olEditL2port.render(
-            interfaceName=l2port.interface, 
-            networks=networks,
-            deletedNetworks=deletedNetworks2)
-        deployments.append(OverlayDeployStatus(config, l2port.getUrl(), operation, l2port.overlay_device, vrf.overlay_tenant.overlay_fabric))
+        for S in Style:
+           if S.name == l2port.interface:
+              if S.enterprise == False:
+                 config = self._olEditL2port.render(
+                    interfaceName=l2port.interface,
+                    networks=networks,
+                    deletedNetworks=deletedNetworks2)
+                 deployments.append(OverlayDeployStatus(config, l2port.getUrl(), operation, l2port.overlay_device, vrf.overlay_tenant.overlay_fabric))
+              if S.enterprise == True:
+                 if S.name == l2port.interface:
+                    config = self._olEditEnterpriseStyleL2port.render(
+                        interfaceName=l2port.interface,
+                        networks=networks,
+                        deletedNetworks=deletedNetworks2)
+                    deployments.append(OverlayDeployStatus(config, l2port.getUrl(), operation, l2port.overlay_device, vrf.overlay_tenant.overlay_fabric))     
         self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editL2port [l2port id: '%s', l2port name: '%s']: configured", l2port.id, l2port.interface)
         self._commitQueue.addJobs(deployments)
@@ -735,6 +750,7 @@ class ConfigEngine():
         '''
         Create Aggregated L2 Port
         '''
+        Style = dbSession.query(OverlayL2ap).filter(OverlayL2ap.type == 'aggregatedL2port').all()
         deployments = []
         networks = [(net.vlanid, net.vnid, net.name) for net in aggregatedL2port.overlay_networks]
         vrf = aggregatedL2port.overlay_networks[0].overlay_vrf
@@ -751,16 +767,39 @@ class ConfigEngine():
                 
         for deviceId, deviceMembers in membersByDevice.iteritems():
             nextLagNumber = self._getCurrentLagNumber(dbSession) + 1
-            config = self._olEditAggregatedL2port.render(
-                memberInterfaces=deviceMembers['members'], 
-                networks=networks, 
-                lagName=aggregatedL2port.name, 
-                ethernetSegmentId=aggregatedL2port.esi, 
-                systemId=aggregatedL2port.lacp, 
-                lagCount=nextLagNumber,
-                deletedNetworks=deletedNetworks2)
-            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
-            
+            for S in Style:
+            	if aggregatedL2port.lacp != 'NULL' :
+                   if S.name == aggregatedL2port.name:
+                      if S.enterprise == False:
+                         config = self._olEditAggregatedL2port.render(
+                            	memberInterfaces=deviceMembers['members'],
+                            	networks=networks,
+                            	lagName=aggregatedL2port.name,
+                           	ethernetSegmentId=aggregatedL2port.esi,
+                           	systemId=aggregatedL2port.lacp,
+                           	lagCount=nextLagNumber,
+                           	deletedNetworks=deletedNetworks2)
+                      	 deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
+                      if S.enterprise  == True:
+                  	 config = self._olEditEnterpriseStyleAggregatedL2port.render(
+                           	memberInterfaces=deviceMembers['members'],
+                        	networks=networks,
+                        	lagName=aggregatedL2port.name,
+                        	ethernetSegmentId=aggregatedL2port.esi,
+                        	systemId=aggregatedL2port.lacp,
+                        	lagCount=nextLagNumber,
+                        	deletedNetworks=deletedNetworks2)
+                  	 deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
+
+            if aggregatedL2port.lacp == 'NULL' :
+                config = self._olEditMultihomeL2port.render(
+                        memberInterfaces=deviceMembers['members'],
+                        networks=networks,
+                        lagName=aggregatedL2port.name,
+                        ethernetSegmentId=aggregatedL2port.esi,
+                        lagCount=nextLagNumber,
+                        deletedNetworks=deletedNetworks2)
+                deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
         self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
         self._commitQueue.addJobs(deployments)
@@ -878,7 +917,7 @@ class ConfigEngine():
                 interfaces = []
                 for l2ap in network.overlay_l2aps:
                     if l2ap.type == 'l2port':
-                        if l2ap.overlay_device_id == leaf.id:
+                       if l2ap.overlay_device_id == leaf.id:
                             currentNetworks = [n for n in l2ap.overlay_networks if n.id != network.id]
                             networkCount = len(currentNetworks)
                             nativeVlanIdOrNone = currentNetworks[0].vlanid if networkCount == 1 else None
