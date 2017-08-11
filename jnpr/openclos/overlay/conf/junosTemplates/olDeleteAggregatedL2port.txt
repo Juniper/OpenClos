@@ -5,6 +5,8 @@ interfaces {
     {% endfor %}
     delete:
     {{lagName}};
+    delete:
+    unit 0;
 }
 
 {% if networks and networks|length > 0 %}

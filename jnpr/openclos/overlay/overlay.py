@@ -642,9 +642,6 @@ class ConfigEngine():
         '''
         Add subnet address to IRB
         '''
-        DeviceName = dbSession.query(Device).filter(Device.role == 'leaf').filter(Device.family == 'qfx5110-48s').all()
-        overlayDeviceName = dbSession.query(OverlayDevice).filter(OverlayDevice.role == 'leaf').all()
-        DeviceFilter = dbSession.query(Device).filter(Device.family == 'qfx5110-48s').filter(Device.role == 'leaf').all()
         deployments = []        
         network = subnet.overlay_network
         vrf = network.overlay_vrf
@@ -664,26 +661,9 @@ class ConfigEngine():
         if len(irbIps) < len(spines):
             logger.error("editSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
                          vrf.id, network.id, len(irbIps), len(spines))
-        for leaf, irbIpL, oldIrbIpL in itertools.izip(spines, irbIps, oldIrbIps):
-            for x in DeviceName:
-                for y in overlayDeviceName:
-                    if DeviceFilter and x.name == y.name:
-                       config = self._olEditSubnetL3Gateway.render(
-                                role="leaf",
-                                irbAddress=irbIpL,
-                                irbVirtualGateway=irbVirtualGateway,
-                                oldIrbAddress=oldIrbIpL,
-                                vlanId=network.vlanid,
-                                networkName=network.name,
-                                vrfName=vrf.name)
-                       deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation,leaf, vrf.overlay_tenant.overlay_fabric))
-                       break
-                break
+
         for spine, irbIp, oldIrbIp in itertools.izip(spines, irbIps, oldIrbIps):
-            for x in DeviceName:
-                for y in overlayDeviceName:
-                    if(DeviceFilter and x.name != y.name) or (DeviceFilter == []) or (not DeviceFilter):
-            		config = self._olEditSubnet.render(
+             config = self._olEditSubnet.render(
                 		role="spine",
                 		irbAddress=irbIp,
                 		irbVirtualGateway=irbVirtualGateway, 
@@ -691,9 +671,8 @@ class ConfigEngine():
                 		vlanId=network.vlanid,
                 		networkName=network.name,
                		 	vrfName=vrf.name)
-            		deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
-                        break
-                break  
+             deployments.append(OverlayDeployStatus(config, subnet.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
+                                  
         self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editSubnet [id: '%s', ip: '%s']: configured", subnet.id, subnet.cidr)
         self._commitQueue.addJobs(deployments)

@@ -957,10 +957,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
         self.assertTrue('/openclos/v1/overlay/vrfs/' + vrfId in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['uri'])
         self.assertTrue('VRF_v1' in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['deployDetail'][0]['configlet'])
         self.assertEqual(deviceName, response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['deployDetail'][0]['device'])
-        self.assertTrue('/openclos/v1/overlay/networks/' + networkId in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['networks'][0]['uri'])
-        self.assertTrue('vni 1001' in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['networks'][0]['deployDetail'][0]['configlet'])
-        self.assertEqual(deviceName, response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['networks'][0]['deployDetail'][0]['device'])
-        
+        self.assertTrue('/openclos/v1/overlay/networks/' + networkId in response.json['deployStatus']['fabrics'][0]['tenants'][0]['vrfs'][0]['networks'][0]['uri'])    
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
