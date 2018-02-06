@@ -741,7 +741,7 @@ class L3ClosMediation():
         mgmtStanza = self._templateLoader.getTemplate('mgmt_interface.txt')
         
         if device.family.startswith("qfx5100") or device.family.startswith("qfx5200") \
-            or device.family.startswith("ex4300"):
+            or device.family.startswith("ex4300") or device.family.startswith("qfx5110"):
             config = mgmtStanza.render(mgmt_address=device.managementIp, mgmt_interface="vme")
         else:
             config = mgmtStanza.render(mgmt_address=device.managementIp, mgmt_interface="em0")
