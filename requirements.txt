@@ -2,21 +2,21 @@
 
 paramiko==1.17.0
 netaddr
-sqlalchemy>=0.9.6
+sqlalchemy==1.1.5
 pyyaml
-jinja2
-pydot
+jinja2==2.9.4
+pydot==1.2.3
 bottle
-junos-eznc
-futures
-pysnmp
+junos-eznc==2.0.1
+futures==3.0.5
+pysnmp==4.3.2
 netifaces==0.10.4
 paste
 
 # modules needed for test
 nose
-coverage
-webtest
+coverage==4.3.4
+webtest==2.0.24
 flexmock
 
 # install self
