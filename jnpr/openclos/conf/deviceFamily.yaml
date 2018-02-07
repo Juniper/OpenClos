@@ -7,12 +7,15 @@
 deviceFamily:
     qfx5110-32q:
         spine:
-          uplinkPorts: 'et-0/0/[16-23]'
+          uplinkPorts: 'et-0/0/[16-31]'
           downlinkPorts: 'et-0/0/[0-15]'
+        leaf:
+          uplinkPorts: 'et-0/0/[28-31]'
+          downlinkPorts: 'et-0/0/[0-27]'
     qfx5110-48s:
         leaf:
-          uplinkPorts: 'et-0/0/[48-53]'
-          downlinkPorts: ['ge-0/0/[0-47]','xe-0/0/[0-47]']
+          uplinkPorts: 'et-0/0/[48-51]'
+          downlinkPorts: 'et-0/0/[0-47]'
     qfx5100-24q-2p:
         fabric:
             uplinkPorts: 
