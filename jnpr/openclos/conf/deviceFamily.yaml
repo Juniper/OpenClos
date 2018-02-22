@@ -11,11 +11,11 @@ deviceFamily:
           downlinkPorts: 'et-0/0/[0-15]'
         leaf:
           uplinkPorts: 'et-0/0/[28-31]'
-          downlinkPorts: 'et-0/0/[0-27]'
+          downlinkPorts: ['xe-0/0/[0-27]','ge-0/0/[0-27]','et-0/0/[0-27]']
     qfx5110-48s:
         leaf:
           uplinkPorts: 'et-0/0/[48-51]'
-          downlinkPorts: 'et-0/0/[0-47]'
+          downlinkPorts: ['xe-0/0/[0-47]','ge-0/0/[0-47]','et-0/0/[0-47]']
     qfx5100-24q-2p:
         fabric:
             uplinkPorts: 
