@@ -12,7 +12,7 @@ deviceFamily:
         leaf:
           uplinkPorts: 'et-0/0/[28-31]'
           downlinkPorts: ['xe-0/0/[0-27]','ge-0/0/[0-27]','et-0/0/[0-27]']
-    qfx5110-48s:
+    qfx5110-48s-4c:
         leaf:
           uplinkPorts: 'et-0/0/[48-51]'
           downlinkPorts: ['xe-0/0/[0-47]','ge-0/0/[0-47]','et-0/0/[0-47]']
