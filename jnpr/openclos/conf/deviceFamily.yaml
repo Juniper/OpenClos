@@ -141,10 +141,18 @@ deviceFamily:
         spine:
             uplinkPorts:
             downlinkPorts: 'et-0/0/[0-71]'
+    qfx10002-60c:
+        spine:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[0-59]'
     qfx5110-32q:
         spine:
             uplinkPorts:
             downlinkPorts: 'et-0/0/[0-31]'
+    qfx5210-64c:
+         spine:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[00-63]'
     qfx10008:
         spine:
             # assuming 8 x ULC-36Q-12Q28 used
