@@ -33,6 +33,9 @@ deviceFamily:
         spine:
             uplinkPorts: 'et-0/0/[18-35]'
             downlinkPorts: 'et-0/0/[0-17]'
+        leaf:
+            uplinkPorts: 'et-0/0/[18-35]'
+            downlinkPorts: 'et-0/0/[0-17]'
     qfx10002-72q:
         fabric:
             uplinkPorts: 
@@ -40,6 +43,19 @@ deviceFamily:
         spine:
             uplinkPorts: 'et-0/0/[36-71]'
             downlinkPorts: 'et-0/0/[0-35]'
+        leaf:
+            uplinkPorts: 'et-0/0/[36-71]'
+            downlinkPorts: 'et-0/0/[0-35]'
+    qfx10002-60c:
+        fabric:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[0-59]'
+        spine:
+            uplinkPorts: 'et-0/0/[30-59]'
+            downlinkPorts: 'et-0/0/[0-29]'
+        leaf:
+            uplinkPorts: 'et-0/0/[30-59]'
+            downlinkPorts: 'et-0/0/[0-29]'
     qfx10008:
         fabric:
             uplinkPorts: 
@@ -47,7 +63,19 @@ deviceFamily:
         spine:
             uplinkPorts: 
             downlinkPorts: 
-             
+        leaf:
+            uplinkPorts: ['et-0/0/[18-35]', 'et-1/0/[18-35]', 'et-2/0/[18-35]', 'et-3/0/[18-35]', 'et-4/0/[18-35]', 'et-5/0/[18-35]', 'et-6/0/[18-35]', 'et-7/0/[18-35]']
+            downlinkPorts: ['et-0/0/[0-17]', 'et-1/0/[0-17]', 'et-2/0/[0-17]', 'et-3/0/[0-17]', 'et-4/0/[0-17]', 'et-5/0/[0-17]', 'et-6/0/[0-17]', 'et-7/0/[0-17]']          
+    qfx10016:
+        fabric:
+            uplinkPorts:
+            downlinkPorts:
+        #spine:
+           # uplinkPorts:
+            #downlinkPorts:
+        leaf:
+            uplinkPorts: ['et-0/0/[18-35]', 'et-1/0/[18-35]', 'et-2/0/[18-35]', 'et-3/0/[18-35]', 'et-4/0/[18-35]', 'et-5/0/[18-35]', 'et-6/0/[18-35]', 'et-7/0/[18-35]','et-8/0/[18-35]','et-9/0/[18-35]']
+            downlinkPorts: ['et-0/0/[0-17]', 'et-1/0/[0-17]', 'et-2/0/[0-17]', 'et-3/0/[0-17]', 'et-4/0/[0-17]', 'et-5/0/[0-17]', 'et-6/0/[0-17]', 'et-7/0/[0-17]','et-8/0/[0-17]','et-9/0/[0-17]']
     qfx5100-48s-6q:
         leaf:
             uplinkPorts: 'et-0/0/[48-53]'
@@ -67,6 +95,14 @@ deviceFamily:
         leaf:
             uplinkPorts: 'et-0/0/[00-07]'
             downlinkPorts: 'et-0/0/[08-31]'
+    qfx5200-48y:
+        leaf:
+            uplinkPorts: 'et-0/0/[00-05]'
+            downlinkPorts: ['xe-0/0/[06-53]', 'ge-0/0/[06-53]']
+    qfx5210-64c:
+         spine:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[00-63]'
     ex4300-24p:
         leaf:
             uplinkPorts: 'et-0/1/[0-3]'
@@ -87,7 +123,7 @@ deviceFamily:
         leaf:
             uplinkPorts: 'et-0/1/[0-3]'
             downlinkPorts: 'ge-0/0/[0-47]'
-
+   
 # additional customization of port allocation based on topology
 3Stage:
     qfx5100-24q-2p:
@@ -115,6 +151,13 @@ deviceFamily:
             # if ULC-30Q28 is used, the port range would change to 'et-*/0/[0-29]'
             uplinkPorts: 
             downlinkPorts: ['et-0/0/[0-35]', 'et-1/0/[0-35]', 'et-2/0/[0-35]', 'et-3/0/[0-35]', 'et-4/0/[0-35]', 'et-5/0/[0-35]', 'et-6/0/[0-35]', 'et-7/0/[0-35]']
+    #qfx10016:
+       # spine:
+            # assuming 8 x ULC-36Q-12Q28 used
+            # if ULC-30Q28 is used, the port range would change to 'et-*/0/[0-29]'
+           # uplinkPorts:
+           # downlinkPorts: ['et-0/0/[0-35]', 'et-1/0/[0-35]', 'et-2/0/[0-35]', 'et-3/0/[0-35]', 'et-4/0/[0-35]', 'et-5/0/[0-35]', 'et-6/0/[0-35]', #'et-7/0/[0-35]','et-8/0/[0-35]','et-9/0/[0-35]']
+
 
 5Stage:
         
@@ -128,7 +171,6 @@ lineCard:
     ULC-60S-6Q:
         uplinkPorts: 'et-0/0/[0-59]'
         downlinkPorts: 'et-0/0/[60-65]'
-        
-        
-    
-    
+    ULC-30Q28-M:
+        uplinkPorts:
+        downlinkPorts: 'et-0/0/[0-29]' 
