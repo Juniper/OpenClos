@@ -373,6 +373,7 @@ class ConfigEngine():
         self._olEditSubnet = self._templateLoader.getTemplate("olEditSubnet.txt")
         self._olEditL2port = self._templateLoader.getTemplate("olEditL2port.txt")
         self._olEditAggregatedL2port = self._templateLoader.getTemplate("olEditAggregatedL2port.txt")
+	self._olEditMultihomeL2port = self._templateLoader.getTemplate("olEditMultihomeL2port.txt")
         self._olDeleteFabric = self._templateLoader.getTemplate("olDeleteFabric.txt")
         self._olDeleteVrf = self._templateLoader.getTemplate("olDeleteVrf.txt")
         self._olDeleteNetwork = self._templateLoader.getTemplate("olDeleteNetwork.txt")
@@ -691,15 +692,25 @@ class ConfigEngine():
                 
         for deviceId, deviceMembers in membersByDevice.iteritems():
             nextLagNumber = self._getCurrentLagNumber(dbSession) + 1
-            config = self._olEditAggregatedL2port.render(
-                memberInterfaces=deviceMembers['members'], 
-                networks=networks, 
-                lagName=aggregatedL2port.name, 
-                ethernetSegmentId=aggregatedL2port.esi, 
-                systemId=aggregatedL2port.lacp, 
-                lagCount=nextLagNumber,
-                deletedNetworks=deletedNetworks2)
-            deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
+	    if aggregatedL2port.lacp != 'NULL' :
+                config = self._olEditAggregatedL2port.render(
+                        memberInterfaces=deviceMembers['members'],
+                        networks=networks,
+                        lagName=aggregatedL2port.name,
+                        ethernetSegmentId=aggregatedL2port.esi,
+                        systemId=aggregatedL2port.lacp,
+                        lagCount=nextLagNumber,
+                        deletedNetworks=deletedNetworks2)
+                deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
+            if aggregatedL2port.lacp == 'NULL' :
+                config = self._olEditMultihomeL2port.render(
+                        memberInterfaces=deviceMembers['members'],
+                        networks=networks,
+                        lagName=aggregatedL2port.name,
+                        ethernetSegmentId=aggregatedL2port.esi,
+                        lagCount=nextLagNumber,
+                        deletedNetworks=deletedNetworks2)
+                deployments.append(OverlayDeployStatus(config, aggregatedL2port.getUrl(), operation, deviceMembers['device'], vrf.overlay_tenant.overlay_fabric))
             
         self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editAggregatedL2port [aggregatedL2port id: '%s', aggregatedL2port name: '%s']: configured", aggregatedL2port.id, aggregatedL2port.name)
