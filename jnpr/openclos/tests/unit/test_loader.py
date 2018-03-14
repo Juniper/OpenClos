@@ -193,7 +193,7 @@ class TestDeviceSku(unittest.TestCase):
 
     def testGetSupportedDeviceFamily(self):
         deviceFamilyList = self.deviceSku.getSupportedDeviceFamily()
-        self.assertEqual(17, len(deviceFamilyList))
+        self.assertEqual(18, len(deviceFamilyList))
 
     def testOverrideDeviceSku(self):
         overridePath = os.path.join(os.path.expanduser('~'), 'deviceFamily.yaml')

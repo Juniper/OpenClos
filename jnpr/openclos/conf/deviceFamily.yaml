@@ -46,16 +46,16 @@ deviceFamily:
         leaf:
             uplinkPorts: 'et-0/0/[36-71]'
             downlinkPorts: 'et-0/0/[0-35]'
-    #qfx10002-60c:
-        #fabric:
-            #uplinkPorts:
-            #downlinkPorts: 'et-0/0/[0-59]'
-        #spine:
-            #uplinkPorts: 'et-0/0/[30-59]'
-            #downlinkPorts: 'et-0/0/[0-29]'
-        #leaf:
-            #uplinkPorts: 'et-0/0/[30-59]'
-            #downlinkPorts: 'et-0/0/[0-29]'
+    qfx10002-60c:
+        fabric:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[0-59]'
+        spine:
+            uplinkPorts: 'et-0/0/[30-59]'
+            downlinkPorts: 'et-0/0/[0-29]'
+        leaf:
+            uplinkPorts: 'et-0/0/[30-59]'
+            downlinkPorts: 'et-0/0/[0-29]'
     qfx10008:
         fabric:
             uplinkPorts: 
@@ -144,10 +144,10 @@ deviceFamily:
         spine:
             uplinkPorts:
             downlinkPorts: 'et-0/0/[0-71]'
-    #qfx10002-60c:
-        #spine:
-            #uplinkPorts:
-            #downlinkPorts: 'et-0/0/[0-59]'
+    qfx10002-60c:
+        spine:
+            uplinkPorts:
+            downlinkPorts: 'et-0/0/[0-59]'
     qfx5110-32q:
         spine:
             uplinkPorts:
