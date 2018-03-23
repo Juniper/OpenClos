@@ -1,0 +1,35 @@
+{% include 'baseTemplate.txt' %}
+interfaces {
+    em0 {
+        unit 0 {
+            family inet {
+                dhcp {
+                    vendor-id Juniper-{{deviceFamily}};
+                }
+            }
+        }
+    }
+    irb {
+        mtu 9216
+        unit 1 {
+            description LOCAL_SERVERS;
+            family inet {
+            }
+        }
+    }
+}
+{% include 'routingOptionsStatic.txt' %}
+{% include 'protocolLldp.txt' %}
+event-options {
+    generate-event openclos-trap-trigger {
+        time-interval 60;
+    }
+    policy trap-retry {
+        events openclos-trap-trigger;
+        then {
+            raise-trap;
+        }
+    }
+}
+{% include 'snmpTrap.txt' %}
+{% include 'vlans.txt' %}

@@ -956,6 +956,7 @@ class L3ClosMediation():
         :param Pod: pod
         :returns list: list of PodConfigs
         '''
+        qfxLeafTemplate = self._templateLoader.getTemplate('qfxleafGenericTemplate.txt')
         leafTemplate = self._templateLoader.getTemplate('leafGenericTemplate.txt')
         leafSettings = {}
         for leafSetting in pod.leafSettings:
@@ -974,10 +975,12 @@ class L3ClosMediation():
                 ifdNames = DeviceSku.portRegexCsvListToList(leafSetting.downlinkRegex)
             else:
                 ifdNames = self.deviceSku.getPortNamesForDeviceFamily(deviceFamily, 'leaf')['downlinkPorts']
-
-            leafSettings[deviceFamily].config = leafTemplate.render(deviceFamily=deviceFamily, oob=outOfBandNetworkParams, 
-                trapGroups=trapGroups, hashedPassword=pod.getHashPassword(), ifdNames=ifdNames)
             
+            #Added the new template which will generate mgmt interface as em0 for qfx10002 devices
+            if deviceFamily == 'qfx10002-36q' or deviceFamily == 'qfx10002-60c' or deviceFamily == 'qfx10002-72q':
+               leafSettings[deviceFamily].config = qfxLeafTemplate.render(deviceFamily=deviceFamily, oob=outOfBandNetworkParams, trapGroups=trapGroups, hashedPassword=pod.getHashPassword(), ifdNames=ifdNames)
+            else:
+               leafSettings[deviceFamily].config = leafTemplate.render(deviceFamily=deviceFamily, oob=outOfBandNetworkParams, trapGroups=trapGroups, hashedPassword=pod.getHashPassword(), ifdNames=ifdNames)
         return leafSettings.values()
 
     def createLeafConfigFor2Stage(self, device):
