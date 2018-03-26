@@ -17,6 +17,18 @@ interfaces {
             }
         }
     }
+{% for ifdName in ifdNames %}    replace:
+    {{ifdName}} {
+        unit 0 {
+            family ethernet-switching {
+                interface-mode access;
+                vlan {
+                    members SERVER;
+                }
+            }
+        }
+    }
+{% endfor %} 
 }
 {% include 'routingOptionsStatic.txt' %}
 {% include 'protocolLldp.txt' %}
