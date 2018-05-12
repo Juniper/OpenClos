@@ -1096,13 +1096,14 @@ class OverlayRestRoutes():
             interface = l2portDict['interface']
             networkObjects = self.getNetworkObjects(dbSession, l2portDict['networks'])                
             deviceId = self.getIdFromUri(l2portDict['device'])
+            enterprise = l2portDict.get('enterprise')
             try:
                 deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             except (exc.NoResultFound) as ex:
                 logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
                 raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
                 
-            l2portObject = self._overlay.createL2port(dbSession, name, description, networkObjects, interface, deviceObject)
+            l2portObject = self._overlay.createL2port(dbSession, name, description, networkObjects, interface, deviceObject,enterprise)
             logger.info("OverlayL2port[id='%s', name='%s']: created", l2portObject.id, l2portObject.name)
 
             l2port = {'l2port': self._populateL2port(l2portObject)}
@@ -1241,10 +1242,11 @@ class OverlayRestRoutes():
             description = aggregatedL2portDict.get('description')
             esi = aggregatedL2portDict.get('esi')
             lacp = aggregatedL2portDict.get('lacp')
+            enterprise = aggregatedL2portDict.get('enterprise')
             networkObjects = self.getNetworkObjects(dbSession, aggregatedL2portDict['networks'])      
             members = self._getAggregatedL2portMembers(dbSession, aggregatedL2portDict['members'])
             
-            aggregatedL2portObject = self._overlay.createAggregatedL2port(dbSession, name, description, networkObjects, members, esi, lacp)
+            aggregatedL2portObject = self._overlay.createAggregatedL2port(dbSession, name, description, networkObjects, members, esi, lacp,enterprise)
             logger.info("OverlayAggregatedL2port[id='%s', name='%s']: created", aggregatedL2portObject.id, aggregatedL2portObject.name)
 
             aggregatedL2port = {'aggregatedL2port': self._populateAggregatedL2port(aggregatedL2portObject)}

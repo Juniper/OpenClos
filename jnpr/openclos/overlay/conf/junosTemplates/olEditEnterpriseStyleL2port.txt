@@ -1,0 +1,40 @@
+interfaces {
+    {{interfaceName}} {
+        delete:
+        unit 0;
+            
+        encapsulation extended-vlan-bridge;
+       
+        {% if networks and networks|length > 0 %}
+        unit 0 {
+            family ethernet-switching{
+            interface-mode trunk;
+            vlan {
+            members [{% for network in networks %} {{network[0]}} {% endfor %}]
+        }
+        }
+        }
+        {% endif %}
+        {% if deletedNetworks and deletedNetworks|length > 0 %}
+        {% for deletedNetwork in deletedNetworks %}
+        delete:
+        unit {{deletedNetwork[0]}};
+        {% endfor %}
+        {% endif %}
+    }
+}
+vlans {
+    {% if networks and networks|length > 0 %}
+    {% for network in networks %}{{network[2]}} {
+        interface {{interfaceName}}.{{network[0]}};
+    }
+    {% endfor %}
+    {% endif %}
+    {% if deletedNetworks and deletedNetworks|length > 0 %}
+    {% for deletedNetwork in deletedNetworks %}{{deletedNetwork[2]}} {
+        delete:
+        interface {{interfaceName}}.{{deletedNetwork[0]}};
+    }
+    {% endfor %}
+    {% endif %}
+}

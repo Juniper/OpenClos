@@ -10,6 +10,8 @@ interfaces {
         {% for network in networks %}
         delete:
         unit {{network[0]}};
+        delete:
+        unit 0;
         {% endfor %}
     }
 }

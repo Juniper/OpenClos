@@ -1,0 +1,24 @@
+interfaces {
+    {% for memberInterface in memberInterfaces %}
+    replace:
+    {{memberInterface}} {
+		unit 0 {
+            family ethernet-switching {
+                vlan members{
+					{% if networks and networks|length > 0 %}
+					{% for network in networks %}
+						 {{network[0]}},
+					{% endfor %}
+					{% endif %}
+                }
+            }
+        }
+
+        esi {
+            {{ethernetSegmentId}};
+            all-active;
+        }
+    }
+    {% endfor %}
+    
+}

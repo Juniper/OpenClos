@@ -1,0 +1,135 @@
+{% if role == "leaf" %}
+vlans {
+    {{networkName}} {
+        vlan-id {{vlanId}};
+        vxlan {
+            vni {{vnid}};
+            ingress-node-replication;
+        }
+    }
+}
+{% if subnets and subnets|length > 0 %}
+vlans {
+    {{networkName}} {
+        l3-interface irb.{{vlanId}};
+    }
+}
+interfaces {
+    irb {
+        unit {{vlanId}} {
+            family inet {
+                {% for (irbAddress, irbVirtualGateway) in subnets %}
+                replace:
+                address {{irbAddress}} {
+                    virtual-gateway-address {{irbVirtualGateway}};
+                }
+                {% endfor %}
+            }
+        }
+    }
+}
+routing-instances {
+    VRF_{{vrfName}} {
+        interface irb.{{vlanId}};    
+    }
+}
+{% endif %}
+{% if oldVlanId %}
+interfaces {
+    irb {
+        delete:
+        unit {{oldVlanId}};
+    }
+}
+routing-instances {
+    VRF_{{vrfName}} {
+        delete:
+        interface irb.{{oldVlanId}};    
+    }
+}
+{% endif %}
+{% endif %}
+
+{% if role == "spine" %}
+vlans {
+    {{networkName}} {
+        vxlan {
+            vni {{vnid}};
+            ingress-node-replication;
+        }
+    }
+}
+{% if  interfaces|length > 0%}
+interfaces {
+    {% for (interface, networkCount) in interfaces %}{{interface}} {
+        flexible-vlan-tagging;
+        encapsulation extended-vlan-bridge;
+        {% if networkCount == 1%}
+        native-vlan-id {{vlanId}};
+        {% endif %}
+        unit {{vlanId}} {
+            vlan-id {{vlanId}};
+        }
+        delete:
+        unit {{oldVlanId}};
+    }
+    {% endfor %}
+}
+vlans {
+    {{networkName}} {
+        {% for (interface, networkCount) in interfaces %}
+        interface {{interface}}.{{vlanId}};
+        delete:
+        interface {{interface}}.{{oldVlanId}};
+        {% endfor %}
+    }
+}
+{% endif %}
+{% endif %}
+
+protocols {
+    evpn {
+        encapsulation vxlan;
+        multicast-mode ingress-replication;
+        extended-vni-list [ {{vnid}} ];
+        vni-options {
+            vni {{vnid}} {
+                vrf-target export target:{{asn}}:{{vnid}};
+            }
+        }
+        {% if oldVnid %}
+        delete:
+        extended-vni-list {{oldVnid}};
+        vni-options {
+            delete:
+            vni {{oldVnid}};
+        }
+        {% endif %}
+    }
+}
+
+policy-options {
+    policy-statement LEAF-IN {
+        delete:
+        term default;
+        {% if oldVnid %}
+        delete:
+        term a{{oldVnid}};
+        {% endif %}
+        replace:
+        term a{{vnid}} {
+            from community com{{vnid}};
+            then accept;
+        }
+        replace:
+        term default {
+            then reject;
+        }
+    }
+    replace:
+    community com{{vnid}} members target:{{asn}}:{{vnid}};
+    {% if oldVnid %}
+    delete:
+    community com{{oldVnid}};
+    {% endif %}
+}    

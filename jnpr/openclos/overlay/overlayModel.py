@@ -398,18 +398,19 @@ class OverlayL2ap(ManagedElement, Base):
     id = Column(String(60), primary_key=True)
     name = Column(String(255), nullable=False)
     description = Column(String(256))
+    enterprise  = Column(Boolean,default=0)
     overlay_networks = relationship("OverlayNetwork", secondary='overlayNetworkOverlayL2apTable', back_populates="overlay_l2aps")
-    type = Column(String(20), nullable=False) # l2ap/l2port/aggregatedL2port
-    
+    type = Column(String(20), nullable=False) # l2ap/l2port/aggregatedL2port 
     __mapper_args__ = {
         'polymorphic_identity': 'l2ap',
         'polymorphic_on':type
     }
         
-    def __init__(self, name, description, overlay_networks):
+    def __init__(self, name, description, overlay_networks,enterprise):
         '''
         Creates L2 attach point object.
         '''
+        self.enterprise = enterprise
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
@@ -445,11 +446,11 @@ class OverlayL2port(OverlayL2ap):
         'polymorphic_identity': 'l2port'
     }
     
-    def __init__(self, name, description, overlay_networks, interface, overlay_device):
+    def __init__(self, name, description, overlay_networks, interface, overlay_device,enterprise):
         '''
         Creates L2 port object.
         '''
-        super(OverlayL2port, self).__init__(name, description, overlay_networks)
+        super(OverlayL2port, self).__init__(name, description, overlay_networks,enterprise)
         self.interface = interface
         self.overlay_device = overlay_device
         
@@ -508,11 +509,11 @@ class OverlayAggregatedL2port(OverlayL2ap):
         'polymorphic_identity': 'aggregatedL2port'
     }
 
-    def __init__(self, name, description, overlay_networks, esi, lacp):
+    def __init__(self, name, description, overlay_networks, esi, lacp,enterprise):
         '''
         Creates aggregated interface object.
         '''
-        super(OverlayAggregatedL2port, self).__init__(name, description, overlay_networks)
+        super(OverlayAggregatedL2port, self).__init__(name, description, overlay_networks,enterprise)
         self.esi = esi
         self.lacp = lacp
         
@@ -536,7 +537,7 @@ class OverlayAggregatedL2port(OverlayL2ap):
         In case of aggregatedL2port, it shall be OverlayAggregatedL2port.name.
         '''
         return self.name
-        
+ 
 class OverlayDeployStatus(ManagedElement, Base):
     __tablename__ = 'overlayDeployStatus'
     id = Column(String(60), primary_key=True)
