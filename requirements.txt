@@ -11,8 +11,6 @@ junos-eznc==2.0.1
 futures==3.0.5
 pysnmp==4.3.2
 netifaces==0.10.4
-ncclient==0.6.4
-python_version==2.7
 paste
 
 # modules needed for test
