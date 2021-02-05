@@ -11,6 +11,7 @@ futures==3.0.5
 pysnmp==4.3.2
 netifaces==0.10.4
 paste
+pysqlite2
 
 # modules needed for test
 nose
