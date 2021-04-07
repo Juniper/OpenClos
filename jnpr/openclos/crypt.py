@@ -142,7 +142,7 @@ class Cryptic:
 
 #------------------------------------------------------------------------------
     def hashify(self, plain_text):
-        cmd = "openssl passwd -6 -salt " + self.HASH_MAGIC + " " + plain_text
+        cmd = "openssl passwd -1 -salt " + self.HASH_MAGIC + " " + plain_text
         try:
             output = subprocess.check_output(cmd, shell=True)
             return output.strip()
