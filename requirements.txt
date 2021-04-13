@@ -7,7 +7,7 @@ jinja2==2.9.4
 pydot==1.2.3
 bottle
 junos-eznc==2.0.1
-passlib
+passlib==1.7.2
 futures==3.0.5
 pysnmp==4.3.2
 netifaces==0.10.4
