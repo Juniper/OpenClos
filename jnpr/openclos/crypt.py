@@ -4,7 +4,7 @@ import hashlib
 import random
 #from pprint import pprint
 import re
-#from passlib.hash import sha256_crypt
+from passlib.hash import sha256_crypt
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -143,8 +143,8 @@ class Cryptic:
 
 #------------------------------------------------------------------------------
     def hashify(self, plain_text):
-        cmd = "openssl passwd -1 -salt " + self.HASH_MAGIC + " " + plain_text
-        #cmd = sha256_crypt.encrypt(plain_text)
+        #cmd = "openssl passwd -1 -salt " + self.HASH_MAGIC + " " + plain_text
+        cmd = sha256_crypt.encrypt(plain_text)
         try:
             output = subprocess.check_output(cmd, shell=True)
             return output.strip()
