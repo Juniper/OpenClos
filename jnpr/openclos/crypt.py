@@ -13,7 +13,8 @@ class Cryptic:
     MAGIC = "$9$"
     MAGIC_SEARCH = "\$9\$"
     HASH_MAGIC = "$1$f+uslYF01$"
-    HASH_MAGIC_SEARCH = "\$1\$\+uslYF01\$"
+    #HASH_MAGIC_SEARCH = "\$1\$\+uslYF01\$"
+    HASH_MAGIC_SEARCH = "\$5\$rounds\=535000\$"
     FAMILY = ['QzF3n6/9CAtpu0O', 
                'B1IREhcSyrleKvMW8LXx', 
                '7N-dVbwsY2g4oaJZGUDj',
@@ -144,13 +145,15 @@ class Cryptic:
 #------------------------------------------------------------------------------
     def hashify(self, plain_text):
         #cmd = "openssl passwd -1 -salt " + self.HASH_MAGIC + " " + plain_text
-        cmd = sha256_crypt.encrypt(plain_text)
-        try:
-            output = subprocess.check_output(cmd, shell=True)
-            return output.strip()
-        except subprocess.CalledProcessError as exc:
-            print "Command " + cmd + " returned error code " + str(exc.returncode)+ " and output " + exc.output
-            return None
+        hashPass = sha256_crypt.encrypt(plain_text)
+        return hashPass
+        #try:
+        #    output = subprocess.check_output(cmd, shell=True)
+        #    return output.strip()
+        #except subprocess.CalledProcessError as exc:
+        #    print "Command " + cmd + " returned error code " + str(exc.returncode)+ " and output " + exc.output
+        #    return None
+
 
 #------------------------------------------------------------------------------
     def authenticate_hash(self, plain_text, hash_text):
