@@ -19,6 +19,9 @@ from jnpr.junos.utils.config import Config
 from loader import loadLoggingConfig, OpenClosProperty
 from exception import DeviceConnectFailed, DeviceRpcFailed
 from common import SingletonBase
+# changed for fips mode support
+from hashlib import md5
+from paramiko.pkey import PKey
 
 moduleName = 'deviceConnector'
 loadLoggingConfig(appName=moduleName)
@@ -28,6 +31,18 @@ DEFAULT_KEEP_ALIVE_TIMEOUT = 90
 DEFAULT_CLEANER_THREAD_WAIT_TIME = 60
 DEFAULT_AUTO_PROBE = 15
 DEFAULT_TIMEOUT = 60
+# added to support for fips mode
+def get_fingerprint_temp(self):
+    """
+    Return an MD5 fingerprint of the public part of this key.  Nothing
+    secret is revealed.
+    :return:
+        a 16-byte `string <str>` (binary) of the MD5 fingerprint, in SSH
+        format.
+    """
+    return md5(self.asbytes(), usedforsecurity=False).digest()
+
+PKey.get_fingerprint = get_fingerprint_temp
 
 class AbstractConnection(object):
     def __init__(self, ip):
