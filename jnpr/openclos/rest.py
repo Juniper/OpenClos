@@ -468,7 +468,7 @@ class RestServer():
                 self.srv = SSLPasteServer(host=self.host, port=self.port, certificate=self.certificate)
             bottle.run(self.app, debug=debugRest, server=self.srv)
         else:
-            logger.error('REST server aborted: unknown protocol %s', self.protocol)
+            logger.error('REST server terminated: unknown protocol %s', self.protocol)
 
     def stop(self):
         # shutdown all live connections
