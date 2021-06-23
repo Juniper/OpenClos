@@ -11,7 +11,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # http://packaging.python.org/en/latest/tutorial.html#version
-    version='5.1.dev1',
+    version='5.2.dev1',
 
     description='OpenClos Python project',
     long_description= \
