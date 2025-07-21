@@ -12,7 +12,7 @@ import shutil
 from flexmock import flexmock
 from jnpr.openclos.l3Clos import L3ClosMediation
 from jnpr.openclos.model import Pod, Device, InterfaceLogical, InterfaceDefinition, TrapGroup
-from test_dao import InMemoryDao 
+from .test_dao import InMemoryDao 
 from jnpr.openclos.exception import PodNotFound
 
 def getPodDict():
@@ -159,7 +159,7 @@ class TestL3Clos(unittest.TestCase):
 
     def testCreateLeafAndIfds(self):
         with self._dao.getReadSession() as session:
-            from test_model import createPod
+            from .test_model import createPod
             pod = createPod('test', session)
             pod.spineCount = 6
             leaves = [{ "name" : "leaf-01", "family" : "ex4300-24p", "macAddress" : "88:e0:f3:1c:d6:01", "deployStatus": "deploy" }]
@@ -255,7 +255,7 @@ class TestL3Clos(unittest.TestCase):
         self.assertIsNotNone(self.l3ClosMediation._templateLoader.getTemplate('protocolBgp.txt'))
         with self.assertRaises(TemplateNotFound) as e:
             self.l3ClosMediation._templateLoader.getTemplate('unknown-template')
-        self.assertTrue('unknown-template' in e.exception.message)
+        self.assertTrue('unknown-template' in str(e.exception))
 
     def createTrapGroupsInDb(self, dao):
         newtargets = []
@@ -327,16 +327,16 @@ class TestL3Clos(unittest.TestCase):
             device.pod.outOfBandAddressList = '10.0.10.5/32, 10.0.20.5/32'
     
             configlet = self.l3ClosMediation._createRoutingOptionsStatic(session, device)
-            self.assertEquals(1, configlet.count('static'))
-            self.assertEquals(2, configlet.count('route'))
+            self.assertEqual(1, configlet.count('static'))
+            self.assertEqual(2, configlet.count('route'))
 
     def testCreateAccessInterface(self):
         with self._dao.getReadSession() as session:
-            from test_model import createPod
+            from .test_model import createPod
             pod = createPod('test', session)
             device = Device("test", "qfx5100-48s-6q", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
             configlet = self.l3ClosMediation._createAccessPortInterfaces(session, device)
-            self.assertEquals(96, configlet.count('family ethernet-switching'))
+            self.assertEqual(96, configlet.count('family ethernet-switching'))
             self.assertTrue('xe-0/0/0' in configlet)
             self.assertTrue('xe-0/0/47' in configlet)
             self.assertTrue('ge-0/0/0' in configlet)
@@ -345,11 +345,11 @@ class TestL3Clos(unittest.TestCase):
     def testCreateAccessInterfaceEx4300(self):
         self.l3ClosMediation = L3ClosMediation(self._conf, InMemoryDao)
         with self._dao.getReadSession() as session:
-            from test_model import createPod
+            from .test_model import createPod
             pod = createPod('test', session)
             device = Device("test", "ex4300-48p", "user", "pwd", "leaf", "mac", "mgmtIp", pod)
             configlet = self.l3ClosMediation._createAccessPortInterfaces(session, device)
-            self.assertEquals(48, configlet.count('family ethernet-switching'))
+            self.assertEqual(48, configlet.count('family ethernet-switching'))
             self.assertTrue('ge-0/0/0' in configlet)
             self.assertTrue('ge-0/0/47' in configlet)
 
@@ -366,13 +366,13 @@ class TestL3Clos(unittest.TestCase):
             
             leafSettings = self.l3ClosMediation._createLeafGenericConfigsFor2Stage(session, pod)
             self.assertTrue(1, len(leafSettings))
-            configlet = leafSettings[0].config
+            configlet = list(leafSettings)[0].config
 
         self.assertTrue('' != configlet)
         #print configlet
         self.assertTrue('trap-group openclos_trap_group' in configlet)
-        self.assertEquals(1, configlet.count('static'))
-        self.assertEquals(2, configlet.count('route'))
+        self.assertEqual(1, configlet.count('static'))
+        self.assertEqual(2, configlet.count('route'))
 
     def testGetSnmpTrapTargets(self):
         with self._dao.getReadSession() as session:

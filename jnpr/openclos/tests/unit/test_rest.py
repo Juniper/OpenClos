@@ -10,7 +10,7 @@ import json
 from webtest import TestApp, AppError
 
 from jnpr.openclos.rest import RestServer
-from test_dao import InMemoryDao 
+from .test_dao import InMemoryDao 
 
 class TestRest(unittest.TestCase):
 
@@ -59,13 +59,12 @@ class TestRestHttps(unittest.TestCase):
         self.restServerTestApp.authorization = ('Basic', ('juniper', 'foo'))
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos')
-        self.assertTrue('401 Unauthorized' in e.exception.message)
+        self.assertTrue('401 Unauthorized' in str(e.exception))
         
     def testRightPassword(self):
         self.restServerTestApp.authorization = ('Basic', ('juniper', 'juniper'))
         response = self.restServerTestApp.get('/openclos')
         self.assertEqual(200, response.status_int)
-
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

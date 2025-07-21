@@ -142,8 +142,8 @@ def get_tags(data):
 
 
 def render(env, yaml_path, out):
-    with open(yaml_path, "r") as fp:
-        data = yaml.load(fp.read())
+    with open(yaml_path) as fp:
+        data = yaml.load(fp.read(), Loader=yaml.SafeLoader)
     data = resolve(data, data)
     make_logical(data)
     template = env.get_template("page.html")
@@ -169,8 +169,8 @@ def render_watch(env, yaml_path, out):
     try:
         import pyinotify
     except ImportError:
-        raise click.UsageError(("Cant import pyinotify, "
-                                "please install with pip"))
+        raise click.UsageError("Cant import pyinotify, "
+                                "please install with pip")
     wm = pyinotify.WatchManager()
     notifier = pyinotify.Notifier(wm)
     wm.add_watch(yaml_path, pyinotify.IN_CLOSE_WRITE)

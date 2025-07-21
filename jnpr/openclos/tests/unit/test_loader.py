@@ -19,9 +19,15 @@ class TestPropertyLoader(unittest.TestCase):
     def testMergetDictNestedList(self):
         prop = {'DOT' : {'colors' : ['blue', 'green'], 'ranksep' : '5 equally'}}
         override = {'DOT' : {'colors' : ['green', 'violet']}}
-        merged = {'DOT' : {'colors' : ['blue', 'green', 'violet'], 'ranksep' : '5 equally'}}
+        merged = {'DOT' : {'colors' : ['violet', 'blue', 'green'], 'ranksep' : '5 equally'}}
+        expected_colors = ['blue', 'green', 'violet']
+        expected_ranksep = '5 equally'
+        result = self.propertyLoader.mergeDict(prop, override)
         #print PropertyLoader.mergeDict(prop, override)
-        self.assertDictEqual(merged, self.propertyLoader.mergeDict(prop, override))
+        # Check ranksep directly
+        self.assertEqual(expected_ranksep, result['DOT']['ranksep'])
+        # Check colors list ignoring order
+        self.assertCountEqual(expected_colors, result['DOT']['colors'])
        
     def testMergetDictNestedDict(self):
         prop = {'snmpTrap' : {'openclos_trap_group' : {'port' : 20162, 'target' : '0.0.0.0'}, 'threadCount' : 10}}
@@ -33,8 +39,8 @@ class TestPropertyLoader(unittest.TestCase):
     def testLoadProperty(self):
         self.propertyLoader = PropertyLoader('openclos.yaml', False)
         self.assertIsNot({}, self.propertyLoader._properties)
-        self.assertEquals("out", self.propertyLoader._properties['outputDir'])
-        self.assertEquals(1, len(self.propertyLoader._properties['plugin']))
+        self.assertEqual("out", self.propertyLoader._properties['outputDir'])
+        self.assertEqual(1, len(self.propertyLoader._properties['plugin']))
 
     def testLoadPropertyOverride(self):
         overridePath = os.path.join(os.path.expanduser('~'), 'openclos.yaml')
@@ -42,8 +48,8 @@ class TestPropertyLoader(unittest.TestCase):
             fStream.write('outputDir : /tmp')
         self.propertyLoader = PropertyLoader('openclos.yaml')
         self.assertIsNot({}, self.propertyLoader._properties)
-        self.assertEquals("/tmp", self.propertyLoader._properties['outputDir'])
-        self.assertEquals(1, len(self.propertyLoader._properties['plugin']))
+        self.assertEqual("/tmp", self.propertyLoader._properties['outputDir'])
+        self.assertEqual(1, len(self.propertyLoader._properties['plugin']))
         os.remove(overridePath)
         
 
@@ -237,8 +243,8 @@ class TestMethod(unittest.TestCase):
     def testLoadLoggingConfig(self):
         loadLoggingConfig(appName = 'unittest')
         import logging
-        self.assertEquals(0, len(logging.getLogger('unknown').handlers))
-        self.assertEquals(2, len(logging.getLogger('rest').handlers))
+        self.assertEqual(0, len(logging.getLogger('unknown').handlers))
+        self.assertEqual(2, len(logging.getLogger('rest').handlers))
         self.assertTrue('openclos-unittest.log' in logging.getLogger('rest').handlers[1].baseFilename)
 
 

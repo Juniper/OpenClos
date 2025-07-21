@@ -1,4 +1,3 @@
-
 import subprocess
 import hashlib
 import random
@@ -11,10 +10,10 @@ from passlib.hash import sha256_crypt
 class Cryptic:
 
     MAGIC = "$9$"
-    MAGIC_SEARCH = "\$9\$"
+    MAGIC_SEARCH = r"\$9\$"
     HASH_MAGIC = "$1$f+uslYF01$"
     #HASH_MAGIC_SEARCH = "\$1\$\+uslYF01\$"
-    HASH_MAGIC_SEARCH = "\$5\$rounds\=535000\$"
+    HASH_MAGIC_SEARCH = r"\$5\$rounds\=535000\$"
     FAMILY = ['QzF3n6/9CAtpu0O', 
                'B1IREhcSyrleKvMW8LXx', 
                '7N-dVbwsY2g4oaJZGUDj',
@@ -115,7 +114,7 @@ class Cryptic:
 #------------------------------------------------------------------------------
     def decrypt(self, crypt):
         if crypt == None or len(crypt) == 0:
-            print "Invalid Crypt"
+            print("Invalid Crypt")
             return None
 
         valid_chars = re.compile(self.VALID)
@@ -140,7 +139,7 @@ class Cryptic:
 
             return decrypt_str
         else:
-            print Crypt + " is invalid !!"
+            print(Crypt + " is invalid !!")
 
 #------------------------------------------------------------------------------
     def hashify(self, plain_text):
@@ -151,29 +150,22 @@ class Cryptic:
         #    output = subprocess.check_output(cmd, shell=True)
         #    return output.strip()
         #except subprocess.CalledProcessError as exc:
-        #    print "Command " + cmd + " returned error code " + str(exc.returncode)+ " and output " + exc.output
+        #    print("Command " + cmd + " returned error code " + str(exc.returncode)+ " and output " + exc.output
         #    return None
 
 
 #------------------------------------------------------------------------------
     def authenticate_hash(self, plain_text, hash_text):
-        match_object = re.match(self.HASH_MAGIC_SEARCH, hash_text)
-        if match_object is not None:
-            hashed = self.hashify(plain_text)
-            if hashed is not None and hashed == hash_text:
-                return True
-            else:
-                return False
-        else:
-            print "Hashed password is not valid"
+        if not re.match(self.HASH_MAGIC_SEARCH, hash_text):
+            print("Hashed password is not valid")
             return None
-
+        return sha256_crypt.verify(plain_text, hash_text)
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 if __name__ == "__main__":
     import sys
     if len(sys.argv) != 2:
-        print "To generate 2-way encrypted password for basic authentication, run crypt.py"
-        print "Usage: python crypt.py <cleartext_password>"
+        print("To generate 2-way encrypted password for basic authentication, run crypt.py")
+        print("Usage: python crypt.py <cleartext_password>")
     else:
-        print Cryptic().encrypt(sys.argv[1])
+        print(Cryptic().encrypt(sys.argv[1]))

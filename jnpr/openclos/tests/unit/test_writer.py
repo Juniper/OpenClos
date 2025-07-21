@@ -12,8 +12,8 @@ import unittest
 import pydot
 from jnpr.openclos.model import Device, InterfaceDefinition
 from jnpr.openclos.writer import ConfigWriter, CablingPlanWriter
-from test_model import createPod, createPodDevice
-from test_dao import InMemoryDao 
+from .test_model import createPod, createPodDevice
+from .test_dao import InMemoryDao 
 
 
 class TestWriterBase(unittest.TestCase):
@@ -63,7 +63,7 @@ class TestCablingPlanWriter(TestWriterBase):
             self.assertIsNotNone(cablingPlanWriter.template)
             with self.assertRaises(TemplateNotFound) as e:
                 cablingPlanWriter.templateEnv.get_template('unknown-template')
-            self.assertTrue('unknown-template' in e.exception.message)
+            self.assertTrue('unknown-template' in str(e.exception))
         
     def testCreateDeviceInGraph(self):
         testDeviceTopology = pydot.Dot(graph_type='graph', )
@@ -75,7 +75,7 @@ class TestCablingPlanWriter(TestWriterBase):
             cablingPlanWriter.createDeviceInGraph(device.name, device, testDeviceTopology)
             path = cablingPlanWriter.outputDir + '/testDevicelabel.dot'
             testDeviceTopology.write_raw(path)
-            data = open(path, 'r').read()
+            data = open(path).read()
             #check the generated label for device
             self.assertTrue('"preethi-1"' in data and 'label=Preethi' in data)
 
@@ -100,9 +100,9 @@ class TestCablingPlanWriter(TestWriterBase):
             cablingPlanWriter.createLinksInGraph(linkLabel, testLinksInTopology, 'red')
             path = cablingPlanWriter.outputDir + '/testLinklabel.dot'
             testLinksInTopology.write_raw(path)
-            data = open(path, 'r').read()
+            data = open(path).read()
             #check generated label for links
-            self.assertTrue('spine01:IF1 -- leaf01:IF21  [color=red];' in data)
+            self.assertTrue('spine01:IF1 -- leaf01:IF21 [color=red];' in data)
         
     def testcreateDOTFile(self):
         # create pod
@@ -113,7 +113,7 @@ class TestCablingPlanWriter(TestWriterBase):
             cablingPlanWriter = CablingPlanWriter(self._conf, pod, self._dao)
             #check the DOT file is generated
             cablingPlanWriter.writeDOT()
-            data = open(cablingPlanWriter.outputDir + '/cablingPlan.dot', 'r').read()
+            data = open(cablingPlanWriter.outputDir + '/cablingPlan.dot').read()
             #check generated label for links
             self.assertTrue('splines=polyline;' in data)
         

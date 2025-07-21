@@ -149,11 +149,11 @@ class OverlayRestRoutes():
             deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             logger.debug('getDevice: %s', deviceId)
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+            logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         
         return {'device': self._populateDevice(deviceObject)}
         
@@ -182,14 +182,14 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except ValueError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         bottle.response.set_header('Location', self.baseUrl + '/devices/' + deviceObject.id)
         bottle.response.status = 201
 
@@ -216,17 +216,17 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+            logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except ValueError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return device
 
@@ -239,11 +239,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+            logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return bottle.HTTPResponse(status=204)
         
@@ -288,11 +288,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
+            logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
             
         return {'fabric': self._populateFabric(fabricObject)}
         
@@ -319,7 +319,7 @@ class OverlayRestRoutes():
                     logger.debug("Overlay Device '%s' found", deviceId)
                     deviceObjects.append(deviceObject)
                 except (exc.NoResultFound) as ex:
-                    logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+                    logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, str(ex))
                     raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
 
             fabricObject = self._overlay.createFabric(dbSession, name, description, overlayAsn, routeReflectorAddress, deviceObjects)
@@ -330,14 +330,14 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except ValueError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         bottle.response.set_header('Location', self.baseUrl + '/fabrics/' + fabricObject.id)
         bottle.response.status = 201
 
@@ -366,7 +366,7 @@ class OverlayRestRoutes():
                         logger.debug("Overlay Device '%s' found", deviceId)
                         deviceObjects.append(deviceObject)
                     except (exc.NoResultFound) as ex:
-                        logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+                        logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, str(ex))
                         raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
             else:
                 deviceObjects = None
@@ -378,14 +378,14 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
+            logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
             
         return fabric
         
@@ -398,11 +398,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
+            logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return bottle.HTTPResponse(status=204)
 
@@ -442,11 +442,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
+            logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         
         return {'tenant': self._populateTenant(tenantObject)}
         
@@ -467,7 +467,7 @@ class OverlayRestRoutes():
                 fabricObject = self.__dao.getObjectById(dbSession, OverlayFabric, fabricId)
                 logger.debug("Overlay Fabric '%s' found", fabricId)
             except (exc.NoResultFound) as ex:
-                logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, ex.message)
+                logger.debug("No Overlay Fabric found with Id: '%s', exc.NoResultFound: %s", fabricId, str(ex))
                 raise bottle.HTTPError(404, exception=OverlayFabricNotFound(fabricId))
                 
             tenantObject = self._overlay.createTenant(dbSession, name, description, fabricObject)
@@ -478,11 +478,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         bottle.response.set_header('Location', self.baseUrl + '/tenants/' + tenantObject.id)
         bottle.response.status = 201
 
@@ -497,11 +497,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
+            logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return bottle.HTTPResponse(status=204)
 
@@ -543,11 +543,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
+            logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         
         return {'vrf': self._populateVrf(vrfObject)}
         
@@ -571,7 +571,7 @@ class OverlayRestRoutes():
             try:
                 tenantObject = self.__dao.getObjectById(dbSession, OverlayTenant, tenantId)
             except (exc.NoResultFound) as ex:
-                logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, ex.message)
+                logger.debug("No Overlay Tenant found with Id: '%s', exc.NoResultFound: %s", tenantId, str(ex))
                 raise bottle.HTTPError(404, exception=OverlayTenantNotFound(tenantId))
                 
             vrfObject = self._overlay.createVrf(dbSession, name, description, routedVnid, loopbackAddress, tenantObject)
@@ -581,14 +581,14 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except ValueError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         bottle.response.set_header('Location', self.baseUrl + '/vrfs/' + vrfObject.id)
         bottle.response.status = 201
 
@@ -614,14 +614,14 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
+            logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return vrf
 
@@ -634,11 +634,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
+            logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return bottle.HTTPResponse(status=204)
         
@@ -690,11 +690,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
+            logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         
         return {'network': self._populateNetwork(networkObject)}
         
@@ -717,7 +717,7 @@ class OverlayRestRoutes():
             try:
                 vrfObject = self.__dao.getObjectById(dbSession, OverlayVrf, vrfId)
             except (exc.NoResultFound) as ex:
-                logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, ex.message)
+                logger.debug("No Overlay Vrf found with Id: '%s', exc.NoResultFound: %s", vrfId, str(ex))
                 raise bottle.HTTPError(404, exception=OverlayVrfNotFound(vrfId))
                 
             networkObject = self._overlay.createNetwork(dbSession, name, description, vrfObject, vlanid, vnid, pureL3Int)
@@ -728,14 +728,14 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except ValueError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         bottle.response.set_header('Location', self.baseUrl + '/networks/' + networkObject.id)
         bottle.response.status = 201
 
@@ -762,17 +762,17 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
+            logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except ValueError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return network
 
@@ -785,11 +785,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
+            logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return bottle.HTTPResponse(status=204)
 
@@ -830,11 +830,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
+            logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, str(ex))
             raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         
         return {'subnet': self._populateSubnet(subnetObject)}
         
@@ -855,7 +855,7 @@ class OverlayRestRoutes():
             try:
                 networkObject = self.__dao.getObjectById(dbSession, OverlayNetwork, networkId)
             except (exc.NoResultFound) as ex:
-                logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, ex.message)
+                logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", networkId, str(ex))
                 raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(networkId))
                 
             subnetObject = self._overlay.createSubnet(dbSession, name, description, networkObject, cidr)
@@ -866,11 +866,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         bottle.response.set_header('Location', self.baseUrl + '/subnets/' + subnetObject.id)
         bottle.response.status = 201
 
@@ -896,14 +896,14 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
+            logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, str(ex))
             raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return subnet
 
@@ -916,11 +916,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
+            logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, str(ex))
             raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return bottle.HTTPResponse(status=204)
 
@@ -956,11 +956,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, ex.message)
+            logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayL3portNotFound(l3portId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         
         return {'l3port': self._populateL3port(l3portObject)}
         
@@ -980,7 +980,7 @@ class OverlayRestRoutes():
             try:
                 subnetObject = self.__dao.getObjectById(dbSession, OverlaySubnet, subnetId)
             except (exc.NoResultFound) as ex:
-                logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, ex.message)
+                logger.debug("No Overlay Subnet found with Id: '%s', exc.NoResultFound: %s", subnetId, str(ex))
                 raise bottle.HTTPError(404, exception=OverlaySubnetNotFound(subnetId))
                 
             l3portObject = self._overlay.createL3port(dbSession, name, description, subnetObject)
@@ -991,11 +991,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         bottle.response.set_header('Location', self.baseUrl + '/l3ports/' + l3portObject.id)
         bottle.response.status = 201
 
@@ -1010,11 +1010,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, ex.message)
+            logger.debug("No Overlay L3port found with Id: '%s', exc.NoResultFound: %s", l3portId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayL3portNotFound(l3portId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return bottle.HTTPResponse(status=204)
 
@@ -1056,11 +1056,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, ex.message)
+            logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayL2portNotFound(l2portId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         
         return {'l2port': self._populateL2port(l2portObject)}
     
@@ -1077,7 +1077,7 @@ class OverlayRestRoutes():
             try:
                 networkObjects.append(self.__dao.getObjectById(dbSession, OverlayNetwork, id))
             except (exc.NoResultFound) as ex:
-                logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", id, ex.message)
+                logger.debug("No Overlay Network found with Id: '%s', exc.NoResultFound: %s", id, str(ex))
                 raise bottle.HTTPError(404, exception=OverlayNetworkNotFound(id))
         return networkObjects
         
@@ -1099,7 +1099,7 @@ class OverlayRestRoutes():
             try:
                 deviceObject = self.__dao.getObjectById(dbSession, OverlayDevice, deviceId)
             except (exc.NoResultFound) as ex:
-                logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, ex.message)
+                logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", deviceId, str(ex))
                 raise bottle.HTTPError(404, exception=OverlayDeviceNotFound(deviceId))
                 
             l2portObject = self._overlay.createL2port(dbSession, name, description, networkObjects, interface, deviceObject)
@@ -1110,11 +1110,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         bottle.response.set_header('Location', self.baseUrl + '/l2ports/' + l2portObject.id)
         bottle.response.status = 201
 
@@ -1139,14 +1139,14 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, ex.message)
+            logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayL2portNotFound(l2portId))
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return l2port
 
@@ -1159,11 +1159,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, ex.message)
+            logger.debug("No Overlay L2port found with Id: '%s', exc.NoResultFound: %s", l2portId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayL2portNotFound(l2portId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return bottle.HTTPResponse(status=204)
         
@@ -1208,11 +1208,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, ex.message)
+            logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayAggregatedL2portNotFound(aggregatedL2portId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         
         return {'aggregatedL2port': self._populateAggregatedL2port(aggregatedL2portObject)}
 
@@ -1223,7 +1223,7 @@ class OverlayRestRoutes():
             try:
                 members.append({'device': self.__dao.getObjectById(dbSession, OverlayDevice, id), 'interface': dictMember['interface']})
             except (exc.NoResultFound) as ex:
-                logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", id, ex.message)
+                logger.debug("No Overlay Device found with Id: '%s', exc.NoResultFound: %s", id, str(ex))
                 raise OverlayDeviceNotFound(deviceId)
         return members
                 
@@ -1252,14 +1252,14 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except OverlayDeviceNotFound as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
         bottle.response.set_header('Location', self.baseUrl + '/aggregatedL2ports/' + aggregatedL2portObject.id)
         bottle.response.status = 201
 
@@ -1287,17 +1287,17 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, ex.message)
+            logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayAggregatedL2portNotFound(aggregatedL2portId))
         except KeyError as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except OverlayDeviceNotFound as ex:
-            logger.debug('Bad request: %s', ex.message)
-            raise bottle.HTTPError(400, exception=InvalidRequest(ex.message))
+            logger.debug('Bad request: %s', str(ex))
+            raise bottle.HTTPError(400, exception=InvalidRequest(str(ex)))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return aggregatedL2port
         
@@ -1310,11 +1310,11 @@ class OverlayRestRoutes():
         except bottle.HTTPError:
             raise 
         except (exc.NoResultFound) as ex:
-            logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, ex.message)
+            logger.debug("No Overlay AggregatedL2port found with Id: '%s', exc.NoResultFound: %s", aggregatedL2portId, str(ex))
             raise bottle.HTTPError(404, exception=OverlayAggregatedL2portNotFound(aggregatedL2portId))
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
 
         return bottle.HTTPResponse(status=204)
 
@@ -1438,8 +1438,8 @@ class OverlayRestRoutes():
                 if not currentNode.childrenByType:
                     result.append(currentNode)
                 else:
-                    for type, children in currentNode.childrenByType.iteritems():
-                        for id, child in children.iteritems():
+                    for type, children in currentNode.childrenByType.items():
+                        for id, child in children.items():
                             newNodes.append(child)
             currentNodes = newNodes
                 
@@ -1480,8 +1480,8 @@ class OverlayRestRoutes():
         if tree.id is None:
             # Handle root case: parameter outputDict is a dictionary 
             # recursively go after children
-            for type, children in tree.childrenByType.iteritems():
-                for id, node in children.iteritems():
+            for type, children in tree.childrenByType.items():
+                for id, node in children.items():
                     childrenList = outputDict.get(type+"s")
                     if childrenList is None:
                         outputDict[type+"s"] = []
@@ -1497,8 +1497,8 @@ class OverlayRestRoutes():
             
             outputDict.append(currentDict)
             # recursively go after children
-            for type, children in tree.childrenByType.iteritems():
-                for id, node in children.iteritems():
+            for type, children in tree.childrenByType.items():
+                for id, node in children.items():
                     childrenList = outputDict[-1].get(type+"s")
                     if childrenList is None:
                         outputDict[-1][type+"s"] = []
@@ -1509,7 +1509,7 @@ class OverlayRestRoutes():
         deployDetail = []
         
         for status in self._getObjectStatus(dbSession, objectUrl):
-            deployDetail.append({'device': status.overlay_device.name, 'configlet': status.configlet, 'status': status.status, 'reason': status.statusReason})
+            deployDetail.append({'device': status.overlay_device.name, 'configlet': status.configlet.decode('utf-8') if isinstance(status.configlet, bytes) else status.configlet, 'status': status.status, 'reason': status.statusReason})
         
         return deployDetail
     
@@ -1526,12 +1526,12 @@ class OverlayRestRoutes():
                 return []
         except Exception as ex:
             logger.debug('StackTrace: %s', traceback.format_exc())
-            #raise bottle.HTTPError(500, exception=PlatformError(ex.message))
+            #raise bottle.HTTPError(500, exception=PlatformError(str(ex)))
             return []
         
 # This class represents an object and all its children.
 # The children are sorted first by type and then by id
-class DeployObjectTreeNode(object):
+class DeployObjectTreeNode:
     def __init__(self, type='root', id=None):
         #logger.debug("DeployObjectTreeNode: __init__: type=%s, id=%s", type, id)
         
@@ -1552,8 +1552,8 @@ class DeployObjectTreeNode(object):
         
     def dump(self):
         logger.debug('%stype=%s, id=%s', '  ' * self.level, self.type, self.id)
-        for type, children in self.childrenByType.iteritems():
-            for id, node in children.iteritems():
+        for type, children in self.childrenByType.items():
+            for id, node in children.items():
                 node.dump()
                 
     def addOrGet(self, type, id):

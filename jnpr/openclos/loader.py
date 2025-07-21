@@ -10,8 +10,8 @@ import re
 import json
 import logging.config
 
-from crypt import Cryptic
-from exception import InvalidConfiguration, InvalidDeviceFamily, InvalidDeviceRole
+from jnpr.openclos.crypt import Cryptic
+from jnpr.openclos.exception import InvalidConfiguration, InvalidDeviceFamily, InvalidDeviceRole
 
 defaultPropertyLocation = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'conf')
 currentWorkingDir = os.getcwd()
@@ -54,13 +54,13 @@ def loadClosDefinition(fileName = 'closDefinition.yaml', override=True):
     if fileNameWithPath:
         try:
             stream = open(fileNameWithPath, 'r')
-            yamlStream = yaml.load(stream)
+            yamlStream = yaml.load(stream, Loader=yaml.SafeLoader)
             
             return yamlStream
         except (OSError, IOError) as exc:
-            print "File error:", exc
-        except (yaml.scanner.ScannerError) as exc:
-            print "YAML error:", exc
+            print("File error:", exc)
+        except yaml.scanner.ScannerError as exc:
+            print("YAML error:", exc)
         finally:
             stream.close()
 
@@ -82,9 +82,9 @@ def loadClosDeviceInventory(fileName, override=True):
             stream = open(fileNameWithPath, 'r')
             return json.load(stream)
         except (OSError, IOError) as exc:
-            print "File error:", exc
+            print("File error:", exc)
         except (yaml.scanner.ScannerError) as exc:
-            print "YAML error:", exc
+            print("YAML error:", exc)
         finally:
             stream.close()
 
@@ -104,7 +104,7 @@ class PropertyLoader(object):
         if not override:
             return prop
         
-        for k, v in override.iteritems():
+        for k, v in override.items():
             if k in prop:
                 if type(v) is dict:
                     prop[k] = self.mergeDict(prop[k], v)
@@ -125,7 +125,7 @@ class PropertyLoader(object):
         try:
             if defaultPath:
                 with open(defaultPath, 'r') as fStream:
-                    self._properties = yaml.load(fStream)
+                    self._properties = yaml.load(fStream, Loader=yaml.SafeLoader)
         except (OSError, IOError) as exc:
             logger.error("File error: %s", exc)
         except (yaml.scanner.ScannerError) as exc:
@@ -137,7 +137,7 @@ class PropertyLoader(object):
             try:
                 if overridePath:
                     with open(overridePath, 'r') as fStream:
-                        overrideProps = yaml.load(fStream)
+                        overrideProps = yaml.load(fStream, Loader=yaml.SafeLoader)
             except (OSError, IOError) as exc:
                 logger.error("File error: %s", exc)
             except (yaml.scanner.ScannerError) as exc:
@@ -151,7 +151,7 @@ class OpenClosProperty(PropertyLoader):
         if self._properties is not None:
             if 'dbUrl' in self._properties:
                 if 'dbDialect' in self._properties:
-                    print "Warning: dbUrl and dbDialect both exist. dbDialect ignored"
+                    print("Warning: dbUrl and dbDialect both exist. dbDialect ignored")
                 # dbUrl is used by sqlite only
                 self._properties['dbUrl'] = OpenClosProperty.fixSqlliteDbUrlForRelativePath(self._properties['dbUrl'])
             elif 'dbDialect' in self._properties:
@@ -234,7 +234,7 @@ class DeviceSku(PropertyLoader):
         if not override:
             return prop
         
-        for k, v in override.iteritems():
+        for k, v in override.items():
             if k in prop:
                 if type(v) is dict:
                     prop[k] = self.mergeDict(prop[k], v)
@@ -248,9 +248,9 @@ class DeviceSku(PropertyLoader):
 
     @staticmethod
     def populateDeviceFamily(skuDetail):
-        for deviceFamily, value in skuDetail.iteritems():
+        for deviceFamily, value in skuDetail.items():
             logger.debug(deviceFamily)
-            for role, ports in value.iteritems():
+            for role, ports in value.items():
                 uplinkRegex = ports.get('uplinkPorts')
                 if isinstance(uplinkRegex, list):
                     ports['uplinkPortRegex'] = uplinkRegex
@@ -289,7 +289,7 @@ class DeviceSku(PropertyLoader):
 
     @staticmethod
     def populateLineCard(lineCards):
-        for cardFamily, ports in lineCards.iteritems():
+        for cardFamily, ports in lineCards.items():
             uplinkRegex = ports.get('uplinkPorts')
             ports['uplinkPortRegex'] = uplinkRegex
             ports['uplinkPorts'] = DeviceSku.portRegexToList(uplinkRegex)
@@ -312,7 +312,6 @@ class DeviceSku(PropertyLoader):
         
         if role is None:
             raise InvalidDeviceRole('role is None')
-        
         resultFamily = None
         if topology == '3Stage':
             resultFamily = self.threeStageSkuDetail.get(deviceFamily)
@@ -463,7 +462,7 @@ def getLoggingHandlers(logConfFile='logging.yaml', appName=''):
     '''
     try:
         logConfStream = open(os.path.join(defaultPropertyLocation, logConfFile), 'r')
-        logConf = yaml.load(logConfStream)
+        logConf = yaml.load(logConfStream, Loader=yaml.SafeLoader)
 
         if logConf is not None:
             handlers = logConf.get('handlers')
@@ -482,9 +481,9 @@ def getLoggingHandlers(logConfFile='logging.yaml', appName=''):
                             
             return logConf
     except (OSError, IOError) as exc:
-        print "File error:", exc
+        print("File error:", exc)
     except (yaml.scanner.ScannerError) as exc:
-        print "YAML error:", exc
+        print("YAML error:", exc)
     finally:
         logConfStream.close()
     

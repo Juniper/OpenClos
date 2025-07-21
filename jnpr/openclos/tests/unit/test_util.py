@@ -90,22 +90,22 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(6, len(seqNumSet))
 
     def testGetOutFolderPath(self):
-        from test_model import createPodObj
+        from .test_model import createPodObj
         pod = createPodObj('testPod')
         path = getOutFolderPath({}, pod)
         
-        self.assertEquals('out/'+pod.id+'-'+pod.name, path)
+        self.assertEqual('out/'+pod.id+'-'+pod.name, path)
         
     def testGetOutFolderPathFromConf(self):
-        from test_model import createPodObj
+        from .test_model import createPodObj
         pod = createPodObj('testPod')
         path = getOutFolderPath({'outputDir': '/var/lib/openclos'}, pod)
         
-        self.assertEquals('/var/lib/openclos/'+pod.id+'-'+pod.name, path)
+        self.assertEqual('/var/lib/openclos/'+pod.id+'-'+pod.name, path)
 
     def testReplaceFpcNumberOfInterface(self):
-        self.assertEquals('et-2/0/10', replaceFpcNumberOfInterface('et-0/0/10', '2'))
-        self.assertEquals('et-5/0/10.0', replaceFpcNumberOfInterface('et-0/0/10.0', '5'))
+        self.assertEqual('et-2/0/10', replaceFpcNumberOfInterface('et-0/0/10', '2'))
+        self.assertEqual('et-5/0/10.0', replaceFpcNumberOfInterface('et-0/0/10.0', '5'))
         
         
 if __name__ == "__main__":

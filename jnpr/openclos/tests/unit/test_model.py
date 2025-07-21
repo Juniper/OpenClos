@@ -110,7 +110,7 @@ class TestPod(TestOrm):
         with self.assertRaises(InvalidUplinkThreshold) as ve:
             pod.leafUplinkcountMustBeUp = 1
             pod.validate()
-        error = ve.exception.message
+        error = str(ve.exception)
         self.assertTrue('leafUplinkcountMustBeUp' in error and 'should be between 2 and spineCount' in error)
 
         pod = createPodObj('name')

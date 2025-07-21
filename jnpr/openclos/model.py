@@ -9,7 +9,7 @@ import math
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Enum, UniqueConstraint, Index
 
-import loader
+from jnpr.openclos import loader
 if loader.OpenClosProperty().isSqliteUsed():
     from sqlalchemy import BLOB
 else:
@@ -18,13 +18,13 @@ else:
 
 from sqlalchemy.orm import relationship, backref
 from netaddr import IPAddress, IPNetwork, AddrFormatError
-from crypt import Cryptic
-import util
-from exception import EnumerationMismatch, InvalidUplinkThreshold, MissingMandatoryAttribute, InvalidIpFormat
+from jnpr.openclos.crypt import Cryptic
+from jnpr.openclos import util
+from jnpr.openclos.exception import EnumerationMismatch, InvalidUplinkThreshold, MissingMandatoryAttribute, InvalidIpFormat
 
 Base = declarative_base()
 
-class ManagedElement(object):
+class ManagedElement:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
     def __str__(self):
@@ -81,7 +81,7 @@ class Pod(ManagedElement, Base):
         '''
         Creates a Pod object from dict
         '''
-        super(Pod, self).__init__()
+        super().__init__()
         self.update(None, name, podDict)
     
     def copyAdditionalFields(self, podDict):
@@ -262,7 +262,7 @@ class Pod(ManagedElement, Base):
     def validate(self):
         self.validateRequiredFields()
         self.validateIPaddr()  
-        if self.leafUplinkcountMustBeUp < 2 or self.leafUplinkcountMustBeUp > self.spineCount:
+        if self.leafUplinkcountMustBeUp < 2 or self.leafUplinkcountMustBeUp > int(self.spineCount):
             raise InvalidUplinkThreshold('leafUplinkcountMustBeUp(%s) should be between 2 and spineCount(%s)' % (self.leafUplinkcountMustBeUp, self.spineCount))
         
     def validateRequiredFields(self):
@@ -340,7 +340,7 @@ class LeafSetting(ManagedElement, Base):
         self.uplinkRegex = uplinkRegex
         self.downlinkRegex = downlinkRegex
         self.junosImage = junosImage
-        self.config = config
+        self.config = config.encode('utf-8') if config is not None else None
     
 class CablingPlan(ManagedElement, Base):
     __tablename__ = 'cablingPlan'
@@ -350,8 +350,8 @@ class CablingPlan(ManagedElement, Base):
 
     def __init__(self, podId, json=None, dot=None):
         self.pod_id = podId
-        self.json = json
-        self.dot = dot
+        self.json = json.encode('utf-8') if json is not None else None
+        self.dot = dot.encode('utf-8') if dot is not None else None
 
 class Device(ManagedElement, Base):
     __tablename__ = 'device'
@@ -439,7 +439,7 @@ class DeviceConfig(ManagedElement, Base):
 
     def __init__(self, deviceId, config):
         self.device_id = deviceId
-        self.config = config
+        self.config = config.encode('utf-8') if config is not None else None
             
 class Interface(ManagedElement, Base):
     __tablename__ = 'interface'
@@ -494,7 +494,7 @@ class InterfaceLogical(Interface):
         ipaddress is optional so that it can be allocated later
         mtu is optional, default value is taken from global setting
         '''
-        super(InterfaceLogical, self).__init__(name, device, deployStatus)
+        super().__init__(name, device, deployStatus)
         self.ipaddress = ipaddress
         self.mtu = mtu
 
@@ -510,7 +510,7 @@ class InterfaceDefinition(Interface):
     }
 
     def __init__(self, name, device, role, mtu=0, deployStatus=None):
-        super(InterfaceDefinition, self).__init__(name, device, deployStatus)
+        super().__init__(name, device, deployStatus)
         self.mtu = mtu
         self.role = role
 

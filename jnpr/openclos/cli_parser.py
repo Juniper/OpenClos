@@ -53,7 +53,7 @@ class CLIUtil:
         commandConfFile = os.path.join(loader.defaultPropertyLocation, 
                                          'cliCommands.yaml')
         self.yaml_file_stream = open(commandConfFile, 'r')
-        raw_graph = yaml.load(self.yaml_file_stream)
+        raw_graph = yaml.load(self.yaml_file_stream, Loader=yaml.SafeLoader)
         #raw_graph = yaml.load(self.yaml_file_stream, Loader=yamlordereddictloader.Loader)
         #self.cmd_graph = {}
         self.cmd_graph = collections.OrderedDict()
@@ -93,26 +93,26 @@ class CLIUtil:
             cmd_data = cmds[cmd]
 
             # Get command access
-            if cmd_data.has_key("Access"):
+            if 'Access' in cmd_data:
                 cmd_access = cmd_data["Access"]
 
             # Get command handler
-            if cmd_data.has_key("Handle"):
+            if 'Handle' in cmd_data:
                 cmd_handle = cmd_data["Handle"]
             elif cmd_handle != "":
                 cmd_handle = ""
 
             # Get command macro
-            if cmd_data.has_key("Macro"):
+            if 'Macro' in cmd_data:
                 cmd_macro = cmd_data["Macro"]
             elif cmd_macro != "":
                 cmd_macro = ""
             
-            if cmd_data.has_key("MacroName"):
+            if 'MacroName' in cmd_data:
                 if "-" in cmd_data["MacroName"]:
-                    print "Macro name cannot contain the character '-'"
-                    print "Excluding the handle"
-                    print cmd_compound + "_<" + cmd_data["MacroName"] +">"
+                    print("Macro name cannot contain the character '-'")
+                    print("Excluding the handle")
+                    print(cmd_compound + "_<" + cmd_data["MacroName"] +">")
                     break 
                 cmd_macroname = cmd_data["MacroName"]
                 cmd_compound = cmd_compound + "_<" + cmd_macroname + ">"
@@ -120,12 +120,12 @@ class CLIUtil:
                 cmd_macroname = ""
 
             # Get command description
-            if cmd_data.has_key("Desc"):
+            if 'Desc' in cmd_data:
                 cmd_desc = cmd_data["Desc"]
             elif cmd_desc != "":
                 cmd_desc = ""
 
-            if cmd_data.has_key("Handle"):
+            if 'Handle' in cmd_data:
                 #if cmd_data.has_key("MacroName"):
                 self.cmd_graph[cmd_compound] = CLICommand(cmd_access, 
                                                                cmd_handle,
@@ -137,7 +137,7 @@ class CLIUtil:
                     self.indentation = len(cmd_compound)
 
             # Parse the arguments
-            if cmd_data.has_key("Args"):
+            if 'Args' in cmd_data:
                 cmd_args = cmd_data["Args"]
                 self.dump_cmd(cmd_args, 
                                 cmd_compound, 
@@ -209,7 +209,7 @@ class CLIUtil:
                         ret_list.append(haystack)
                         entered_macro.append(haystack)
             #else:
-                #print ""
+                #print(""
 
 #------------------------------------------------------------------------------
     def option_exists(self, consider_option, ret_list):
@@ -337,7 +337,7 @@ class CLIUtil:
                                     break
                                         
                             if flag == 0:
-                                #print "Invalid macro. Possible options:"
+                                #print("Invalid macro. Possible options:"
                                 self.include_macro(macro_dict[macro_name], ret_list)
                                     
                                 
@@ -380,7 +380,7 @@ class CLIUtil:
 
                             # When needle ends with a macro
                             if match_object == None or macro_needle == "":
-                                #print "Incorrect command. Possible options:"
+                                #print("Incorrect command. Possible options:"
                                 if balance_haystack[0] == "<" and cmd_helper.cmd_macro != "":
                                     self.include_macro(macro_dict[cmd_helper.cmd_macroname], ret_list)
                                 else:
@@ -451,35 +451,35 @@ class CLIUtil:
         if best_cmd_handle != 0:
             return best_cmd_handle(best_cmd_args)
         else:
-            print self.cmd_graph[best_cmd_match].cmd_handle + " not implemented"
+            print(self.cmd_graph[best_cmd_match].cmd_handle + " not implemented")
 
 #------------------------------------------------------------------------------
     def print_results(self, result_list):
         for result in result_list:
-            print "\t" + result
+            print("\t" + result)
 
 #------------------------------------------------------------------------------
     def print_command_graph(self, cmd_dict):
         for keys in cmd_dict:
-            print keys + "=>"
+            print(keys + "=>")
             cmd = cmd_dict[keys]
             if cmd.cmd_desc != "":
-                print "    " + cmd.cmd_desc
-            print "    " + cmd.cmd_access
+                print("    " + cmd.cmd_desc)
+            print("    " + cmd.cmd_access)
             if cmd.cmd_macro != "":
                 fn_macro = self.get_implementor_handle(CLIImplementor(), 
                                                         cmd.cmd_macro)
                 if fn_macro != 0:
-                    print fn_macro()
+                    print(fn_macro())
                 else:
-                    print "    Macro not implemented"
+                    print("    Macro not implemented")
             if cmd.cmd_handle != "":
                 fn_handle = self.get_implementor_handle(CLIImplementor(), 
                                                      cmd.cmd_handle)
                 if fn_handle != 0:
                     fn_handle()
                 else:
-                    print "    Handler not implemented"
+                    print("    Handler not implemented")
 
 #------------------------------------------------------------------------------
 
@@ -527,6 +527,6 @@ match_options = ["create",
 
 if __name__ == '__main__':
     for match in match_options:
-        print "Matching results for " + match + " is:"
+        print("Matching results for " + match + " is:")
         cli_util.print_results(cli_util.get_match(match))
-        print "------------------------------------------------------"
+        print("------------------------------------------------------")

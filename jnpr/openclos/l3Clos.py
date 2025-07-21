@@ -15,16 +15,16 @@ import itertools
 from netaddr import IPNetwork
 from sqlalchemy.orm import exc
 
-from model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup, LeafSetting
-from dao import Dao
-from loader import defaultPropertyLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
-import loader
-import util
+from jnpr.openclos.model import Pod, Device, InterfaceLogical, InterfaceDefinition, CablingPlan, DeviceConfig, TrapGroup, LeafSetting
+from jnpr.openclos.dao import Dao
+from jnpr.openclos.loader import defaultPropertyLocation, OpenClosProperty, DeviceSku, loadLoggingConfig
+from jnpr.openclos import loader
+from jnpr.openclos import util
 
-from writer import ConfigWriter, CablingPlanWriter
+from jnpr.openclos.writer import ConfigWriter, CablingPlanWriter
 import logging
-from exception import InvalidRequest, MissingMandatoryAttribute, PodNotFound, InsufficientLoopbackIp, InsufficientVlanIp, InsufficientInterconnectIp, InsufficientManagementIp, CapacityCannotChange, CapacityMismatch, InvalidDeviceFamily, InvalidDeviceRole
-from templateLoader import TemplateLoader
+from jnpr.openclos.exception import InvalidRequest, MissingMandatoryAttribute, PodNotFound, InsufficientLoopbackIp, InsufficientVlanIp, InsufficientInterconnectIp, InsufficientManagementIp, CapacityCannotChange, CapacityMismatch, InvalidDeviceFamily, InvalidDeviceRole
+from jnpr.openclos.templateLoader import TemplateLoader
 
 moduleName = 'l3Clos'
 loadLoggingConfig(appName=moduleName)
@@ -112,7 +112,7 @@ class L3ClosMediation():
 
         if device.family is None or device.family == 'unknown':
             # temporary uplink ports, names will get fixed after 2-stage ztp
-            for i in xrange(0, pod.spineCount):
+            for i in range(0, pod.spineCount):
                 interfaces.append(InterfaceDefinition('uplink-' + str(i), device, 'uplink'))
 
         else:
@@ -310,7 +310,7 @@ class L3ClosMediation():
         if inventoryChanged == True:
             logger.debug("Pod[id='%s', name='%s']: inventory changed", pod.id, pod.name)
             # save the new inventory to database
-            pod.inventoryData = base64.b64encode(zlib.compress(json.dumps(inventoryData)))
+            pod.inventoryData = base64.b64encode(zlib.compress(json.dumps(inventoryData).encode('utf-8')))
 
             # deploy the new spines and undeploy deleted spines
             self._deployInventory(pod, inventoryData['spines'], 'spine')
@@ -366,7 +366,7 @@ class L3ClosMediation():
         # fake uplink port starts from 0
         listIndex = 0
 
-        for allocatedIfd, uplinkNameBasedOnDeviceFamily in itertools.izip_longest(allocatedUplinkIfds, uplinkNamesBasedOnDeviceFamily):
+        for allocatedIfd, uplinkNameBasedOnDeviceFamily in itertools.zip_longest(allocatedUplinkIfds, uplinkNamesBasedOnDeviceFamily):
             if uplinkNameBasedOnDeviceFamily:
                 updateList += self.fixIfdIflName(allocatedIfd, uplinkNameBasedOnDeviceFamily)
             else:
@@ -403,7 +403,7 @@ class L3ClosMediation():
             pod.devices.sort(key=lambda dev: dev.name) # Hack to order lists by name
             self._allocateResource(session, pod)
             # save the new inventory to database
-            pod.inventoryData = base64.b64encode(zlib.compress(json.dumps(inventoryData)))
+            pod.inventoryData = base64.b64encode(zlib.compress(json.dumps(inventoryData).encode('utf-8')))
         else:        
             # compare new inventory that user provides against old inventory that we stored in the database
             self._diffInventory(session, pod, inventoryData)
@@ -533,6 +533,8 @@ class L3ClosMediation():
         modifiedObjects = []
         for leaf in leaves:
             for spine in spines:
+                if not leaf['leafUplinkPorts']:
+                    continue
                 spinePort = spine['ports'][spineIndex]
                 leafPort = leaf['leafUplinkPorts'][leafIndex]
                 spinePort.peer = leafPort
@@ -643,7 +645,6 @@ class L3ClosMediation():
 
         interfaces = [] 
         spines[0].pod.allocatedInterConnectBlock = str(interconnectBlock.cidr)
-
         for spine in spines:
             ifdsHasPeer = session.query(InterfaceDefinition).filter(InterfaceDefinition.device_id == spine.id).filter(InterfaceDefinition.peer != None).filter(InterfaceDefinition.role == 'downlink').order_by(InterfaceDefinition.sequenceNum).all()
             for spineIfdHasPeer in ifdsHasPeer:
@@ -796,7 +797,7 @@ class L3ClosMediation():
             oobList += oobNetworks.split(',')
 
         # hack to make sure all address has cidr notation
-        for i in xrange(len(oobList)):
+        for i in range(len(oobList)):
             if '/' not in oobList[i]:
                 oobList[i] += '/32'
 

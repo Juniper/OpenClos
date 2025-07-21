@@ -22,5 +22,5 @@ class TestTemplateLoader(unittest.TestCase):
         with open(overridePath, 'w') as fStream:
             fStream.write('test vlan')
         config = self.templateLoader.getTemplate('vlans.txt').render()
-        self.assertEquals('test vlan', config)
+        self.assertEqual('test vlan', config)
         os.remove(overridePath)

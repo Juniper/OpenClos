@@ -7,12 +7,12 @@ import logging
 from sqlalchemy.orm import exc
 import concurrent.futures
 
-from dao import Dao
-from model import Pod, Device
-from devicePlugin import L2DataCollector, L3DataCollector
-from writer import L2ReportWriter, L3ReportWriter
-from loader import OpenClosProperty, loadLoggingConfig
-from exception import PodNotFound
+from jnpr.openclos.dao import Dao
+from jnpr.openclos.model import Pod, Device
+from jnpr.openclos.devicePlugin import L2DataCollector, L3DataCollector
+from jnpr.openclos.writer import L2ReportWriter, L3ReportWriter
+from jnpr.openclos.loader import OpenClosProperty, loadLoggingConfig
+from jnpr.openclos.exception import PodNotFound
 
 moduleName = 'report'
 loadLoggingConfig(appName=moduleName)
@@ -32,7 +32,7 @@ class Report(object):
         try:
             return self._dao.getObjectById(session, Pod, podId)
         except (exc.NoResultFound) as ex:
-            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s", podId, ex.message)
+            logger.debug("No IpFabric found with Id: '%s', exc.NoResultFound: %s", podId, str(ex))
             
 class ResourceAllocationReport(Report):
     def __init__(self, conf={}, daoClass=Dao):
@@ -187,18 +187,18 @@ if __name__ == '__main__':
     report = ResourceAllocationReport()
     with report._dao.getReadSession() as session:
         pods = report.getPods(session)
-        print pods
+        print(pods)
 
     l2Report = L2Report()
     with l2Report._dao.getReadSession() as session:
         pods = l2Report._dao.getAll(session, Pod)
         pod = [x for x in pods if x.name == 'anotherPod'][0]
         if pod is not None:
-            print l2Report.generateReport(pod.id, False, True)
+            print(l2Report.generateReport(pod.id, False, True))
 
     l3Report = L3Report()
     with l3Report._dao.getReadSession() as session:
         pods = l3Report._dao.getAll(session, Pod)
         pod = [x for x in pods if x.name == 'anotherPod'][0]
         if pod is not None:
-            print l3Report.generateReport(pod.id, False, True)
+            print(l3Report.generateReport(pod.id, False, True))

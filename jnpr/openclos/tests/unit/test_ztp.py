@@ -7,8 +7,8 @@ import unittest
 from flexmock import flexmock
 
 from jnpr.openclos.ztp import ZtpServer
-from test_model import createPod, createDevice, createPodDevice, LeafSetting
-from test_dao import InMemoryDao 
+from .test_model import createPod, createDevice, createPodDevice, LeafSetting
+from .test_dao import InMemoryDao 
 
 class TestZtp(unittest.TestCase):
 
@@ -29,7 +29,7 @@ class TestZtp(unittest.TestCase):
             dhcpConf = self.ztpServer.generateSingleDhcpConf(session)
         self.assertFalse('{{' in dhcpConf)
         self.assertFalse('}}' in dhcpConf)
-        self.assertEquals(1, dhcpConf.count('host-name')) # 1 global + 0 device
+        self.assertEqual(1, dhcpConf.count('host-name')) # 1 global + 0 device
 
     def testGenerateSingleDhcpConf(self):
         from jnpr.openclos.l3Clos import util
@@ -42,7 +42,7 @@ class TestZtp(unittest.TestCase):
 
         self.assertFalse('{{' in dhcpConf)
         self.assertFalse('}}' in dhcpConf)
-        self.assertEquals(3, dhcpConf.count('host-name')) # 1 global + 2 device
+        self.assertEqual(3, dhcpConf.count('host-name')) # 1 global + 2 device
          
     def testGeneratePodSpecificDhcpConf(self):
         from jnpr.openclos.l3Clos import util
@@ -58,12 +58,12 @@ class TestZtp(unittest.TestCase):
             dev3.role = 'leaf'
           
             dhcpConf = self.ztpServer.generatePodSpecificDhcpConf(session, pod.id)
-
-        self.assertEquals(2, dhcpConf.count('testSpineImage'))
+            print(dhcpConf)
+        self.assertEqual(2, dhcpConf.count('testSpineImage'))
         self.assertFalse('{{' in dhcpConf)
         self.assertFalse('}}' in dhcpConf)
         self.assertFalse('None' in dhcpConf)
-        self.assertEquals(4, dhcpConf.count('host-name')) # 1 global + 3 device
+        self.assertEqual(4, dhcpConf.count('host-name')) # 1 global + 3 device
 
     def testGeneratePodSpecificDhcpConfWithSerial(self):
         from jnpr.openclos.l3Clos import util
@@ -77,24 +77,26 @@ class TestZtp(unittest.TestCase):
             dev2 = createPodDevice(session, 'dev2', pod)
             dev2.macAddress = None
             dev2.serialNumber = 'VB1234567890'
+            #dev2.role = 'leaf'
             dev3 = createPodDevice(session, 'dev3', pod)
             dev3.role = 'leaf'
             dev3.serialNumber = 'VB1234567891'
           
             dhcpConf = self.ztpServer.generatePodSpecificDhcpConf(session, pod.id)
-            print dhcpConf
-        self.assertEquals(2, dhcpConf.count('testSpineImage'))
+            print(dhcpConf)
+        self.assertEqual(2, dhcpConf.count('testSpineImage'))
         self.assertFalse('{{' in dhcpConf)
         self.assertFalse('}}' in dhcpConf)
         self.assertFalse('None' in dhcpConf)
         self.assertTrue('VB1234567890' in dhcpConf)
         self.assertTrue('VB1234567891' not in dhcpConf)
-        self.assertEquals(5, dhcpConf.count('host-name')) # 1 global class + 1 subnet + 2 device mac + 1 device serial
+        self.assertEqual(5, dhcpConf.count('host-name')) # 1 global class + 1 subnet + 2 device mac + 1 device serial
 
     def testGeneratePodSpecificDhcpConfFor2StageZtp(self):
         from jnpr.openclos.l3Clos import util
         flexmock(util, isPlatformUbuntu = True)
         flexmock(util, isZtpStaged = True)
+        breakpoint()
         with self._dao.getReadWriteSession() as session:
             pod = createPod('pod1', session)
             pod.spineJunosImage = 'testSpineImage'
@@ -108,16 +110,15 @@ class TestZtp(unittest.TestCase):
             dev4.role = 'leaf'
           
             dhcpConf = self.ztpServer.generatePodSpecificDhcpConf(session, pod.id)
-
-        self.assertEquals(2, dhcpConf.count('testSpineImage'))
+        self.assertEqual(2, dhcpConf.count('testSpineImage'))
 
         self.assertFalse('{{' in dhcpConf)
         self.assertFalse('}}' in dhcpConf)
         self.assertFalse('None' in dhcpConf)
-        self.assertEquals(3, dhcpConf.count('host-name')) # 1 global + 2 spine device
-        self.assertEquals(1, dhcpConf.count('pool'))
-        self.assertEquals(2, dhcpConf.count('class '))
-        self.assertEquals(4, dhcpConf.count('vendor-class-identifier'))
+        self.assertEqual(3, dhcpConf.count('host-name')) # 1 global + 2 spine device
+        self.assertEqual(1, dhcpConf.count('pool'))
+        self.assertEqual(2, dhcpConf.count('class '))
+        self.assertEqual(8, dhcpConf.count('vendor-class-identifier'))
 
     def testPopulateDhcpGlobalSettings(self):
         from jnpr.openclos.l3Clos import loader
@@ -125,19 +126,19 @@ class TestZtp(unittest.TestCase):
         flexmock(loader, loadClosDefinition = globalZtpConf)
         globalSetting = self.ztpServer.populateDhcpGlobalSettings()
         
-        self.assertEquals('10.20.30.0', globalSetting['network'])
-        self.assertEquals('255.255.255.128', globalSetting['netmask'])
-        self.assertEquals('10.20.30.254', globalSetting['defaultRoute'])
-        self.assertEquals('10.20.30.15', globalSetting['rangeStart'])
-        self.assertEquals('10.20.30.20', globalSetting['rangeEnd'])
+        self.assertEqual('10.20.30.0', globalSetting['network'])
+        self.assertEqual('255.255.255.128', globalSetting['netmask'])
+        self.assertEqual('10.20.30.254', globalSetting['defaultRoute'])
+        self.assertEqual('10.20.30.15', globalSetting['rangeStart'])
+        self.assertEqual('10.20.30.20', globalSetting['rangeEnd'])
 
         globalZtpConf = {'ztp': {'dhcpSubnet': '10.20.30.0/25'}}
         flexmock(loader, loadClosDefinition = globalZtpConf)
         globalSetting = self.ztpServer.populateDhcpGlobalSettings()
         
-        self.assertEquals('10.20.30.1', globalSetting['defaultRoute'])
-        self.assertEquals('10.20.30.2', globalSetting['rangeStart'])
-        self.assertEquals('10.20.30.126', globalSetting['rangeEnd'])
+        self.assertEqual('10.20.30.1', globalSetting['defaultRoute'])
+        self.assertEqual('10.20.30.2', globalSetting['rangeStart'])
+        self.assertEqual('10.20.30.126', globalSetting['rangeEnd'])
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

@@ -77,21 +77,21 @@ class CLIImplementor:
 
         try:
             pods_file_stream = open(pods_yaml_file, 'r')
-            pods_template = yaml.load(pods_file_stream)
+            pods_template = yaml.load(pods_file_stream, Loader=yaml.SafeLoader)
             pods_definition = {}
-            if pods_template.has_key("pods"):
+            if 'pods' in pods_template:
                 pods_definition = pods_template["pods"]
                 l3ClosMediation = L3ClosMediation()
                 for pod in pods_definition:
                     l3ClosMediation.createPod(pod, pods_definition[pod])
             else:
-                print "Could not find pods definition in " + pods_yaml_file
+                print("Could not find pods definition in " + pods_yaml_file)
         except IOError as e:
-            print "Could not open " + pods_yaml_file
-            print e.strerror
+            print("Could not open " + pods_yaml_file)
+            print(e.strerror)
 
         except ImportError:
-            print "Could not load " + pods_yaml_file
+            print("Could not load " + pods_yaml_file)
 
         finally:
             pass
@@ -102,7 +102,7 @@ class CLIImplementor:
         if len(pod_definition_file) > 0:
             self.create_pods(pod_definition_file)
         else:
-            print "Please provide a valid file YAML file containing POD definitions"
+            print("Please provide a valid file YAML file containing POD definitions")
 
 #------------------------------------------------------------------------------
     def handle_create_pods(self, *args):
@@ -111,7 +111,7 @@ class CLIImplementor:
 #------------------------------------------------------------------------------
     def handle_show_pods_terse(self, *args):
         for item in self.list_all_pods_from_db("add_help"):
-            print item
+            print(item)
 
 #------------------------------------------------------------------------------
     def show_pod_detail(self, pod_object):
@@ -128,7 +128,7 @@ class CLIImplementor:
                     pod_desc = "POD "
                 str_value = str(value)
                 str_value.replace(',', self.rl_indent)
-                print pod_desc + str_value
+                print(pod_desc + str_value)
             except AttributeError:
                 pass
     
@@ -142,13 +142,13 @@ class CLIImplementor:
 
 #------------------------------------------------------------------------------
     def handle_show_all_pods_detail(self, *args):
-        print "---------------------------------------------------------------"
+        print("---------------------------------------------------------------")
         report = ResourceAllocationReport()
         with report._dao.getReadSession() as session:
             pod_objects = report._dao.getAll(session, Pod)
             for pod in pod_objects:
                 self.show_pod_detail(pod)
-                print "---------------------------------------------------------------"
+                print("---------------------------------------------------------------")
 
 #------------------------------------------------------------------------------
     def list_all_pods_from_db(self, prev_macro, add_help=None, *args):
@@ -236,18 +236,18 @@ class CLIImplementor:
         generatedDhcpConf = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out', podDirectoryName, "dhcpd.conf")
         
         if not os.path.isfile(generatedDhcpConf):
-            print "DHCP configuration file has not been generated for Pod %s yet, will generate it first" % pod_id
+            print("DHCP configuration file has not been generated for Pod %s yet, will generate it first" % pod_id)
             ztpServer = ZtpServer()
             ztpServer.createPodSpecificDhcpConfFile(session, pod_id)
 
         if util.isPlatformUbuntu():
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
-            print "New configuration file copied to %s " % installedDhcpConf
+            print("New configuration file copied to %s " % installedDhcpConf)
             os.system("/etc/init.d/isc-dhcp-server restart")
 
         elif util.isPlatformCentos():
             os.system('sudo cp ' + generatedDhcpConf + ' ' + installedDhcpConf)
-            print "New configuration file copied to %s " % installedDhcpConf
+            print("New configuration file copied to %s " % installedDhcpConf)
             os.system("/etc/rc.d/init.d/dhcpd restart")
         
 #------------------------------------------------------------------------------
@@ -273,21 +273,21 @@ class CLIImplementor:
     
 #------------------------------------------------------------------------------
     def handle_run_reports(self, *args):
-        print "Currently not supported in stand-alone system"
+        print("Currently not supported in stand-alone system")
 
 #------------------------------------------------------------------------------
     def handle_run_rest_server(self, *args):
-        print "Currently not supported in stand-alone system"
+        print("Currently not supported in stand-alone system")
 #------------------------------------------------------------------------------
     def test_macro(self, prev_macro, add_help=None, *args):
         ret_list = []
         #if prev_macro:
-            #print "\nPrevious Macro"
+            #print("\nPrevious Macro")
             #print prev_macro
         return [prev_macro, "test-arg"]
 
     def test_handle(self, *args):
-        print "Testing complete"
+        print("Testing complete")
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------

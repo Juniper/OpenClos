@@ -9,15 +9,15 @@ import logging
 from jinja2 import Environment, PackageLoader
 from netaddr import IPNetwork
 
-import util
-import loader
-from model import Pod
-from dao import Dao
-from writer import DhcpConfWriter
-from loader import OpenClosProperty, loadLoggingConfig
+from jnpr.openclos import util
+from jnpr.openclos import loader
+from jnpr.openclos.model import Pod
+from jnpr.openclos.dao import Dao
+from jnpr.openclos.writer import DhcpConfWriter
+from jnpr.openclos.loader import OpenClosProperty, loadLoggingConfig
 
 from sqlalchemy.orm import exc
-from exception import PodNotFound
+from jnpr.openclos.exception import PodNotFound
 
 moduleName = 'ztp'
 loadLoggingConfig(appName=moduleName)

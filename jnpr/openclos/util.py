@@ -3,7 +3,7 @@ Created on Aug 21, 2014
 
 @author: moloyc
 '''
-
+import binascii
 import re
 import os
 import yaml
@@ -12,7 +12,7 @@ import datetime
 import shutil
 from netaddr import IPNetwork
 import netifaces
-from loader import defaultPropertyLocation
+from jnpr.openclos.loader import defaultPropertyLocation
 
 TWO_STAGE_CONFIGURATOR_DEFAULT_ATTEMPT = 5
 TWO_STAGE_CONFIGURATOR_DEFAULT_INTERVAL = 30 # in seconds
@@ -143,7 +143,7 @@ def interfaceNameToUniqueSequenceNumber(interfaceName):
 
     match = otherPortRegx.match(interfaceName)
     if match is not None:
-        return int(interfaceName.encode('hex'), 16)
+        return int(binascii.hexlify(interfaceName.encode()).decode(), 16)
 
 fpcPicRegx = re.compile(r"([a-z]+)-(\d)\/(\d)\/(\d{1,3})\.?(\d{0,2})")
 def _matchFpcPicPort(interfaceName):

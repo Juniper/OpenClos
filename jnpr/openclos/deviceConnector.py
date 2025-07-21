@@ -16,9 +16,9 @@ from jnpr.junos.factory import loadyaml
 from jnpr.junos.exception import ConnectError, RpcError, CommitError, LockError, ConfigLoadError
 from jnpr.junos.utils.config import Config
 
-from loader import loadLoggingConfig, OpenClosProperty
-from exception import DeviceConnectFailed, DeviceRpcFailed
-from common import SingletonBase
+from jnpr.openclos.loader import loadLoggingConfig, OpenClosProperty
+from jnpr.openclos.exception import DeviceConnectFailed, DeviceRpcFailed
+from jnpr.openclos.common import SingletonBase
 # changed for fips mode support
 from hashlib import md5
 from paramiko.pkey import PKey
@@ -44,7 +44,7 @@ def get_fingerprint_temp(self):
 
 PKey.get_fingerprint = get_fingerprint_temp
 
-class AbstractConnection(object):
+class AbstractConnection:
     def __init__(self, ip):
         self._ip = ip
         self._debugContext = 'Device: ' + self._ip + ':'
@@ -113,7 +113,7 @@ class CachedConnectionFactory(SingletonBase):
         """
         connection = None
         with self.__cacheLock:
-            if not self.__cache.has_key(ip):
+            if ip not in self.__cache:
                 self.__cache[ip] = []
             if self.__cache.get(ip):
                 connection = self.__cache.get(ip).pop()[0]
@@ -126,7 +126,7 @@ class CachedConnectionFactory(SingletonBase):
         finally:
             if connection.isActive():
                 with self.__cacheLock:
-                    if not self.__cache.has_key(ip):
+                    if ip not in self.__cache:
                         self.__cache[ip] = []
                     self.__cache[ip].append((connection, time.time()))
         
@@ -182,7 +182,7 @@ class CachedConnectionFactory(SingletonBase):
 class NetconfConnection(AbstractConnection):
     def __init__(self, ip, *args, **kwargs):
         
-        super(NetconfConnection, self).__init__(ip)
+        super().__init__(ip)
         self._username = kwargs.pop("username", None)
         self._password = kwargs.pop("password", None)
         

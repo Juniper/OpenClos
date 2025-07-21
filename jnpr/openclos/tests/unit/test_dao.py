@@ -37,7 +37,7 @@ class TestDao(unittest.TestCase):
             BadDao()
 
     def testCreateObjects(self):
-        from test_model import createDevice
+        from .test_model import createDevice
 
         with self.__dao.getReadWriteSession() as session:
             device = createDevice(session, "test")
@@ -60,7 +60,7 @@ class TestDao(unittest.TestCase):
                 self.__dao.deleteObject(session, pod)
         
     def testCascadeDeletePodDevice(self):
-        from test_model import createDevice
+        from .test_model import createDevice
 
         with self.__dao.getReadWriteSession() as session:
             device = createDevice(session, "test")
@@ -75,7 +75,7 @@ class TestDao(unittest.TestCase):
             self.assertEqual(0, len(self.__dao.getAll(session, Device)))
         
     def testCascadeDeletePodDeviceInterface(self):
-        from test_model import createInterface
+        from .test_model import createInterface
         with self.__dao.getReadWriteSession() as session:
             interface = createInterface(session, "test")
             
@@ -91,7 +91,7 @@ class TestDao(unittest.TestCase):
             self.assertEqual(0, len(self.__dao.getAll(session, Interface)))
         
     def testGetObjectById(self):
-        from test_model import createPod
+        from .test_model import createPod
         with self.__dao.getReadWriteSession() as session:
             pod = createPod("test", session)
 
@@ -99,7 +99,7 @@ class TestDao(unittest.TestCase):
             self.assertEqual(1, len(self.__dao.getAll(session, Pod)))
         
     def testGetConnectedInterconnectIFDsFilterFakeOnes(self):
-        from test_model import createDevice
+        from .test_model import createDevice
         with self.__dao.getReadWriteSession() as session:
             device = createDevice(session, "test")
             fakeSession = flexmock(session)
@@ -127,27 +127,27 @@ class TestDao(unittest.TestCase):
                 return dao.getAll(session, Pod)
         
         threads = []
-        for i in xrange(10):
+        for i in range(10):
             threads.append(threading.Thread(target = getPods))
             threads[i].start()
         for thread in threads:
             thread.join()
         
-        print 'done 10 threads'
+        print('done 10 threads')
         time.sleep(40)
         
         threads = []
-        for i in xrange(10):
+        for i in range(10):
             threads.append(threading.Thread(target = getPods))
             threads[i].start()
         for thread in threads:
             thread.join()
         
-        print 'done 10 threads'
+        print('done 10 threads')
         time.sleep(40)
 
         MySqlDao._destroy()
-        print 'done final __dao destroy'
+        print('done final __dao destroy')
         time.sleep(30)
          
        

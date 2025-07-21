@@ -449,7 +449,7 @@ class OverlayL2port(OverlayL2ap):
         '''
         Creates L2 port object.
         '''
-        super(OverlayL2port, self).__init__(name, description, overlay_networks)
+        super().__init__(name, description, overlay_networks)
         self.interface = interface
         self.overlay_device = overlay_device
         
@@ -460,7 +460,7 @@ class OverlayL2port(OverlayL2ap):
         '''
         Updates L2 port object.
         '''
-        return super(OverlayL2port, self).update(overlay_networks)
+        return super().update(overlay_networks)
         
     def configName(self):
         '''
@@ -512,7 +512,7 @@ class OverlayAggregatedL2port(OverlayL2ap):
         '''
         Creates aggregated interface object.
         '''
-        super(OverlayAggregatedL2port, self).__init__(name, description, overlay_networks)
+        super().__init__(name, description, overlay_networks)
         self.esi = esi
         self.lacp = lacp
         
@@ -527,7 +527,7 @@ class OverlayAggregatedL2port(OverlayL2ap):
             self.esi = esi
         if lacp is not None:
             self.lacp = lacp
-        return super(OverlayAggregatedL2port, self).update(overlay_networks)
+        return super().update(overlay_networks)
         
     def configName(self):
         '''
@@ -572,7 +572,7 @@ class OverlayDeployStatus(ManagedElement, Base):
             raise ValueError("invalid status '%s'" % status)
             
         self.id = str(uuid.uuid4())
-        self.configlet = configlet
+        self.configlet = configlet.encode('utf-8') if isinstance(configlet, str) else configlet
         self.object_url = object_url
         self.operation = operation
         self.overlay_device = overlay_device

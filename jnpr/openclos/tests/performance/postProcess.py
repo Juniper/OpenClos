@@ -11,7 +11,7 @@ getIpFabric = []
 def main():
     outFile = open("out.csv","w") # open file for appending
     
-    with open ("locust.csv", "r") as locust:
+    with open ("locust.csv") as locust:
         for line in locust:
             if 'cabling-plan' in line:
                 putCablingPlan.append(line)

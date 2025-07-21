@@ -7,7 +7,7 @@ import unittest
 import os
 
 from jnpr.openclos.report import ResourceAllocationReport, L2Report, L3Report
-from test_dao import InMemoryDao 
+from .test_dao import InMemoryDao 
 
 class Test(unittest.TestCase):
 
@@ -47,7 +47,7 @@ class Test(unittest.TestCase):
         
     '''
     def testGetInterconnectAllocation(self):
-        from test_model import createPod
+        from .test_model import createPod
         pod = createPod("test", self.session)
         pod.allocatedInterConnectBlock = '1.2.3.4/24'
         pod.interConnectPrefix = '1.2.0.0/24'
@@ -63,14 +63,14 @@ class Test(unittest.TestCase):
     
     def testGenerateL2Report(self):
         l2Report = L2Report(self.__conf, self._dao)
-        from test_model import createPod
+        from .test_model import createPod
         with self._dao.getReadSession() as session:
             pod = createPod("test", session)
             l2Report.generateReport(pod.id, True, False)
             
     def testGenerateL3Report(self):
         l3Report = L3Report(self.__conf, self._dao)
-        from test_model import createPod
+        from .test_model import createPod
         with self._dao.getReadSession() as session:
             pod = createPod("test", session)
             l3Report.generateReport(pod.id, True, False)

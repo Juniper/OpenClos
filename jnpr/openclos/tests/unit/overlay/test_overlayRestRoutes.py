@@ -136,8 +136,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testGetDeviceNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/overlay/devices/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1108' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1108' in str(e.exception))
         
     def testCreateDevice(self):
         deviceDict = {
@@ -186,8 +186,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             self.restServerTestApp.put('/openclos/v1/overlay/devices/12345',
                                        headers = {'Content-Type':'application/json'}, 
                                        params=json.dumps(deviceDict))
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1108' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1108' in str(e.exception))
         
     def testDeleteDevice(self):
         with self._dao.getReadWriteSession() as session:
@@ -200,8 +200,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testDeleteDeviceNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.delete('/openclos/v1/overlay/devices/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1108' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1108' in str(e.exception))
         
     def testGetFabrics(self):
         with self._dao.getReadWriteSession() as session:   
@@ -229,8 +229,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testGetFabricNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/overlay/fabrics/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1105' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1105' in str(e.exception))
         
     def testCreateFabric(self):
         with self._dao.getReadWriteSession() as session:
@@ -289,8 +289,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             self.restServerTestApp.put('/openclos/v1/overlay/fabrics/12345',
                                        headers = {'Content-Type':'application/json'}, 
                                        params=json.dumps(fabricDict))
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1105' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1105' in str(e.exception))
         
     def testDeleteFabric(self):
         with self._dao.getReadWriteSession() as session:   
@@ -303,8 +303,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testDeleteFabricNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.delete('/openclos/v1/overlay/fabrics/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1105' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1105' in str(e.exception))
         
     def testGetTenants(self):
         with self._dao.getReadWriteSession() as session:   
@@ -330,8 +330,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testGetTenantNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/overlay/tenants/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1106' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1106' in str(e.exception))
         
     def testCreateTenant(self):
         with self._dao.getReadWriteSession() as session:   
@@ -362,8 +362,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testDeleteTenantNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.delete('/openclos/v1/overlay/tenants/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1106' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1106' in str(e.exception))
         
     def testGetVrfs(self):
         with self._dao.getReadWriteSession() as session:        
@@ -389,8 +389,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testGetVrfNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/overlay/vrfs/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1107' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1107' in str(e.exception))
         
     def testCreateVrf(self):
         with self._dao.getReadWriteSession() as session:        
@@ -406,7 +406,7 @@ class TestOverlayRestRoutes(unittest.TestCase):
             }
         }
         vrfDict['vrf']['tenant'] = tenantId
-        print vrfDict['vrf']['tenant']
+        print(vrfDict['vrf']['tenant'])
         response = self.restServerTestApp.post('/openclos/v1/overlay/vrfs', 
                                                headers = {'Content-Type':'application/json'}, 
                                                params=json.dumps(vrfDict))
@@ -443,8 +443,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             self.restServerTestApp.put('/openclos/v1/overlay/vrfs/12345',
                                        headers = {'Content-Type':'application/json'}, 
                                        params=json.dumps(vrfDict))
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1107' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1107' in str(e.exception))
         
     def testDeleteVrf(self):
         with self._dao.getReadWriteSession() as session:        
@@ -457,8 +457,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testDeleteVrfNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.delete('/openclos/v1/overlay/vrfs/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1107' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1107' in str(e.exception))
         
     def testGetNetworks(self):
         with self._dao.getReadWriteSession() as session:        
@@ -484,8 +484,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testGetNetworkNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/overlay/networks/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1109' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1109' in str(e.exception))
         
     def testCreateNetwork(self):
         with self._dao.getReadWriteSession() as session:        
@@ -541,8 +541,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             self.restServerTestApp.put('/openclos/v1/overlay/networks/12345',
                                        headers = {'Content-Type':'application/json'}, 
                                        params=json.dumps(networkDict))
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1109' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1109' in str(e.exception))
         
     def testDeleteNetwork(self):
         with self._dao.getReadWriteSession() as session:        
@@ -555,8 +555,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testDeleteNetworkNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.delete('/openclos/v1/overlay/networks/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1109' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1109' in str(e.exception))
         
     def testGetSubnets(self):
         with self._dao.getReadWriteSession() as session:        
@@ -582,8 +582,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testGetSubnetNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/overlay/subnets/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1110' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1110' in str(e.exception))
         
     def testCreateSubnet(self):
         with self._dao.getReadWriteSession() as session:        
@@ -634,8 +634,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             self.restServerTestApp.put('/openclos/v1/overlay/subnets/12345',
                                        headers = {'Content-Type':'application/json'}, 
                                        params=json.dumps(subnetDict))
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1110' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1110' in str(e.exception))
         
     def testDeleteSubnet(self):
         with self._dao.getReadWriteSession() as session:        
@@ -648,8 +648,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testDeleteSubnetNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.delete('/openclos/v1/overlay/subnets/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1110' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1110' in str(e.exception))
         
     def testGetL3ports(self):
         with self._dao.getReadWriteSession() as session:        
@@ -675,8 +675,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testGetL3portNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/overlay/l3ports/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1111' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1111' in str(e.exception))
         
     def testCreateL3port(self):
         with self._dao.getReadWriteSession() as session:        
@@ -708,8 +708,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testDeleteL3portNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.delete('/openclos/v1/overlay/l3ports/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1111' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1111' in str(e.exception))
         
     def testGetL2ports(self):
         with self._dao.getReadWriteSession() as session:        
@@ -736,8 +736,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testGetL2portNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/overlay/l2ports/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1112' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1112' in str(e.exception))
         
     def testCreateL2port(self):
         with self._dao.getReadWriteSession() as session:        
@@ -790,8 +790,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             self.restServerTestApp.put('/openclos/v1/overlay/l2ports/12345',
                                        headers = {'Content-Type':'application/json'}, 
                                        params=json.dumps(l2portDict))
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1112' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1112' in str(e.exception))
         
     def testDeleteL2port(self):
         with self._dao.getReadWriteSession() as session:        
@@ -804,8 +804,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testDeleteL2portNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.delete('/openclos/v1/overlay/l2ports/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1112' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1112' in str(e.exception))
         
     def testGetAggregatedL2ports(self):
         with self._dao.getReadWriteSession() as session:        
@@ -831,8 +831,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testGetAggregatedL2portNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/overlay/aggregatedL2ports/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1113' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1113' in str(e.exception))
         
     def testCreateAggregatedL2port(self):
         with self._dao.getReadWriteSession() as session:
@@ -890,8 +890,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
             self.restServerTestApp.put('/openclos/v1/overlay/aggregatedL2ports/12345',
                                        headers = {'Content-Type':'application/json'}, 
                                        params=json.dumps(aggregatedL2portDict))
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1113' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1113' in str(e.exception))
         
     def testDeleteAggregatedL2port(self):
         with self._dao.getReadWriteSession() as session:        
@@ -904,8 +904,8 @@ class TestOverlayRestRoutes(unittest.TestCase):
     def testDeleteAggregatedL2portNotFound(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.delete('/openclos/v1/overlay/aggregatedL2ports/12345')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('1113' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('1113' in str(e.exception))
         
     def testGetDeployStatusDefaultScope(self):
         with self._dao.getReadWriteSession() as session:        

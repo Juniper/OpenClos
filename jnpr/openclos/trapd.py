@@ -4,21 +4,21 @@ Created on Nov. 06, 2014
 @author: yunli
 '''
 
-from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher
-from pysnmp.carrier.asynsock.dgram import udp
+from pysnmp.carrier.asyncio.dispatch import AsyncioDispatcher
+from pysnmp.carrier.asyncio.dgram import udp
 from pyasn1.codec.ber import decoder
 from pysnmp.proto import api
 from threading import Thread, Event
 import logging
-import util
+from jnpr.openclos import util
 import signal
 import sys
 import subprocess
 import concurrent.futures
-from devicePlugin import TwoStageConfigurator 
-from loader import OpenClosProperty, loadLoggingConfig
-from exception import TrapDaemonError
-from deviceConnector import CachedConnectionFactory
+from jnpr.openclos.devicePlugin import TwoStageConfigurator 
+from jnpr.openclos.loader import OpenClosProperty, loadLoggingConfig
+from jnpr.openclos.exception import TrapDaemonError
+from jnpr.openclos.deviceConnector import CachedConnectionFactory
 
 moduleName = 'trapd'
 loadLoggingConfig(appName=moduleName)
@@ -108,26 +108,29 @@ class TrapReceiver():
         self.twoStageConfigurationCallback = util.getTwoStageConfigurationCallback(self.__conf)
        
     def threadFunction(self):
-        self.transportDispatcher = AsynsockDispatcher()
-
-        self.transportDispatcher.registerRecvCbFun(onTrap)
+        import asyncio
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.transportDispatcher = AsyncioDispatcher()
+        self.transportDispatcher.register_recv_callback(onTrap)
         
         # UDP/IPv4
-        self.transportDispatcher.registerTransport(
-            udp.domainName, udp.UdpSocketTransport().openServerMode((self.target, self.port))
+        self.transportDispatcher.register_transport(
+            udp.domainName, udp.UdpAsyncioTransport().open_server_mode((self.target, self.port))
         )
 
         self.transportDispatcher.jobStarted(1)
 
         try:
             # Dispatcher will never finish as job#1 never reaches zero
-            self.transportDispatcher.runDispatcher()
+            self.transportDispatcher.run_dispatcher()
+            #self.loop.run_until_complete(self.transportDispatcher.runDispatcher())
         except Exception as exc:
             logger.error("Encounted error '%s' on trap receiver %s:%d", exc, self.target, self.port)
-            self.transportDispatcher.closeDispatcher()
+            self.transportDispatcher.close_dispatcher()
             raise TrapDaemonError("Trap receiver %s:%d" % (self.target, self.port), exc)
-        else:
-            self.transportDispatcher.closeDispatcher()
+        finally:
+            self.transportDispatcher.close_dispatcher()
 
     def start(self):
         logger.info("Starting trap receiver...")
@@ -135,11 +138,11 @@ class TrapReceiver():
         self.thread.start()
         logger.info("Trap receiver started on %s:%d", self.target, self.port)
 
-    def stop(self):
+    '''def stop(self):
         if self.stopEvent.is_set():
             # in the middle of shutting down
             return
-        
+        breakpoint()
         logger.info("Stopping trap receiver...")
 
         # shutdown all live connections
@@ -148,8 +151,36 @@ class TrapReceiver():
         self.stopEvent.set()
         self.executor.shutdown()
         self.transportDispatcher.jobFinished(1)  
-        self.thread.join()
-        logger.info("Trap receiver stopped")
+        self.loop.call_soon_threadsafe(self.loop.stop)
+        #self.thread.join()
+        logger.info("Trap receiver stopped")'''
+
+    def stop(self):
+        if self.stopEvent.is_set():
+            return
+
+        logger.info("Stopping trap receiver...")
+
+        # shutdown all live connections
+        CachedConnectionFactory.getInstance()._stop()
+
+        self.stopEvent.set()
+
+        self.loop.call_soon_threadsafe(self.loop.stop)
+        # Close dispatcher cleanly
+        if self.transportDispatcher:
+            self.transportDispatcher.jobFinished(1)
+            self.transportDispatcher.close_dispatcher()
+
+        # Shutdown executor
+        if self.executor:
+            self.executor.shutdown(wait=True)
+
+        # Wait for thread to exit
+        if self.thread.is_alive():
+            self.thread.join()
+
+        logger.info("Trap receiver stopped now")
 
         
 def trap_receiver_signal_handler(signal, frame):

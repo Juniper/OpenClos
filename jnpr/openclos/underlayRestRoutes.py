@@ -7,21 +7,21 @@ Created on Sep 2, 2014
 import os
 import bottle
 from sqlalchemy.orm import exc
-import StringIO
+from io import BytesIO
 import zipfile
 import traceback
 import json
-import util
+from jnpr.openclos import util
 import logging
 
 from bottle import error, request, response, PluginError, ServerAdapter
-from exception import InvalidRequest, PodNotFound, CablingPlanNotFound, DeviceConfigurationNotFound, DeviceNotFound, ImageNotFound, CreatePodFailed, UpdatePodFailed
-from model import Pod, Device, InterfaceLogical
-from dao import Dao
-from report import ResourceAllocationReport, L2Report, L3Report
-from l3Clos import L3ClosMediation
-from ztp import ZtpServer
-from loader import OpenClosProperty, DeviceSku, loadLoggingConfig
+from jnpr.openclos.exception import InvalidRequest, PodNotFound, CablingPlanNotFound, DeviceConfigurationNotFound, DeviceNotFound, ImageNotFound, CreatePodFailed, UpdatePodFailed
+from jnpr.openclos.model import Pod, Device, InterfaceLogical
+from jnpr.openclos.dao import Dao
+from jnpr.openclos.report import ResourceAllocationReport, L2Report, L3Report
+from jnpr.openclos.l3Clos import L3ClosMediation
+from jnpr.openclos.ztp import ZtpServer
+from jnpr.openclos.loader import OpenClosProperty, DeviceSku, loadLoggingConfig
 
 #moduleName = 'underlayRestRoutes'
 #loadLoggingConfig(appName=moduleName)
@@ -89,7 +89,7 @@ class UnderlayRestRoutes():
 
     def getPods(self, dbSession):
             
-        url = str(bottle.request.url).translate(None, ',')
+        url = str(bottle.request.url).translate(str.maketrans('', '', ','))
         podsData = {}
         listOfIpFbarics = []
         pods = self.report.getPods(dbSession)
@@ -123,7 +123,7 @@ class UnderlayRestRoutes():
     def getPod(self, dbSession, podId, requestUrl=None):
             
         if requestUrl is None:
-            requestUrl = str(bottle.request.url).translate(None, ',')
+            requestUrl = str(bottle.request.url).translate(str.maketrans('', '', ','))
         pod = self.report.getPod(dbSession, podId)
         if pod is not None:
             outputDict = {} 
@@ -163,7 +163,7 @@ class UnderlayRestRoutes():
         header = bottle.request.get_header('Accept')
         logger.debug('Accept header before processing: %s', header)
         # hack to remove comma character, must be a bug on Bottle
-        header = header.translate(None, ',')
+        header = header.translate(str.maketrans('', '', ','))
         logger.debug('Accept header after processing: %s', header)
 
         pod = self.report.getPod(dbSession, podId)
@@ -225,12 +225,12 @@ class UnderlayRestRoutes():
 
     @staticmethod
     def createZipArchive(pod):
-        buff = StringIO.StringIO()
+        buff = BytesIO()
         zipArchive = zipfile.ZipFile(buff, mode='w')
         for device in pod.devices:
             fileName = device.id + '__' + device.name + '.conf'
             if device.config is not None:
-                zipArchive.writestr(fileName, device.config.config)
+                zipArchive.writestr(fileName, device.config.config.encode('utf-8') if isinstance(device.config.config,str) else device.config.config)
                 
         if pod.leafSettings is not None:
             for leafSetting in pod.leafSettings:
@@ -273,13 +273,13 @@ class UnderlayRestRoutes():
                 outputDict['configStatus'] = device.configStatus
                 outputDict['l2Status'] = device.l2Status
                 outputDict['l3Status'] = device.l3Status
-                outputDict['uri'] = str(bottle.request.url).translate(None, ',') + '/' +device.id
+                outputDict['uri'] = str(bottle.request.url).translate(str.maketrans('', '', ',')) + '/' +device.id
                 outputDict['loopbackIp'] = UnderlayRestRoutes.getDeviceLoopbackIp(dbSession, device.id)
                 self.copyAdditionalDeviceFields(outputDict, device)
 
                 listOfDevices.append(outputDict)
             devices['device'] = listOfDevices
-            devices['uri'] = str(bottle.request.url).translate(None, ',')
+            devices['uri'] = str(bottle.request.url).translate(str.maketrans('', '', ','))
             devices['total'] = len(pod.devices)
             return {'devices' : devices}
         else:
@@ -289,7 +289,7 @@ class UnderlayRestRoutes():
             
         device = UnderlayRestRoutes.isDeviceExists(dbSession, podId, deviceId)
         #podUri is constructed from url
-        url = str(bottle.request.url).translate(None, ',')
+        url = str(bottle.request.url).translate(str.maketrans('', '', ','))
         uri = url.split("/")
         uri.pop()
         uri.pop()
@@ -314,9 +314,9 @@ class UnderlayRestRoutes():
             outputDict['l3StatusReason'] = device.l3StatusReason
             outputDict['serialNumber'] = device.serialNumber
             outputDict['deployStatus'] = device.deployStatus
-            outputDict['uri'] = str(bottle.request.url).translate(None, ',')
+            outputDict['uri'] = str(bottle.request.url).translate(str.maketrans('', '', ','))
             outputDict['pod'] = {'uri': ipFbaricUri}
-            outputDict['config'] = {'uri': str(bottle.request.url).translate(None, ',') + '/config'}
+            outputDict['config'] = {'uri': str(bottle.request.url).translate(str.maketrans('', '', ',')) + '/config'}
             outputDict['loopbackIp'] = UnderlayRestRoutes.getDeviceLoopbackIp(dbSession, device.id)
             self.copyAdditionalDeviceFields(outputDict, device)
             
@@ -377,8 +377,8 @@ class UnderlayRestRoutes():
             
         supportedDevices = []
         
-        for deviceFamily, value in self.deviceSku.skuDetail.iteritems():
-            for role, ports in value.iteritems():
+        for deviceFamily, value in self.deviceSku.skuDetail.items():
+            for role, ports in value.items():
                 uplinks = ports.get('uplinkPorts')
                 downlinks = ports.get('downlinkPorts')
                 deviceDetail = {'family': deviceFamily, 'role': role, 
@@ -404,14 +404,15 @@ class UnderlayRestRoutes():
             pod = bottle.request.json.get('pod')
             if pod is None:
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
-
+        breakpoint()
         l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
         podDevices = self.getDevDictFromDict(pod)
         pod = self.getPodFromDict(pod)
         podName = pod.pop('name')
         try:
+            breakpoint()
             createdPod = l3ClosMediation.createPod(podName, pod, podDevices)
-            url = str(bottle.request.url).translate(None, ',') + '/' + createdPod.id
+            url = str(bottle.request.url).translate(str.maketrans('', '', ',')) + '/' + createdPod.id
             pod = self.getPod(dbSession, createdPod.id, url)
         except Exception as exc:
             logger.debug('StackTrace: %s', traceback.format_exc())
@@ -467,12 +468,12 @@ class UnderlayRestRoutes():
         l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
         pod = self.getPodFromDict(inPod)
         #pod['id'] = podId
-        #pod['uri'] = str(bottle.request.url).translate(None, ',')
+        #pod['uri'] = str(bottle.request.url).translate(str.maketrans('', '', ','))
         podDevices = self.getDevDictFromDict(inPod)
         # Pass the pod and podDevices dictionaries to config/update API, then return
         try:
             updatedPod = l3ClosMediation.updatePod(podId, pod, podDevices)
-            url = str(bottle.request.url).translate(None, ',') + '/' + updatedPod.id
+            url = str(bottle.request.url).translate(str.maketrans('', '', ',')) + '/' + updatedPod.id
             return self.getPod(dbSession, podId, url)
         except Exception as exc:
             logger.debug('StackTrace: %s', traceback.format_exc())

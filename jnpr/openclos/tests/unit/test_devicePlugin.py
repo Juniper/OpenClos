@@ -9,7 +9,7 @@ from jnpr.openclos.devicePlugin import DeviceDataCollectorNetconf, L2DataCollect
 from jnpr.openclos.exception import DeviceConnectFailed, DeviceRpcFailed
 from jnpr.openclos.model import Device, InterfaceDefinition, InterfaceLogical, BgpLink
 from jnpr.openclos import loader
-from test_dao import InMemoryDao 
+from .test_dao import InMemoryDao 
 
 from jnpr.junos.exception import ConnectError
 
@@ -26,7 +26,7 @@ class TestL2DataCollector(unittest.TestCase):
         InMemoryDao._destroy()
 
     def testUpdateDeviceL2StatusProcessing(self):
-        from test_model import createDevice
+        from .test_model import createDevice
         with self._dao.getReadSession() as session:
             leaf = createDevice(session, 'leaf')
             dataCollector = L2DataCollector(leaf.id, {}, InMemoryDao)
@@ -38,7 +38,7 @@ class TestL2DataCollector(unittest.TestCase):
             self.assertIsNone(leaf.l2StatusReason)
 
     def testUpdateDeviceL2StatusWithException(self):
-        from test_model import createDevice
+        from .test_model import createDevice
         with self._dao.getReadSession() as session:
             leaf = createDevice(session, 'leaf')
             dataCollector = L2DataCollector(leaf.id, {}, InMemoryDao)
@@ -50,7 +50,7 @@ class TestL2DataCollector(unittest.TestCase):
             self.assertEqual("test error", leaf.l2StatusReason)
 
     def testUpdateDeviceL2StatusWithErrorMessage(self):
-        from test_model import createDevice
+        from .test_model import createDevice
         with self._dao.getReadSession() as session:
             leaf = createDevice(session, 'leaf')
             dataCollector = L2DataCollector(leaf.id, {}, InMemoryDao)
@@ -62,9 +62,9 @@ class TestL2DataCollector(unittest.TestCase):
             self.assertEqual("test reason", leaf.l2StatusReason)
 
     def createTwoSpineTwoLeaf(self, session):
-        from test_model import createPod
+        from .test_model import createPod
         pod = createPod('pod1', session)
-        from test_model import createPodDevice
+        from .test_model import createPodDevice
         spine1 = createPodDevice(session, 'spine1', pod)
         spine2 = createPodDevice(session, 'spine2', pod)
         leaf1 = createPodDevice(session, 'leaf1', pod)
@@ -139,7 +139,7 @@ class TestL2DataCollector(unittest.TestCase):
             self.assertIsNotNone(uplinks['et-0/0/49'])
 
     def testGetAllocatedConnectedUplinkIfds(self):
-        from test_model import createDevice
+        from .test_model import createDevice
         with self._dao.getReadSession() as session:
             leaf = createDevice(session, 'leaf')
             dataCollector = L2DataCollector(leaf.id, {}, InMemoryDao)
@@ -189,9 +189,9 @@ class TestL2DataCollector(unittest.TestCase):
             self.assertEqual('good', spine.l2Status)
 
     def createTwoSpineTwoLeafWithDummyUplinksForEx4300(self, session):
-        from test_model import createPod
+        from .test_model import createPod
         pod = createPod('pod1', session)
-        from test_model import createPodDevice
+        from .test_model import createPodDevice
         spine1 = createPodDevice(session, 'spine1', pod)
         spine2 = createPodDevice(session, 'spine2', pod)
         spine3 = createPodDevice(session, 'spine3', pod)
@@ -317,9 +317,9 @@ class TestTwoStageConfigurator(TestL2DataCollector):
         return IFLs
     
     def createSixSpineOneLeafUnknownPlugNPlay(self, session):
-        from test_model import createPod
+        from .test_model import createPod
         pod = createPod('pod1', session)
-        from test_model import createPodDevice
+        from .test_model import createPodDevice
         spine1 = createPodDevice(session, 'spine1', pod)
         spine2 = createPodDevice(session, 'spine2', pod)
         spine3 = createPodDevice(session, 'spine3', pod)
@@ -442,9 +442,9 @@ class TestTwoStageConfigurator(TestL2DataCollector):
             self.assertEqual('uplink-5', IFDs[5].name)
         
     def createSixSpineOneLeafEx4300_24pPlugNPlay(self, session):
-        from test_model import createPod
+        from .test_model import createPod
         pod = createPod('pod1', session)
-        from test_model import createPodDevice
+        from .test_model import createPodDevice
         spine1 = createPodDevice(session, 'spine1', pod)
         spine2 = createPodDevice(session, 'spine2', pod)
         spine3 = createPodDevice(session, 'spine3', pod)
@@ -511,9 +511,9 @@ class TestTwoStageConfigurator(TestL2DataCollector):
             self.assertEqual('et-0/0/53', IFDs[5].name)
 
     def createSixSpineOneLeafqfx5100_48sPlugNPlay(self, session):
-        from test_model import createPod
+        from .test_model import createPod
         pod = createPod('pod1', session)
-        from test_model import createPodDevice
+        from .test_model import createPodDevice
         spine1 = createPodDevice(session, 'spine1', pod)
         spine2 = createPodDevice(session, 'spine2', pod)
         spine3 = createPodDevice(session, 'spine3', pod)
@@ -580,9 +580,9 @@ class TestTwoStageConfigurator(TestL2DataCollector):
             self.assertEqual('uplink-5', IFDs[5].name)
 
     def createTwoSpineTwoLeafPlugNPlay(self, session):
-        from test_model import createPod
+        from .test_model import createPod
         pod = createPod('pod1', session)
-        from test_model import createPodDevice
+        from .test_model import createPodDevice
         spine1 = createPodDevice(session, 'spine1', pod)
         spine2 = createPodDevice(session, 'spine2', pod)
         leaf1 = createPodDevice(session, 'leaf1', pod)
@@ -651,7 +651,7 @@ class TestL3DataCollector(unittest.TestCase):
         InMemoryDao._destroy()
 
     def testUpdateDeviceL3StatusProcessing(self):
-        from test_model import createDevice
+        from .test_model import createDevice
         with self._dao.getReadSession() as session:
             leaf = createDevice(session, 'leaf')
             dataCollector = L3DataCollector(leaf.id, {}, InMemoryDao)
@@ -663,7 +663,7 @@ class TestL3DataCollector(unittest.TestCase):
             self.assertIsNone(leaf.l3StatusReason)
 
     def testUpdateDeviceL2StatusWithException(self):
-        from test_model import createDevice
+        from .test_model import createDevice
         with self._dao.getReadSession() as session:
             leaf = createDevice(session, 'leaf')
             dataCollector = L3DataCollector(leaf.id, {}, InMemoryDao)
@@ -675,7 +675,7 @@ class TestL3DataCollector(unittest.TestCase):
             self.assertEqual("test error", leaf.l3StatusReason)
 
     def testUpdateDeviceL3StatusWithErrorMessage(self):
-        from test_model import createDevice
+        from .test_model import createDevice
         with self._dao.getReadSession() as session:
             leaf = createDevice(session, 'leaf')
             dataCollector = L3DataCollector(leaf.id, {}, InMemoryDao)
@@ -689,7 +689,7 @@ class TestL3DataCollector(unittest.TestCase):
     def testStoreBgpLinks(self):
         device_id = None
         with self._dao.getReadWriteSession() as session:
-            from test_model import createPod
+            from .test_model import createPod
             pod = createPod('pod1', session)
             session.add(pod)
             device = Device("leaf1", "qfx5100-48s-6q", "", "", "leaf", "11:12:13:14:15:16", "1.2.3.4/24", pod)

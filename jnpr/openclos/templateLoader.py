@@ -11,7 +11,7 @@ junosTemplateLocation = os.path.join('conf', 'junosTemplates')
 currentWorkingDir = os.getcwd()
 homeDir = os.path.expanduser('~')
 
-class TemplateLoader(object):
+class TemplateLoader:
     '''
     Loads junos template from DEFAULT location - 
     <openclos install dir>/jnpr/openclos/conf/junosTemplates 

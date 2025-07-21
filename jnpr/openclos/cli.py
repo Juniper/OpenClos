@@ -184,11 +184,11 @@ class CLIShell(cmd.Cmd):
 #------------------------------------------------------------------------------
     def post_complete(self, substitution, matches, longest_match_length):
         curr_line = self.rl.get_line_buffer()
-        print ""
+        print("")
         for item in matches:
             if item != "" and item[0] != " ":
                 item = " " + item
-            print item
+            print(item)
         self.stdout.write(self.prompt + curr_line)
         self.stdout.flush()
         self.rl.redisplay()
@@ -230,9 +230,9 @@ class CLIShell(cmd.Cmd):
 
 #------------------------------------------------------------------------------
     def print_options(self, header, results, current_line=""):
-        print "\n" + header + ":\n"
+        print("\n" + header + ":\n")
         for result in results:
-            print "\t" + result
+            print("\t" + result)
         self.rl.insert_text(current_line)
 
 #------------------------------------------------------------------------------
@@ -243,9 +243,9 @@ class CLIShell(cmd.Cmd):
     
         # Case 1: Invalid command. Print error
         if len(results) == 0:
-            print "\nCommand not recognized"
-            print "type \'help\' at prompt to view all supported commands"
-            print "press <tab> to auto-complete or view context-specific possible options\n"
+            print("\nCommand not recognized")
+            print("type \'help\' at prompt to view all supported commands")
+            print("press <tab> to auto-complete or view context-specific possible options\n")
 
         # Case 2: Valid command provided, or enter pressed half-way
         elif len(results) == 1:
@@ -258,7 +258,7 @@ class CLIShell(cmd.Cmd):
                 # try:
                 self.cli_util.validate_command_and_execute(line)
                 # except Exception as e:
-                #     print "Encountered an exception of type:"
+                #     print("Encountered an exception of type:"
                 #     print type(e)
                 #     print e
 
@@ -275,7 +275,7 @@ class CLIShell(cmd.Cmd):
                 # try:
                 self.cli_util.validate_command_and_execute(line)
                 # except Exception as e:
-                #     print "Encountered an exception of type:"
+                #     print("Encountered an exception of type:"
                 #     print type(e)
                 #     print e
 
@@ -283,7 +283,7 @@ class CLIShell(cmd.Cmd):
 
 #------------------------------------------------------------------------------
     def exit_session(self, *args):
-        print "\n" + self.on_exit + "\n"
+        print("\n" + self.on_exit + "\n")
         return "stop"
 
 #------------------------------------------------------------------------------
@@ -300,9 +300,9 @@ class CLIShell(cmd.Cmd):
 
 #------------------------------------------------------------------------------
     def do_help(self, *args):
-        print " "
+        print(" ")
         for cmds in sorted(self.cli_util.get_all_cmds()):
-            print cmds
+            print(cmds)
 
 #------------------------------------------------------------------------------
     def do_clear(self, *args):
@@ -425,7 +425,7 @@ class CLIShellWrapper:
 #    import curses
 #    import readline
 # 
-#     print "Getting the standard screen instance"
+#     print("Getting the standard screen instance"
 #     stdscr = curses.initscr()
 # 
 #     def __init__(self):
@@ -440,14 +440,14 @@ class CLIShellWrapper:
 #         curses.echo()
 # 
 #     def run(self):
-#         print "Keylogger started"
+#         print("Keylogger started"
 #         key = ''
 #         while key != ord('!'):
 #             key = self.stdscr.getch()
 #             if key == ord('?'):
 #                 curr_line = readline.get_line_buffer()
-#                 print "\n" + curr_line + "\tShow options\n"
-#                 print "\r"
+#                 print("\n" + curr_line + "\tShow options\n"
+#                 print("\r"
 #                 readline.insert_text(curr_line)
 #                 readline.redisplay()
 #             else:
@@ -463,7 +463,7 @@ if __name__ == '__main__':
     # keylogger.start()
 
     openclosConf = loader.OpenClosProperty().getProperties()
-    if openclosConf.has_key("cli"):
+    if 'cli' in openclosConf:
         cli_config = openclosConf["cli"]
         cli = CLIShellWrapper(cli_config["prompt_text"],
                               cli_config["prompt_style"],
@@ -471,4 +471,4 @@ if __name__ == '__main__':
                               cli_config["on_exit"])
         cli.run()
     else:
-        print "CLI Configuration not present - cannot initialize"
+        print("CLI Configuration not present - cannot initialize")

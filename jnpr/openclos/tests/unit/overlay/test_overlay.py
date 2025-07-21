@@ -291,6 +291,8 @@ class TestOverlay(unittest.TestCase):
                 self.helper._createFabric(session)
                 self.helper._createFabric(session)
         import sqlalchemy
+        print("Printing exception type below")
+        print(type(e.exception))
         self.assertTrue(type(e.exception) is sqlalchemy.exc.IntegrityError)
             
     def testUpdateFabric(self):
@@ -323,14 +325,14 @@ class TestOverlay(unittest.TestCase):
             self.helper._createVrf(session, "4", tenantObject=vrf1.overlay_tenant)
             self.helper._createVrf(session, "5", tenantObject=vrf1.overlay_tenant)
             vrfs = session.query(OverlayVrf).all()
-            self.assertEquals(5, len(vrfs))
-            self.assertEquals(1, vrfs[0].vrfCounter)
-            self.assertEquals(2, vrfs[1].vrfCounter)
-            self.assertEquals(3, vrfs[2].vrfCounter)
-            self.assertEquals(5, vrfs[4].vrfCounter)
+            self.assertEqual(5, len(vrfs))
+            self.assertEqual(1, vrfs[0].vrfCounter)
+            self.assertEqual(2, vrfs[1].vrfCounter)
+            self.assertEqual(3, vrfs[2].vrfCounter)
+            self.assertEqual(5, vrfs[4].vrfCounter)
 
     def testUpdateVrf(self):
-        with self._dao.getReadWriteSession() as session:        
+        with self._dao.getReadWriteSession() as session:       
             vrfObject = self.helper._createVrf(session)
             self.helper.overlay.modifyVrf(session, vrfObject, '1.1.1.2')
             
@@ -470,8 +472,8 @@ class TestConfigEngine(unittest.TestCase):
             
         with self._dao.getReadSession() as session:
             self.assertEqual(1, session.query(OverlayDeployStatus).count())
-            config = session.query(OverlayDeployStatus).one().configlet
-            print config
+            config = session.query(OverlayDeployStatus).one().configlet.decode('utf-8')
+            print(config)
             self.assertIn("bgp", config)
             self.assertIn("group overlay-evpn ", config)
             self.assertIn("group overlay-evpn-rr", config)
@@ -488,31 +490,31 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadSession() as session:
             self.assertEqual(5, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
-            spine1Config = deployments[0].configlet
-            print "spine:\n" + spine1Config
+            spine1Config = deployments[0].configlet.decode('utf-8')
+            print("spine:\n" + spine1Config)
             self.assertIn("routing-options {", spine1Config)
             self.assertIn("bgp", spine1Config)
             self.assertIn("group overlay", spine1Config)
             self.assertIn("cluster", spine1Config)
-            self.assertEquals(4, spine1Config.count("neighbor"))
+            self.assertEqual(4, spine1Config.count("neighbor"))
             self.assertIn("switch-options", spine1Config)
             self.assertIn("policy-options", spine1Config)
             self.assertNotIn("policy-statement OVERLAY-IN", spine1Config)
             
-            leaf1Config = deployments[2].configlet
-            print "leaf:\n" + leaf1Config
+            leaf1Config = deployments[2].configlet.decode('utf-8')
+            print("leaf:\n" + leaf1Config)
             self.assertNotIn("routing-options {", leaf1Config)
             self.assertIn("bgp", leaf1Config)
             self.assertIn("group overlay", leaf1Config)
             self.assertNotIn("cluster", leaf1Config)
-            self.assertEquals(2, leaf1Config.count("neighbor"))
+            self.assertEqual(2, leaf1Config.count("neighbor"))
             self.assertNotIn("import OVERLAY-IN", leaf1Config)   
             self.assertIn("switch-options", leaf1Config)
             self.assertIn("policy-options", leaf1Config)
             self.assertNotIn("policy-statement OVERLAY-IN", leaf1Config)
 
     def test_allocateClusterId(self):
-        regex = re.compile("\s*cluster\s+(.+);\s*") 
+        regex = re.compile(r"\s*cluster\s+(.+);\s*") 
         with self._dao.getReadWriteSession() as session:
             fabric= self.helper._createFabric2Pods(session)
             # overlay.createXYZ would also call required configure
@@ -523,27 +525,27 @@ class TestConfigEngine(unittest.TestCase):
             deployments = session.query(OverlayDeployStatus).all()
 
             spine1Config = deployments[0].configlet
-            print "spine1 pod1:\n" + spine1Config
-            clusterId = regex.search(spine1Config).group(1)
-            self.assertEquals('2.2.1.1', clusterId)
+            print("spine1 pod1:\n" + spine1Config.decode('utf-8'))
+            clusterId = regex.search(spine1Config.decode('utf-8')).group(1)
+            self.assertEqual('2.2.1.1', clusterId)
 
             spine2Config = deployments[1].configlet
-            print "spine2 pod1:\n" + spine2Config
-            clusterId = regex.search(spine2Config).group(1)
-            self.assertEquals('2.2.1.1', clusterId)
+            print("spine2 pod1:\n" + spine2Config.decode('utf-8'))
+            clusterId = regex.search(spine2Config.decode('utf-8')).group(1)
+            self.assertEqual('2.2.1.1', clusterId)
             
             spine6Config = deployments[5].configlet
-            print "spine6 pod2:\n" + spine6Config
-            clusterId = regex.search(spine6Config).group(1)
-            self.assertEquals('2.2.1.2', clusterId)
+            print("spine6 pod2:\n" + spine6Config.decode('utf-8'))
+            clusterId = regex.search(spine6Config.decode('utf-8')).group(1)
+            self.assertEqual('2.2.1.2', clusterId)
 
             spine7Config = deployments[6].configlet
-            print "spine7 pod2:\n" + spine7Config
-            clusterId = regex.search(spine7Config).group(1)
-            self.assertEquals('2.2.1.2', clusterId)
+            print("spine7 pod2:\n" + spine7Config.decode('utf-8'))
+            clusterId = regex.search(spine7Config.decode('utf-8')).group(1)
+            self.assertEqual('2.2.1.2', clusterId)
             
     def testConfigureFabric2Pods(self):
-        regex = re.compile(".*(group\soverlay-evpn\s\{.*?}).*(group\soverlay-evpn-rr\s\{.*?}).*", re.DOTALL)
+        regex = re.compile(r".*(group\soverlay-evpn\s\{.*?}).*(group\soverlay-evpn-rr\s\{.*?}).*", re.DOTALL)
         with self._dao.getReadWriteSession() as session:
             fabric= self.helper._createFabric2Pods(session)
             # overlay.createXYZ would also call required configure
@@ -552,38 +554,38 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadSession() as session:
             self.assertEqual(9, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
-            spine1Config = deployments[0].configlet
-            print "spine1 pod1:\n" + spine1Config
+            spine1Config = deployments[0].configlet.decode('utf-8')
+            print("spine1 pod1:\n" + spine1Config)
             
             evpn = regex.match(spine1Config).group(1)
             evpnRr = regex.match(spine1Config).group(2)
             self.assertIn("cluster", evpn)
-            self.assertEquals(3, evpn.count("neighbor"))
-            self.assertEquals(3, evpnRr.count("neighbor"))
+            self.assertEqual(3, evpn.count("neighbor"))
+            self.assertEqual(3, evpnRr.count("neighbor"))
             self.assertNotIn("policy-statement OVERLAY-IN", spine1Config)
 
-            leaf3Config = deployments[2].configlet
-            print "leaf1 pod1:\n" + leaf3Config
+            leaf3Config = deployments[2].configlet.decode('utf-8')
+            print("leaf1 pod1:\n" + leaf3Config)
             self.assertIn("group overlay-evpn {", leaf3Config)
             self.assertNotIn("cluster", leaf3Config)
-            self.assertEquals(2, leaf3Config.count("neighbor"))            
+            self.assertEqual(2, leaf3Config.count("neighbor"))            
             self.assertIn("import OVERLAY-IN", leaf3Config)   
             self.assertIn("policy-statement OVERLAY-IN", leaf3Config)
             
-            spine6Config = deployments[5].configlet
-            print "spine6 pod2:\n" + spine6Config
+            spine6Config = deployments[5].configlet.decode('utf-8')
+            print("spine6 pod2:\n" + spine6Config)
             evpn = regex.match(spine6Config).group(1)
             evpnRr = regex.match(spine6Config).group(2)
             self.assertIn("cluster", evpn)
-            self.assertEquals(2, evpn.count("neighbor"))
-            self.assertEquals(3, evpnRr.count("neighbor"))
+            self.assertEqual(2, evpn.count("neighbor"))
+            self.assertEqual(3, evpnRr.count("neighbor"))
             self.assertNotIn("policy-statement OVERLAY-IN", spine6Config)
 
-            leaf8Config = deployments[7].configlet
-            print "leaf8 pod2:\n" + leaf8Config
+            leaf8Config = deployments[7].configlet.decode('utf-8')
+            print("leaf8 pod2:\n" + leaf8Config)
             self.assertIn("group overlay-evpn {", leaf8Config)
             self.assertNotIn("cluster", leaf8Config)
-            self.assertEquals(2, leaf8Config.count("neighbor"))
+            self.assertEqual(2, leaf8Config.count("neighbor"))
             self.assertIn("import OVERLAY-IN", leaf8Config)   
             self.assertIn("policy-statement OVERLAY-IN", leaf8Config)
 
@@ -592,11 +594,11 @@ class TestConfigEngine(unittest.TestCase):
         configEngine = self.helper.overlay._configEngine
 
         ips = configEngine.getLoopbackIps("192.168.48.0/30", 0)
-        self.assertEquals(['192.168.48.0/32', '192.168.48.1/32', '192.168.48.2/32', '192.168.48.3/32'], ips)
+        self.assertEqual(['192.168.48.0/32', '192.168.48.1/32', '192.168.48.2/32', '192.168.48.3/32'], ips)
         ips = configEngine.getLoopbackIps("192.168.48.0/31", 0)
-        self.assertEquals(['192.168.48.0/32', '192.168.48.1/32'], ips)
+        self.assertEqual(['192.168.48.0/32', '192.168.48.1/32'], ips)
         ips = configEngine.getLoopbackIps("192.168.48.0/32", 0)
-        self.assertEquals(['192.168.48.0/32'], ips)
+        self.assertEqual(['192.168.48.0/32'], ips)
 
     def testConfigureVrf(self):
         with self._dao.getReadWriteSession() as session:
@@ -608,8 +610,8 @@ class TestConfigEngine(unittest.TestCase):
         with self._dao.getReadSession() as session:
             # 2 deployments fabric and vrf
             self.assertEqual(2, session.query(OverlayDeployStatus).count())
-            config = session.query(OverlayDeployStatus).filter_by(object_url=vrfObjectUrl).one().configlet
-            print "spine1:\n" + config
+            config = session.query(OverlayDeployStatus).filter_by(object_url=vrfObjectUrl).one().configlet.decode('utf-8')
+            print("spine1:\n" + config)
             self.assertIn("lo0 {", config)
             self.assertIn("routing-instances {", config)
             self.assertIn("instance-type vrf;", config)
@@ -624,8 +626,8 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(12, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
 
-            config = deployments[7].configlet
-            print "spine1:\n" + config
+            config = deployments[7].configlet.decode('utf-8')
+            print("spine1:\n" + config)
             self.assertNotIn("irb {", config)
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
@@ -634,8 +636,8 @@ class TestConfigEngine(unittest.TestCase):
             self.assertNotIn("l3-interface irb.101", config)
             self.assertNotIn("interface irb.101", config)
                         
-            config = deployments[8].configlet
-            print "spine2:\n" + config
+            config = deployments[8].configlet.decode('utf-8')
+            print("spine2:\n" + config)
             self.assertNotIn("irb {", config)
             self.assertIn("vrf-target", config)
             self.assertIn("encapsulation vxlan", config)
@@ -644,8 +646,8 @@ class TestConfigEngine(unittest.TestCase):
             self.assertNotIn("l3-interface irb.101", config)
             self.assertNotIn("interface irb.101", config)
                 
-            config = deployments[9].configlet
-            print "leaf1:\n" + config
+            config = deployments[9].configlet.decode('utf-8')
+            print("leaf1:\n" + config)
             self.assertIn("encapsulation vxlan", config)
             self.assertIn("policy-statement LEAF-IN", config)
             self.assertIn("n1", config)
@@ -660,14 +662,14 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(14, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
 
-            config = deployments[-2].configlet
-            print "spine1:\n" + config
+            config = deployments[-2].configlet.decode('utf-8')
+            print("spine1:\n" + config)
             self.assertIn("irb {", config)
             self.assertIn("address 1.2.3.2/24 {", config)
             self.assertIn("virtual-gateway-address 1.2.3.1", config)
                         
-            config = deployments[-1].configlet
-            print "spine2:\n" + config
+            config = deployments[-1].configlet.decode('utf-8')
+            print("spine2:\n" + config)
             self.assertIn("irb {", config)
             self.assertIn("address 1.2.3.3/24 {", config)
             self.assertIn("virtual-gateway-address 1.2.3.1", config)
@@ -681,39 +683,39 @@ class TestConfigEngine(unittest.TestCase):
             self.assertEqual(21, session.query(OverlayDeployStatus).count())
             deployments = session.query(OverlayDeployStatus).all()
 
-            config = deployments[7].configlet
-            print "spine1 net1:\n" + config
+            config = deployments[7].configlet.decode('utf-8')
+            print("spine1 net1:\n" + config)
             self.assertIn("vlan-id 101", config)
             self.assertIn("vni 1001", config)
-            config = deployments[-4].configlet
-            print "\n" + config
+            config = deployments[-4].configlet.decode('utf-8')
+            print("\n" + config)
             self.assertIn("address 1.2.3.2/24 {", config)
             self.assertIn("virtual-gateway-address 1.2.3.1", config)
                         
-            config = deployments[8].configlet
-            print "spine2 net1:\n" + config
+            config = deployments[8].configlet.decode('utf-8')
+            print("spine2 net1:\n" + config)
             self.assertIn("vlan-id 101", config)
             self.assertIn("vni 1001", config)
-            config = deployments[-3].configlet
-            print "\n" + config
+            config = deployments[-3].configlet.decode('utf-8')
+            print("\n" + config)
             self.assertIn("address 1.2.3.3/24 {", config)
             self.assertIn("virtual-gateway-address 1.2.3.1", config)
 
-            config = deployments[12].configlet
-            print "spine1 net2:\n" + config
+            config = deployments[12].configlet.decode('utf-8')
+            print("spine1 net2:\n" + config)
             self.assertIn("vlan-id 102", config)
             self.assertIn("vni 1002", config)
-            config = deployments[-2].configlet
-            print "\n" + config
+            config = deployments[-2].configlet.decode('utf-8')
+            print("\n" + config)
             self.assertIn("address 2.2.3.2/24 {", config)
             self.assertIn("virtual-gateway-address 2.2.3.1", config)
                         
-            config = deployments[13].configlet
-            print "spine2 net2:\n" + config
+            config = deployments[13].configlet.decode('utf-8')
+            print("spine2 net2:\n" + config)
             self.assertIn("vlan-id 102", config)
             self.assertIn("vni 1002", config)
-            config = deployments[-1].configlet
-            print "\n" + config
+            config = deployments[-1].configlet.decode('utf-8')
+            print("\n" + config)
             self.assertIn("address 2.2.3.3/24 {", config)
             self.assertIn("virtual-gateway-address 2.2.3.1", config)
 
@@ -726,10 +728,10 @@ class TestConfigEngine(unittest.TestCase):
             deployments = session.query(OverlayDeployStatus).all()
             self.assertEqual(8, len(deployments))
             
-            print deployments[4].configlet
-            print deployments[6].configlet
-            self.assertEquals(1, deployments[4].configlet.count("interface "))
-            self.assertEquals(2, deployments[6].configlet.count("interface "))
+            print(deployments[4].configlet.decode('utf-8'))
+            print(deployments[6].configlet.decode('utf-8'))
+            self.assertEqual(1, deployments[4].configlet.decode('utf-8').count("interface "))
+            self.assertEqual(2, deployments[6].configlet.decode('utf-8').count("interface "))
 
     def testDeleteL2Port(self):
         with self._dao.getReadWriteSession() as session:
@@ -853,15 +855,15 @@ class TestConfigEngine(unittest.TestCase):
             deployments = session.query(OverlayDeployStatus).all()
             self.assertEqual(7, len(deployments))
             
-            print deployments[4].configlet
-            print deployments[5].configlet
-            print deployments[6].configlet
-            self.assertTrue('device-count 1;' in deployments[4].configlet)
-            self.assertTrue('device-count 2;' in deployments[5].configlet)
-            self.assertTrue('device-count 3;' in deployments[6].configlet)
-            self.assertEquals(1, deployments[4].configlet.count(" vlan-id "))
-            self.assertEquals(1, deployments[5].configlet.count(" vlan-id "))
-            self.assertEquals(2, deployments[6].configlet.count(" vlan-id "))
+            print(deployments[4].configlet.decode('utf-8'))
+            print(deployments[5].configlet.decode('utf-8'))
+            print(deployments[6].configlet.decode('utf-8'))
+            self.assertTrue('device-count 1;' in deployments[4].configlet.decode('utf-8'))
+            self.assertTrue('device-count 2;' in deployments[5].configlet.decode('utf-8'))
+            self.assertTrue('device-count 3;' in deployments[6].configlet.decode('utf-8'))
+            self.assertEqual(1, deployments[4].configlet.decode('utf-8').count(" vlan-id "))
+            self.assertEqual(1, deployments[5].configlet.decode('utf-8').count(" vlan-id "))
+            self.assertEqual(2, deployments[6].configlet.decode('utf-8').count(" vlan-id "))
 
     def testDeleteAggregatedL2Port(self):
         with self._dao.getReadWriteSession() as session:

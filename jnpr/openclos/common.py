@@ -6,7 +6,7 @@ Created on Nov 12, 2014
 
 import threading
 
-class SingletonBase(object):
+class SingletonBase:
     __singletonInstance = None
     __singletonLock = threading.RLock() 
     

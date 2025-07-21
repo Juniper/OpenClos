@@ -6,7 +6,6 @@ Created on Nov 23, 2015
 
 import logging
 import os
-import itertools
 import re
 from netaddr import IPNetwork, valid_ipv4, valid_ipv6
 from netaddr.core import AddrFormatError, INET_PTON
@@ -431,13 +430,13 @@ class ConfigEngine():
                 logger.info("_allocateClusterId: adding mapping: fabric: '%s', podName: '%s' clusterId: '%s'", updateItem.overlay_fabric_id, updateItem.podName, updateItem.clusterId)
 
         # Now persist new entries to db
-        # logger.debug("updateList=%s", updateList)
+        logger.info("updateList=%s", updateList)
         self._dao.updateObjects(dbSession, updateList)
 
         deleteList = [m for m in currentMappings if m not in keepList]
-        # logger.debug("deleteList=%s", deleteList)
+        logger.info("deleteList=%s", deleteList)
         self._dao.deleteObjects(dbSession, deleteList)
-    
+        logger.info("Returning lookuptable "+str(lookupTable)) 
         return lookupTable
     
     def editFabric(self, dbSession, operation, fabric):
@@ -461,7 +460,6 @@ class ConfigEngine():
                 remoteGateways=self.getRemoteGateways(fabric, device.podName),
                 esiRouteTarget=esiRouteTarget)
             deployments.append(OverlayDeployStatus(config, fabric.getUrl(), operation, device, fabric))    
-
         self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editFabric [id: '%s', name: '%s']: configured", fabric.id, fabric.name)
         self._commitQueue.addJobs(deployments)
@@ -499,7 +497,7 @@ class ConfigEngine():
             logger.error("editVrf [id: '%s', name: '%s']: loopback IPs count: %d less than spine count: %d", 
                          vrf.id, vrf.name, len(loopbackIps), len(spines))
         
-        for spine, loopback, oldLoopback in itertools.izip(spines, loopbackIps, oldLoopbackIps):
+        for spine, loopback, oldLoopback in zip(spines, loopbackIps, oldLoopbackIps):
             config = self._olEditVrf.render(
                 vrfName=vrf.name,
                 vrfCounter=vrf.vrfCounter,
@@ -508,7 +506,6 @@ class ConfigEngine():
                 loopbackAddress=loopback,
                 oldLoopbackAddress=oldLoopback)
             deployments.append(OverlayDeployStatus(config, vrf.getUrl(), operation, spine, vrf.overlay_tenant.overlay_fabric))    
-
         self._dao.createObjectsAndCommitNow(dbSession, deployments)
         logger.info("editVrf [id: '%s', name: '%s']: configured", vrf.id, vrf.name)
         self._commitQueue.addJobs(deployments)
@@ -618,7 +615,7 @@ class ConfigEngine():
             logger.error("editSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
                          vrf.id, network.id, len(irbIps), len(spines))
 
-        for spine, irbIp, oldIrbIp in itertools.izip(spines, irbIps, oldIrbIps):
+        for spine, irbIp, oldIrbIp in zip(spines, irbIps, oldIrbIps):
             config = self._olEditSubnet.render(
                 role="spine",
                 irbAddress=irbIp,
@@ -689,7 +686,7 @@ class ConfigEngine():
                 membersByDevice[member.overlay_device.id] = {'members': [], 'device': member.overlay_device}
             membersByDevice[member.overlay_device.id]['members'].append(member.interface)
                 
-        for deviceId, deviceMembers in membersByDevice.iteritems():
+        for deviceId, deviceMembers in membersByDevice.items():
             nextLagNumber = self._getCurrentLagNumber(dbSession) + 1
             config = self._olEditAggregatedL2port.render(
                 memberInterfaces=deviceMembers['members'], 
@@ -770,7 +767,7 @@ class ConfigEngine():
             logger.error("deleteSubnet [vrf id: '%s', network id: '%s']: subnet IPs count: %d less than spine count: %d", 
                          vrf.id, network.id, len(irbIps), len(spines))
 
-        for spine, irbIp in itertools.izip(spines, irbIps):      
+        for spine, irbIp in zip(spines, irbIps):      
             if spine in deployedDevices:
                 config = self._olDeleteSubnet.render(
                     role="spine",
@@ -868,7 +865,7 @@ class ConfigEngine():
                 membersByDevice[member.overlay_device.id]['members'].append(member.interface)
 
         networks = [(net.vlanid, net.vnid, net.name) for net in aggregatedL2port.overlay_networks]
-        for deviceId, deviceMembers in membersByDevice.iteritems():
+        for deviceId, deviceMembers in membersByDevice.items():
             config = self._olDeleteAggregatedL2port.render(
                 memberInterfaces=deviceMembers['members'], 
                 lagName=aggregatedL2port.name,
@@ -960,7 +957,7 @@ class ConfigEngine():
             # Compile a list of interfaces that belong to this leaf
             interfaces = [l2port.configName() for l2port in device.overlay_l2ports]
             memberInterfaces = [member.interface for member in device.aggregatedL2port_members]
-            lagNames = list(set([member.overlay_aggregatedL2port.configName() for member in device.aggregatedL2port_members]))
+            lagNames = list({member.overlay_aggregatedL2port.configName() for member in device.aggregatedL2port_members})
             config = self._olRemoveDeviceConfig.render(
                 role=device.role,
                 networks=networks,

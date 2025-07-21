@@ -10,18 +10,18 @@ import logging
 import contextlib
 import importlib
 
-from model import Base, Device, InterfaceDefinition, LeafSetting, Counter
-from loader import DeviceSku
-from common import SingletonBase
-from loader import loadLoggingConfig
-from exception import InvalidConfiguration
+from jnpr.openclos.model import Base, Device, InterfaceDefinition, LeafSetting, Counter
+from jnpr.openclos.loader import DeviceSku
+from jnpr.openclos.common import SingletonBase
+from jnpr.openclos.loader import loadLoggingConfig
+from jnpr.openclos.exception import InvalidConfiguration
 
 moduleName = 'dao'
 loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 
 def loadPluginDataModels():
-    from loader import OpenClosProperty
+    from jnpr.openclos.loader import OpenClosProperty
     conf = OpenClosProperty().getProperties()
     # iterate 'plugin' section of openclos.yaml and install routes on all plugins
     if 'plugin' in conf:
@@ -201,5 +201,5 @@ class AbstractDao(SingletonBase):
 
 class Dao(AbstractDao):
     def _getDbUrl(self):
-        from loader import OpenClosProperty
+        from jnpr.openclos.loader import OpenClosProperty
         return OpenClosProperty().getDbUrl()

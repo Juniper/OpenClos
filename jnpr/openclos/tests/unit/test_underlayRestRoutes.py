@@ -13,7 +13,7 @@ from webtest import TestApp, AppError
 from jnpr.openclos.rest import RestServer
 from jnpr.openclos.underlayRestRoutes import webServerRoot, junosImageRoot
 from jnpr.openclos.loader import DeviceSku
-from test_dao import InMemoryDao 
+from .test_dao import InMemoryDao 
 
 
 configLocation = webServerRoot
@@ -58,12 +58,12 @@ class TestUnderlayRestRoutes(unittest.TestCase):
         self.assertEqual(0, len(response.json['pods']['pod']))
 
     def setupRestWithTwoDevices(self, session):
-        from test_model import createDevice
+        from .test_model import createDevice
         self.device1 = createDevice(session, "test1")
         self.device2 = createDevice(session, "test2")
     
     def setupRestWithTwoPods(self, session):
-        from test_model import createPod
+        from .test_model import createPod
         self.pod1 = createPod("test1", session)
         self.pod2 = createPod("test2", session)
 
@@ -82,7 +82,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
     def testGetDevicesNonExistingPod(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/underlay/pods/' + 'nonExisting'+'/devices')
-        self.assertTrue('404 Not Found' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
     
     def testGetDevices(self):
         with self._dao.getReadWriteSession() as session:
@@ -102,7 +102,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
             
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/underlay/pods/' +pod1Id+'/devices/'+'nonExisting')
-        self.assertTrue('404 Not Found' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
     
     def testGetDevice(self):
         with self._dao.getReadWriteSession() as session:
@@ -129,8 +129,8 @@ class TestUnderlayRestRoutes(unittest.TestCase):
 
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/underlay/pods/'+device1PodId+'/devices/'+'nonExisting'+'/config')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('No device found' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('No device found' in str(e.exception))
 
     def testGetConfigNoConfigFile(self):
         with self._dao.getReadWriteSession() as session:
@@ -140,8 +140,8 @@ class TestUnderlayRestRoutes(unittest.TestCase):
        
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/underlay/pods/'+podId+'/devices/'+deviceId+'/config')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('Device exists but no config found' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('Device exists but no config found' in str(e.exception))
 
     def testGetConfig(self):
         from jnpr.openclos.model import DeviceConfig
@@ -153,7 +153,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
             
         response = self.restServerTestApp.get('/openclos/v1/underlay/pods/'+podId+'/devices/'+deviceId+'/config')
         self.assertEqual(200, response.status_int)
-        self.assertEqual("testconfig", response.body)
+        self.assertEqual("testconfig", response.body.decode('utf-8'))
         
     def testGetDeviceConfigsInZip(self):
         from jnpr.openclos.model import DeviceConfig
@@ -167,9 +167,9 @@ class TestUnderlayRestRoutes(unittest.TestCase):
         self.assertEqual(200, response.status_int)
         self.assertEqual('application/zip', response.headers.get('Content-Type'))
         
-        import StringIO
+        from io import BytesIO
         import zipfile
-        buff = StringIO.StringIO(response.body)
+        buff = BytesIO(response.body)
         archive = zipfile.ZipFile(buff, "r")
         self.assertEqual(1, len(archive.namelist()))
 
@@ -183,13 +183,13 @@ class TestUnderlayRestRoutes(unittest.TestCase):
 
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/underlay/pods/UNOKNOWN/device-configuration')
-        self.assertTrue('404 Not Found' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
         shutil.rmtree(podDir, ignore_errors=True)
 
     def testGetJunosImage404(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/underlay/images/abcd.tgz')
-        self.assertTrue('404 Not Found' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
 
     def testGetJunosImage(self):
         open(os.path.join(imageLocation, 'efgh.tgz'), "a") 
@@ -220,7 +220,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
     def testGetgetNonExistingPod(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/underlay/pods/' + 'nonExisting')
-        self.assertTrue('404 Not Found' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
         
     def testGetNonExistingCablingPlan(self):
         with self._dao.getReadWriteSession() as session:
@@ -228,7 +228,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
             pod1Id = self.pod1.id
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/underlay/pods/'+pod1Id+'/cabling-plan',headers = {'Accept':'application/json'})
-        self.assertTrue('404 Not Found' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
     
     def testGetCablingPlanJson(self):
         from jnpr.openclos.model import CablingPlan
@@ -241,14 +241,14 @@ class TestUnderlayRestRoutes(unittest.TestCase):
 
         response = self.restServerTestApp.get('/openclos/v1/underlay/pods/'+pod1Id+'/cabling-plan',headers = {'Accept':'application/json'})
         self.assertEqual(200, response.status_int)
-        self.assertEqual('cabling json', response.body)
+        self.assertEqual('cabling json', response.body.decode('utf-8'))
         
     def testGetCablingPlanDot(self):
         with self._dao.getReadWriteSession() as session:
             self.setupRestWithTwoPods(session)
             cablingPlanLocation = os.path.join(configLocation, self.pod1.id+'-'+self.pod1.name)
             if not os.path.exists(os.path.join(cablingPlanLocation)):
-                os.makedirs((os.path.join(cablingPlanLocation)))
+                os.makedirs(os.path.join(cablingPlanLocation))
             ls = open(os.path.join(cablingPlanLocation, 'cablingPlan.dot'), "a+")
             pod1Id = self.pod1.id
        
@@ -262,7 +262,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
             self.setupRestWithTwoPods(session)
             ztpConfigLocation = os.path.join(configLocation, self.pod1.id+'-'+self.pod1.name)
             if not os.path.exists(os.path.join(ztpConfigLocation)):
-                os.makedirs((os.path.join(ztpConfigLocation)))
+                os.makedirs(os.path.join(ztpConfigLocation))
             ls = open(os.path.join(ztpConfigLocation, 'dhcpd.conf'), "a+")
             pod1Id = self.pod1.id
        
@@ -278,7 +278,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
 
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/underlay/pods/'+pod1Id+'/ztp-configuration')
-        self.assertTrue('404 Not Found' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
         
     def testgetOpenClosConfigParams(self):
         self.restServer._conf['dbUrl'] = InMemoryDao.getInstance()._getDbUrl()
@@ -288,9 +288,9 @@ class TestUnderlayRestRoutes(unittest.TestCase):
         
         response = self.restServerTestApp.get('/openclos/v1/underlay/conf')
         self.assertEqual(200, response.status_int)
-        self.assertTrue(response.json['OpenClosConf']['restServer'].has_key('port'))
-        self.assertTrue(response.json['OpenClosConf']['snmpTrap']['openclos_trap_group'].has_key('port'))   
-        self.assertEquals(33, len(response.json['OpenClosConf']['supportedDevices']))
+        self.assertTrue('port' in response.json['OpenClosConf']['restServer'])
+        self.assertTrue('port' in response.json['OpenClosConf']['snmpTrap']['openclos_trap_group'])
+        self.assertEqual(33, len(response.json['OpenClosConf']['supportedDevices']))
         
     def testdeletePod(self):
         with self._dao.getReadWriteSession() as session:
@@ -305,7 +305,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
     def testDeleteNonExistingPod(self):
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.delete('/openclos/v1/underlay/pods/' + 'nonExisting')
-        self.assertTrue('404 Not Found', e.exception.message)
+        self.assertTrue('404 Not Found', str(e.exception))
         
     def testCreatePodWithPostBodyEmpty(self):
         response = self.restServerTestApp.post('/openclos/v1/underlay/pods', headers = {'Content-Type':'application/json'}, expect_errors = True)
@@ -422,12 +422,12 @@ class TestUnderlayRestRoutes(unittest.TestCase):
         
         with self.assertRaises(AppError) as e:
             self.restServerTestApp.get('/openclos/v1/underlay/pods/'+pod1Id+'/leaf-generic-configurations/qfx5100-48s-6q')
-        self.assertTrue('404 Not Found' in e.exception.message)
-        self.assertTrue('Pod exists but no leaf generic config' in e.exception.message)
-        self.assertTrue('qfx5100-48s-6q' in e.exception.message)
+        self.assertTrue('404 Not Found' in str(e.exception))
+        self.assertTrue('Pod exists but no leaf generic config' in str(e.exception))
+        self.assertTrue('qfx5100-48s-6q' in str(e.exception))
 
     def setupRestWithPodAndGenericConfig(self, session):
-        from test_model import createPod
+        from .test_model import createPod
         from jnpr.openclos.model import LeafSetting
         self.pod1 = createPod("test1", session)
         leafSetting = LeafSetting('qfx5100-48s-6q', self.pod1.id, config = "testConfig abcd")
@@ -442,7 +442,7 @@ class TestUnderlayRestRoutes(unittest.TestCase):
         
         response = self.restServerTestApp.get('/openclos/v1/underlay/pods/'+pod1Id+'/leaf-generic-configurations/qfx5100-48s-6q')
         self.assertEqual(200, response.status_int) 
-        self.assertTrue('testConfig abcd' in response.body)
+        self.assertTrue('testConfig abcd' in response.body.decode('utf-8'))
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

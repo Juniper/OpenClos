@@ -7,7 +7,7 @@ Created on Feb 15, 2016
 import traceback
 import logging
 from threading import Thread, Event, RLock
-import Queue
+import queue
 import re
 from sqlalchemy.orm import exc
 
@@ -24,7 +24,7 @@ moduleName = 'overlayCommit'
 loadLoggingConfig(appName=moduleName)
 logger = logging.getLogger(moduleName)
 
-class OverlayCommitJob(object):
+class OverlayCommitJob:
     def __init__(self, parent, deployStatusObject):
         # Note we only hold on to the data from the deployStatusObject (deviceId, configlet, etc.). 
         # We are not holding reference to the deployStatusObject itself as it can become invalid when db session is out of scope
@@ -142,8 +142,8 @@ class OverlayCommitJob(object):
 
 class OverlayAggregatedL2portCommitJob(OverlayCommitJob):
     def __init__(self, parent, deployStatusObject):
-        super(OverlayAggregatedL2portCommitJob, self).__init__(parent, deployStatusObject)
-        self._deviceCountPattern = re.compile("\s*device-count\s+([0-9]+);\s*")
+        super().__init__(parent, deployStatusObject)
+        self._deviceCountPattern = re.compile(r"\s*device-count\s+([0-9]+);\s*")
 
     def updateConfiglet(self, configlet):
         try:
@@ -234,12 +234,12 @@ class OverlayAggregatedL2portCommitJob(OverlayCommitJob):
             logger.error('StackTrace: %s', traceback.format_exc())
             raise
 
-class OverlayDeviceQueue(object):
+class OverlayDeviceQueue:
     def __init__(self, deviceId, deviceIp, deviceInterval):
         self.deviceId = deviceId
         self.deviceIp = deviceIp
         self.deviceInterval = deviceInterval
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
         self.thread = None
         self.stopFlag = False
 
@@ -282,7 +282,7 @@ class OverlayDeviceQueue(object):
                     # start commit progress 
                     self.queue.task_done()
                     job.commit()
-            except Queue.Empty as exc:
+            except queue.Empty as exc:
                 # logger.debug("OverlayDeviceQueue %s is empty", self.deviceIp)
                 if self.stopFlag is True:
                     logger.debug("OverlayDeviceQueue %s: stopEvent is set", self.deviceIp)
@@ -295,7 +295,7 @@ class OverlayDeviceQueue(object):
                     return
                 # Note we continue in this case    
             
-class OverlayCommitQueue(object):
+class OverlayCommitQueue:
     def __init__(self, dao):
         self._dao = dao
         # event to stop from sleep
@@ -422,7 +422,7 @@ class OverlayCommitQueue(object):
             if self.thread:
                 self.thread.join()
                 self.thread = None
-            for queueId, deviceQueue in self.__deviceQueues.iteritems():
+            for queueId, deviceQueue in self.__deviceQueues.items():
                 deviceQueue.stop()
             logger.info("OverlayCommitQueue stopped")
         except Exception as exc:

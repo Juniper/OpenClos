@@ -10,7 +10,7 @@ from sqlalchemy.orm import exc
 import sqlalchemy
 import traceback
 import json
-import util
+from jnpr.openclos import util
 import signal
 import sys
 import logging
@@ -18,15 +18,15 @@ import importlib
 from bottle import error, request, response, PluginError, ServerAdapter, parse_auth
 import subprocess
 from threading import Thread, Event
-from urlparse import SplitResult
+from urllib.parse import SplitResult
 
-from error import EC_PLATFORM_ERROR
-from exception import BaseError, isOpenClosException, InvalidConfiguration, PlatformError
+from jnpr.openclos.error import EC_PLATFORM_ERROR
+from jnpr.openclos.exception import BaseError, isOpenClosException, InvalidConfiguration, PlatformError
 from jnpr.openclos.dao import Dao
-from loader import OpenClosProperty, loadLoggingConfig
-import underlayRestRoutes
-from crypt import Cryptic
-from deviceConnector import CachedConnectionFactory
+from jnpr.openclos.loader import OpenClosProperty, loadLoggingConfig
+from jnpr.openclos import underlayRestRoutes
+from jnpr.openclos.crypt import Cryptic
+from jnpr.openclos.deviceConnector import CachedConnectionFactory
 
 moduleName = 'rest'
 loadLoggingConfig(appName=moduleName)
@@ -51,7 +51,7 @@ def loggingPlugin(callback):
                                   request.environ.get('SERVER_PROTOCOL', ''))
         
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug('%s REQUEST: %s', msg, request._get_body_string())
+            logger.debug('%s REQUEST: %s', msg, request.body.read())
         else:
             logger.info('%s REQUEST:', msg)
             
@@ -74,7 +74,7 @@ def loggingPlugin(callback):
     return wrapper
 
 
-class OpenclosDbSessionPlugin(object):
+class OpenclosDbSessionPlugin:
     name = 'OpenclosDbSessionPlugin'
 
     def __init__(self, daoClass=Dao):
@@ -103,7 +103,7 @@ class OpenclosDbSessionPlugin(object):
         # Replace the route callback with the wrapped one.
         return wrapper
 
-class BasicAuthPlugin(object):
+class BasicAuthPlugin:
     name = 'BasicAuthPlugin'
 
     def __init__(self, username, cleartextPassword):
@@ -181,7 +181,7 @@ class SSLServer(StoppableServer):
         if host == '0.0.0.0':
             raise InvalidConfiguration("Server cert cannot bind to 0.0.0.0. Please change ipAddr in openclos.yaml to real IP address")
             
-        super(SSLServer, self).__init__(host, port, **options)
+        super().__init__(host, port, **options)
         self.certificate = certificate
 
     def createServerCert(self):
@@ -234,7 +234,7 @@ class SSLServer(StoppableServer):
     
 class SSLWSGIRefServer(SSLServer):
     def __init__(self, host, port, certificate, **options):
-        super(SSLWSGIRefServer, self).__init__(host, port, certificate, **options)
+        super().__init__(host, port, certificate, **options)
         
     def run(self, handler):
         self.checkServerCert()
@@ -253,7 +253,7 @@ class SSLWSGIRefServer(SSLServer):
        
 class SSLPasteServer(SSLServer):
     def __init__(self, host, port, certificate, **options):
-        super(SSLPasteServer, self).__init__(host, port, certificate, **options)
+        super().__init__(host, port, certificate, **options)
         
     def run(self, handler): # pragma: no cover
         self.checkServerCert()
@@ -348,7 +348,7 @@ class RestServer():
 
     def getIndex(self, dbSession=None):
         if 'openclos' not in bottle.request.url:
-            bottle.redirect(str(bottle.request.url).translate(None, ',') + 'openclos')
+            bottle.redirect(str(bottle.request.url).translate(str.maketrans('', '', ',')) + 'openclos')
             
         # Decide what index links to return based on the request URL.
         #
@@ -366,7 +366,7 @@ class RestServer():
                 jsonLinks.append({'link': {'href': '%s://%s%s' % (protocol, host, link)}})
 
         jsonBody = \
-            {'href': str(bottle.request.url).translate(None, ','),
+            {'href': str(bottle.request.url).translate(str.maketrans('', '', ',')),
              'links': jsonLinks
              }
 

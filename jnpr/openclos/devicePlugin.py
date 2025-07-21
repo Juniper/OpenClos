@@ -7,16 +7,16 @@ from threading import RLock, Event
 import time
 import logging
 
-from dao import Dao
-from model import Pod, Device, InterfaceDefinition, AdditionalLink, BgpLink
-from exception import DeviceConnectFailed, DeviceRpcFailed, L2DataCollectionFailed, L3DataCollectionFailed, TwoStageConfigurationFailed
-from common import SingletonBase
-from l3Clos import L3ClosMediation
-from loader import OpenClosProperty, DeviceSku, loadLoggingConfig
-import loader
-import util
-from exception import SkipCommit
-from deviceConnector import CachedConnectionFactory, NetconfConnection
+from jnpr.openclos.dao import Dao
+from jnpr.openclos.model import Pod, Device, InterfaceDefinition, AdditionalLink, BgpLink
+from jnpr.openclos.exception import DeviceConnectFailed, DeviceRpcFailed, L2DataCollectionFailed, L3DataCollectionFailed, TwoStageConfigurationFailed
+from jnpr.openclos.common import SingletonBase
+from jnpr.openclos.l3Clos import L3ClosMediation
+from jnpr.openclos.loader import OpenClosProperty, DeviceSku, loadLoggingConfig
+from jnpr.openclos import loader
+from jnpr.openclos import util
+from jnpr.openclos.exception import SkipCommit
+from jnpr.openclos.deviceConnector import CachedConnectionFactory, NetconfConnection
 
 from netaddr import IPAddress, IPNetwork
 
@@ -31,7 +31,7 @@ class DeviceOperationInProgressCache(SingletonBase):
         
     def isDeviceInProgress(self, deviceId):
         with self.__lock:
-            return self.__cache.has_key(deviceId)
+            return deviceId in self.__cache
 
     def doneDevice(self, deviceId):
         with self.__lock:
@@ -39,7 +39,7 @@ class DeviceOperationInProgressCache(SingletonBase):
     
     def checkAndAddDevice(self, deviceId):
         with self.__lock:
-            if self.__cache.has_key(deviceId):
+            if deviceId in self.__cache:
                 return False
             else:
                 self.__cache[deviceId] = time.time()
@@ -54,7 +54,7 @@ class L3DataCollectorInProgressCache(DeviceOperationInProgressCache):
 class TwoStageConfigInProgressCache(DeviceOperationInProgressCache):
     ''' singleton class use class.getInstance()'''
     
-class DeviceDataCollectorNetconf(object):
+class DeviceDataCollectorNetconf:
     '''
     Base class for any device data collector based on NetConf 
     Uses junos-eznc to connect to device
@@ -89,10 +89,10 @@ class L2DataCollector(DeviceDataCollectorNetconf):
     '''
     def __init__(self, deviceId, conf={}, daoClass=Dao):
         self.collectionInProgressCache = L2DataCollectorInProgressCache.getInstance()
-        super(L2DataCollector, self).__init__(deviceId, conf, daoClass)
+        super().__init__(deviceId, conf, daoClass)
 
     def manualInit(self):
-        super(L2DataCollector, self).manualInit()
+        super().manualInit()
 
     def startL2Report(self):
         try:
@@ -328,10 +328,10 @@ class L3DataCollector(DeviceDataCollectorNetconf):
     def __init__(self, deviceId, conf={}, daoClass=Dao, deviceAsn2NameMap={}):
         self.collectionInProgressCache = L3DataCollectorInProgressCache.getInstance()
         self.deviceAsn2NameMap = deviceAsn2NameMap
-        super(L3DataCollector, self).__init__(deviceId, conf, daoClass)
+        super().__init__(deviceId, conf, daoClass)
 
     def manualInit(self):
-        super(L3DataCollector, self).manualInit()
+        super().manualInit()
 
     def startL3Report(self):
         try:
@@ -444,7 +444,7 @@ class TwoStageConfigurator(L2DataCollector):
     '''
     def __init__(self, deviceIp, conf={}, daoClass=Dao, stopEvent=None):
         self.configurationInProgressCache = TwoStageConfigInProgressCache.getInstance()
-        super(TwoStageConfigurator, self).__init__(None, conf, daoClass)
+        super().__init__(None, conf, daoClass)
         self.deviceIp = deviceIp
         self.deviceLogStr = 'device ip: %s' % (self.deviceIp)
         # at this point self._conf is initialized
@@ -458,7 +458,7 @@ class TwoStageConfigurator(L2DataCollector):
             self.stopEvent = Event()
         
     def manualInit(self):
-        super(TwoStageConfigurator, self).manualInit()
+        super().manualInit()
         
         self.pod = self.findPodByMgmtIp(self.deviceIp)
         if self.pod is None:

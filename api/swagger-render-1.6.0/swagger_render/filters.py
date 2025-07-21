@@ -37,7 +37,7 @@ def schema(eval_ctx, value):
     if "schema" in value:
         return value["schema"]
     if "type" in value:
-        if value["type"] is "list":
+        if value["type"] == "list":
             if "items" in value:
                 return [schema(eval_ctx, value["items"])]
             return []

@@ -44,12 +44,21 @@ class TestTrapReceiver(unittest.TestCase):
         self.__conf['snmpTrap']['openclos_trap_group'] = {}
         self.__conf['snmpTrap']['openclos_trap_group']['target'] = "0.0.0.0"
         self.__conf['snmpTrap']['openclos_trap_group']['port'] = 20162
+        print('BEFORE #########')
+        output = os.popen("netstat -an | grep 20162").read()
+        print(output)
         trapReceiver = TrapReceiver(self.__conf)
         trapReceiver.start()
         sleep(2)
+        print('AFTER #########')
+        output = os.popen("netstat -an | grep 20162").read()
+        print(output)
         self.assertEqual(True, self.isPortOpen(20162))
         trapReceiver.stop()
-        sleep(2)
+        sleep(5)
+        print('LATER #########')
+        output = os.popen("netstat -an | grep 20162").read()
+        print(output)
         self.assertEqual(False, self.isPortOpen(20162))
         
         

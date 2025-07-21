@@ -22,11 +22,11 @@ class TestNetconfConnector(unittest.TestCase):
         
     def testGetDeviceFamily(self):
         connector = NetconfConnection('192.168.48.216', username='root', password='abcd1234')
-        self.assertEquals('qfx5100-24q-2p', connector.getDeviceFamily())
+        self.assertEqual('qfx5100-24q-2p', connector.getDeviceFamily())
 
     def testGetDeviceSerialNumber(self):
         connector = NetconfConnection('192.168.48.216', username='root', password='abcd1234')
-        self.assertEquals('VG3714070310', connector.getDeviceSerialNumber())
+        self.assertEqual('VG3714070310', connector.getDeviceSerialNumber())
 
     def testConnectToDeviceConnectError(self):
         with self.assertRaises(DeviceConnectFailed) as de:
@@ -70,18 +70,18 @@ class TestCachedConnectionFactory(unittest.TestCase):
         from jnpr.openclos import deviceConnector
         deviceConnector.DEFAULT_KEEP_ALIVE_TIMEOUT = 2
         deviceConnector.DEFAULT_CLEANER_THREAD_WAIT_TIME = 4
-        print 'setup'
+        print('setup')
 
     def tearDown(self):
         CachedConnectionFactory.getInstance()._stop()
         CachedConnectionFactory._destroy()
-        print 'tearDown'
+        print('tearDown')
         
     def testConnectionCached(self):
         conn1 = None
         conn2 = None
         conn3 = None
-        print CachedConnectionFactory.getInstance()
+        print(CachedConnectionFactory.getInstance())
         with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.4", username="x", password="x") as connector:
             conn1 = str(connector)
             self.assertIsNotNone(connector)
@@ -95,8 +95,8 @@ class TestCachedConnectionFactory(unittest.TestCase):
             self.assertIsNotNone(connector)
             self.assertTrue(connector.isActive())
 
-        self.assertEquals(conn1, conn2)
-        self.assertNotEquals(conn1, conn3)
+        self.assertEqual(conn1, conn2)
+        self.assertNotEqual(conn1, conn3)
 
     def testBadConnectionNotCached(self):
         from jnpr.junos import Device
@@ -107,7 +107,7 @@ class TestCachedConnectionFactory(unittest.TestCase):
 
         conn1 = None
         conn2 = None
-        print CachedConnectionFactory.getInstance()
+        print(CachedConnectionFactory.getInstance())
         with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.6", username="x", password="x") as connector:
             conn1 = str(connector)
             self.assertIsNotNone(connector)
@@ -118,12 +118,12 @@ class TestCachedConnectionFactory(unittest.TestCase):
             self.assertIsNotNone(connector)
             self.assertFalse(connector.isActive())
 
-        self.assertNotEquals(conn1, conn2)
+        self.assertNotEqual(conn1, conn2)
 
     def testConnectionKeepAlive(self):
         conn1 = None
         conn2 = None
-        print CachedConnectionFactory.getInstance()
+        print(CachedConnectionFactory.getInstance())
         # waiting for conn1 to get closed, so closed will be called once.
         self.mockDevice.should_receive('close').times(1) 
         with CachedConnectionFactory.getInstance().connection(NetconfConnection, "1.2.3.7", username="x", password="x") as connector:
@@ -137,7 +137,7 @@ class TestCachedConnectionFactory(unittest.TestCase):
             self.assertIsNotNone(connector)
             self.assertTrue(connector.isActive())
 
-        self.assertNotEquals(conn1, conn2)
+        self.assertNotEqual(conn1, conn2)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

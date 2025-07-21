@@ -8,9 +8,9 @@ import os
 import logging
 from jinja2 import Environment, PackageLoader
 
-from model import InterfaceDefinition, AdditionalLink, BgpLink
-import util
-from loader import loadLoggingConfig
+from jnpr.openclos.model import InterfaceDefinition, AdditionalLink, BgpLink
+from jnpr.openclos import util
+from jnpr.openclos.loader import loadLoggingConfig
 
 templateLocation = os.path.join('conf', 'cablingPlanTemplates')
 
@@ -38,7 +38,7 @@ class ConfigWriter(WriterBase):
         fileName = device.id + '__' + device.name
         logger.info('Writing config file for device: %s', fileName)
         with open(os.path.join(self.outputDir, fileName + '.conf'), 'w') as f:
-            f.write(device.config.config)
+            f.write(device.config.config.decode('utf-8') if isinstance(device.config.config, bytes) else device.config.config)
             
     def writeGenericLeaf(self, pod):
         if not self.writeInFile:
@@ -48,7 +48,7 @@ class ConfigWriter(WriterBase):
             fileName = leafConfig.deviceFamily + '.conf'
             logger.info('Writing leaf generic config file for : %s', fileName)
             with open(os.path.join(self.outputDir, fileName), 'w') as f:
-                f.write(leafConfig.config)            
+                f.write(leafConfig.config.decode('utf-8') if isinstance(leafConfig.config, bytes) else leafConfig.config)            
 
 class DhcpConfWriter(WriterBase):
     def __init__(self, conf, pod, dao):
@@ -58,7 +58,7 @@ class DhcpConfWriter(WriterBase):
         if dhcpConf is not None:
             logger.info('Writing dhcpd.conf for pod: %s', self._pod.name)
             with open(os.path.join(self.outputDir, 'dhcpd.conf'), 'w') as f:
-                f.write(dhcpConf)
+                f.write(dhcpConf.decode('utf-8') if isinstance(dhcpConf,bytes) else dhcpConf)
         else:
             logger.error('No content, skipping writing dhcpd.conf for pod: %s', self._pod.name)
 
@@ -178,17 +178,17 @@ class CablingPlanWriter(WriterBase):
             if type(ifd) is InterfaceDefinition: 
                 if ifd.role == 'uplink':
                     if ifd.peer is not None:
-                        label += '<'+ifd.id+'>'+ ifd.name+"\<" + ifd.layerAboves[0].ipaddress +"\>"+'|'
+                        label += '<'+ifd.id+'>'+ ifd.name+r"\<" + ifd.layerAboves[0].ipaddress +r"\>"+'|'
                     
         if label.endswith('|'):
             label = label[:-1]
             if device.deployStatus == 'deploy':
-                label += '}|{' + device.name + "\{" +device.family + "\}" + '}|{'
+                label += '}|{' + device.name + r"\{" +device.family + r"\}" + '}|{'
             else:
                 label += '}|{' + device.name + '}|{'
         else:
             if device.deployStatus == 'deploy':
-                label += device.name + "\{" +device.family + "\}" + '}|{'
+                label += device.name + r"\{" +device.family + r"\}" + '}|{'
             else:
                 label += device.name + '}|{'
             
@@ -196,7 +196,7 @@ class CablingPlanWriter(WriterBase):
             if type(ifd) is InterfaceDefinition:
                 if ifd.role == 'downlink':
                     if ifd.peer is not None:
-                        label += '<'+ifd.id+'>'+ ifd.name+ "\<" + ifd.layerAboves[0].ipaddress +"\>"+'|'
+                        label += '<'+ifd.id+'>'+ ifd.name+ r"\<" + ifd.layerAboves[0].ipaddress +r"\>"+'|'
                     
         if label.endswith('|'):
             label = label[:-1]
@@ -230,7 +230,7 @@ class CablingPlanWriter(WriterBase):
 
     def createLinksInGraph(self, links, linksInTopology, color):
         #create peer links between the devices in DOT graph
-        for interface, peer in links.iteritems():
+        for interface, peer in links.items():
             linksInTopology.add_edge(pydot.Edge(interface, peer, color=color))
 
     def writeDOTFiveStageRealEstate(self):

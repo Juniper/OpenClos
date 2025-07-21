@@ -52,7 +52,7 @@ class sampleApplication:
         ztpServer = ZtpServer()
         with ztpServer._dao.getReadSession() as session:
             ztpServer.createPodSpecificDhcpConfFile(session, self.pod.id)
-            print generatedDhcpConf
+            print(generatedDhcpConf)
 
         if jnpr.openclos.util.isPlatformUbuntu():
             os.system('sudo apt-get -y install isc-dhcp-server')
