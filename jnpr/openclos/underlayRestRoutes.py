@@ -404,13 +404,13 @@ class UnderlayRestRoutes():
             pod = bottle.request.json.get('pod')
             if pod is None:
                 raise bottle.HTTPError(400, exception=InvalidRequest("POST body cannot be empty"))
-        breakpoint()
+        #breakpoint()
         l3ClosMediation = L3ClosMediation(self._conf, self.__daoClass)
         podDevices = self.getDevDictFromDict(pod)
         pod = self.getPodFromDict(pod)
         podName = pod.pop('name')
         try:
-            breakpoint()
+            #breakpoint()
             createdPod = l3ClosMediation.createPod(podName, pod, podDevices)
             url = str(bottle.request.url).translate(str.maketrans('', '', ',')) + '/' + createdPod.id
             pod = self.getPod(dbSession, createdPod.id, url)
