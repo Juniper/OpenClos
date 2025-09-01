@@ -699,13 +699,13 @@ class L3ClosMediation():
             config += self._createPolicyOption(session, device)
             config += self._createSnmpTrapAndEvent(session, device)
             config += self._createVlan(device)
-            device.config = DeviceConfig(device.id, config)
+            device.config = DeviceConfig(device.id, config.encode('utf-8'))
             modifiedObjects.append(device)
             logger.debug('Generated config for device name: %s, id: %s, storing in DB', device.name, device.id)
             configWriter.write(device)
 
         if self.isZtpStaged:
-            pod.leafSettings = self._createLeafGenericConfigsFor2Stage(session, pod)
+            pod.leafSettings = list(self._createLeafGenericConfigsFor2Stage(session, pod))
             modifiedObjects.append(pod)
             logger.debug('Generated %d leaf generic configs for pod: %s, storing in DB', len(pod.leafSettings), pod.name)
             configWriter.writeGenericLeaf(pod)
@@ -979,9 +979,11 @@ class L3ClosMediation():
             qfxifdNames = self.deviceSku.getPortNamesForDeviceFamily(deviceFamily, 'leaf')['uplinkPorts']        
             #Added the new template which will generate mgmt interface as em0 for qfx10002 devices
             if deviceFamily == 'qfx10002-36q' or deviceFamily == 'qfx10002-60c' or deviceFamily == 'qfx10002-72q':
-               leafSettings[deviceFamily].config = qfxLeafTemplate.render(deviceFamily=deviceFamily, oob=outOfBandNetworkParams, trapGroups=trapGroups, hashedPassword=pod.getHashPassword(), ifdNames=qfxifdNames)
+               leafSettingConfig = qfxLeafTemplate.render(deviceFamily=deviceFamily, oob=outOfBandNetworkParams, trapGroups=trapGroups, hashedPassword=pod.getHashPassword(), ifdNames=qfxifdNames)
+               leafSettings[deviceFamily].config = leafSettingConfig.encode('utf-8') if leafSettingConfig is not None else None
             else:
-               leafSettings[deviceFamily].config = leafTemplate.render(deviceFamily=deviceFamily, oob=outOfBandNetworkParams, trapGroups=trapGroups, hashedPassword=pod.getHashPassword(), ifdNames=ifdNames)
+               leafSettingConfig = leafTemplate.render(deviceFamily=deviceFamily, oob=outOfBandNetworkParams, trapGroups=trapGroups, hashedPassword=pod.getHashPassword(), ifdNames=ifdNames)
+               leafSettings[deviceFamily].config = leafSettingConfig.encode('utf-8') if leafSettingConfig is not None else None
         return leafSettings.values()
 
     def createLeafConfigFor2Stage(self, device):
