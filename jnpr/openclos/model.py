@@ -340,7 +340,7 @@ class LeafSetting(ManagedElement, Base):
         self.uplinkRegex = uplinkRegex
         self.downlinkRegex = downlinkRegex
         self.junosImage = junosImage
-        self.config = config.encode('utf-8') if config is not None else None
+        self.config = config.encode('utf-8') if (config is not None and isinstance(config, str)) else config
     
 class CablingPlan(ManagedElement, Base):
     __tablename__ = 'cablingPlan'
@@ -350,8 +350,8 @@ class CablingPlan(ManagedElement, Base):
 
     def __init__(self, podId, json=None, dot=None):
         self.pod_id = podId
-        self.json = json.encode('utf-8') if json is not None else None
-        self.dot = dot.encode('utf-8') if dot is not None else None
+        self.json = json.encode('utf-8') if (json is not None and isinstance(json, str)) else json
+        self.dot = dot.encode('utf-8') if (dot is not None and isinstance(dot, str)) else dot
 
 class Device(ManagedElement, Base):
     __tablename__ = 'device'
@@ -439,7 +439,7 @@ class DeviceConfig(ManagedElement, Base):
 
     def __init__(self, deviceId, config):
         self.device_id = deviceId
-        self.config = config.encode('utf-8') if config is not None else None
+        self.config = config.encode('utf-8') if (config is not None and isinstance(config, str)) else config
             
 class Interface(ManagedElement, Base):
     __tablename__ = 'interface'
